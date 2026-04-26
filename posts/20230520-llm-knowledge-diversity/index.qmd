@@ -1,0 +1,38 @@
+---
+title: "How LLMs Beat Catastrophic Forgetting Through Knowledge Diversity"
+description: "Pre-trained LLMs retain factual knowledge far better than vanilla models — and learning irrelevant knowledge actually helps."
+author: synesis
+date: "2023-05-20"
+categories: [LLMs, NLP, AI, machine learning, paper]
+image: screenshot1.jpg
+---
+
+![Figure from [the paper](http://arxiv.org/abs/2305.09144).](screenshot1.jpg)
+
+How do we square the remarkable ability of modern LLMs in memorizing factual knowledge with the well-known phenomenon of “catastrophic forgetting” [[1]](#ref-1) — the tendency of models to abruptly forget acquired facts when learning new ones? A recent paper sheds light on this important question [[2]](#ref-2).
+
+The authors train models with natural language expressions converted from factual knowledge using pre-training objectives (masking), and test retention by posing corresponding factual knowledge queries. They then plot “forgetting curves” [[3]](#ref-3) by training models with various types of knowledge at one point and testing them later, interleaving the process with training of other types of knowledge (screenshot 1). The key findings:
+
+1. Vanilla models (models with random initialization) only exhibit short-term memory, and how much they retain is completely determined by how correlated the knowledge type to be learned in the current step and the target knowledge type (screenshot 2). In comparison, pre-trained LLMs (PLMs) don’t have this problem (screenshot 3).
+
+2. Testing PLMs trained with increasing steps clearly shows a gradual strengthening of their retention ability (screenshot 4).
+
+3. Most interestingly, the effect of knowledge type correlation between the current step and the target knowledge is *reversed* for PLMs compared to vanilla LLMs: learning *irrelevant* knowledge actually helps in building the retention ability of PLMs (screenshot 5)! This leads to a diversity curriculum where mixing more types of knowledge in learning cycles results in faster convergence and reduced memory collapse (screenshot 6).
+
+Incidentally, an article recently appeared on Lifehacker [[4]](#ref-4) essentially suggests the same strategy for *humans* to improve learning. This suggestion is supported by a paper titled "Interleaving Helps Students Distinguish among Similar Concepts" [[5]](#ref-5), among others.
+
+—
+
+*Originally posted on [LinkedIn](https://www.linkedin.com/posts/benjaminhan_llms-knowledge-diversity-activity-7065579519075643392-II1N).*
+
+## References
+
+<a id="ref-1"></a>[1] Michael McCloskey and Neal J. Cohen. 1989. Catastrophic Interference in Connectionist Networks: The Sequential Learning Problem. In Gordon H. Bower, editor, *Psychology of Learning and Motivation*, volume 24, pages 109–165. Academic Press. <http://dx.doi.org/10.1016/S0079-7421(08)60536-8>
+
+<a id="ref-2"></a>[2] Boxi Cao, Qiaoyu Tang, Hongyu Lin, Xianpei Han, Jiawei Chen, Tianshu Wang, and Le Sun. 2023. Retentive or Forgetful? Diving into the Knowledge Memorizing Mechanism of Language Models. <http://arxiv.org/abs/2305.09144>
+
+<a id="ref-3"></a>[3] Hermann Ebbinghaus. 2013. Memory: a contribution to experimental psychology. *Annals of neurosciences*, 20(4):155–156. <http://dx.doi.org/10.5214/ans.0972.7531.200408>
+
+<a id="ref-4"></a>[4] Lindsey Ellefson. 2023. Why You Should Actually Study Multiple Topics at the Same Time. *Lifehacker*. <https://lifehacker.com/why-you-should-actually-study-multiple-topics-at-the-sa-1850438252>
+
+<a id="ref-5"></a>[5] Doug Rohrer. 2012. Interleaving helps students distinguish among similar concepts. *Educational Psychology Review*, 24, 355–367. <https://files.eric.ed.gov/fulltext/ED536926.pdf>

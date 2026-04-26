@@ -1,0 +1,953 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss  xmlns:atom="http://www.w3.org/2005/Atom" 
+      xmlns:media="http://search.yahoo.com/mrss/" 
+      xmlns:content="http://purl.org/rss/1.0/modules/content/" 
+      xmlns:dc="http://purl.org/dc/elements/1.1/" 
+      version="2.0">
+<channel>
+<title>synesis</title>
+<link>https://benjaminhan.net/</link>
+<atom:link href="https://benjaminhan.net/feed-page-8.xml" rel="self" type="application/rss+xml"/>
+<atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
+<atom:link href="https://benjaminhan.net/feed-page-17.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-7.xml" rel="previous"/>
+<atom:link href="https://benjaminhan.net/feed-page-9.xml" rel="next"/>
+<description>AI research, engineering, and the occasional philosophical aside.</description>
+<image>
+<url>https://benjaminhan.net/og-default.png</url>
+<title>synesis</title>
+<link>https://benjaminhan.net/</link>
+<height>76</height>
+<width>144</width>
+</image>
+<generator>quarto-1.9.37</generator>
+<lastBuildDate>Sat, 25 Apr 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Give Us the Facts: Large Language Models vs. Knowledge Graphs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/cover.jpg" class="img-fluid"></p>
+<p>In this age of LLMs and generative AI, do we still need knowledge graphs (KGs) as a way to collect and organize domain and world knowledge, or should we just switch to language models and rely on their abilities to absorb knowledge from massive training datasets?</p>
+<p>An early paper in 2019 [1] posited that compared to KGs, it is easier for language models to adapt to new data without human supervision, and they allow users to query about an open class of relations without much restriction. To measure the knowledge encoding capability, the authors construct the LAMA (Language Model Analysis) probe where facts are turned into cloze statements and language models are asked to predict the masked words. The result shows that even without specialized training, language models such as BERT-large can already retrieve decent amount of facts from their weights.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/1909.01066">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/1909.01066">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>But is that all? A recent paper revisits this question and offers a different take [2]. The authors believe just testing isolated fact retrieval is not sufficient to demonstrate the power of KGs. Instead, they focus on more intricate topological and semantic attributes of facts, and propose 9 benchmarks testing modern LLMs’ capability in retrieving facts with the following attributes: symmetry, asymmetry, hierarchy, bidirectionality, compositionality, paths, entity-centricity, bias and ambiguity.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/screenshot3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/1909.01066">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/screenshot4.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/1909.01066">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>In each benchmark, instead of asking LLMs to retrieve masked words from a cloze statement, it also asks the LLMs to retrieve all of the implied facts and compute scores accordingly. Their result shows that even GPT4 achieves only 23.7% hit@1 on average, even when it scores up to 50% precision@1 using the earlier proposed LAMA benchmark. Interestingly, smaller models like BERT can outperform GPT4 on bidirectional, compositional, and ambiguity benchmarks, indicating bigger is not necessarily better.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/screenshot5.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/1909.01066">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/screenshot6.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/1909.01066">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>There are surely other benefits of using KGs to collect and organize knowledge. They do not require costly retraining to update, therefore can be updated more frequently to remove obsolete or incorrect facts. They allow more trackable reasoning and can offer better explanations. They make fact editing more straightforward and accountable (think of GDPR) compared to model editing [3]. But LLMs can certainly help in bringing in domain-specific or commonsense knowledge in a data-driven way. In conclusion: why not both [4]? :-)</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/give-us-facts-large-language-models-vs-knowledge-graphs-benjamin-han/">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Fabio Petroni, Tim Rocktäschel, Patrick Lewis, Anton Bakhtin, Yuxiang Wu, Alexander H. Miller, and Sebastian Riedel. “Language Models as Knowledge Bases?” 2019. <a href="https://arxiv.org/abs/1909.01066" class="uri">https://arxiv.org/abs/1909.01066</a></p>
+<p><a id="ref-2"></a>[2] Vishwas Mruthyunjaya, Pouya Pezeshkpour, Estevam Hruschka, and Nikita Bhutani. “Rethinking Language Models as Symbolic Knowledge Graphs.” 2023. <a href="https://arxiv.org/abs/2308.13676" class="uri">https://arxiv.org/abs/2308.13676</a></p>
+<p><a id="ref-3"></a>[3] Benjamin Han. “Model Editing: Performing Digital Brain Surgery.” LinkedIn, 2023. <a href="https://www.linkedin.com/posts/benjaminhan_llms-causal-papers-activity-7101756262576525313-bIge" class="uri">https://www.linkedin.com/posts/benjaminhan_llms-causal-papers-activity-7101756262576525313-bIge</a></p>
+<p><a id="ref-4"></a>[4] Shirui Pan, Linhao Luo, Yufei Wang, Chen Chen, Jiapu Wang, and Xindong Wu. “Unifying Large Language Models and Knowledge Graphs: A Roadmap.” 2023. <a href="https://arxiv.org/abs/2306.08302" class="uri">https://arxiv.org/abs/2306.08302</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>LLMs</category>
+  <category>NLP</category>
+  <category>knowledge graphs</category>
+  <category>evaluation</category>
+  <category>paper</category>
+  <category>generative AI</category>
+  <guid>https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/</guid>
+  <pubDate>Sat, 02 Sep 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230902-llms-vs-knowledge-graphs/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>When Computers Write Proofs, What’s the Point of Mathematicians?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230902-computers-write-proofs/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230902-computers-write-proofs/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230902-computers-write-proofs/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption><a href="https://youtu.be/3l1RMiGeTfU">Watch on YouTube</a></figcaption>
+</figure>
+</div>
+<p>Is math just symbol pushing?</p>
+<p>When Computers Write Proofs, What’s the Point of Mathematicians? [1]</p>
+<p>Article: [2]</p>
+<p>Lean theorem prover: [3]</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_when-computers-write-proofs-whats-the-point-activity-7103595253072367616-Hdv7">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Quanta Magazine. “When Computers Write Proofs, What’s the Point of Mathematicians?” (video). <a href="https://youtu.be/3l1RMiGeTfU" class="uri">https://youtu.be/3l1RMiGeTfU</a></p>
+<p><a id="ref-2"></a>[2] “Why Mathematical Proof Is a Social Compact.” <em>Quanta Magazine</em>, August 31, 2023. <a href="https://www.quantamagazine.org/why-mathematical-proof-is-a-social-compact-20230831/" class="uri">https://www.quantamagazine.org/why-mathematical-proof-is-a-social-compact-20230831/</a></p>
+<p><a id="ref-3"></a>[3] Lean theorem prover. <a href="https://leanprover.github.io" class="uri">https://leanprover.github.io</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>mathematics</category>
+  <category>reasoning</category>
+  <category>formal verification</category>
+  <category>Lean</category>
+  <category>links</category>
+  <category>video</category>
+  <guid>https://benjaminhan.net/posts/20230902-computers-write-proofs/</guid>
+  <pubDate>Sat, 02 Sep 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230902-computers-write-proofs/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Copyright Office Seeks Public Input on AI Protections and Liability</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230830-copyright-office-ai-input/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230830-copyright-office-ai-input/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230830-copyright-office-ai-input/cover.jpg" class="img-fluid"></p>
+<p>Copyright Office Seeks Public Input on AI Protections and Liability:</p>
+<ol type="1">
+<li><p>Where and how to draw the line between human creation and AI-generated content.</p></li>
+<li><p>Whether and when the use of copyrighted materials to train AI models is infringing.</p></li>
+<li><p>How copyright principles could be applied to infringing material created by AI systems.</p></li>
+</ol>
+<p>[1]</p>
+<p>(Previously: “US District Judge ruled an AI-generated artwork can’t be copyrighted” [2])</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_copyright-office-seeks-public-input-on-ai-activity-7102681259151171584-eGPH">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] “Copyright Office Seeks Public Input on AI Protections and Liability.” <em>Bloomberg Law</em>, 2023. <a href="https://news.bloomberglaw.com/ip-law/copyright-office-seeks-public-input-on-ai-protections-liability" class="uri">https://news.bloomberglaw.com/ip-law/copyright-office-seeks-public-input-on-ai-protections-liability</a></p>
+<p><a id="ref-2"></a>[2] Benjamin Han. “AI-Generated Art Cannot Be Copyrighted, Rules a US Federal Judge.” <em>synesis</em>, 2023. <a href="../20230819-ai-art-copyright-ruling/index.html">Read on this blog.</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>LLMs</category>
+  <category>NLP</category>
+  <category>generative AI</category>
+  <category>links</category>
+  <guid>https://benjaminhan.net/posts/20230830-copyright-office-ai-input/</guid>
+  <pubDate>Wed, 30 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230830-copyright-office-ai-input/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Model Editing: Performing Digital Brain Surgery</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/cover.jpg" class="img-fluid"></p>
+<p>Can we “edit” to update incorrect/outdated facts without costly retraining? Recent works such as training auxiliary models to predict weight changes in the main model (MEND) [1], locating “knowledge neurons” [2], using causal intervention to identify feed-forward network (FFN) weights to edit in ROME [3], and scaling up editing operations to thousands of associations in MEMIT [4] have proven it’s doable, even practical.</p>
+<p>Building on ROME/MEMIT, the authors of a more recent work [5] hypothesize that optimizing transformer layer hidden states to update knowledge may be too much, as these parameters contain simultaneously the effect from Multi-head Self-Attention (MHSA), feed-forward network (FFN), and residual connections.</p>
+<p>By computing the similarities of the hidden states of MHSA and FFN before and after each layer, they observe FFN stabilizes much earlier than MHSA, thus concluding that MHSA encodes more general knowledge extraction patterns while FFN captures more factual aspect of knowledge (screenshot 1).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>They then propose PMET (Precise Model Editing in a Transformer), which effectively moves weight optimization upstream. And while trying to optimize both MHSA and FFN, it only updates on FFN weights to preserve specificity (screenshot 2). The result is much more stable performance as number of edits increases (screenshot 3), and better overall results (screenshot 4).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot4.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>Another related recent work is on how to properly evaluate model editing [6]. Instead of just assessing whether an individual fact has been successfully injected or if similar predictions for other subjects have not changed, the <em>consequences</em> of these updates, aka “ripple effects”, should also be evaluated (screenshot 5). It’d be interesting to see how “complete” various model editing methods can achieve (screenshot 6), and how to achieve a better tradeoff between completeness and efficiency.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot5.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot6.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/model-editing-performing-digital-brain-surgery-benjamin-han/">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Eric Mitchell, Charles Lin, Antoine Bosselut, Chelsea Finn, and Christopher D. Manning. 2021. “Fast Model Editing at Scale.” <a href="http://arxiv.org/abs/2110.11309" class="uri">http://arxiv.org/abs/2110.11309</a></p>
+<p><a id="ref-2"></a>[2] Damai Dai, Li Dong, Yaru Hao, Zhifang Sui, Baobao Chang, and Furu Wei. 2021. “Knowledge Neurons in Pretrained Transformers.” <a href="http://arxiv.org/abs/2307.14988" class="uri">http://arxiv.org/abs/2307.14988</a></p>
+<p><a id="ref-3"></a>[3] Kevin Meng, David Bau, Alex Andonian, and Yonatan Belinkov. 2022. “Locating and editing factual associations in GPT.” <em>Advances in Neural Information Processing Systems</em>, 35:17359–17372. <a href="https://arxiv.org/abs/2202.05262" class="uri">https://arxiv.org/abs/2202.05262</a></p>
+<p><a id="ref-4"></a>[4] Kevin Meng, Arnab Sen Sharma, Alex Andonian, Yonatan Belinkov, and David Bau. 2022. “Mass-Editing Memory in a Transformer.” <a href="http://arxiv.org/abs/2210.07229" class="uri">http://arxiv.org/abs/2210.07229</a></p>
+<p><a id="ref-5"></a>[5] Xiaopeng Li, Shasha Li, Shezheng Song, Jing Yang, Jun Ma, and Jie Yu. 2023. “PMET: Precise Model Editing in a Transformer.” <em>arXiv [cs.CL]</em>. <a href="http://arxiv.org/abs/2308.08742" class="uri">http://arxiv.org/abs/2308.08742</a></p>
+<p><a id="ref-6"></a>[6] Roi Cohen, Eden Biran, Ori Yoran, Amir Globerson, and Mor Geva. 2023. “Evaluating the Ripple Effects of Knowledge Editing in Language Models.” <a href="http://arxiv.org/abs/2307.12976" class="uri">http://arxiv.org/abs/2307.12976</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>LLMs</category>
+  <category>NLP</category>
+  <category>knowledge editing</category>
+  <category>paper</category>
+  <category>generative AI</category>
+  <guid>https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/</guid>
+  <pubDate>Mon, 28 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>LLM-Generated Code Has a Serious API Misuse Problem</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230828-llm-code-api-misuse/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230828-llm-code-api-misuse/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p>How robust and reliable is the code generated by LLMs, especially for real-world software development? A recent work [2] constructed a new benchmark based on [1] to evaluate if the generated code uses API correctly. Four popular LLMs – GPT3.5, GPT4, Llama2, and Vicuna – are tested, and GPT4 under zero-shot scored 62.09% misuse rate. Even with one-shot relevant examples the misuse rate of GPT4 is 49.17%.</p>
+<p>Since users of CodeGeneration with particular APIs are usually relatively inexperienced in the said APIs, these inaccuracies may have grave consequences to the robustness and reliability of the resulting software.</p>
+<p>(How would CodeLlama fare?)</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-llms-gpt3-activity-7101777422026502144-Ivm_">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Tianyi Zhang, Ganesha Upadhyaya, Anastasia Reinhardt, Hridesh Rajan, and Miryung Kim. 2018. “Are code examples on an online Q&amp;A forum reliable? a study of API misuse on stack overflow.” In <em>Proceedings of the 40th International Conference on Software Engineering</em>, pages 886–896, Gothenburg, Sweden. Association for Computing Machinery. <a href="http://dx.doi.org/10.1145/3180155.3180260" class="uri">http://dx.doi.org/10.1145/3180155.3180260</a></p>
+<p><a id="ref-2"></a>[2] Li Zhong and Zilong Wang. 2023. “A Study on Robustness and Reliability of Large Language Model Code Generation.” <a href="http://arxiv.org/abs/2308.10335" class="uri">http://arxiv.org/abs/2308.10335</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>LLMs</category>
+  <category>code generation</category>
+  <category>software engineering</category>
+  <category>paper</category>
+  <category>generative AI</category>
+  <category>NLP</category>
+  <guid>https://benjaminhan.net/posts/20230828-llm-code-api-misuse/</guid>
+  <pubDate>Mon, 28 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230828-llm-code-api-misuse/screenshot4.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>LLMs Stumble Hard on Counterfactual Reasoning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p>Large degradations observed from LLMs when reasoning tasks are reframed into counterfactuals. Only basic syntax, logic and music chords are decent w/ counterfactuals.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2307.02477">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2307.02477">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>(see also previous post: <a href="../../posts/20230710-do-llms-really-understand/index.html">“Do LLMs Really Understand? Recent Papers Reveal”</a>)</p>
+<blockquote class="blockquote">
+<p><strong>Abstract:</strong> The impressive performance of recent language models across a wide range of tasks suggests that they possess a degree of abstract reasoning skills. Are these skills general and transferable, or specialized to specific tasks seen during pretraining? To disentangle these effects, we propose an evaluation framework based on “counterfactual” task variants that deviate from the default assumptions underlying standard tasks. Across a suite of 11 tasks, we observe nontrivial performance on the counterfactual variants, but nevertheless find that performance substantially and consistently degrades compared to the default conditions. This suggests that while current LMs may possess abstract task-solving skills to a degree, they often also rely on narrow, non-transferable procedures for task-solving. These results motivate a more careful interpretation of language model performance that teases apart these aspects of behavior.</p>
+</blockquote>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-reasoning-counterfactual-activity-7098503724955832321-XzpW">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Zhaofeng Wu, Linlu Qiu, Alexis Ross, Ekin Akyürek, Boyuan Chen, Bailin Wang, Najoung Kim, Jacob Andreas, and Yoon Kim. 2023. “Reasoning or Reciting? Exploring the Capabilities and Limitations of Language Models Through Counterfactual Tasks.” <a href="http://arxiv.org/abs/2307.02477" class="uri">http://arxiv.org/abs/2307.02477</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>LLMs</category>
+  <category>reasoning</category>
+  <category>NLP</category>
+  <category>paper</category>
+  <category>generative AI</category>
+  <guid>https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/</guid>
+  <pubDate>Sat, 19 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Faithful Text Generation from Knowledge Graphs with Noisy References</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230819-kg-to-text-faithful-generation/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230819-kg-to-text-faithful-generation/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p>Using contrastive loss and binned BARTScore as input improves faithfulness of knowledge-to-text generation.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-kg-to-text-faithful-generation/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2308.06488">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-kg-to-text-faithful-generation/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2308.06488">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-kg-to-text-faithful-generation/screenshot3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2308.06488">the paper</a>.</figcaption>
+</figure>
+</div>
+<blockquote class="blockquote">
+<p><strong>Abstract:</strong> Knowledge Graph (KG)-to-Text generation aims at generating fluent natural-language text that accurately represents the information of a given knowledge graph. While significant progress has been made in this task by exploiting the power of pre-trained language models (PLMs) with appropriate graph structure-aware modules, existing models still fall short of generating faithful text, especially when the ground-truth natural-language text contains additional information that is not present in the graph. In this paper, we develop a KG-to-text generation model that can generate faithful natural-language text from a given graph, in the presence of noisy reference text. Our framework incorporates two core ideas: Firstly, we utilize contrastive learning to enhance the model’s ability to differentiate between faithful and hallucinated information in the text, thereby encouraging the decoder to generate text that aligns with the input graph. Secondly, we empower the decoder to control the level of hallucination in the generated text by employing a controllable text generation technique. We evaluate our model’s performance through the standard quantitative metrics as well as a ChatGPT-based quantitative and qualitative analysis. Our evaluation demonstrates the superior performance of our model over state-of-the-art KG-to-text models on faithfulness.</p>
+</blockquote>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_knowledgegraph-paper-nlp-activity-7098504119929208833-bqiu">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Tahsina Hashem, Weiqing Wang, Derry Tanti Wijaya, Mohammed Eunus Ali, and Yuan-Fang Li. 2023. “Generating Faithful Text From a Knowledge Graph with Noisy Reference Text.” <a href="http://arxiv.org/abs/2308.06488" class="uri">http://arxiv.org/abs/2308.06488</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>knowledge graphs</category>
+  <category>NLP</category>
+  <category>paper</category>
+  <category>generative AI</category>
+  <guid>https://benjaminhan.net/posts/20230819-kg-to-text-faithful-generation/</guid>
+  <pubDate>Sat, 19 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230819-kg-to-text-faithful-generation/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Biomedical Knowledge Graph Embeddings with Negative Statements</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230819-biomedical-kg-negative-statements/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230819-biomedical-kg-negative-statements/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p>Generating positive AND negative walks through ontological relations subclassOf and superClassOf improves protein-protein interaction and gene-disease association classification tasks.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-biomedical-kg-negative-statements/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2308.03447">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-biomedical-kg-negative-statements/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2308.03447">the paper</a>.</figcaption>
+</figure>
+</div>
+<blockquote class="blockquote">
+<p><strong>Abstract:</strong> A knowledge graph is a powerful representation of real-world entities and their relations. The vast majority of these relations are defined as positive statements, but the importance of negative statements is increasingly recognized, especially under an Open World Assumption. Explicitly considering negative statements has been shown to improve performance on tasks such as entity summarization and question answering or domain-specific tasks such as protein function prediction. However, no attention has been given to the exploration of negative statements by knowledge graph embedding approaches despite the potential of negative statements to produce more accurate representations of entities in a knowledge graph. We propose a novel approach, TrueWalks, to incorporate negative statements into the knowledge graph representation learning process. In particular, we present a novel walk-generation method that is able to not only differentiate between positive and negative statements but also take into account the semantic implications of negation in ontology-rich knowledge graphs. This is of particular importance for applications in the biomedical domain, where the inadequacy of embedding approaches regarding negative statements at the ontology level has been identified as a crucial limitation. We evaluate TrueWalks in ontology-rich biomedical knowledge graphs in two different predictive tasks based on KG embeddings: protein-protein interaction prediction and gene-disease association prediction. We conduct an extensive analysis over established benchmarks and demonstrate that our method is able to improve the performance of knowledge graph embeddings on all tasks.</p>
+</blockquote>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_ontological-protein-gene-activity-7098503226374688769-dumC">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Rita T. Sousa, Sara Silva, Heiko Paulheim, and Catia Pesquita. 2023. “Biomedical Knowledge Graph Embeddings with Negative Statements.” <em>arXiv [cs.AI]</em>. <a href="http://arxiv.org/abs/2308.03447" class="uri">http://arxiv.org/abs/2308.03447</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>knowledge graphs</category>
+  <category>NLP</category>
+  <category>biomedical</category>
+  <category>paper</category>
+  <guid>https://benjaminhan.net/posts/20230819-biomedical-kg-negative-statements/</guid>
+  <pubDate>Sat, 19 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230819-biomedical-kg-negative-statements/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>AI-Generated Art Cannot Be Copyrighted, Rules a US Federal Judge</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230819-ai-art-copyright-ruling/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230819-ai-art-copyright-ruling/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230819-ai-art-copyright-ruling/cover.jpg" class="img-fluid"></p>
+<p>US District Judge ruled an AI-generated artwork can’t be copyrighted because it “lacked human authorship and thus no copyright existed in the first instance.”</p>
+<p>Wes Davis. August 2023. AI-generated art cannot be copyrighted, rules a US Federal Judge. The Verge. [1]</p>
+<p><img src="https://benjaminhan.net/posts/20230819-ai-art-copyright-ruling/screenshot2.jpg" class="img-fluid"></p>
+<p><img src="https://benjaminhan.net/posts/20230819-ai-art-copyright-ruling/screenshot3.jpg" class="img-fluid"></p>
+<p>Previously:</p>
+<ol type="1">
+<li><p>The US Copyright Office issued a registration guidance concerning the copyright status of generative AI: [2]</p></li>
+<li><p>Henderson et al 2023 from Stanford published paper “Foundation Models and Fair Use”: [3]</p></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_authorship-copyright-generativeai-activity-7098809165434822657-kpT3">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Wes Davis. “AI-generated art cannot be copyrighted, rules a US Federal Judge.” <em>The Verge</em>, August 19, 2023. <a href="https://www.theverge.com/2023/8/19/23838458/ai-generated-art-no-copyright-district-court" class="uri">https://www.theverge.com/2023/8/19/23838458/ai-generated-art-no-copyright-district-court</a></p>
+<p><a id="ref-2"></a>[2] U.S. Copyright Office. Registration guidance on works containing material generated by AI. Federal Register, 2023. <a href="https://public-inspection.federalregister.gov/2023-05321.pdf" class="uri">https://public-inspection.federalregister.gov/2023-05321.pdf</a></p>
+<p><a id="ref-3"></a>[3] Peter Henderson, Xuechen Li, Dan Jurafsky, Tatsunori Hashimoto, Mark A. Lemley, and Percy Liang. “Foundation Models and Fair Use.” 2023. <a href="https://arxiv.org/abs/2303.15715" class="uri">https://arxiv.org/abs/2303.15715</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>LLMs</category>
+  <category>NLP</category>
+  <category>generative AI</category>
+  <category>links</category>
+  <guid>https://benjaminhan.net/posts/20230819-ai-art-copyright-ruling/</guid>
+  <pubDate>Sat, 19 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230819-ai-art-copyright-ruling/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Thousands of Scientists Are Leaving Twitter for Mastodon</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230816-scientists-leaving-twitter-mastodon/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230816-scientists-leaving-twitter-mastodon/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p>Nature surveyed 170+k scientists:</p>
+<blockquote class="blockquote">
+<p>“The most popular alternative social-media site that respondents mentioned opening accounts with was the free, open-source software platform Mastodon.”</p>
+</blockquote>
+<p>Thousands of scientists are cutting back on Twitter, seeding angst and uncertainty [1]</p>
+<p><img src="https://benjaminhan.net/posts/20230816-scientists-leaving-twitter-mastodon/screenshot1.jpg" class="img-fluid"></p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_nature-scientists-mastodon-activity-7097618375924740096-n_vU">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] “Thousands of scientists are cutting back on Twitter, seeding angst and uncertainty.” <em>Nature</em>, 2023. <a href="https://www.nature.com/articles/d41586-023-02554-0" class="uri">https://www.nature.com/articles/d41586-023-02554-0</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>science</category>
+  <category>social media</category>
+  <category>Mastodon</category>
+  <category>links</category>
+  <guid>https://benjaminhan.net/posts/20230816-scientists-leaving-twitter-mastodon/</guid>
+  <pubDate>Wed, 16 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230816-scientists-leaving-twitter-mastodon/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Transformative AGI by 2043 Is Less Than 1% Likely</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230810-agi-by-2043/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230810-agi-by-2043/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p>Someone is courageous enough to put a number on when AGI (Artificial General Intelligence) can happen [1]. :-)</p>
+<p>Conclusion: 0.4% chance before 2043.</p>
+<p>Incidentally I just started a fun poll asking whether AGI or aliens will come first on Mastodon [2].</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_agi-mastodon-ai-activity-7095419020627120128-bv6e">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Ari Allyn-Feuer and Ted Sanders. 2023. “Transformative AGI by 2043 is &lt;1% likely.” <a href="http://arxiv.org/abs/2306.02519" class="uri">http://arxiv.org/abs/2306.02519</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>AGI</category>
+  <category>future</category>
+  <category>links</category>
+  <guid>https://benjaminhan.net/posts/20230810-agi-by-2043/</guid>
+  <pubDate>Thu, 10 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230810-agi-by-2043/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>What Learning Algorithm Is In-Context Learning?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230804-icl-learning-algorithms/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230804-icl-learning-algorithms/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230804-icl-learning-algorithms/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2212.10559">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>On the topic of in-context learning (ICL), the ability of Large Language Models (LLMs) to learn a new task from mere inference-time demonstrations without the need for costly retraining, I previously discussed a paper showing that the demonstrations can be viewed as secretly performing gradient descent [1] (see post [2]). However, another paper published on ArXiv barely a month before (and later in ICLR2023) provides an even more thorough explanation on why ICL works [3].</p>
+<p>The authors in [3] first demonstrate, through constructive proofs, that transformers can solve linear regression problems by implementing either a single step of gradient descent (screenshot 1) or the closed-form solution (screenshot 2). They then compare the learning behaviors of ICL to those of various standard learning algorithms using two metrics — SPD (Squared Prediction Difference, screenshot 3) and ILWD (Implicit Linear Weight Difference; screenshot 4) — and conclude that ICL closely matches both predictions and weights to the ordinary least squares learner (screenshot 5). Even more interestingly, they show that transformers exhibit a “phase change” in their learning behaviors with varying model sizes, transitioning from gradient descent to ridge regression to ordinary least squares as model depth and hidden size increase (screenshot 6).</p>
+<p>How do we correlate these findings with the observations that ICL implicitly engages in two tasks: Task Recognition (TR) and Task Learning (TL), where TR recognizes tasks from demonstrations and doesn’t improve as model size and number of demonstrations scale up, and TL learns new input-output mappings and does improve with increasing model size and number of demonstrations [4, discussed in 5]? And can we modify model architecture or the pre-training objectives to further enhance ICL?</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-iclr2023-mastodon-activity-7093281970792632320-XE87">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Damai Dai, Yutao Sun, Li Dong, Yaru Hao, Zhifang Sui, and Furu Wei. 2022. “Why Can GPT Learn In-Context? Language Models Secretly Perform Gradient Descent as Meta-Optimizers.” <a href="https://arxiv.org/abs/2212.10559" class="uri">https://arxiv.org/abs/2212.10559</a></p>
+<p><a id="ref-2"></a>[2] Previous post: <a href="../20230325-icl-gradient-descent-pac-learning/">Why Does In-Context Learning Work?</a></p>
+<p><a id="ref-3"></a>[3] Ekin Akyürek, Dale Schuurmans, Jacob Andreas, Tengyu Ma, and Denny Zhou. 2022. “What learning algorithm is in-context learning? Investigations with linear models.” <a href="https://arxiv.org/abs/2211.15661" class="uri">https://arxiv.org/abs/2211.15661</a></p>
+<p><a id="ref-4"></a>[4] Jane Pan, Tianyu Gao, Howard Chen, and Danqi Chen. 2023. “What In-Context Learning ‘Learns’ In-Context: Disentangling Task Recognition and Task Learning.” <a href="https://arxiv.org/abs/2305.09731" class="uri">https://arxiv.org/abs/2305.09731</a></p>
+<p><a id="ref-5"></a>[5] Previous post: <a href="https://www.linkedin.com/posts/benjaminhan_llms-gpt3-nlp-activity-7073726814170337280-EED5" class="uri">https://www.linkedin.com/posts/benjaminhan_llms-gpt3-nlp-activity-7073726814170337280-EED5</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>LLMs</category>
+  <category>ICLR 2023</category>
+  <category>in-context learning</category>
+  <category>deep learning</category>
+  <category>generative AI</category>
+  <category>AI</category>
+  <category>NLP</category>
+  <category>paper</category>
+  <guid>https://benjaminhan.net/posts/20230804-icl-learning-algorithms/</guid>
+  <pubDate>Fri, 04 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230804-icl-learning-algorithms/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>The BBC Joins Mastodon as an Experiment in Decentralised Social Media</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230731-bbc-on-mastodon/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230731-bbc-on-mastodon/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230731-bbc-on-mastodon/cover.jpg" class="img-fluid"></p>
+<p>BBC is now on Mastodon:</p>
+<blockquote class="blockquote">
+<p>“This is an experiment - we will run it for 6 months and then decide whether and how to continue. We aim to learn how much value it has provided and how much work and cost is involved. Does it reach enough people for the effort we need to put in? Are there risks or benefits from the federated model, with no centralised rules or moderation and no filtering or sorting algorithms?”</p>
+</blockquote>
+<p>The BBC on Mastodon: experimenting with distributed and decentralised social media [1]</p>
+<p>(NPR is already on it as <a href="https://press.coop/@NPR" class="uri">https://press.coop/@NPR</a>)</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_the-bbc-on-mastodon-experimenting-with-distributed-activity-7091842851315060736-7RJG">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] BBC R&amp;D. “The BBC on Mastodon: experimenting with distributed and decentralised social media.” <em>BBC R&amp;D Blog</em>, July 2023. <a href="https://www.bbc.co.uk/rd/blog/2023-07-mastodon-distributed-decentralised-fediverse-activitypub/" class="uri">https://www.bbc.co.uk/rd/blog/2023-07-mastodon-distributed-decentralised-fediverse-activitypub/</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>Mastodon</category>
+  <category>social media</category>
+  <guid>https://benjaminhan.net/posts/20230731-bbc-on-mastodon/</guid>
+  <pubDate>Mon, 31 Jul 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230731-bbc-on-mastodon/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>How “Attention Is All You Need” Was Born: The Story Behind the Transformer Paper</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/cover.jpg" class="img-fluid"></p>
+<p>A great recounting written by Madhumita Murgia on how “All you need is attention” – the Transformers paper – was born out of a “serendipitous assembly of a group of scientists”: Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan Gomez, Lukasz Kaiser, and Illia Polosukhin.</p>
+<blockquote class="blockquote">
+<p>“In early 2017, two Google research scientists, Ashish Vaswani and Jakob Uszkoreit, were in a hallway of the search giant’s Mountain View campus, discussing a new idea for how to improve machine translation, the AI technology behind Google Translate…</p>
+<p>During their chat in the hallway, Uszkoreit and Vaswani were overheard by Noam Shazeer… So when he heard his colleagues talking about this idea of “self-attention”, he decided to jump in and help. “I said, I’m with you . . . let’s do it, this is going to make life much, much better for all AI researchers,” Shazeer says.</p>
+<p>The chance conversation formalised a months-long collaboration in 2017 that eventually produced an architecture for processing language, known simply as the “transformer”. The eight research scientists who eventually played a part in its creation described it in a short paper with a snappy title: “Attention Is All You Need.” ”</p>
+</blockquote>
+<p>Especially love this:</p>
+<blockquote class="blockquote">
+<p>“Each was drawn towards what was widely seen as an emerging field of AI research: natural language processing. The group’s educational, professional and geographic diversity — coming from backgrounds as varied as Ukraine, India, Germany, Poland, Britain, Canada and the US — made them unique.”</p>
+</blockquote>
+<p>[1]</p>
+<p>(X-post on <a href="https://sigmoid.social/@BenjaminHan">Mastodon</a>)</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_transformers-the-google-scientists-who-pioneered-activity-7088879945875148801-BLRp">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Madhumita Murgia. “Transformers: the Google scientists who pioneered an AI revolution.” <em>Financial Times.</em> <a href="https://www.ft.com/content/37bb01af-ee46-4483-982f-ef3921436a50" class="uri">https://www.ft.com/content/37bb01af-ee46-4483-982f-ef3921436a50</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>NLP</category>
+  <category>research</category>
+  <category>history</category>
+  <category>deep learning</category>
+  <category>diversity</category>
+  <category>transformers</category>
+  <category>AI</category>
+  <guid>https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/</guid>
+  <pubDate>Sun, 23 Jul 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>The Dutch Government Joins Mastodon</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230713-dutch-government-mastodon/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230713-dutch-government-mastodon/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230713-dutch-government-mastodon/screenshot1.jpg" class="img-fluid"></p>
+<p>The Dutch government is now running their own Mastodon instance, after the German government and the EuropeanCommission.</p>
+<p>Translation:</p>
+<p>“Today we are launching our government server on Mastodon.</p>
+<p>In the letter I sent to the House on ‘Digital Community Goods’ on 22 June, I indicated that I support two value-driven alternatives to social media.</p>
+<p>One of these alternatives is an ‘owned’ Mastodon server used by government organisations.</p>
+<p>With this, we are taking another step in our Value-driven Digitization Work Agenda.</p>
+<p>General information about our ministry: <span class="citation" data-cites="minbzk">@minbzk</span>”</p>
+<p>https://lnkd.in/gS6nkWNC</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_mastodon-europeancommission-activity-7085263835917385729-aULz">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Alexandra van Huffelen (<span class="citation" data-cites="avhuffelen">@avhuffelen</span>). Mastodon post, social.overheid.nl, 2023-07-13. <a href="https://social.overheid.nl/@avhuffelen/110700825255524685" class="uri">https://social.overheid.nl/@avhuffelen/110700825255524685</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>Mastodon</category>
+  <category>European Commission</category>
+  <category>social media</category>
+  <category>links</category>
+  <guid>https://benjaminhan.net/posts/20230713-dutch-government-mastodon/</guid>
+  <pubDate>Thu, 13 Jul 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230713-dutch-government-mastodon/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Scientific Writing in the Age of Generative AI</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230712-writing-and-generative-ai/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230712-writing-and-generative-ai/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230712-writing-and-generative-ai/cover.jpg" class="img-fluid"></p>
+<p>Scientific exploration and writing in the age of GenerativeAI:</p>
+<p>“The researchers [Roy Kishony and Tal Ifargan] designed a software package that automatically fed prompts to ChatGPT and built on its responses to refine the paper over time. This autonomous data-to-paper system led the chatbot through a step-by-step process that mirrors the scientific process, from initial data exploration, through writing data analysis code and interpreting the results, to writing a polished manuscript.” [1]</p>
+<p>To be honest certain aspects of this new regime is actually quite appealing. But what about the idea “Writing is Thinking” [2][3]? Will we witness a generation suffering from intellectual muscle atrophy?</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_writing-generativeai-chatgpt-activity-7084760687985496064-Fv3b">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Gemma Conroy. 2023. “Scientists used ChatGPT to generate an entire paper from scratch - but is it any good?” <em>Nature</em>. <a href="http://dx.doi.org/10.1038/d41586-023-02218-z" class="uri">http://dx.doi.org/10.1038/d41586-023-02218-z</a></p>
+<p><a id="ref-2"></a>[2] Steven Mintz. November 2021. “Writing Is Thinking.” <em>Inside Higher Ed</em>. <a href="https://www.insidehighered.com/blogs/higher-ed-gamma/writing-thinking" class="uri">https://www.insidehighered.com/blogs/higher-ed-gamma/writing-thinking</a></p>
+<p><a id="ref-3"></a>[3] Steph Smith. October 2019. “Writing is Thinking: Learning to Write with Confidence.” <a href="https://blog.stephsmith.io/learning-to-write-with-confidence/" class="uri">https://blog.stephsmith.io/learning-to-write-with-confidence/</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>writing</category>
+  <category>generative AI</category>
+  <category>ChatGPT</category>
+  <category>research</category>
+  <category>NLP</category>
+  <guid>https://benjaminhan.net/posts/20230712-writing-and-generative-ai/</guid>
+  <pubDate>Wed, 12 Jul 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230712-writing-and-generative-ai/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Do LLMs Really Understand? Recent Papers Reveal</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230710-do-llms-really-understand/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230710-do-llms-really-understand/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/cover.jpg" class="img-fluid"></p>
+<p>When performing reasoning or generating code, do LLMs really understand what they’re doing, or do they just memorize? Several new results seem to have painted a not-so-rosy picture.</p>
+<p>The authors in [1] are interested in testing LLMs on “semantic” vs.&nbsp;“symbolic” reasoning: the former involves reasoning with language-like input, and the latter is reasoning with abstract symbols. They use a symbolic dataset and a semantic dataset to test models’ abilities on memorization and reasoning (Fig. 1). For each dataset they created a corresponding one in the other modality, e.g., they replace natural language labels for the relations and the entities with abstract symbols to create a symbolic version of a semantic dataset (Fig. 2). The end result? LLMs perform much worse on <em>symbolic</em> reasoning (Fig. 3), suggesting they leverage heavily on the semantics of the words involved rather than really understand and follow reasoning patterns.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>The same tendency is borne out by another paper focusing on testing code-generating LLMs when function names are <em>swapped</em> in the input [2] (Fig. 4). They not only found almost all models failed completely, but also most of them exhibit an “inverse scaling” effect: the larger a model is, the worse it gets (Fig. 5). This shows the semantic priors learned from these function names have totally dominated, and the models don’t really understand what they are doing.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig4.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig5.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>How about LLMs on causal reasoning? There have been reports of extremely impressive performance of GPT 3.5 and 4, but these models also lack consistency in performance and even possibly have cheated by memorizing the tests [3], as discussed in a previous <a href="../20230506-llm-causal-reasoning-memorization/">post</a>. In a more recent work [5], the authors tested LLMs on <em>pure</em> causal inference tasks, where all variables are now symbolic (Fig. 6). They constructed systematically a dataset starting by picking variables, to generating all possible causal graphs, to finally mapping all possible statistical correlations. They then “verbalize” these graphs into problems for LLMs to solve for a given causation hypothesis (Fig. 7). The results? Both GPT-4 and Alpaca perform worse than BART fine-tuned with MNLI, and not much better than the uniform random baseline (Fig. 8).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig6.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig7.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig8.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>(On <a href="https://sigmoid.social/@BenjaminHan/110687186074579773">Mastodon</a>)</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/do-llms-really-understand-recent-papers-reveal-benjamin-han/">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Xiaojuan Tang, Zilong Zheng, Jiaqi Li, Fanxu Meng, Song-Chun Zhu, Yitao Liang, and Muhan Zhang. 2023. “Large Language Models are In-Context Semantic Reasoners rather than Symbolic Reasoners.” <a href="http://arxiv.org/abs/2305.14825" class="uri">http://arxiv.org/abs/2305.14825</a></p>
+<p><a id="ref-2"></a>[2] Antonio Valerio Miceli-Barone, Fazl Barez, Ioannis Konstas, and Shay B. Cohen. 2023. “The Larger They Are, the Harder They Fail: Language Models do not Recognize Identifier Swaps in Python.” <a href="http://arxiv.org/abs/2305.15507" class="uri">http://arxiv.org/abs/2305.15507</a></p>
+<p><a id="ref-3"></a>[3] Emre Kıcıman, Robert Ness, Amit Sharma, and Chenhao Tan. 2023. “Causal Reasoning and Large Language Models: Opening a New Frontier for Causality.” <a href="http://arxiv.org/abs/2305.00050" class="uri">http://arxiv.org/abs/2305.00050</a></p>
+<p><a id="ref-5"></a>[5] Zhijing Jin, Jiarui Liu, Zhiheng Lyu, Spencer Poff, Mrinmaya Sachan, Rada Mihalcea, Mona Diab, and Bernhard Schölkopf. 2023. “Can Large Language Models Infer Causation from Correlation?” <a href="http://arxiv.org/abs/2306.05836" class="uri">http://arxiv.org/abs/2306.05836</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>LLMs</category>
+  <category>reasoning</category>
+  <category>causal reasoning</category>
+  <category>code generation</category>
+  <category>NLP</category>
+  <category>paper</category>
+  <category>generative AI</category>
+  <guid>https://benjaminhan.net/posts/20230710-do-llms-really-understand/</guid>
+  <pubDate>Mon, 10 Jul 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230710-do-llms-really-understand/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Does Early ArXiving Help Papers Get Accepted?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2306.13891">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>ArXiv.org has been a wonderful place for researchers to submit findings and catch up with the latest, but does submitting papers there (“early ArXiving”) increase the odds for them to be accepted later in a peer-reviewed venue?</p>
+<p>(Drumroll please)</p>
+<p>The authors answer this question in [1] by first laying out the causal graph where early ArXiving is the treatment (variable A) and paper acceptance in a conference is the effect (variable Y; screenshot 1). Two confounders exist — one unobserved that is the creativity and originality of a paper (intrinsic), while the other is observed that is the topic/authors/institute of a paper (extrinsic).</p>
+<p>To cope with the unobserved confounder, they deploy a popular causalInference framework known as negative outcome control [2], where a variable called Negative Control Outcome (NCO) is added to correct the bias. NCO must share the same observed and unobserved confounders as the outcome variable while being not causally affected by the treatment. They use “citation counts after certain years of publishing” as the NCO.</p>
+<p>Numerically the effect of early ArXiving is defined by the causal estimand ATET (screenshot 2). The paper reports ATET is high (9.76%) <em>before</em> accounting for NOC. BUT after considering NCO, the effect is almost non-existent for authors with different citation counts or institution ranks (screenshot 3).</p>
+<p>Conclusion: enjoy your guilt-free early ArXiving!</p>
+<p>—</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_causalinference-research-paper-activity-7080935063630082048-BHIO">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Yanai Elazar, Jiayao Zhang, David Wadden, Bo Zhang, and Noah Smith. 2023. “Estimating the Causal Effect of Early ArXiving on Paper Acceptance.” <a href="http://arxiv.org/abs/2306.13891" class="uri">http://arxiv.org/abs/2306.13891</a></p>
+<p><a id="ref-2"></a>[2] David Card and Alan B. Krueger. 1993. “Minimum Wages and Employment: A Case Study of the Fast Food Industry in New Jersey and Pennsylvania.” <a href="http://dx.doi.org/10.3386/w4509" class="uri">http://dx.doi.org/10.3386/w4509</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>causal reasoning</category>
+  <category>research</category>
+  <category>paper</category>
+  <guid>https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/</guid>
+  <pubDate>Sat, 01 Jul 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Model Collapse and LLM-Contaminated Training Data</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230618-model-collapse-llm-annotations/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230618-model-collapse-llm-annotations/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230618-model-collapse-llm-annotations/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2305.17493">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>Many have talked about the risks that can be brought by AI, or more specifically, GenerativeAI: disinformation, job (in-)security, inequality, intellectual atrophy, even human extinction.</p>
+<p>How about we add one more: it may spell the end of AI as we know it?</p>
+<p>In [1] the researchers investigated a phenomenon they coin as “model collapse”: when models are trained on generated content from their past generations, irreversible defects start to appear (screenshot 1 &amp; 2). Two main causes: statistical approximation error arises from finite sampling which leads to disappearing tails, and functional approximation error stems from insufficient expressive power of models which inevitably results in prediction errors (screenshot 3). Through theoretical analysis, the paper shows the average distance of the n-th generation from the original grows and can become infinite in the limit (see examples from screenshot 4).</p>
+<p>So we just need to make sure we train our models with human annotated datasets, right?</p>
+<p>Unfortunately in this day and age, even that cannot be taken for granted. In [2] the researchers re-submitted a summarization annotation task to the crowd workers, and found 33-46% of them used LLMs to complete their tasks (screenshot 5). Their method is a combination of a trained classifier capable of telling synthetic and real texts apart with high accuracy (97-99% F1) and the use of keystroke data collected via Javascript (screenshot 6). The icing on the cake: they concluded that the reason why the synthetic-real classifier is so accurate is because of the lack of diversity in ChatGPT ’s summarization output — imagine we train models on that!</p>
+<p>—</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_ai-generativeai-llms-activity-7075986008839766016-vhM4">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] Ilia Shumailov, Zakhar Shumaylov, Yiren (Aaron) Zhao, Yarin Gal, Nicolas Papernot and Ross Anderson. 2023. The Curse of Recursion: Training on Generated Data Makes Models Forget. <a href="http://arxiv.org/abs/2305.17493" class="uri">http://arxiv.org/abs/2305.17493</a></p>
+<p><a id="ref-2"></a>[2] Veniamin V., Manoel Horta Ribeiro and Robert West. 2023. Artificial Artificial Artificial Intelligence: Crowd Workers Widely Use Large Language Models for Text Production Tasks. <a href="http://arxiv.org/abs/2306.07899" class="uri">http://arxiv.org/abs/2306.07899</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>AI</category>
+  <category>generative AI</category>
+  <category>LLMs</category>
+  <category>ChatGPT</category>
+  <category>NLP</category>
+  <category>paper</category>
+  <guid>https://benjaminhan.net/posts/20230618-model-collapse-llm-annotations/</guid>
+  <pubDate>Sun, 18 Jun 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230618-model-collapse-llm-annotations/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>How the Brain Processes German and Arabic Differently</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230616-brain-processes-german-arabic/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230616-brain-processes-german-arabic/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net &rarr;</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230616-brain-processes-german-arabic/screenshot1.jpg" class="img-fluid"></p>
+<p>“A native speaker of Arabic must concentrate precisely on how the word is pronounced and what meaning it has as a result: did his conversation partner say “kitabun” (book) or “katib” (writer)?</p>
+<p>In the native speakers of German, the scientists found stronger connections in the left hemisphere of the brain and towards the frontal lobe in the frontal area of the brain. This can also be explained by the nature of the German language since these regions are responsible for processing sentence structure.”</p>
+<p>Language and language acquisition: How the brain processes German and Arabic - https://lnkd.in/gPPa4dVT</p>
+<p>Paper: Xuehu Wei, Helyne A., Matthias Schwendemann, Tomás Goucha, Angela Friederici, and Alfred Anwander. 2023. Native language differences in the structural connectome of the human brain.&nbsp;NeuroImage, 270:119955. https://lnkd.in/gKwV6nbE</p>
+<p>NLP NLProc Multilingual Neuroscience Neurolinguistics | 44 comments on LinkedIn</p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_nlp-nlproc-multilingual-activity-7075330874820460544-iIvm">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>[1] “Language and language acquisition: How the brain processes German and Arabic.” <em>Qantara.de</em>. <a href="https://en.qantara.de/content/language-and-language-acquisition-how-the-brain-processes-german-and-arabic" class="uri">https://en.qantara.de/content/language-and-language-acquisition-how-the-brain-processes-german-and-arabic</a></p>
+<p><a id="ref-2"></a>[2] Xuehu Wei, Helyne A., Matthias Schwendemann, Tomás Goucha, Angela Friederici, and Alfred Anwander. 2023. “Native language differences in the structural connectome of the human brain.” <em>NeuroImage</em>, 270:119955. <a href="https://www.researchgate.net/publication/368657502_Native_language_differences_in_the_structural_connectome_of_the_human_brain" class="uri">https://www.researchgate.net/publication/368657502_Native_language_differences_in_the_structural_connectome_of_the_human_brain</a></p>
+
+
+</section>
+
+ ]]></description>
+  <category>NLP</category>
+  <category>multilingual</category>
+  <category>neuroscience</category>
+  <category>neurolinguistics</category>
+  <guid>https://benjaminhan.net/posts/20230616-brain-processes-german-arabic/</guid>
+  <pubDate>Fri, 16 Jun 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230616-brain-processes-german-arabic/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
+
+</channel>
+</rss>

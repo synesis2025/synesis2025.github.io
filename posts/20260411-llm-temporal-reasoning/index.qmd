@@ -1,0 +1,49 @@
+---
+title: "Why LLMs Still Stumble Over Time"
+description: "Temporal reasoning in LLMs isn't one skill but a bundle of them — and even when the calendar math is right, it stays brittle."
+author: "synesis"
+date: "2026-04-11"
+categories: [AI, LLMs, reasoning, temporal reasoning, commonsense, evaluation, research]
+image: evolvebench-illustration.jpg
+---
+
+![Illustration from the EvolveBench paper [[10]](#ref-10).](evolvebench-illustration.jpg){fig-align="center"}
+
+Are you surprised that today's LLMs still make so many time-related mistakes? They might mismatch a date and weekday [[1]](#ref-1), misinterpret relative expressions like "in 2 hours" or "next Monday at 1 PM" when the current time or timezone is unclear [[2]](#ref-2), or, in more complex cases, build a schedule whose event order is simply impossible [[3]](#ref-3).
+
+The core issue is that temporal reasoning is not one skill but a bundle of them. Recent benchmarks break it into subskills such as event ordering, arithmetic, duration, and frequency, and show both large variation across categories and a substantial gap to human performance [[4]](#ref-4)[[5]](#ref-5).
+
+These failures also reflect how temporal reasoning depends on more than calendar math. Models often need to determine when two mentions refer to the same event and to reason jointly about temporal, causal, and subevent relations [[6]](#ref-6). They also rely on commonsense script knowledge, since text frequently leaves the typical order or duration of everyday events unstated [[7]](#ref-7)[[8]](#ref-8).
+
+Even when stale knowledge is not the problem, temporal reasoning remains brittle. In controlled evaluations, performance changes substantially with problem structure, question type, and fact order [[9]](#ref-9). That brittleness helps explain why models struggle when events are introduced out of chronological order and the timeline has to be reconstructed rather than read off the surface form [[9]](#ref-9).
+
+The problem becomes harder still when knowledge itself changes over time. A model may retrieve the right fact yet fail to align it with the period in which it was true. EvolveBench evaluates exactly this kind of temporal awareness through historical cognition, temporally misaligned context, and invalid timestamped queries [[10]](#ref-10).
+
+Taken together, these results suggest that temporal failures arise from the interaction of heterogeneous subskills, event-level dependencies, temporal commonsense, sensitivity to ordering, and weak grounding of facts to the correct time.
+
+---
+
+## References
+
+<a id="ref-1"></a>[1] Sweenor, David. "Don't Trust Your AI With Dates: The Calendar Blindspot." *Medium*, 2025. <https://medium.com/@davidsweenor/dont-trust-your-ai-with-dates-the-calendar-blindspot-882c7223eca0>
+
+<a id="ref-2"></a>[2] Pankretić, Filip. "The invisible problem. How we solved scheduling with AI." *Infobip Developers Blog*, 2026. <https://www.infobip.com/developers/blog/the-invisible-problem-how-we-solved-scheduling-with-ai>
+
+<a id="ref-3"></a>[3] Bansal, Tanmay. "Your Favourite LLMs Still Can't Differentiate Between Time Like Humans." *GoPubby / Medium*, 2026. <https://ai.gopubby.com/why-llms-still-cant-perceive-time-like-humans-602adb0e9f20>
+
+<a id="ref-4"></a>[4] Wang, Yuqing, and Yun Zhao. "TRAM: Benchmarking Temporal Reasoning for Large Language Models." *Findings of ACL 2024*. <https://aclanthology.org/2024.findings-acl.382/>
+
+<a id="ref-5"></a>[5] Chu, Zheng, et al. "TIMEBENCH: A Comprehensive Evaluation of Temporal Reasoning Abilities in Large Language Models." *ACL 2024*. <https://aclanthology.org/2024.acl-long.66/>
+
+<a id="ref-6"></a>[6] Wang, Xiaozhi, et al. "MAVEN-ERE: A Unified Large-scale Dataset for Event Coreference, Temporal, Causal, and Subevent Relation Extraction." *EMNLP 2022*. <https://aclanthology.org/2022.emnlp-main.60/>
+
+<a id="ref-7"></a>[7] Regneri, Mirella, Alexander Koller, and Manfred Pinkal. "Learning Script Knowledge with Web Experiments." *ACL 2010*. <https://aclanthology.org/P10-1100/>
+
+<a id="ref-8"></a>[8] Wenzel, Gregor, and Adam Jatowt. "An Overview of Temporal Commonsense Reasoning and Acquisition." *arXiv*, 2023. <https://arxiv.org/abs/2308.00002>
+
+<a id="ref-9"></a>[9] Fatemi, Bahare, et al. "Test of Time: A Benchmark for Evaluating LLMs on Temporal Reasoning." *arXiv*, 2024. <https://arxiv.org/abs/2406.09170>
+
+<a id="ref-10"></a>[10] Zhu, Zhiyuan, et al. "EvolveBench: A Comprehensive Benchmark for Assessing Temporal Awareness in LLMs on Evolving Knowledge." *ACL 2025*. <https://aclanthology.org/2025.acl-long.788/>
+
+
+*Originally posted on [LinkedIn](https://www.linkedin.com/posts/benjaminhan_llms-temporal-reasoning-activity-7448985310727921664-Av2H).*

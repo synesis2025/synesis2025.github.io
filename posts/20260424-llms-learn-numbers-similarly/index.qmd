@@ -1,0 +1,57 @@
+---
+title: "Convergent Evolution: How Different Language Models Learn Similar Number Representations"
+description: "An empirical study showing that diverse language model architectures all develop periodic number embeddings, but only some go on to encode mod-T classes as linearly separable structure."
+author: synesis
+date: "2026-04-24"
+categories: [paper, NLP, LLMs, transformers]
+image: cover.jpg
+also-toot: true
+---
+
+![First page of the paper. Image from [arXiv](https://arxiv.org/abs/2604.20817).](cover.jpg){fig-align="center"}
+
+[**Convergent Evolution: How Different Language Models Learn Similar Number Representations**](https://arxiv.org/abs/2604.20817)
+Deqing Fu, Tianyi Zhou, Mikhail Belkin, Vatsal Sharan, Robin Jia
+
+Fu et al. [[1]](#ref-1) show that periodic number features emerge in nearly every architecture they test, from Transformers to long short-term memory networks (LSTMs) to GloVe, but only some of those models go on to develop linearly separable mod-$T$ classes.
+
+The analytical tool throughout is the discrete Fourier transform. Stack the model's number embeddings into a matrix, one row per input integer and one column per embedding dimension, and run the DFT down each column. Spikes in the magnitude spectrum reveal which periods the model has internalized, without the experimenter having to specify them in advance.
+
+The specific values $T=2, 5, 10$ are a fingerprint of base-10 text. They are exactly the non-trivial divisors of 10, with concrete corpus statistics behind each:
+
+- **$T=10$** captures last-digit structure: round numbers ending in 0 are massively over-represented in text [[6]](#ref-6), as are decimal-column patterns.
+- **$T=5$** captures the next-most-common rounding regime: numbers ending in 5 are next-roundest after 0 [[6]](#ref-6), and price endings reflect this. One analysis of advertised prices found roughly 60% ending in 9, 30% in 5, and 7% in 0 [[7]](#ref-7).
+- **$T=2$** captures parity: even-odd distinctions in pluralization, dates, scoring patterns.
+
+Engels et al. (2025) found analogous $T=7$ spikes for days of the week and $T=12$ for months [[3]](#ref-3); same mechanism, different modulus. A clean falsification the paper does not run: train on hexadecimal-only text and check whether the spikes shift to $\{2, 4, 8, 16\}$.
+
+![Universality of Fourier features and convergent evolution. Left: Fourier spectrum of number embeddings across Transformer LLMs, non-Transformer LLMs, and classical word embeddings, all showing consistent spikes at periods $T=2, 5, 10$. Right: the spectral-vs-geometric convergence diagram. Figure 1 from the paper [[1]](#ref-1).](figure1.png){fig-align="center"}
+
+> **Abstract:** Language models trained on natural text learn to represent numbers using periodic features with dominant periods at $T=2, 5, 10$. In this paper, we identify a two-tiered hierarchy of these features: while Transformers, Linear RNNs, LSTMs, and classical word embeddings trained in different ways all learn features that have period-$T$ spikes in the Fourier domain, only some learn geometrically separable features that can be used to linearly classify a number mod-$T$. To explain this incongruity, we prove that Fourier domain sparsity is necessary but not sufficient for mod-$T$ geometric separability. Empirically, we investigate when model training yields geometrically separable features, finding that the data, architecture, optimizer, and tokenizer all play key roles. In particular, we identify two different routes through which models can acquire geometrically separable features: they can learn them from complementary co-occurrence signals in general language data, including text-number co-occurrence and cross-number interaction, or from multi-token (but not single-token) addition problems. Overall, our results highlight the phenomenon of convergent evolution in feature learning: A diverse range of models learn similar features from different training signals.
+
+![A spiky Fourier spectrum does not imply good feature learning. Token embeddings of Transformer, Gated DeltaNet, LSTM, and even the raw number-token frequency distribution all exhibit Fourier spikes at $T=2, 5, 10$, but linear probes reveal that only the Transformer and Gated DeltaNet learn functional modular arithmetic with high Cohen's $\kappa$. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+## My take
+
+The paper's main finding: every architecture in the study picks up the periodic *signal* of how numbers appear in text, but only Transformers and Gated DeltaNet (a linear recurrent neural network, RNN) lay those signals out as a *usable map* a linear classifier can actually read. The implication for building a math-capable model: pick an architecture in the geometrically-convergent group, and reach the geometric features by either of the paper's two identified routes: train on natural text rich in number co-occurrences, or on multi-token (but not single-token) addition problems.
+
+- **Spectral convergence is broader than the founding work assumed.** Zhou et al. (2024) established that pretrained LLMs add via Fourier features, and that models trained from scratch on addition fail to recover them, suggesting the structure was earned during language pretraining [[2]](#ref-2). This paper pushes the universality further: even the raw token-frequency distribution of the training corpus shows the same $T=2, 5, 10$ spikes [[1]](#ref-1). The Fourier structure was apparently sitting in the data all along, not earned by any particular learning objective.
+- **Can the sparse-autoencoder (SAE) result corroborate?** Engels et al. (2025) used SAEs to find circular features for days of the week and months in Mistral 7B and Llama 3, and verified with causal interventions that the circles actually compute modular arithmetic [[3]](#ref-3). Both are Transformers, exactly the family Fu et al. show consistently achieves geometric convergence. The two results are consistent. The follow-up worth running: train SAEs on a linear RNN (which Fu et al. find geometrically convergent) and on an LSTM (which they don't), and see what surfaces. Three outcomes are informative: SAEs find functional circles in both → SAE-discovered circles aren't a reliable signature of geometric usability; SAEs find circles only where Fu et al.'s linear probes do → the two methods agree and SAE circles really do mark functional structure; SAEs find circles in the LSTM that don't survive causal intervention → SAE features can be spectral artifacts, not all of them are functional.
+- **The "Clock" algorithm becomes testable across architectures.** Kantamneni and Tegmark (2025) reverse-engineered addition in three mid-sized Transformers as manipulation of a generalized "Clock", a helical embedding that stacks multiple circular features over a linear magnitude axis [[4]](#ref-4). The Clock relies on exactly the geometric usability that Fu et al. find in Transformers and linear RNNs but absent in LSTMs, making linear RNNs a plausible candidate for the same algorithm and LSTMs an unlikely one. Convergence at the feature level doesn't guarantee convergence at the algorithm level, though. Same features can in principle support different circuits. A successful reverse-engineering of the Clock in a linear RNN would extend the convergence story from features to algorithms; failure would show that even matched features can yield divergent mechanisms.
+- **Engineered Fourier embeddings give a clean lever for separating architecture from data.** The FoNE work (Zhou et al., 2025) directly maps numbers into Fourier features and reports $64\times$ data efficiency on 6-digit addition [[5]](#ref-5). Fu et al. find that geometrically separable number features arise from a combination of data, architecture, optimizer, and tokenizer. Text-number co-occurrence is one of two identified data routes; multi-token addition training is the other [[1]](#ref-1). FoNE's contribution is that it pre-supplies the Fourier features as input embeddings, removing the model's need to acquire them from training data. That separation enables two clean tests, holding feature-supply constant in each: train an LSTM with FoNE embeddings on rich natural text (does the LSTM still fail at arithmetic? if so, the architecture itself blocks geometric use of period features); train a Transformer with FoNE embeddings on text scrubbed of number co-occurrences (does the Transformer fail? if so, data conditions matter even when features are pre-supplied). Today neither test has been run.
+
+## References
+
+<a id="ref-1"></a>[1] Fu, Deqing, Tianyi Zhou, Mikhail Belkin, Vatsal Sharan, and Robin Jia. "Convergent Evolution: How Different Language Models Learn Similar Number Representations." *arXiv preprint* arXiv:2604.20817, April 22, 2026. <https://arxiv.org/abs/2604.20817>
+
+<a id="ref-2"></a>[2] Zhou, Tianyi, Deqing Fu, Vatsal Sharan, and Robin Jia. "Pre-trained Large Language Models Use Fourier Features to Compute Addition." *arXiv preprint* arXiv:2406.03445, June 5, 2024. <https://arxiv.org/abs/2406.03445>
+
+<a id="ref-3"></a>[3] Engels, Joshua, Isaac Liao, Eric J. Michaud, Wes Gurnee, and Max Tegmark. "Not All Language Model Features Are One-Dimensionally Linear." *International Conference on Learning Representations (ICLR)*, 2025. arXiv:2405.14860. <https://arxiv.org/abs/2405.14860>
+
+<a id="ref-4"></a>[4] Kantamneni, Subhash, and Max Tegmark. "Language Models Use Trigonometry to Do Math." *arXiv preprint* arXiv:2502.00873, February 2, 2025. <https://arxiv.org/abs/2502.00873>
+
+<a id="ref-5"></a>[5] Zhou, Tianyi, Deqing Fu, Mahdi Soltanolkotabi, Robin Jia, and Vatsal Sharan. "FoNE: Precise Single-Token Number Embeddings via Fourier Features." *arXiv preprint* arXiv:2502.09741, February 13, 2025. <https://arxiv.org/abs/2502.09741>
+
+<a id="ref-6"></a>[6] Wikipedia contributors. "Round Number." *Wikipedia*. Accessed April 24, 2026. <https://en.wikipedia.org/wiki/Round_number>
+
+<a id="ref-7"></a>[7] Wikipedia contributors. "Psychological Pricing." *Wikipedia*. Accessed April 24, 2026. <https://en.wikipedia.org/wiki/Psychological_pricing>

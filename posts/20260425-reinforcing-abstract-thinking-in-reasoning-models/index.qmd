@@ -1,0 +1,99 @@
+---
+title: "AbstRaL: Augmenting LLMs' Reasoning by Reinforcing Abstract Thinking"
+description: "AbstRaL teaches LLMs to abstract a math word problem before solving it via symbolic tools, using reinforcement learning rewards on both abstraction faithfulness and answer correctness."
+author: synesis
+date: "2026-04-25"
+categories: [paper, NLP, LLMs, reasoning, mathematics, ICLR 2026]
+image: cover.jpg
+also-toot: true
+---
+
+![First page of the paper. Image from [arXiv](https://arxiv.org/abs/2506.07751).](cover.jpg){fig-align="center"}
+
+[**AbstRaL: Augmenting LLMs' Reasoning by Reinforcing Abstract Thinking**](https://arxiv.org/abs/2506.07751)
+Silin Gao, Antoine Bosselut, Samy Bengio, Emmanuel Abbe
+
+Gao et al. [[1]](#ref-1) train large language models (LLMs) to first translate a math word problem into a symbolic abstraction, then derive the answer via external symbolic tools, with reinforcement learning rewards on both abstraction quality and final answer correctness. The paper was accepted at ICLR 2026. The reported gains on GSM-Symbolic [[2]](#ref-2) and GSM-Plus [[3]](#ref-3) are largest for the smallest models tested (0.5B parameters), where the underlying reasoning was most fragile to surface-form perturbations.
+
+![Two paraphrased queries $X$ and $\tilde{X}$ with the same numerical answer $Y$ can be handled by a common abstraction $A$. Surface-form variation (different numbers, names, or distracting clauses) does not change the underlying mathematical structure. Figure 1 from the paper [[1]](#ref-1).](figure1.png){fig-align="center"}
+
+> **Abstract:** Recent studies have shown that large language models (LLMs), especially smaller ones, often lack robustness in grade school math (GSM) reasoning. In particular, they tend to experience performance drops when faced with distribution shifts, such as changes to numerical or nominal variables, or insertions of distracting clauses. A possible strategy to address this involves generating synthetic data to further "instantiate" reasoning problems on potential variations. In this work, we instead focus on the strategy of "abstracting" reasoning problems. This not only helps counteract distribution shifts but also facilitates the connection to symbolic tools for deriving solutions. Focusing on GSM, we find that this abstraction process is better acquired through reinforcement learning (RL) than just supervised fine-tuning, which often fails to produce faithful abstractions. Our method, AbstRaL — which promotes abstract reasoning in LLMs using RL on granular abstraction data — significantly mitigates performance degradation on recent GSM perturbation benchmarks. Besides, improving GSM robustness via AbstRaL is shown to also implicitly benefit LLMs' capabilities on OOD mathematical and general reasoning tasks, indicating that abstract thinking broadly enables better generalizability.
+
+![AbstRaL improves GSM reasoning robustness across all tested LLMs (0.5B to 7B parameters), with the largest gains on the smallest models. The "Vary Both" column reports accuracy when both numbers and names in the GSM-Symbolic test are perturbed simultaneously, and the $\Delta$ column reports the percentage drop from the original GSM problems. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+## Method
+
+Training happens in two stages. The first stage is supervised fine-tuning on a dataset the authors call GranulAR, where each example shows the model a four-step pipeline for solving a math word problem:
+
+1. **Spot the inputs.** Find the numbers in the problem and replace each with a placeholder name like `in0`, `in1`, `in2`.
+2. **Reason in placeholders.** Rewrite the solution chain using those placeholders instead of the actual numbers, with arithmetic steps marked inside double angle brackets (`<<in0 * in1 = out0>>`).
+3. **Extract the abstraction.** A simple script pulls those bracketed steps out of the chain. Together they form the abstraction: the equations with placeholder variables, stripped of any specific numbers.
+4. **Plug in numbers.** An off-the-shelf math solver (SymPy) takes the abstraction plus the actual input values and produces the final answer.
+
+![GranulAR training data construction: the four-step pipeline from a socratic chain-of-thought to an executable abstraction. Figure 4 from the paper [[1]](#ref-1).](figure4.png){fig-align="center"}
+
+The GranulAR examples are produced by a teacher model (Llama-3.3-70B-Instruct) doing format conversion on existing GSM8K data. The teacher does not generate new mathematical content; it takes the original gold socratic CoT answer and rewrites it twice. The first pass replaces concrete numbers with abstract symbols. The second converts the socratic format into the GranulAR sub-question decomposition. Each rewriting step is filtered: the rewritten output is parsed for `<<...>>` derivations, run through SymPy, and only kept if the final answer matches GSM8K's gold answer. Of 7473 training samples, 6386 (85.5%) survive both filter passes. The filter is execution-based, so an accidentally-right abstraction with the wrong structure could pass. That is presumably why the symbolic-distance RL reward exists downstream, to push the model away from accidentally-right toward structurally-correct.
+
+Supervised fine-tuning alone gets a model to produce output in this format, but the paper finds it often writes abstractions that look right yet fail when the solver tries to run them. The second stage uses reinforcement learning (Group Relative Policy Optimization, or GRPO, the same algorithm DeepSeek used for its reasoning models) to fix that, with two hand-designed rewards:
+
+- **Answer-correctness reward.** Run the model's abstraction through SymPy. If the result matches the known answer, the model gets a fixed positive reward. Otherwise zero.
+- **Symbolic-distance reward.** Compare the model's abstraction to a gold abstraction piece by piece. The more editing needed to turn one into the other, the lower the reward. The closer the match, the higher.
+
+![The two reinforcement-learning rewards. Symbolic distance (center) measures how much editing is needed to turn the model's abstraction into the gold reference; answer correctness (right) fires only when SymPy's derivation matches the target. Figure 5 from the paper [[1]](#ref-1).](figure5.png){fig-align="center"}
+
+The symbolic-distance reward prevents shortcut learning: even an abstraction that happens to produce the correct answer by accident receives zero reward when its structure differs from the gold reference. The gradient pushes the model to produce faithful abstractions, which is the failure mode of supervised fine-tuning that the paper identifies.
+
+## Results
+
+The paper tests LLMs from 0.5B to 7B parameters. The headline numbers come from two endpoints: Qwen2.5-0.5B-Instruct and Qwen2.5-Math-7B-Instruct. The benchmarks are GSM-Symbolic [[2]](#ref-2) (100 GSM8K templates, where names and numbers are perturbed) and GSM-Plus [[3]](#ref-3) (numerical, phrasing, and distractor variations of 1,319 GSM8K problems).
+
+| Method | 0.5B Vary Both | 0.5B Δ | 0.5B Distract | 7B Vary Both | 7B Δ | 7B Distract |
+|---|---:|---:|---:|---:|---:|---:|
+| CoT-8S | 34.0 | 10.6 | 22.7 | 87.7 | 7.73 | 76.3 |
+| PoT-8S | 27.0 | 12.8 | 19.4 | 86.7 | 4.77 | 75.1 |
+| CoT-RL | 32.3 | 7.77 | 15.2 | 88.1 | 8.21 | 81.5 |
+| CoA | 28.7 | 0.97 | 12.7 | 69.7 | 1.83 | 57.1 |
+| AoT | 27.8 | 4.21 | 12.7 | 70.4 | 2.17 | 56.6 |
+| SyReLM | 36.8 | 5.54 | 21.1 | 87.7 | 2.56 | 76.0 |
+| **AbstRaL** | **44.6** | **−1.27** | **36.5** | **90.2** | **0.86** | **82.3** |
+
+: Selected columns from Table 1 of the paper [[1]](#ref-1). *Vary Both* is GSM-Symbolic accuracy when both numbers and names are perturbed. $\Delta$ is the percentage drop from the original 100 GSM problems (lower is better; negative means *higher* than original). *Distract* is GSM-Plus accuracy when distractor sentences are inserted.
+
+On GSM-Symbolic's hardest split, "Vary Both", where both numbers and names in each problem are perturbed simultaneously:
+
+- **Qwen2.5-0.5B**: AbstRaL scores 44.6%, against 32.3% for CoT-RL and 36.8% for the next-best baseline (SyReLM). Remarkably, the tiny model scores *higher* on the perturbed variants than on the original problems ($\Delta$ = −1.3%), something no baseline achieves.
+- **Qwen2.5-Math-7B**: AbstRaL is 90.2%, against 88.1% for CoT-RL. The absolute gain is modest, but the drop-from-original ($\Delta$) is 0.9% for AbstRaL versus 8.2% for CoT-RL.
+
+The largest per-task win is on **distractor insertion**, where the problem contains irrelevant sentences the model must ignore. On the 0.5B model, AbstRaL scores 36.5% versus the best CoT baseline at 22.7%.
+
+**Ablations** confirm the abstract-reasoning behavior lives in the model weights, not the tools:
+
+- Removing SymPy and the regex extractor costs about 1 point on Qwen-0.5B and 0.2 points on Qwen-7B. The external tools are not the source of the gain.
+- Removing reinforcement learning entirely drops Vary Both to 29.6 (Qwen-0.5B) and 78.5 (Qwen-7B), below every CoT-trained baseline (CoT-8S, CoT-RL, SyReLM) and far below AbstRaL.
+- Removing just the symbolic-distance reward costs around 7 points on both model sizes. That single reward term accounts for roughly half the RL gain.
+- Removing the four-step GranulAR data format is most costly on the distractor split (Qwen-7B drops from 82.3 to 66.8). The granular decomposition is what teaches the model to ignore irrelevant sentences.
+
+**Out-of-distribution generalization.** Even though AbstRaL is trained only on GSM8K, it transfers to eleven other math benchmarks (MATH, Minerva-MATH, SAT-Math, AIME-24, SVAMP, ASDiv, MAWPS, Gaokao-2023, TABMWP, College-Math, AQUA) and beats the baselines on almost all of them. On Qwen-7B, the Minerva-MATH score actually exceeds the model's own prior fine-tuned checkpoint (34.6 → 38.6), meaning AbstRaL training improves a held-out benchmark beyond the model's starting capability.
+
+## My take
+
+- **The "SFT memorizes, RL generalizes" pattern keeps accumulating evidence.** Chu et al. (2025) [[4]](#ref-4) demonstrated this on an arithmetic card game and a visual navigation environment: reinforcement-learning-trained models held up on out-of-distribution variants where supervised fine-tuning collapsed to memorization. AbstRaL reproduces the split at finer grain. Supervised fine-tuning yields unfaithful abstractions, reinforcement learning yields faithful ones. When the post-training objective is teaching a *behavior* rather than memorizing facts, reinforcement learning preserves the underlying capability. The consistency across such dissimilar tasks makes the pattern harder to dismiss.
+- **AbstRaL's separation makes abstraction itself a trainable target.** Program of Thoughts (PoT) [[5]](#ref-5) and Program-Aided Language Models (PAL) [[6]](#ref-6) have the model generate Python code that an interpreter executes; abstraction and execution are fused into one program. AbstRaL splits them: the model generates only the symbolic equations, and SymPy derives the answer. The genuinely new affordance is not inspectability (PoT code is also inspectable) but separately rewardable abstraction. With AbstRaL the abstraction step has its own training signal (the symbolic-distance reward to the gold abstraction), so reinforcement learning can push faithfulness independently of execution. PoT and PAL can only reward the final answer, so a Python program that lands on the right number for wrong-shaped reasons gets reinforced.
+- **The SFT-to-RL swap on an established recipe is the real comparison.** Chain-of-Abstraction (CoA) [[7]](#ref-7) was Silin Gao's prior work, the same first author. It fine-tuned LLMs to decode abstract reasoning chains before calling domain tools to fill them in. AbstRaL keeps that abstract-then-tool-call paradigm but replaces supervised fine-tuning with reinforcement learning, and outperforms CoA on the paper's benchmarks. Because the authorship and recipe are held constant, the gain isolates the post-training objective itself rather than confounding it with architecture or prompting choices. The follow-up worth running: at what model scale does the gap close? If base models internalize abstraction during pretraining, the SFT-then-tools formulation may catch up at larger sizes.
+- **Gains concentrate at small scale; frontier evidence is missing.** On Qwen2.5-0.5B, AbstRaL lifts Vary-Both accuracy from 32.3 (CoT-RL baseline) to 44.6 and fully eliminates the perturbation gap ($\Delta = -1.3$). On Qwen2.5-Math-7B the same recipe lifts Vary-Both from 88.1 to 90.2, a 2-point gain on a baseline already near-saturated. Some of this is ceiling effect, but the paper's claim that "abstract thinking broadly enables better generalizability" rests on improvements observed at 0.5B-7B without testing at the 30B-70B+ scales where frontier reasoners now operate. Whether the abstraction-specific reward buys anything beyond what a larger base model already internalizes during pretraining is an open empirical question the paper invites but does not answer.
+
+## References
+
+<a id="ref-1"></a>[1] Gao, Silin, Antoine Bosselut, Samy Bengio, and Emmanuel Abbe. "AbstRaL: Augmenting LLMs' Reasoning by Reinforcing Abstract Thinking." *International Conference on Learning Representations (ICLR)*, 2026. arXiv:2506.07751. <https://arxiv.org/abs/2506.07751>
+
+<a id="ref-2"></a>[2] Mirzadeh, Iman, Keivan Alizadeh, Hooman Shahrokhi, Oncel Tuzel, Samy Bengio, and Mehrdad Farajtabar. "GSM-Symbolic: Understanding the Limitations of Mathematical Reasoning in Large Language Models." *arXiv preprint* arXiv:2410.05229, October 7, 2024. <https://arxiv.org/abs/2410.05229>
+
+<a id="ref-3"></a>[3] Li, Qintong, Leyang Cui, Xueliang Zhao, Lingpeng Kong, and Wei Bi. "GSM-Plus: A Comprehensive Benchmark for Evaluating the Robustness of LLMs as Mathematical Problem Solvers." *arXiv preprint* arXiv:2402.19255, February 29, 2024. <https://arxiv.org/abs/2402.19255>
+
+<a id="ref-4"></a>[4] Chu, Tianzhe, Yuexiang Zhai, Jihan Yang, Shengbang Tong, and Saining Xie. "SFT Memorizes, RL Generalizes: A Comparative Study of Foundation Model Post-training." *arXiv preprint* arXiv:2501.17161, January 28, 2025. <https://arxiv.org/abs/2501.17161>
+
+<a id="ref-5"></a>[5] Chen, Wenhu, Xueguang Ma, Xinyi Wang, and William W. Cohen. "Program of Thoughts Prompting: Disentangling Computation from Reasoning for Numerical Reasoning Tasks." *arXiv preprint* arXiv:2211.12588, November 22, 2022. <https://arxiv.org/abs/2211.12588>
+
+<a id="ref-6"></a>[6] Gao, Luyu, Aman Madaan, Shuyan Zhou, Uri Alon, Pengfei Liu, Yiming Yang, Jamie Callan, and Graham Neubig. "PAL: Program-aided Language Models." *International Conference on Machine Learning (ICML)*, 2023. arXiv:2211.10435. <https://arxiv.org/abs/2211.10435>
+
+<a id="ref-7"></a>[7] Gao, Silin, Jane Dwivedi-Yu, Ping Yu, Xiaoqing Ellen Tan, Ramakanth Pasunuru, Olga Golovneva, Koustuv Sinha, Asli Celikyilmaz, Antoine Bosselut, and Tianlu Wang. "Efficient Tool Use with Chain-of-Abstraction Reasoning." *arXiv preprint* arXiv:2401.17464, January 30, 2024. <https://arxiv.org/abs/2401.17464>

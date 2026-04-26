@@ -1,0 +1,150 @@
+---
+title: "APIs, Tools, Skills, and Where MCP Fits"
+description: "APIs, tools, and skills form a rough abstraction ladder. MCP is a different kind of thing: a protocol that crosscuts the ladder."
+author: "synesis"
+date: "2026-04-14"
+categories: [AI, AI engineering, agentic systems]
+---
+
+APIs, tools, and skills form a rough abstraction ladder. Each one builds on the layer below it, and confusing them leads to systems that are either too rigid or too loosely defined. MCP is a different kind of thing: a protocol that crosscuts the ladder. It deserves its own discussion.
+
+```{mermaid}
+graph LR
+    subgraph MCP["<b>MCP</b> — standardizes exposure to models"]
+        API["<b>API</b><br/>raw interface"]
+        TOOL["<b>TOOL</b><br/>callable action"]
+        API -->|"wrapped by"| TOOL
+    end
+
+    TOOL -->|"used by"| SKILL
+    API -->|"used by"| SKILL["<b>SKILL</b><br/>judgment, sequencing"]
+
+    style API fill:d98c4a,stroke:a66a2e,color:fff
+    style TOOL fill:#5ba55b,stroke:#3d7a3d,color:fff
+    style SKILL fill:#4a90d9,stroke:#2c5f8a,color:fff
+    style MCP fill:f3ecf9,stroke:#8b5fbf,color:#4a2a7a
+```
+
+### API: The Raw Interface
+
+An API is a defined interface that lets one software system interact with another. It exposes endpoints, methods, inputs, and outputs. It does not tell an agent when to call it, what to do with the result, or how the call fits into a broader task.
+
+In a customer support agent, the API is the HTTP interface to the ticketing system: create ticket, update status, fetch history. The API does not know why you are calling it.
+
+### Tool: The Callable Action
+
+A tool is a capability packaged so an agent can invoke it directly. It has a schema the model can read, a name that signals intent, and a defined effect. In many systems a tool is backed by an API, but the tool adds a layer: it tells the model what the action does, what parameters it needs, and what shape the result will take.
+
+In that same support agent, "search_tickets" is a tool. It wraps the ticketing API's search endpoint, describes its parameters in a model-readable schema, and returns structured results. The agent can decide to call it. The API underneath does not care who is calling or why.
+
+The key difference: a developer writes code against an API. An agent selects and invokes a tool. The tool is the API made legible to a model.
+
+### Skill: The Playbook
+
+A skill is a reusable method for solving a class of problems. It involves judgment, sequencing, and often multiple tools. If a tool says "send an email," a skill says "triage the inbox, identify messages that need a response, draft replies in the right tone, and flag anything that needs human review."
+
+For the support agent, a skill might be "handle refund request": check the order status, verify the refund policy applies, draft a response to the customer, create an internal ticket if escalation is needed, and log the outcome. That is not one action. It is a procedure with branching logic and defaults.
+
+Skills are where know-how lives. A tool gives the agent something to do. A skill tells it how to do a job well.
+
+### Where MCP Fits
+
+MCP (Model Context Protocol) is not another rung on this ladder. It is a standard for exposing tools, resources, and context to models in a consistent way. Its job is interoperability: making capabilities discoverable and portable across environments.
+
+Without MCP, every agent framework wires up tools differently. The schema formats vary, discovery is ad hoc, and switching between hosts means rewriting integrations. MCP standardizes that surface so a tool written once can be used by any compliant client.
+
+MCP can also expose resources (files, database rows, live context) alongside tools, which means a model can see both what it can do and what it is working with. This is useful but distinct from the API/tool/skill question. MCP does not replace any of those layers. It makes them portable.
+
+Think of it this way: APIs, tools, and skills describe what capabilities exist and at what level of abstraction. MCP describes how those capabilities are presented to models.
+
+### A Concrete Example
+
+Consider a code assistant that can read files, run tests, and create pull requests.
+
+```{mermaid}
+graph TB
+    SKILL["<b>SKILL: Review and ship a bug fix</b>"]
+
+    SKILL --> S1["1. Read failing test<br/><i>judgment: which file?</i>"]
+    SKILL --> S2["2. Identify + fix broken code<br/><i>judgment: what change?</i>"]
+    SKILL --> S3["3. Run test suite"]
+    SKILL --> S4["4. Open PR<br/><i>judgment: description,<br/>reviewers, linked issue</i>"]
+
+    S1 --> T1["<b>TOOL</b><br/>read_file"]
+    S3 --> T2["<b>TOOL</b><br/>run_tests"]
+    S4 --> T3["<b>TOOL</b><br/>create_pull_request"]
+
+    T1 --> A1["<b>API</b><br/>Filesystem"]
+    T2 --> A2["<b>API</b><br/>Test runner CLI"]
+    T3 --> A3["<b>API</b><br/>GitHub REST<br/>POST /pulls"]
+
+    style SKILL fill:#4a90d9,stroke:#2c5f8a,color:fff
+    style T1 fill:#5ba55b,stroke:#3d7a3d,color:fff
+    style T2 fill:#5ba55b,stroke:#3d7a3d,color:fff
+    style T3 fill:#5ba55b,stroke:#3d7a3d,color:fff
+    style A1 fill:d98c4a,stroke:a66a2e,color:fff
+    style A2 fill:d98c4a,stroke:a66a2e,color:fff
+    style A3 fill:d98c4a,stroke:a66a2e,color:fff
+```
+
+- The **APIs** are the filesystem interface, the test runner's CLI, and the GitHub REST API.
+- The **tools** are "read_file," "run_tests," and "create_pull_request," each with a schema the model can parse.
+- An **MCP server** bundles those tools (and possibly resources like the repo's directory tree or recent CI results) into a package any compliant model host can connect to.
+- A **skill** is "review and ship a bug fix": read the failing test, identify the broken code, make the fix, run the test suite, and open a PR with a clear description. The skill uses all three tools and applies judgment at each step.
+
+### The Boundaries Are Not Fixed
+
+Yes, a skill can become a tool. This happens routinely. The "handle refund request" skill from the earlier example starts as a multi-step procedure with judgment at each point. But once the team has run it enough times, the branching logic stabilizes, the edge cases get codified, and someone wraps the whole thing in a single callable function: "process_refund." Now it looks like a tool. The agent calls it in one shot. The orchestration still happens, just inside the wrapper rather than in the agent's reasoning loop.
+
+This is the natural lifecycle. Skills get hardened into tools. Tools get commoditized into APIs. What was once a careful, multi-step procedure becomes a reliable black box. The abstraction ladder is not a static taxonomy. It is a description of where the judgment currently lives, and that shifts as systems mature.
+
+```{mermaid}
+graph LR
+    SKILL["<b>SKILL</b><br/><i>handle refund request</i><br/>judgment in the agent"]
+    TOOL["<b>TOOL</b><br/><i>process_refund</i><br/>judgment in the wrapper"]
+    API["<b>API</b><br/><i>POST /refunds</i><br/>judgment removed"]
+
+    SKILL -->|hardens into| TOOL
+    TOOL -->|commoditizes into| API
+    API -.->|edge cases resurface| TOOL
+    TOOL -.->|context demands judgment| SKILL
+
+    style SKILL fill:#4a90d9,stroke:#2c5f8a,color:fff
+    style TOOL fill:#5ba55b,stroke:#3d7a3d,color:fff
+    style API fill:d98c4a,stroke:a66a2e,color:fff
+```
+
+The movement goes the other direction too. When a tool starts failing in new contexts, or when its behavior needs to vary based on surrounding conditions, it may need to be unpacked back into a skill. A "create_pull_request" tool works fine when the agent has already done everything right. But if the PR needs a certain description format, specific reviewers based on the files changed, and a linked issue, that single tool call becomes a skill again: a sequence of checks and decisions that the agent has to reason through.
+
+The practical implication: do not over-invest in classifying a capability as one or the other permanently. Instead, pay attention to where the judgment lives right now. If the agent is making multi-step decisions around a capability, that is a skill, even if it is technically implemented as a single function. If a capability can be called reliably without the agent thinking about it, that is a tool, even if it was once a complex workflow.
+
+### When You Are Building an Agent
+
+If you are deciding what to build and in what order:
+
+```{mermaid}
+graph LR
+    A["<b>① API</b><br/>raw access<br/><i>always needed</i>"]
+    T["<b>② Tool</b><br/>callable action<br/><i>always needed</i>"]
+    M["<b>③ MCP</b><br/>portable exposure<br/><i>if multi-host</i>"]
+    S["<b>④ Skill</b><br/>orchestrated workflow<br/><i>when patterns emerge</i>"]
+
+    A -->|wrap| T
+    T -->|expose| M
+    M -->|orchestrate| S
+
+    style A fill:d98c4a,stroke:a66a2e,color:fff
+    style T fill:#5ba55b,stroke:#3d7a3d,color:fff
+    style M fill:#8b5fbf,stroke:#6b3fa0,color:fff
+    style S fill:#4a90d9,stroke:#2c5f8a,color:fff
+```
+
+1. **Start with the APIs.** You need raw access to the systems your agent will interact with. If the integration does not exist, nothing above it works.
+2. **Wrap them as tools.** Give each action a clear name, a schema, and a description. This is what the model will actually call.
+3. **If you need portability, add MCP.** If your tools will be used across multiple model hosts or clients, exposing them through MCP saves you from writing bespoke integrations for each one. If you are building for a single environment, this can wait.
+4. **Encode skills last.** Once your agent can take individual actions reliably, identify the recurring workflows where sequencing and judgment matter. Package those as skills. Premature skills, built before the underlying tools are solid, tend to be brittle.
+
+The layers are complements: APIs provide access, tools provide action, MCP provides portability, and skills provide method. Most agent systems need all four, but they should be built in roughly that order.
+
+
+*Originally posted on [LinkedIn](https://www.linkedin.com/pulse/apis-tools-skills-where-mcp-fits-benjamin-han-bouuc).*

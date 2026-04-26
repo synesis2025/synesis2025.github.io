@@ -1,0 +1,27 @@
+---
+title: "Overzealous Coding Models"
+description: "Coding LLMs over-edit even when asked to fix a single off-by-one — and the problem is measurable, prompt-steerable, and LoRA trainable."
+author: synesis
+date: "2026-04-22"
+categories: [links, LLMs, coding, evaluation]
+image: cover.jpg
+also-toot: true
+---
+
+![Figure 1 from the post — GPT-5.4 rewrites an entire function when the correct fix is changing one number in a `range()` call. Image from [nrehiew's blog](https://nrehiew.github.io/blog/minimal_editing/).](cover.jpg){fig-align="center"}
+
+In [Coding Models Are Doing Too Much](https://nrehiew.github.io/blog/minimal_editing/), nrehiew puts a number on a frustration anyone using AI coding tools has felt — the model fixes the bug, then quietly rewrites half the function around it.
+
+- **The problem.** Ask a model to fix an off-by-one and get a full rewrite — new helpers, renamed variables, added validation. The fix is correct; the diff is enormous and review-hostile. The post calls this *over-editing*: structural divergence beyond what the minimal fix requires.
+- **Measurement.** Rather than have an LLM introduce bugs, the author programmatically corrupts 400 BigCodeBench problems (flip an operator, swap a boolean, etc.), so the ground-truth fix is exactly the reversal. Models are scored on Pass@1, token-level Levenshtein vs. the corrupted input, and added cognitive complexity.
+- **Frontier results.** GPT-5.4 over-edits the most (Levenshtein 0.39, added CC 2.31) while also being one of the weakest at correctness. Claude Opus 4.6 leads on both axes — highest Pass@1 (0.91) and smallest diffs (Levenshtein 0.06).
+- **Prompting helps.** A single line — *"IMPORTANT: Try to preserve the original code and the logic of the original code as much as possible"* — improves both Pass@1 and Levenshtein for almost every model. Reasoning models gain the most.
+- **Reasoning defaults to over-editing.** On samples where both reasoning and non-reasoning variants get the answer correct, the reasoning version edits *more* by default in most model pairs — extended thinking buys more "improvements" no one asked for. Claude Opus 4.6 is the notable exception, with its reasoning variant editing substantially less. Once instructed, reasoning models match or undercut their non-reasoning siblings in almost every pair.
+- **Training.** Starting from Qwen3 4B 2507 Instruct (and validated on Qwen3 14B), plain SFT collapses out-of-domain (Pass@1 drops to 0.46) — the model memorizes corruption-reversals rather than the behavior. RL with a reward combining functional correctness and Levenshtein generalizes cleanly, with no LiveCodeBench regression. *LoRA at rank 64 nearly matches the full fine-tune.*
+
+## My take
+
+- **The Opus 4.6 gap is not subtle** — highest Pass@1 *and* smallest diffs, in both reasoning and non-reasoning modes. Anthropic appears to have trained explicitly against this failure mode, and it shows.
+- **A single sentence of prompt closes most of the gap for everyone else** — over-editing is a default, not a capability ceiling.
+- **Style problem, not knowledge problem.** That LoRA at rank 64 nearly matches the full fine-tune is the giveaway — a small parameter delta shifts the behavior without touching the underlying capability.
+- **The tooling implication is bigger than the model implication.** *"Preserve the original code"* should be wired into every coding tool's system prompt by default, and diff-review UI should surface a minimality score alongside the patch.

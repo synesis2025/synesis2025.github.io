@@ -1,0 +1,33 @@
+---
+title: "Prompt Repetition Improves Non-Reasoning LLMs"
+description: "Leviathan, Kalman, and Matias find that simply repeating the input prompt boosts performance on Gemini, GPT, Claude, and Deepseek — no extra tokens, no extra latency."
+author: synesis
+date: "2026-04-21"
+categories: [AI, LLMs, inference, paper, links]
+image: cover.jpg
+also-toot: true
+---
+
+![First page of Leviathan, Kalman, and Matias 2025. Image from [arXiv](https://arxiv.org/abs/2512.14982).](cover.jpg){fig-align="center"}
+
+Another inference-time trick for getting more out of an LLM without touching its weights [[1]](#ref-1).
+
+> When not using reasoning, repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek) without increasing the number of generated tokens or latency.
+
+![Figure 1 from the paper: prompt repetition vs baseline accuracy across Gemini, GPT, Claude, and Deepseek on multiple benchmarks. Repetition wins 47/70 benchmark-model combinations, with 0 losses. Image from [arXiv](https://arxiv.org/abs/2512.14982).](figure1.jpg){fig-align="center"}
+
+Why does this work? Causal attention. The autoregressive LLMs we're talking about — Gemini, GPT, Claude, Deepseek — read left-to-right: each token can only attend to tokens that came before it. So when a model is given `<context> <question>`, it has to encode every word of the context before it ever sees the question. This is the opposite of how "good" students prepare for exams: they look at past questions first, then read the texts with those questions in mind, focusing attention on what's likely to be asked. Repeating the prompt gives the model the same second pass — by the time it encodes the second copy, the question is already in view, so the context can be processed in light of what's being asked. Because prefill is parallelizable, doubling the prompt doesn't slow generation down.
+
+The paper itself frames the root cause:
+
+> LLMs are often trained as causal language models, i.e. past tokens cannot attend to future tokens. Therefore, the order of the tokens in a user's query can affect prediction performance.
+
+Bidirectional attention over the prefix would fix this natively — every prompt token attending to every other, no repetition needed. Encoder-decoder models (T5, BART) do this in their encoder; Prefix-LM variants (UL2) bidirectionally attend over the prompt and switch to causal only at generation. The paper flags "Explore interactions with techniques such as Prefix LM" as a future direction. But decoder-only causal architectures won the scaling battle: simpler training at scale, more efficient KV-caching for sequential serving, more natural in-context learning. Prompt repetition is a runtime patch that buys back some of what bidirectional attention would natively provide — without retraining the frontier models we already have.
+
+Compare to the [LLM Neuroanatomy](../20260324-llm-neuroanatomy/) post: there, the trick was duplicating a block of middle transformer layers and running them twice. Here, the trick is simpler still — duplicate the input itself. Different layer of the stack, same underlying intuition: give the model another pass over the same information.
+
+---
+
+## References
+
+<a id="ref-1"></a>[1] Yaniv Leviathan, Matan Kalman, and Yossi Matias. "Prompt Repetition Improves Non-Reasoning LLMs." *arXiv*. 2025-12-17. <https://arxiv.org/abs/2512.14982>

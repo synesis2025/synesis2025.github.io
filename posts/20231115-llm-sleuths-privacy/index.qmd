@@ -1,0 +1,42 @@
+---
+title: "Large Language Models as Sleuths"
+description: "GPT-4 infers sensitive personal attributes from Reddit comments at 84.6% accuracy — and masking PII barely helps."
+author: "synesis"
+date: "2023-11-15"
+categories: [AI, LLMs, NLP, security, research, paper, generative AI, links]
+image: cover.jpg
+---
+
+![](cover.jpg)
+
+How much breadcrumbs do we leave in our writing? It used to be a job reserved solely for a human sleuth, or a forensic linguist [[1]](#ref-1), to connect the dots from texts and paint a more complete and accurate picture of the writers. With the advent of LLMs, well, perhaps not any more.
+
+In a recent paper [[2]](#ref-2), the authors let loose of a slew of LLMs — from Llama, PaLM, Claude to GPT family — on a dataset "PersonalReddit", and asked the models to extract 8 sensitive attributes about the writers: age, education, gender, occupation, relationship status, location, place of birth and income. The dataset is a collection of 5814 comments authored by 520 Reddit users whose public profiles were randomly selected. The result? GPT4 managed to achieve 84.6% accuracy in its first guess across the attributes.
+
+![Figure from [the paper](https://arxiv.org/abs/2310.07298).](screenshot1.jpg)
+
+![Figure from [the paper](https://arxiv.org/abs/2310.07298).](screenshot2.jpg)
+
+What's more alarming, is that once we give these LLMs the ability to ask questions, i.e., make them into chatbots, they can conduct an inner/hidden dialog with themselves, strategizing and driving questioning to siphon out these sensitive attributes from their conversational partners. The authors ran simulations on such interactions and found GPT-4 can infer sensitive attributes at top-1 accuracy 59.2%.
+
+![Figure from [the paper](https://arxiv.org/abs/2310.07298).](screenshot3.jpg)
+
+![Figure from [the paper](https://arxiv.org/abs/2310.07298).](screenshot4.jpg)
+
+Now, if we want to prevent this LLM-sleuthing from happening to law-abiding citizens, is masking or redacting PII (Personally Identifiable Information) an effective approach? Unfortunately not quite, as the experiments show that the drop in accuracy can be minimal to some sensitive attribute. Unless we enlarge the definition of PII to include all information that may enable "side-channel leakage", or "privacy-infringing inference", completely eliminating the leak is almost impossible.
+
+![Figure from [the paper](https://arxiv.org/abs/2310.07298).](screenshot5.jpg)
+
+![Figure from [the paper](https://arxiv.org/abs/2310.07298).](screenshot6.jpg)
+
+So, can we turn LLMs to the other side to help us preserve privacy?
+
+*Originally posted on [LinkedIn](https://www.linkedin.com/pulse/large-language-models-sleuths-benjamin-han-vobmc/).*
+
+---
+
+## References
+
+<a id="ref-1"></a>[1] Jack Hitt. "Words on Trial." *The New Yorker*, July 16, 2012. <https://www.newyorker.com/magazine/2012/07/23/words-on-trial>
+
+<a id="ref-2"></a>[2] Robin Staab, Mark Vero, Mislav Balunović, and Martin Vechev. "Beyond Memorization: Violating Privacy Via Inference with Large Language Models." 2023. <https://arxiv.org/abs/2310.07298>

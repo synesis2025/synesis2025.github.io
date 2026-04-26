@@ -1,0 +1,53 @@
+---
+title: "Anthropic Economic Index"
+description: "Anthropic's fourth Economic Index report introduces five economic primitives and uses them to revisit task speedup, deskilling, and aggregate productivity estimates."
+author: synesis
+date: "2026-04-23"
+categories: [links, Anthropic, Claude, future of work]
+image: cover.jpg
+also-toot: true
+---
+
+![Illustration from [Anthropic](https://www.anthropic.com/research/economic-index-primitives).](cover.jpg){fig-align="center"}
+
+Anthropic's [fourth Economic Index report](https://www.anthropic.com/research/economic-index-primitives) (Jan 15, 2026) introduces *economic primitives* — a set of five foundational measurements Claude extracts from every sampled conversation — and uses them to revisit earlier findings about AI's impact on work.
+
+The primitives:
+
+- **Task complexity** — estimated human time to complete without AI, time with AI, and whether a conversation bundles multiple tasks.
+- **Human and AI skills** — years of education needed to understand prompts and responses; whether the user could have done the task alone.
+- **Use case** — work, education, or personal.
+- **AI autonomy** — from active collaboration to full delegation.
+- **Task success** — Claude's own assessment of completion.
+
+What the November 2025 sample (1M Claude.ai conversations + 1M first-party API transcripts, mostly Sonnet 4.5) shows:
+
+- **Complex tasks get the biggest speedup.** High-school-level prompts: 9× on Claude.ai. College-level: 12×. API speedups are higher still.
+- **Success drops only modestly with complexity.** 70% success on sub-high-school tasks vs. 66% on college-level — not enough to offset the speedup gradient.
+- **Time horizons are longer than METR suggests.** Claude hits 50% success at ~3.5h tasks on the API and ~19h on Claude.ai, vs. METR's 2h. Attributed to users decomposing tasks and selecting ones they expect to work.
+- **Country patterns follow an adoption curve.** Lower-income countries skew toward educational coursework; higher-income countries toward work and personal use.
+- **Occupation coverage is up but uneven.** 49% of jobs saw Claude used for ≥25% of tasks (vs. 36% in January 2025). Adjusted for success rates, data entry keyers and radiologists are more affected than raw coverage suggests; teachers and software developers less so.
+- **Claude covers the higher-skill tasks within a job.** Claude-covered tasks require 14.4 years of education on average, vs. 13.2 for the economy overall — implying a first-order deskilling effect if those tasks were fully automated.
+- **Productivity estimate revised down.** The earlier 1.8 pp/year US labor-productivity boost falls to 1.2 pp (Claude.ai) or 1.0 pp (API) once task reliability is factored in. Still roughly late-1990s/early-2000s rates.
+- **Usage is concentrating.** The top-10 work tasks now account for 24% of Claude.ai traffic (up from 21% in January). Computer and math tasks are ~⅓ of Claude.ai and nearly half of API.
+- **Augmentation has overtaken automation.** 52% vs. 45% on Claude.ai in November, reversing the August split.
+- **US state distribution is flattening.** On current trends, Claude use would be geographically equalized across US states within 2–5 years.
+
+
+## My take
+
+"Time horizon" in this report borrows [METR](https://metr.org/)'s framing: the longest task, measured in human-equivalent hours, that a model can complete with at least 50% success. The metric is designed to track AI progress without saturating the way fixed benchmarks do, since as models improve, the horizon stretches.
+
+Which brings a caveat about what is actually being measured in Anthropic's report. They didn't actually measure the time from actual humans from what I can tell. They asked Claude:
+
+> We derive these primitives from asking Claude to answer a common set of questions about every conversation in our sample for this report.
+
+And in a footnote:
+
+> We measure complexity through estimated human time to complete tasks without AI, time spent completing tasks with AI, and whether users handle multiple tasks within a single conversation.
+
+So while METR's 2h figure is grounded in actual humans on the clock, Anthropic's 3.5h and 19h are model-generated estimates of human time. The two methodologies are not exactly the same.
+
+Assuming the two sides are comparable, the differences in time horizon between METR and Anthropic come from differences in experimental conditions, not from differences in what the model can do (because they were all measured on the same model). Two things vary across the setups: whether a human steers the model mid-task, and whether the task was pre-selected as something the model could plausibly handle. METR has neither: an autonomous agent runs a fixed benchmark, with no steering and no pre-selection. The API sample has pre-selection but no steering: developers send Claude tasks they have already validated will work, and the calls then run on their own. Claude.ai has both: the human steers and decomposes the work as it goes, and the human only brings tasks they expect will succeed. The result? Pre-selection alone moves the horizon from METR's 2h to the API's 3.5h, a modest 1.75×. Human steering on top moves it from there to Claude.ai's 19h, a much bigger 5× jump.
+
+This is less a story about what Claude can do today than about how humans and AI work together. The 5× multiplier from human steering shows that the most productive AI work right now happens in the human-AI pair, not in autonomous agents. The complement is the point: humans bring task decomposition, judgment about what to attempt, and verification of what comes back; the model brings speed, breadth, and stamina. The 19-hour result on Claude.ai is what that pairing makes possible, on tasks neither side would have completed as quickly alone. As models get better, the kinds of work that fit this pairing keep expanding, and so does the range of jobs where the most useful human skill is steering the model well rather than competing with it.
