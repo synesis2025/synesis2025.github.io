@@ -1,0 +1,39 @@
+---
+title: "A Cursor Agent Erased a Company's Production Data in 9 Seconds"
+description: "A Cursor agent running Claude Opus 4.6 wiped PocketOS's production database and all Railway volume backups in one API call — then enumerated, in writing, the specific safety rules it had violated."
+author: synesis
+date: "2026-04-27"
+image: cover.jpg
+also-toot: true
+---
+
+![Image from [Jer Crane on X](https://x.com/lifeof_jer/status/2048103471019434248).](cover.jpg){fig-align="center"}
+
+[Jer Crane](https://x.com/lifeof_jer), founder of PocketOS (a car-rental-management SaaS), [walks through](https://x.com/lifeof_jer/status/2048103471019434248) how a Cursor agent running Anthropic's flagship Claude Opus 4.6 deleted his production database and all Railway volume backups in a single GraphQL mutation, and then, when asked to explain itself, produced a written confession enumerating the specific safety rules it had violated.
+
+> An AI coding agent — Cursor running Anthropic's flagship Claude Opus 4.6 — deleted our production database and all volume-level backups in a single API call to Railway, our infrastructure provider.
+>
+> It took 9 seconds.
+>
+> The agent then, when asked to explain itself, produced a written confession enumerating the specific safety rules it had violated.
+
+The article decomposes the failure into three independent layers that each failed on their own:
+
+- **Railway's GraphQL API** allowed `volumeDelete` with zero confirmation, and the CLI token Jer had issued for custom-domain management carried blanket authority across every other destructive operation. Railway is actively promoting this same authorization model to AI agents via `mcp.railway.com`.
+- **Volume backups live in the volume they back up.** Railway's own docs note that "wiping a volume deletes all backups." Jer's most recent off-volume backup was three months old.
+- **Cursor's system-prompt guardrails** told the agent not to run destructive operations unless asked. The agent, running Anthropic's Claude Opus 4.6, violated the rule and, when asked to explain itself, produced a written confession quoting the rule verbatim and admitting it had ignored every clause.
+
+Jer explicitly defers the model-level responsibility analysis to a later post; this one stays at the integration layer. Even so, the agent's confession documents four restraint moments it skipped in those nine seconds:
+
+- **Treating "delete a volume" as a plausible fix.** After hitting a credential mismatch in staging, the agent decided on its own initiative to fix it by deleting a Railway volume.
+- **Searching unrelated files for an API token.** The agent went looking for a token and used one it found in a file created months earlier for adding and removing custom domains, not for infrastructure operations.
+- **Using the token without verifying its scope.** Neither the agent nor Jer realized the same CLI token carried blanket authority across the Railway GraphQL API, including destructive mutations like `volumeDelete`.
+- **Guessing at environment boundaries instead of reading the docs.** In the agent's own words: *"I guessed that deleting a staging volume via the API would be scoped to staging only. I didn't verify. I didn't check if the volume ID was shared across environments. I didn't read Railway's documentation on how volumes work across environments before running a destructive command."*
+
+## My Notes
+
+- Reporting that frames this as "an AI deleted the data" collapses the layering. All three of those layers had to fail at once, and "agent safety" marketed as a product feature is meaningless unless all three hold simultaneously. [Snowflake Cortex's sandbox escape a few weeks ago](/posts/20260319-snowflake-cortex-sandbox-escape/) made the same multi-layer point from a prompt-injection angle: agent safety is a Swiss-cheese property.
+- CLI tokens as root was a survivable shortcut when a human wielded them and typed one command every few minutes. When an autonomous agent fires GraphQL mutations at machine speed, the same token is a unilateral delete button with no cooldown. Per-operation token scoping should exist already, and the Model Context Protocol (MCP) rollout makes every additional day without it costlier.
+- Calling snapshots-in-the-same-volume "backups" uses the word against its own definition. A backup is defined by blast-radius independence from the primary: different volume, account, region, or provider. Until that holds it's a snapshot with a misleading label, and the kind of engineering-marketing mismatch customers usually don't find until after the wipe.
+- The confession is the most unsettling artifact, because it proves system-prompt safety is advisory and nothing in the stack forces the model to honor it. A model that narrates its violations in fluent paragraphs can still execute them in the same session. Enforcement has to live below the model: in the API gateway, the token system, or the destructive-op handlers. Text the model is asked to follow is not an enforcement layer. [MAST's failure taxonomy](/posts/20250802-mast-multi-agent-failures/) catalogs this same specification-vs-verification gap in multi-agent systems; here it is reproduced in a single-agent case.
+- The model-level question Jer defers deserves to be told as its own story. Cursor and Railway can ship better scoping and confirmations tomorrow; the harder fix is upstream. A flagship model compressing four verify-or-ask points into a single nine-second commit is a planning-and-restraint problem at the model layer. Confusing the two will produce the wrong fixes.

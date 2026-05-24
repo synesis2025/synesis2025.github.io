@@ -1,0 +1,58 @@
+---
+title: "Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies"
+description: "Google's MASS framework optimizes multi-agent systems by interleaving prompt and topology search across three stages, beating ADAS and AFlow on eight benchmarks."
+author: synesis
+date: "2026-04-30"
+image: cover.jpg
+---
+
+![Performance of different topologies with Gemini 1.5 Pro on HotpotQA (left) and LiveCodeBench (right), each topology optimized with automatic prompt optimization (APO). Sum. (Summarize) and Exe. (Executor) are task-specific topologies. Prompt-level optimization dominates over topology choice on most tasks. Figure 4 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies* (ICLR 2026) [[1]](#ref-1), Han Zhou et al. (Google, University of Cambridge) introduce MASS, a multi-stage search framework that interleaves prompt optimization and topology optimization to discover effective multi-agent system designs.
+
+> Large language models, employed as multiple agents that interact and collaborate with each other, have excelled at solving complex tasks. The agents are programmed with prompts that declare their functionality, along with the topologies that orchestrate interactions across agents. Designing prompts and topologies for multi-agent systems (MAS) is inherently complex. To automate the entire design process, we first conduct an in-depth analysis of the design space aiming to understand the factors behind building effective MAS. We reveal that prompts together with topologies play critical roles in enabling more effective MAS design. Based on the insights, we propose Multi-Agent System Search (MASS), a MAS optimization framework that efficiently exploits the complex MAS design space by interleaving its optimization stages, from local to global, from prompts to topologies, over three stages: 1) block-level (local) prompt optimization; 2) workflow topology optimization; 3) workflow-level (global) prompt optimization, where each stage is conditioned on the iteratively optimized prompts/topologies from former stages. We show that MASS-optimized multi-agent systems outperform a spectrum of existing alternatives by a substantial margin. Based on the MASS-found systems, we finally propose design principles behind building effective multi-agent systems.
+
+## Method
+
+MASS is a three-stage search, local-to-global and prompts-to-topology-to-prompts. Stage 1 runs block-level prompt optimization (MIPRO from DSPy [[5]](#ref-5)) on each candidate building block individually and keeps the best-performing one. A *block* here is the paper's term for a small pattern of agents collaborating on one function. The paper enumerates five: Aggregate (e.g., self-consistency), Reflect (e.g., self-refine), Debate, Summarize, and Tool-use. Stage 2 samples from an influence-weighted design space of topologies, fusing in Stage 1's optimized prompts at each candidate. The paper prunes the topology search space so rejection sampling doesn't waste compute on topologies unlikely to help. Stage 3 runs MIPRO again, this time over the winning topology's full workflow-level prompt set. Each stage is conditioned on the iteratively optimized prompts and topologies from the prior stages.
+
+![The MASS framework discovers effective multi-agent system designs (right: optimized topology and prompts) via interleaved prompt and topology optimization in a customizable design space (left). Figure 1 from the paper [[1]](#ref-1).](figure1.png){fig-align="center"}
+
+## Results
+
+MASS is evaluated on eight benchmarks spanning reasoning (MATH), multi-hop QA (DROP, HotpotQA, MuSiQue, 2WikiMQA), and coding (MBPP, HumanEval, and LiveCodeBench's test-output-prediction subtask). On Gemini 1.5 Pro, MASS averages 78.79 across the eight tasks, well above multi-agent debate (70.26), ADAS (69.72), and single-agent CoT (65.28). The Gemini 1.5 Flash ordering is the same; the table below has the full numbers. Figure 5 decomposes the Gemini 1.5 Pro gain into its three stages: block-level prompt optimization contributes roughly 6%, topology search another 3%, and workflow-level prompt optimization a final 2%.
+
+| Method | Gemini 1.5 Pro Avg. | Gemini 1.5 Flash Avg. |
+|---|---|---|
+| CoT | 65.28 | 60.87 |
+| Self-Consistency | 68.18 | 63.50 |
+| Self-Refine | 66.90 | 63.46 |
+| Multi-Agent Debate | 70.26 | 65.91 |
+| ADAS | 69.72 | 64.75 |
+| **MASS** | **78.79** | **74.30** |
+
+: Average across the 8 evaluation tasks (accuracy for MATH and LiveCodeBench, F1 for DROP / HotpotQA / MuSiQue / 2WikiMQA, pass@1 for MBPP / HumanEval). Table 1 from the paper [[1]](#ref-1).
+
+![Average performance per MASS optimization stage across 8 evaluation tasks on Gemini 1.5 Pro, compared to a single-agent CoT baseline and an automatic prompt-optimization (APO) baseline using MIPROv2. Figure 5 from the paper [[1]](#ref-1).](figure5.png){fig-align="center"}
+
+## My Notes
+
+- **Topology gets quietly demoted.** The paper's stage-wise ablation shows roughly 6% gain from block-level prompt optimization, 3% from topology search, and 2% from workflow-level prompt optimization on Gemini 1.5 Pro. Prompts at both ends of the pipeline dominate, and topology contributes the least. That contradicts the implicit thesis of the topology-first generation (ADAS [[2]](#ref-2), AFlow [[3]](#ref-3)), which spent its complexity budget on what the agents look like rather than how they're individually instructed. The paper's own related-work section acknowledges this: "the importance of prompt designs has been relatively under-studied in these prior works." It's a stronger claim than the paper presents it as.
+
+- **MASS layers a staged search around MIPRO.** Stage 1 and Stage 3 both run MIPRO [[4]](#ref-4), the prompt-optimizer from the DSPy [[5]](#ref-5) ecosystem. Stage 2 does rejection sampling over a pruned topology space. MASS's contribution is the staging discipline and the search-space pruning. The prompt-optimization workhorse is plug-and-play, and MIPRO is what MASS happens to use. [MetaSPO](/posts/20260430-metaspo-system-prompt-meta-learning/) [[6]](#ref-6) works the same way: the staging (bilevel meta-learning) is the contribution, and the prompt-optimization primitive it builds on (textual gradients) is off-the-shelf. [EvoPrompt](/posts/20260430-evoprompt/) [[7]](#ref-7) inverts it: the primitive is the contribution (using an LLM to implement crossover and mutation), while the staging is borrowed from classical evolutionary algorithms. All three combine an LLM-as-optimizer primitive with a staging wrapper, but they differ in which piece is novel: MASS and MetaSPO add staging on top of a known optimizer, while EvoPrompt swaps the primitive into a known staging scheme.
+
+- **AFlow's competitive showing deserves attention.** AFlow has no explicit prompt-optimization stage but stays close to MASS on 2WikiMQA and HumanEval. The paper attributes this to AFlow's "expansion" phase, which uses error-log gradients à la Pryzant et al.: implicit prompt updating disguised as topology search. Where MASS pulls ahead most (MATH, MuSiQue) is where that error-log signal is weak. One-pass error-driven updates don't make up for the lack of a dedicated optimization phase. The follow-up worth running: an explicit Stage 1 prompt opt fed into AFlow's MCTS, to test whether the staging or the optimizer choice is doing the work.
+
+- **Generalization beyond the eight benchmarks is open.** Tasks span MATH, DROP, HotpotQA, 2WikiMQA, MuSiQue, HumanEval, MBPP, and LiveCodeBench, all static evaluation sets. The MASS-discovered topologies (debate-then-aggregate on MATH; summarize-then-execute on coding) are presented as design principles, but whether a topology learned on MATH transfers to RAG, agentic web tasks, or interactive embodied tasks is untested. This is also where the [MAST taxonomy of multi-agent failures](/posts/20250802-mast-multi-agent-failures/) gets relevant: design-side optimization assumes the failure modes you'll hit at deployment look like the ones you optimized against.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Zhou](https://hanzhou032.github.io/), H., [Wan](https://xingchen.one/), X., Sun, R., [Palangi](https://www.hamidpalangi.com/), H., Iqbal, S., [Vulić](https://sites.google.com/site/ivanvulic/), I., [Korhonen](https://sites.google.com/site/annakorhonen/), A., [Arık](https://www.sercanarik.com/), S. Ö. "Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies." *International Conference on Learning Representations (ICLR)*, 2026. arXiv:2502.02533, February 4, 2025 (v2: January 31, 2026). <https://arxiv.org/abs/2502.02533>
+2. <a id="ref-2"></a>[Hu](https://shengranhu.com/), S., [Lu](https://www.conglu.co.uk/), C., [Clune](https://en.wikipedia.org/wiki/Jeff_Clune), J. "Automated Design of Agentic Systems." *arXiv preprint* arXiv:2408.08435, 2024. <https://arxiv.org/abs/2408.08435>
+3. <a id="ref-3"></a>Zhang, J., Xiang, J., Yu, Z., Teng, F., Chen, X., Chen, J., [Zhuge](https://metauto.ai/), M., Cheng, X., Hong, S., Wang, J., et al. "AFlow: Automating Agentic Workflow Generation." *arXiv preprint* arXiv:2410.10762, 2024. <https://arxiv.org/abs/2410.10762>
+4. <a id="ref-4"></a>Opsahl-Ong, K., [Ryan](https://michryan.com/), M. J., Purtell, J., [Broman](https://www.kth.se/profile/dbro), D., [Potts](https://en.wikipedia.org/wiki/Christopher_Potts), C., [Zaharia](https://en.wikipedia.org/wiki/Matei_Zaharia), M., [Khattab](https://omarkhattab.com/), O. "Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs." *Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing*, 2024. <https://arxiv.org/abs/2406.11695>
+5. <a id="ref-5"></a>[Khattab](https://omarkhattab.com/), O., Singhvi, A., Maheshwari, P., Zhang, Z., [Santhanam](https://keshav2.me/), K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., [Miller](https://heather.miller.am/), H., [Zaharia](https://en.wikipedia.org/wiki/Matei_Zaharia), M., [Potts](https://en.wikipedia.org/wiki/Christopher_Potts), C. "DSPy: Compiling Declarative Language Model Calls into State-of-the-Art Pipelines." *International Conference on Learning Representations (ICLR)*, 2024. <https://arxiv.org/abs/2310.03714>
+6. <a id="ref-6"></a>Choi, Y., [Baek](https://jinheonbaek.github.io/), J., [Hwang](https://www.mlai-kaist.com/), S. J. "System Prompt Optimization with Meta-Learning." *arXiv preprint* arXiv:2505.09666, May 14, 2025. <https://arxiv.org/abs/2505.09666>
+7. <a id="ref-7"></a>[Guo](https://lemon0830.github.io/), Q., Wang, R., Guo, J., [Li](https://libeineu.github.io/), B., [Song](https://www.microsoft.com/en-us/research/people/kaitaosong/), K., [Tan](https://www.microsoft.com/en-us/research/people/xuta/), X., Liu, G., [Bian](https://sites.google.com/view/jiangbian), J., Yang, Y. "EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers." *International Conference on Learning Representations (ICLR)*, 2024. arXiv:2309.08532. <https://arxiv.org/abs/2309.08532>

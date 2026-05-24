@@ -1,0 +1,63 @@
+---
+title: "[Q&A] Self-Correction After the Reasoning-Model Era"
+description: "Whether the 3-paper self-correction arc still holds for o1- and R1-style reasoning models trained with RL on verifiable rewards."
+author: synesis
+date: "2026-05-17"
+image: /og-default.png
+---
+
+This is a follow-up to a [3-paper arc on self-correction in LLMs](/posts/20260516-llm-self-correction-arc/) that walks through Self-Refine, Cannot-Self-Correct, and Reflexion. On [Mastodon](https://sigmoid.social/@pbloem/116589236043054768), Professor [Peter Bloem](https://peterbloem.nl) (Learning & Reasoning Group, Vrije Universiteit Amsterdam) asked:
+
+::: {.callout-note title="Reader question — Peter Bloem, Mastodon"}
+This is before reasoning models, though, isn't it? I'd suspect that this all changed after RL training on reasoning traces came in.
+:::
+
+Yes: all three papers in the original arc predate the reasoning-model era. None of them are evaluated on o1, [DeepSeek-R1](https://arxiv.org/abs/2501.12948) [[1]](#ref-1), or any model whose self-correcting behavior was shaped by RL on verifiable rewards. The implicit question is whether the arc's conclusions still hold once that training signal enters the picture.
+
+## Internalizing the Evaluator
+
+Reasoning-model training moves what used to be inference-time external scaffolding into training-time signal that the policy internalizes.
+
+R1's "aha moments" are emergent self-correction at inference time, with no Evaluator in the loop. The Reflexion-style Evaluator that used to gate self-correction at every inference step has been compiled into the weights. Whether R1 technically aligns with Cannot-Self-Correct's strict definition becomes a definitional argument that misses what is actually new.
+
+Even before R1, [SCoRe](/posts/20260512-score/) showed one way to build this internalization deliberately. It trains on a two-turn structure where each attempt is rewarded against a ground-truth answer. The verifier's correctness check is exactly the external signal Reflexion put in the loop, just moved from inference time to training time. SCoRe says "no teacher model and no oracle feedback," but that refers to narrower things (no separate teacher LLM and no step-level oracle), and does not change the picture: the outcome reward is still external. R1 then demonstrated the same idea at a coarser grain, with the self-correction emerging within a single long reasoning trace rather than across explicit turns.
+
+## How far can it go, and is internalization the right path?
+
+The substantive question is how far this internalization can go. Can any external verifier or evaluator that worked at inference time be moved into training-time signal that produces the same behavior at inference?
+
+Or are there structural limits — task families where verifiable rewards cannot reach (long-form writing, open-ended dialogue, novel domains), evaluators that resist internalization because they require open-ended judgment that itself drifts? Early evidence [[2]](#ref-2)[[3]](#ref-3) is that internalization works well within the verifiable-reward distribution and degrades sharply outside it, but we do not yet have a clean characterization of the boundary.
+
+A separate question is whether internalization is the *right* path even where it works. Training is expensive, and pushing more verifiers into the policy carries the usual risks of catastrophic forgetting and capacity trade-offs against other tasks. Even within the regions where internalization works in principle, the practical question is what is worth pushing into the weights, and what is better kept as a domain-specific external verifier called at inference time.
+
+I suspect domain-specific external verification stays essential even where internalization works in principle. An inference-time scaffold can be swapped, audited, or updated when the domain shifts. An internalized one cannot, short of retraining the model. That asymmetry alone argues for keeping the verifier external in any setting where the verification target itself moves.
+
+## What the original arc still teaches
+
+Viewed through this lens, the three papers in the original arc still illuminate what is important for instilling self-correction in a model. Self-Refine showed that prompt-only intrinsic feedback does not reliably work. Cannot-Self-Correct showed *why* — without an external signal about correctness, the model's confidence carries the initial answer through into the revision and the loop drifts. Reflexion showed that gating self-correction on a reliable external signal works. Whether that gate sits at inference time, the way Reflexion put it, or at training time, the way RL on verifiable rewards puts it, the structural ingredient is the same: reliable external signal. The original arc identified the ingredient; the post-2024 work shows it can be compiled into the weights for some classes of problems and not others.
+
+## Related recent work
+
+Several recent papers approach the internalization question from different angles. The list below is partial — pointers to other work along these lines (especially generalization audits of o1/R1-style models or post-2024 process-reward-model successors) are welcome.
+
+- [Cognitive Behaviors that Enable Self-Improving Reasoners](https://arxiv.org/abs/2503.01307) [[4]](#ref-4) looks at *what* RL training actually internalizes — which trained behaviors let the policy self-improve. The answer is a small set: verification, backtracking, subgoal-setting, and backward chaining. It is the empirical follow-up to "what is actually in the policy" after RL.
+- [How Reasoning Evolves from Post-Training Data: An Empirical Study Using Chess](https://arxiv.org/abs/2604.05134) [[5]](#ref-5) (ICML 2026) extends that question into *how far* internalized reasoning carries. Using chess as a clean probe outside the math/code distribution most reasoning models are trained on, it tracks which capabilities transfer from post-training data and which decay.
+- [Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters](https://arxiv.org/abs/2408.03314) [[6]](#ref-6) tightens our understanding of when inference-time scaffolding is worth the compute. Revision helps when the verifier is reliable and helps less when it is not, and a small verifier-guided model can outperform a larger one without scaffolding. The same verifier-quality dependence shows up whether the scaffolding is at inference time or compiled into the weights.
+- The Stechly–Kambhampati line is the running argument for limits. [On the Self-Verification Limitations of LLMs on Reasoning and Planning Tasks](https://arxiv.org/abs/2402.08115) [[2]](#ref-2) shows that GPT-4 still cannot reliably verify its own outputs even on simple planning tasks, and [Chain of Thoughtlessness?](https://arxiv.org/abs/2405.04776) [[3]](#ref-3) (NeurIPS 2024) questions whether chain-of-thought reasoning generalizes outside its training distribution. Both push back on the idea that internalization is general: outside the training distribution, the policy's self-judgment falls apart.
+- [Chain-of-Thought Degrades Visual Spatial Reasoning Capabilities of Multimodal LLMs](https://arxiv.org/abs/2604.16060) [[7]](#ref-7) extends that skepticism into the multimodal era. Across 17 models and 13 spatial benchmarks, CoT prompting consistently *degrades* visual-spatial accuracy, with shortcut-learning from textual priors that hallucinate visual details when the image is absent. Reasoning trained on text does not transfer cleanly to vision.
+- [Can Large Language Models Self-Correct in Medical Question Answering? An Exploratory Study](https://arxiv.org/abs/2604.00261) [[8]](#ref-8) audits self-correction in a non-verifiable-reward domain. Self-reflective prompting on MedQA, HeadQA, and PubMedQA does not consistently improve accuracy, with effects highly dataset- and model-dependent. A direct datapoint for the boundary where internalization stops paying.
+- [Self-Rewarding Language Models](https://arxiv.org/abs/2401.10020) [[9]](#ref-9) (ICML 2024) tests whether internalization can happen without any external verifier at all. The model acts as its own LLM-as-judge during DPO training, bootstrapping. Promising results on AlpacaEval, but the approach inherits the question of whether the model's own judgment is good enough to bootstrap from in the first place.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>DeepSeek-AI, Guo, D., Yang, D., Zhang, H., et al. "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning." *arXiv preprint* (arXiv:2501.12948), January 22, 2025. <https://arxiv.org/abs/2501.12948>
+2. <a id="ref-2"></a>Stechly, K., Valmeekam, K., Kambhampati, S. "On the Self-Verification Limitations of Large Language Models on Reasoning and Planning Tasks." *arXiv preprint* (arXiv:2402.08115), February 12, 2024. <https://arxiv.org/abs/2402.08115>
+3. <a id="ref-3"></a>Stechly, K., Valmeekam, K., Kambhampati, S. "Chain of Thoughtlessness? An Analysis of CoT in Planning." *NeurIPS 2024* (arXiv:2405.04776), May 8, 2024. <https://arxiv.org/abs/2405.04776>
+4. <a id="ref-4"></a>Gandhi, K., Chakravarthy, A., Singh, A., Lile, N., Goodman, N. D. "Cognitive Behaviors that Enable Self-Improving Reasoners, or, Four Habits of Highly Effective STaRs." *arXiv preprint* (arXiv:2503.01307), March 3, 2025. <https://arxiv.org/abs/2503.01307>
+5. <a id="ref-5"></a>Dionisopoulos, L., Majamaki, N., Ammanabrolu, P. "How Reasoning Evolves from Post-Training Data: An Empirical Study Using Chess." *ICML 2026* (also NeurIPS 2025 FoRLM Workshop Oral; arXiv:2604.05134), April 6, 2026. <https://arxiv.org/abs/2604.05134>
+6. <a id="ref-6"></a>Snell, C., Lee, J., Xu, K., Kumar, A. "Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters." *arXiv preprint* (arXiv:2408.03314), August 6, 2024. <https://arxiv.org/abs/2408.03314>
+7. <a id="ref-7"></a>Kancheti, S. S., Kanade, A. S., Balasubramanian, V. N., Ganu, T. "Chain-of-Thought Degrades Visual Spatial Reasoning Capabilities of Multimodal LLMs." *arXiv preprint* (arXiv:2604.16060), April 17, 2026. <https://arxiv.org/abs/2604.16060>
+8. <a id="ref-8"></a>Zhan, Z., Cui, M., Zhang, R. "Can Large Language Models Self-Correct in Medical Question Answering? An Exploratory Study." *arXiv preprint* (arXiv:2604.00261), March 31, 2026. <https://arxiv.org/abs/2604.00261>
+9. <a id="ref-9"></a>Yuan, W., Pang, R. Y., Cho, K., Li, X., Sukhbaatar, S., Xu, J., Weston, J. "Self-Rewarding Language Models." *ICML 2024* (arXiv:2401.10020), January 18, 2024. <https://arxiv.org/abs/2401.10020>

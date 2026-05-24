@@ -1,0 +1,3548 @@
+/* Minimal custom styles */
+
+/* !important policy (see docs/2026-04-28-code-review.md §P3.2): the
+   rules in this file lean heavily on `!important` because most compete
+   with either Bootstrap/Flatly/Slate theme defaults that Quarto pulls
+   in, or Mermaid's injected SVG styles. Rule of thumb before removing
+   `!important`:
+     1. Identify the competing theme rule (grep site_libs/bootstrap/*
+        or Quarto-injected gtag/mermaid styles).
+     2. Confirm specificity alone wins without `!important`.
+     3. Preview in both light and dark themes before committing.
+   If you can't trace the competitor, leave it in — an unexplained
+   `!important` is usually holding off a theme-layer rule, not
+   accidental cruft. */
+
+/* Site tokens — single source of truth for the navbar, accent palette,
+   and muted neutral. Alpha is applied at call sites via color-mix() so
+   each token below is the *base* color; this keeps "the warm yellow"
+   in one place even though it's used at half a dozen opacities across
+   link hover, category hover, kbd-focus, etc. */
+:root {
+  /* Navbar: follows each Bootswatch theme's primary color (flatly dark
+     blue-gray, cosmo bright blue, vapor magenta, etc.) with alpha applied
+     so the backdrop-filter blur has something to show through. Every
+     Bootswatch theme defines --bs-primary-rgb, so this tracks whichever
+     theme the visitor has picked via the `t` shortcut. */
+  --navbar-bg: rgba(var(--bs-primary-rgb), 0.85);
+  --navbar-blur: blur(200px) saturate(1.8);
+  --navbar-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* 0.18s is the middle ground between the old 0.12s linear() tween
+     (which landed before the eye could follow) and 0.28s (which felt
+     gluey when stacked against the cross-document View Transitions
+     default cross-fade). Bi-directional ease-in-out keeps the calm
+     feel without doubling the perceived click-to-settle time. */
+  --navbar-dur: 0.18s;
+  /* Accent: --hl-yellow is the soft warm highlight used everywhere
+     (link/category hover, focus tints, dot ring). --hl-amber is a
+     deeper sibling reserved for the kbd-focus inset border, where
+     the slightly more saturated hue reads as a stronger "selected". */
+  --hl-yellow: rgb(255, 220, 100);
+  --hl-amber:  rgb(255, 200, 60);
+  /* Neutral gray for borders, dividers, and outlines. */
+  --muted: rgb(128, 128, 128);
+  /* Link colors (light / dark). Dark mode override is set on
+     `body.quarto-dark` further down so this stays a single source of
+     truth. Used by body prose links AND the timeline-dot fill for
+     in-view posts, so they track each other across theme swaps. */
+  --link-color: #2c5282;
+  --link-color-hover: #1a365d;
+  --link-color-dark: #90cdf4;
+  /* Frosted-glass surface tokens: bar↔pill navbar in scrolled state,
+     the three floating utility buttons (search, theme toggle, kbd help),
+     and the theme-tools wrapper all share the same glass recipe. Keep
+     the four tokens here in one place so any future re-tuning of the
+     glass — tint strength, border, blur intensity, inner highlight vs
+     drop shadow — moves in lockstep across every surface. */
+  --glass-bg: rgba(var(--bs-primary-rgb), 0.42);
+  --glass-border: 1px solid rgba(127, 127, 127, 0.55);
+  --glass-blur: blur(24px) saturate(1.8);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                  0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Navbar architecture: the bar fills the viewport at the top of the page;
+   once the user scrolls past it, the bar background drops away and the
+   inner container morphs into a floating content-width pill (see
+   `body.navbar-pill` below). --content-left / --content-right are set
+   per-page by _includes/navbar-content-align.html so the brand always
+   lines up with body-content-start.
+
+   The themed backdrop lives on .navbar-container (not .navbar) in BOTH
+   states so the bar→pill morph is one continuous element changing shape,
+   not two separate bgs crossfading in/out. With the bg on two elements
+   the overlap during transition read as a "second object appearing,"
+   which broke the illusion of one morph. */
+.navbar {
+  background-color: transparent !important;
+  /* Quarto's bootstrap-dark build ships a `background-image:
+     linear-gradient(rgba(255,255,255,0.15), rgba(255,255,255,0))` on
+     `.navbar` — a legacy "top shine" that reads as a white gradient band
+     across the viewport at the top edge in every dark theme. Our bar +
+     pill already carry their own backdrop; the shine just muddies it. */
+  background-image: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  /* Slate's theme CSS puts a 1px outer border on .navbar plus vertical
+     dividers between links/brand; other Bootswatch themes don't. Killing
+     them here keeps the bar→pill morph clean across the curated set. */
+  border: none !important;
+}
+.navbar .nav-link,
+.navbar .navbar-brand {
+  border: none !important;
+}
+.navbar > .navbar-container {
+  background-color: var(--navbar-bg);
+  backdrop-filter: var(--navbar-blur);
+  -webkit-backdrop-filter: var(--navbar-blur);
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  /* Fallback approximates Quarto's article grid (5fr on each side,
+     ~118px chrome, ~800px body-content) so the first paint is close
+     to where the JS measurement lands. JS overrides via inline style. */
+  padding-left: var(--content-left, max(1em, calc((100vw - 1180px) / 2 + 118px))) !important;
+  padding-right: var(--content-right, max(1em, calc((100vw - 1180px) / 2 + 118px))) !important;
+}
+
+/* Bar↔pill morph: gentle cubic-bezier(0.4, 0, 0.2, 1) ease-in-out at ~180ms.
+   Bi-directional easing gives the shape change a calmer feel than a fast
+   ease-out without stretching the click-to-settle time. Duration + easing
+   live in --navbar-dur / --navbar-ease above. */
+body.navbar-ready .navbar {
+  transition: padding var(--navbar-dur) var(--navbar-ease);
+}
+body.navbar-ready .navbar > .navbar-container {
+  transition: border-radius var(--navbar-dur) var(--navbar-ease),
+              box-shadow var(--navbar-dur) var(--navbar-ease),
+              padding-top var(--navbar-dur) var(--navbar-ease),
+              padding-bottom var(--navbar-dur) var(--navbar-ease),
+              margin var(--navbar-dur) var(--navbar-ease);
+}
+body.navbar-ready .navbar .navbar-brand,
+body.navbar-ready .navbar .nav-link {
+  transition: font-size var(--navbar-dur) var(--navbar-ease),
+              padding var(--navbar-dur) var(--navbar-ease);
+}
+
+/* Pre-paint gate: hide the entire header until flattenNav() has rebuilt
+   the navbar into .navbar-3row AND update() has landed the first
+   measurement (both happen atomically at end-of-body, flipping
+   body.navbar-ready). Without this rule, the browser paints Quarto's
+   default Bootstrap layout first — brand on the left, Archive/About
+   flexed to the right via `.me-auto` — then the script snaps them back
+   into the centered 3-item row, producing a visible flash on cross-
+   document navigations.
+
+   Scoped to `html.js-navbar` (set synchronously by page-class.html in
+   <head>) so no-JS clients keep the default Bootstrap navbar rather
+   than an invisible header. Safety timeout in page-class.html forces
+   `navbar-ready` at t+2s even if the end-of-body script never runs,
+   so the navbar can never stay permanently hidden. */
+html.js-navbar body:not(.navbar-ready) #quarto-header {
+  visibility: hidden;
+}
+
+.navbar .navbar-brand,
+.navbar .nav-link,
+.navbar .navbar-toggler {
+  /* Theme-aware: --bs-emphasis-color resolves to near-black in light
+     themes (flatly/cosmo/minty/…) and near-white in dark themes
+     (darkly/slate/vapor/…), so the nav text stays legible against the
+     glass tint regardless of which Bootswatch theme is active. */
+  color: var(--bs-emphasis-color) !important;
+}
+.navbar .navbar-brand:hover,
+.navbar .nav-link:hover {
+  color: color-mix(in srgb, var(--bs-emphasis-color) 75%, transparent) !important;
+}
+/* Treat synesis / Archive / About as equals — same font size, weight,
+   and padding — so the three items read as a uniform row, not brand +
+   secondary nav. Bootstrap's default .navbar-brand font-size (1.25rem)
+   would otherwise make synesis stand out from the nav links. Padding
+   and margin use !important because the theme override link sits after
+   styles.css in the cascade (so theme variables flow through) and slate
+   in particular sets its own 1rem padding on nav-links + asymmetric
+   padding on the brand. */
+.navbar .navbar-brand,
+.navbar .nav-link {
+  font-size: 1.15rem;
+  font-weight: 500;
+  padding: 0.5rem 0 !important;
+  margin: 0 !important;
+  text-transform: lowercase;
+}
+
+/* Brand sits flush-left so its left edge aligns with body-content-start.
+   Quarto applies `mx-auto` on .navbar-brand-container to center it; we
+   override that. */
+.navbar .navbar-brand-container.mx-auto {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+/* Always-expanded navbar: Archive/About render inline at every width,
+   never collapsing into a hamburger. Bootstrap's `.navbar-expand-lg`
+   only auto-expands at ≥992px, so without these overrides the toggler
+   reappears between 768–991px during viewport resizes. Current page
+   is indicated by the underline rules further down, so a menu
+   wouldn't add anything. */
+.navbar .navbar-toggler {
+  display: none !important;
+}
+.navbar .navbar-collapse {
+  display: flex !important;
+  flex-basis: auto !important;
+}
+.navbar .navbar-nav {
+  flex-direction: row !important;
+  gap: 0.75rem;
+}
+
+/* Unified navbar layout (all viewports): synesis → Archive → About
+   laid out left-to-right in natural widths. If the three items' combined
+   width exceeds the viewport (narrow phones, tiny accessibility-zoom
+   contexts) the bar scrolls horizontally; scrollbar hidden cross-browser
+   so the bar stays visually clean. `display: contents` unwraps Quarto's
+   intermediate .navbar-collapse / .navbar-nav wrappers so the three items
+   are direct flex children of the container. Search (top-right) and
+   dark-mode toggle (bottom-right) float as fixed-position circles —
+   their CSS below pulls them out of the navbar flow entirely. */
+.navbar > .navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.navbar > .navbar-container::-webkit-scrollbar {
+  display: none;
+}
+/* Unwrap Quarto's intermediate .navbar-collapse / .navbar-nav wrappers
+   so Archive + About become direct flex children of .navbar-container,
+   sitting next to the brand with the container's `gap: 1rem`. Uses the
+   chained `.navbar-collapse.collapse` selector (both classes are
+   present on the element) to beat Bootstrap's
+   `.navbar-expand-lg .navbar-collapse { display: flex !important }`
+   rule, which has equal specificity via source order alone. Without
+   this, the collapse stays a flex item with flex-basis:auto and the
+   nav items cluster inside it — leaving a big gap between brand and
+   the Archive/About pair. */
+.navbar .navbar-collapse.collapse,
+.navbar .navbar-collapse .navbar-nav.navbar-nav {
+  display: contents !important;
+}
+.navbar .navbar-brand-container,
+.navbar .nav-item {
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  display: flex !important;
+  align-items: center !important;
+}
+/* After flattenNav moves <li>.nav-item out of <ul>.navbar-nav, the
+   items still carry <li>'s default list-marker. Kill it so no bullet
+   dot leaks into the top bar. */
+.navbar .nav-item {
+  list-style: none !important;
+}
+/* Order: synesis → Archive → About. Quarto emits nav items in the order
+   they appear under `navbar.left` in _quarto.yml, so Archive is
+   nth-child(1) and About is nth-child(2). */
+.navbar .navbar-brand-container { order: 1; margin: 0 !important; }
+.navbar .navbar-nav .nav-item:nth-child(1) { order: 2; }
+.navbar .navbar-nav .nav-item:nth-child(2) { order: 3; }
+
+/* flattenNav (navbar-content-align.html) builds a fresh .navbar-3row
+   wrapper inside .navbar-container holding the brand link + 2 nav
+   links, side-by-side left-to-right. Horizontal scroll on overflow,
+   scrollbar hidden — the bar stays clean when the three items
+   overflow on narrow widths. */
+.navbar-3row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  width: 100%;
+  margin: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.navbar-3row::-webkit-scrollbar {
+  display: none;
+}
+.navbar-3row > a {
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+/* After promoteFloatingTools() moves the color-scheme toggle out of
+   .quarto-navbar-tools into <body>, the wrapper is empty — hide it so
+   it doesn't leave a 0-width flex slot that could still participate in
+   gap calculations. Similarly, Bootstrap's `me-auto` on .navbar-nav
+   would push siblings right if display:contents ever misbehaves; zero
+   it defensively. */
+.navbar .quarto-navbar-tools {
+  display: none !important;
+}
+.navbar .navbar-nav.me-auto {
+  margin-right: 0 !important;
+}
+
+/* Headroom.js sets inline `transform: translateY(...)` on <header> on
+   every scroll event — `translateY(-100%)` on scroll-down (--unpinned)
+   to hide the bar, `translateY(0%)` on scroll-up (--pinned) to reveal.
+   We want the bar to stay visible regardless of scroll direction, so
+   we zero the transform at every state. `.headroom` is present in all
+   states, so one rule covers them all.
+
+   Zeroing the transform outright (rather than pinning it to 0%) also
+   fixes an iPadOS Safari quirk: any transform on a position:fixed
+   element turns that element into its own containing block, and on
+   iPadOS that block periodically detaches from the visual viewport
+   during scroll transients (tab-bar compress, pull-to-refresh rubber-
+   band, address-bar settle) — symptom is a ~address-bar-height gap
+   between viewport-top and navbar-top plus occasional pull-to-refresh
+   stalls before the rebound completes. Desktop Safari has no
+   collapsing chrome; iPhone runs the navbar as position:static below
+   768px so a live transform would just hide the static navbar while
+   its layout slot remained, creating a different gap. transform:none
+   is the one setting that's safe on all three surfaces.
+
+   `!important` on the class selector beats Headroom's non-important
+   inline style assignments, so no JS patching required.
+
+   We also cancel Bootstrap's `header.headroom { will-change: transform }`
+   — which is a compositing HINT meant to prep the element for Headroom's
+   hide/reveal translate. Since we're zeroing the transform anyway, the
+   hint has nothing to optimize for. Worse, on iPadOS Safari it promotes
+   the header into its own composited layer and that layer fails to
+   stay anchored to `.fixed-top`'s top:0, producing the at-rest
+   navbar-top gap + pull-to-refresh stall that matched the
+   containing-block-detach symptom described above. `will-change: auto`
+   drops the element back to regular compositing so Bootstrap's
+   `.fixed-top { position: fixed; top: 0 }` lands correctly without
+   needing !important on it. */
+header.headroom {
+  transform: none !important;
+  will-change: auto !important;
+}
+
+/* Bar↔pill morph. Past the trigger, the outer bar fades to transparent
+   and the inner container becomes a floating capsule sized to its 3
+   items (synesis / Archive / About) and centered in the viewport.
+   Auto margins do the centering; since the Quarto article grid is
+   symmetric (equal --content-left and --content-right), viewport-center
+   == content-column-center.
+
+   The trigger fires once the user scrolls past `pillThreshold`
+   (≈ navbar height / 2) on viewports ≥768px — set high enough that
+   transients (iPad address-bar settle, iOS rubber-band, tap jitter)
+   stay quiet. Toggle lives in _includes/navbar-content-align.html as
+   a `body.navbar-pill` class flip. */
+body.navbar-pill .navbar {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+body.navbar-pill .navbar > .navbar-container {
+  border-radius: 9999px;
+  /* Frosted-glass pill (dark mode default): drop the alpha so underlying
+     content shows through, dial the blur back from the bar state's heavy
+     200px tint to a classic ~24px (Apple-style vibrancy), and add a 1px
+     inner highlight + outer shadow so the edge reads as glass rather than
+     a flat panel. Light mode flips to solid primary below — glass looked
+     washed-out against light body content. Shared recipe lives in the
+     --glass-* tokens on :root. */
+  background-color: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  box-shadow: var(--glass-shadow);
+  width: fit-content !important;
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding: 0.3rem 1.75rem !important;
+  overflow-x: visible !important;
+}
+/* Light mode: solid primary pill with white text, matching Bootstrap's
+   .bg-primary navbar convention. Glass tint read as low-contrast against
+   the bright body bg across several light Bootswatch themes. */
+body.quarto-light.navbar-pill .navbar > .navbar-container {
+  background-color: rgba(var(--bs-primary-rgb), 1) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+body.quarto-light.navbar-pill .navbar .navbar-brand,
+body.quarto-light.navbar-pill .navbar .nav-link {
+  color: #fff !important;
+}
+/* Shrink the text + link-padding in the pill state so the whole morph
+   reads as proportional rather than just a tighter frame around
+   bar-sized text. Scoped to ≥768px because the phone media query
+   further down collapses the pill back into an in-flow bar. */
+@media (min-width: 768px) {
+  body.navbar-pill .navbar .navbar-brand,
+  body.navbar-pill .navbar .nav-link {
+    font-size: 0.8rem;
+    padding: 0.3rem 0;
+  }
+}
+
+/* Phone (≤767.98px): drop the fixed-position navbar and the bar↔pill morph.
+   The bar sits in normal flow at the top of the page so it scrolls away
+   with the content — frees vertical screen space for reading. Quarto's
+   inline body padding-top (set by quarto-nav.js to compensate for the
+   fixed header) is undone here. `body.navbar-pill` still toggles on
+   scroll, but every pill rule below maps it back to bar values, so
+   the morph is a no-op. */
+@media (max-width: 767.98px) {
+  #quarto-header {
+    position: static !important;
+  }
+  body {
+    padding-top: 0 !important;
+  }
+  body.navbar-pill .navbar {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  body.navbar-pill .navbar > .navbar-container {
+    border-radius: 0;
+    box-shadow: none;
+    width: auto !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0 var(--content-left, 1em) !important;
+  }
+  /* Mobile collapses the morph, so cancel the bar↔pill animations —
+     the end values on either side of the class flip are already
+     identical after the mobile overrides above, but the transitions
+     still *run* (1rem → 0 padding collapse on the container, etc.),
+     visibly animating at each scroll of the top edge.
+     We zero `transition-duration` rather than wholesale `transition:
+     none` so the transition-property list stays intact; any future
+     per-link `:hover` / `:focus` color or opacity transition on these
+     same elements still applies its own duration via normal cascade. */
+  body.navbar-ready .navbar,
+  body.navbar-ready .navbar > .navbar-container,
+  body.navbar-ready .navbar .navbar-brand,
+  body.navbar-ready .navbar .nav-link {
+    transition-duration: 0s !important;
+  }
+}
+
+/* Cross-document View Transitions were previously enabled here to make
+   the navbar appear to persist across page loads. Removed because the
+   snapshot-capture overhead (especially on the 370 KB archive page,
+   333 table rows) showed up as visible stutter in keyboard-triggered
+   navigation — the browser captures the outgoing page's pixel data,
+   then the incoming page's, before committing, even when the animation
+   duration is zeroed. On a site this size, plain browser navigation is
+   faster than the transition-API dance, and the persistence illusion
+   doesn't survive the snapshot cost. */
+
+/* Hide the visible page-title block on home + archive + about — those
+   titles ("synesis", "Archive", "About") just duplicate the brand / nav
+   link, so we suppress them and use an underline on the corresponding
+   navbar item instead to indicate current page. The `page-*` classes
+   are added to <html> by _includes/page-class.html (synchronously in
+   the <head>), so the title block never paints — no visible flash. */
+html.page-home #title-block-header,
+html.page-archive #title-block-header,
+html.page-about #title-block-header,
+html.page-home-bucket #title-block-header,
+html.page-archive-bucket #title-block-header {
+  display: none;
+}
+
+/* Mark current page in the navbar with a thin underline. On the home
+   page the brand "synesis" gets the underline (it's the home link); on
+   archive/about the matching nav-link gets it.
+   Note: Quarto's quarto-nav.js rewrites `href` after page load, stripping
+   `/index.html` → `/` (archive only — about.html is unaffected). Match
+   both the pre-rewrite and post-rewrite suffixes so the underline
+   doesn't flash off when the rewrite lands. */
+html.page-home .navbar .navbar-brand,
+html.page-home-bucket .navbar .navbar-brand,
+html.page-archive .navbar .nav-link[href$="archive/index.html"],
+html.page-archive .navbar .nav-link[href$="/archive/"],
+html.page-archive-bucket .navbar .nav-link[href$="archive/index.html"],
+html.page-archive-bucket .navbar .nav-link[href$="/archive/"],
+html.page-about .navbar .nav-link[href$="about.html"] {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+  text-decoration-color: rgba(255, 255, 255, 0.85);
+}
+
+/* Unified link style: darker/readable blue palette + subtle gray underline
+   with a soft yellow highlight on hover. Overrides Flatly's low-contrast
+   teal. Navbar keeps its own light-on-dark styling; disabled listing
+   anchors (description/date/image) are handled below. Palette tokens live
+   as --link-color / --link-color-hover / --link-color-dark on :root. */
+a {
+  color: var(--link-color) !important;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--muted) 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--link-color-hover) !important;
+  background-color: color-mix(in srgb, var(--hl-yellow) 18%, transparent);
+  text-decoration-color: currentColor;
+  border-radius: 2px;
+}
+.navbar a,
+.navbar a:hover {
+  color: #f8f9fa !important;
+  text-decoration: none;
+  background-color: transparent;
+}
+body.quarto-dark a {
+  color: var(--link-color-dark) !important;
+}
+body.quarto-dark a:hover {
+  color: #bee3f8 !important;
+}
+body.quarto-dark .navbar a,
+body.quarto-dark .navbar a:hover {
+  color: #f8f9fa !important;
+}
+
+/* Bootstrap's `.blockquote { font-size: 1.25rem }` makes every Quarto
+   blockquote render 25% larger than body text. On this site, blockquotes
+   are used for verbatim passages (paper abstracts, article excerpts) that
+   should read at body size, not as pull quotes. A handful of Bootswatch
+   themes (journal, minty, solar, united, vapor) cancel it; the rest don't.
+   Flatten to body size across all themes — styles.css is the last sheet
+   in the cascade (see theme-cycle.html), so this wins without !important. */
+.blockquote {
+  font-size: inherit;
+}
+
+/* Dark mode: tone down regular body text to reduce eye strain, but keep
+   headings, bold/italic/code, and listing titles at brighter values for
+   visual hierarchy. */
+body.quarto-dark {
+  color: #b8bcc2 !important;
+}
+body.quarto-dark h1,
+body.quarto-dark h2,
+body.quarto-dark h3,
+body.quarto-dark h4,
+body.quarto-dark h5,
+body.quarto-dark h6,
+body.quarto-dark b,
+body.quarto-dark strong,
+body.quarto-dark em,
+body.quarto-dark i,
+body.quarto-dark code,
+body.quarto-dark .listing-title {
+  color: #ebedf0 !important;
+}
+
+/* Inline `code` inside figcaptions inherits Quarto's near-white #f8f9fa
+   backdrop, which fights the near-white text color set above. Mirror the
+   dark backdrop Quarto uses for `p code` / `li code`. Headings have the
+   same problem — a `code` span inside an h2/h3 renders near-white text
+   on near-white backdrop. Same fix. */
+body.quarto-dark figcaption code:not(.sourceCode),
+body.quarto-dark .figure-caption code:not(.sourceCode),
+body.quarto-dark :is(h1, h2, h3, h4, h5, h6) code:not(.sourceCode) {
+  background-color: rgba(67, 67, 67, 0.65) !important;
+  padding: 0.2em !important;
+}
+
+/* Unified horizontal divider style for listing surfaces (in-page
+   `<hr>` has its own asterism treatment below — don't share color
+   with it). Dark mirror immediately after. */
+.quarto-listing-default .quarto-post,
+.quarto-listing-table,
+.quarto-listing-table tr,
+.quarto-listing-table th,
+.quarto-listing-table td {
+  border-top-color: rgba(0, 0, 0, 0.18) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.18) !important;
+}
+body.quarto-dark .quarto-listing-default .quarto-post,
+body.quarto-dark .quarto-listing-table,
+body.quarto-dark .quarto-listing-table tr,
+body.quarto-dark .quarto-listing-table th,
+body.quarto-dark .quarto-listing-table td {
+  border-top-color: rgba(255, 255, 255, 0.16) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* E360-style section break: <hr> (markdown `---`) renders as two short
+   hairlines flanking a centered asterism, in generous vertical padding.
+   Applies to all palettes/themes; listing-row dividers above are
+   unaffected because they use .quarto-listing-* classes, not <hr>. The
+   line is drawn as a stepped horizontal gradient so a single pseudo-
+   element (::after) can carry the asterism glyph on top of a "broken"
+   line — no extra markup, no body-bg masking trick. */
+hr {
+  border: 0;
+  height: 2em;
+  margin: 2.25rem 0;
+  background-image: linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(50% - 95px),
+    rgba(0, 0, 0, 0.42) calc(50% - 95px),
+    rgba(0, 0, 0, 0.42) calc(50% - 24px),
+    transparent calc(50% - 24px),
+    transparent calc(50% + 24px),
+    rgba(0, 0, 0, 0.42) calc(50% + 24px),
+    rgba(0, 0, 0, 0.42) calc(50% + 95px),
+    transparent calc(50% + 95px)
+  );
+  background-size: 100% 1px;
+  background-position: center;
+  background-repeat: no-repeat;
+  text-align: center;
+  line-height: 2em;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 1.35em;
+  letter-spacing: 0.25em;
+  overflow: visible;
+}
+hr::after {
+  /* Pseudo-content alt-text syntax (`content: "glyph" / ""`) tells
+     screen readers to skip the ornament — <hr> already carries the
+     implicit `role="separator"` announcement, so double-announcing
+     the asterism is noise. Pin glyph fallback to fonts known to carry
+     U+2042 ASTERISM — Newsreader and some sans faces don't include it. */
+  content: "⁂" / "";
+  font-family: 'Iowan Old Style', Georgia, 'Noto Serif', 'Segoe UI Symbol', serif;
+}
+body.quarto-dark hr {
+  background-image: linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(50% - 95px),
+    rgba(255, 255, 255, 0.34) calc(50% - 95px),
+    rgba(255, 255, 255, 0.34) calc(50% - 24px),
+    transparent calc(50% - 24px),
+    transparent calc(50% + 24px),
+    rgba(255, 255, 255, 0.34) calc(50% + 24px),
+    rgba(255, 255, 255, 0.34) calc(50% + 95px),
+    transparent calc(50% + 95px)
+  );
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Remove the Bootswatch default underline on h2 — distracting under our
+   editorial palette. Bootswatch sets `h2 { border-bottom:1px solid
+   #dee2e6; padding-bottom:.5rem }` site-wide; no other heading level
+   carries an underline. */
+h2, .h2 {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Heading→body spacing. Bootstrap's 0.5rem below a heading is too tight
+   — headings feel glued to their first paragraph. Bump both the space
+   above (new section breathes away from the previous paragraph) and
+   the space below (heading sits more deliberately over its content).
+   Values roughly follow E360's body-heading rhythm. Applies site-wide,
+   every palette. `margin-top` collapses with the previous paragraph's
+   margin-bottom so only the larger of the two "wins." */
+h1, .h1,
+h2, .h2,
+h3, .h3,
+h4, .h4,
+h5, .h5,
+h6, .h6 {
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+}
+
+/* Home listing: only the post title is clickable. */
+.quarto-listing-default .quarto-post a {
+  pointer-events: none;
+  color: inherit;
+  text-decoration: none !important;
+  background-color: transparent !important;
+  cursor: default;
+}
+.quarto-listing-default .quarto-post .listing-title a {
+  pointer-events: auto;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+.quarto-listing-default .quarto-post .listing-title a:hover {
+  background-color: color-mix(in srgb, var(--hl-yellow) 18%, transparent) !important;
+  border-radius: 2px;
+}
+
+/* Home listing: drop the hairline between post cards and rely on
+   whitespace for rhythm. Quarto's default `border-bottom: 1px solid
+   #dee2e6` on each card reads as a table-row divider; editorial
+   listings (E360, Atavist, etc.) separate posts purely by vertical
+   space. */
+.quarto-listing-default .quarto-post {
+  border-bottom: 0;
+  margin-bottom: 1.5em;
+  padding-bottom: 0;
+}
+/* On phones, cards stack thumbnail-over-body, so we add a subtle
+   horizontal divider between posts for visual separation. Symmetric
+   1.5em padding-bottom + 1.5em margin-bottom centers the hairline
+   between card content. `:not(:last-child)` keeps the list from
+   ending on a divider. Dark mode gets a lighter-toned line. */
+@media (max-width: 767.98px) {
+  .quarto-listing-default .quarto-post:not(:last-child) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+    padding-bottom: 1.5em;
+    margin-bottom: 1.5em;
+  }
+  body.quarto-dark .quarto-listing-default .quarto-post:not(:last-child) {
+    border-bottom-color: rgba(255, 255, 255, 0.14);
+  }
+}
+
+/* Home listing: breathing room between the three in-card blocks.
+   Quarto sets the title flush against the category pills (h3 has 0
+   margin-bottom) and the pills flush against the description (only
+   5px padding-bottom on the pill row). Space each element so the
+   title-to-categories-to-description hierarchy reads clearly. */
+.quarto-listing-default .quarto-post .listing-title {
+  margin-bottom: 0.6em;
+}
+.quarto-listing-default .quarto-post .listing-categories {
+  margin-bottom: 0.6em;
+  padding-bottom: 0;
+}
+/* Tag chips on listing cards — rewritten by category-links.html from
+   Quarto's <div onclick> to <a href="/archive/#category=…">. The
+   blanket `pointer-events: none` above (which makes whole-card clicks
+   route through bindListingClicks to the title's link) would also kill
+   chip clicks and tooltip hover; restore both here. */
+.quarto-listing-default .quarto-post .listing-categories .listing-category {
+  pointer-events: auto;
+  cursor: pointer;
+}
+/* Home listing: neutralize Bootstrap link blue on title/description/
+   date. Explicit color (not `inherit`) so we beat the darkly theme's
+   id-scoped link rules; one-shade-grayer-than-white in dark mode for
+   slightly softer reading. Description is set one step grayer than
+   the title to give the title visual primacy. */
+.quarto-listing-default .quarto-post a,
+.quarto-listing-default .quarto-post a:hover,
+.quarto-listing-default .quarto-post a:focus,
+.quarto-listing-default .quarto-post a:visited,
+.quarto-listing-default .quarto-post .listing-title a {
+  color: #212529 !important;
+}
+.quarto-listing-default .quarto-post .listing-description,
+.quarto-listing-default .quarto-post .listing-description a,
+.quarto-listing-default .quarto-post .listing-date,
+.quarto-listing-default .quarto-post .listing-date a {
+  color: #6c757d !important;
+}
+body.quarto-dark .quarto-listing-default .quarto-post a,
+body.quarto-dark .quarto-listing-default .quarto-post a:hover,
+body.quarto-dark .quarto-listing-default .quarto-post a:focus,
+body.quarto-dark .quarto-listing-default .quarto-post a:visited,
+body.quarto-dark .quarto-listing-default .quarto-post .listing-title a {
+  color: #dee2e6 !important;
+}
+body.quarto-dark .quarto-listing-default .quarto-post .listing-description,
+body.quarto-dark .quarto-listing-default .quarto-post .listing-description a,
+body.quarto-dark .quarto-listing-default .quarto-post .listing-date,
+body.quarto-dark .quarto-listing-default .quarto-post .listing-date a {
+  color: #adb5bd !important;
+}
+
+/* Category badges — unified archive-tag style across home, article, and
+   archive pages: bordered pill, subtle opacity, yellow highlight on hover. */
+.quarto-listing-default .listing-categories .listing-category,
+.quarto-categories .quarto-category,
+.quarto-listing-table .listing-categories .archive-tag {
+  display: inline-block;
+  font-size: 0.58em !important;
+  padding: 0.1em 0.4em;
+  margin: 0.12em 0.2em 0.12em 0;
+  border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent);
+  border-radius: 0.25rem;
+  text-decoration: none !important;
+  color: inherit !important;
+  background: transparent;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  transition: opacity 0.1s, background 0.1s;
+}
+/* Archive table's main table runs more vertical whitespace than the
+   home cards, so bump tag chips one step up from the shared 0.58em
+   base for readability. Must be paired with the pre-sizing rule
+   below to avoid a size flash before badges paint. */
+.quarto-listing-table .listing-categories .archive-tag {
+  font-size: 0.75em !important;
+  padding: 0.2em 0.55em;
+}
+.quarto-listing-default .listing-categories .listing-category:hover,
+.quarto-categories .quarto-category:hover,
+.quarto-listing-table .listing-categories .archive-tag:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--hl-yellow) 30%, transparent);
+}
+/* Post-page tag pill anchors (inserted by _includes/category-links.html):
+   inherit color + drop decoration so the universal `a { color: ... !important }`
+   rule doesn't paint them as ordinary links. The enclosing
+   .quarto-category already handles the pill border + cursor. */
+.category-link {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+.quarto-listing-default .listing-categories {
+  margin-top: 0.35em;
+}
+
+/* Pre-size the archive table's plain CSV text in `.listing-categories`
+   to match the final `.archive-tag` badge row, so initial paint and
+   post-badges paint have the same row height — eliminates the "big text
+   → dense badges" flash on archive + bucket-page loads before
+   archive-tag-badges.html runs. Scoped via `:not(:has(.archive-tag))`
+   so once a badge <a> lands in the span, the pre-sizing stops applying
+   and the badge's own `font-size: 0.75em !important` (archive-table
+   override at the shared rule above) no longer compounds against a
+   0.75em parent (which would yield unreadable pills).
+   Requires `:has()` — Firefox 121+ / Safari 15.4+ / Chrome 105+. Older
+   browsers fall through: the rule never matches, no pre-sizing happens,
+   and the original row-flash returns. Graceful degradation, not broken. */
+.quarto-listing-table .listing-categories:not(:has(.archive-tag)) {
+  font-size: 0.75em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+/* Home post-tile titles. Slightly smaller than the post-page h1
+   (26px cap vs 28px) so the home feed reads as a list of previews
+   rather than a stack of headlines, while still being clearly the
+   dominant element on each card. Fluid below 1200px. */
+html.page-home .quarto-listing-default .quarto-post .listing-title,
+html.page-home .quarto-listing-default .quarto-post .listing-title a {
+  font-size: calc(1.265rem + 0.48vw);
+  font-weight: 500;
+  line-height: 1.2;
+}
+@media (min-width: 1200px) {
+  html.page-home .quarto-listing-default .quarto-post .listing-title,
+  html.page-home .quarto-listing-default .quarto-post .listing-title a {
+    font-size: 1.625rem;
+  }
+}
+
+/* Match post-page h1 to the home tile title scale (Bootstrap's default
+   2.5rem h1 reads too large against the 15px body — this brings the
+   post page in line with how the same title appears in the home feed),
+   then boosted so the cap lands at 28px. About page hides
+   #title-block-header so its h1 is rendered inline in body content;
+   mirror the same size there for a unified prose scale. */
+#title-block-header h1.title,
+html.page-about h1 {
+  font-size: calc(1.39rem + 0.48vw);
+}
+@media (min-width: 1200px) {
+  #title-block-header h1.title,
+  html.page-about h1 {
+    font-size: 1.75rem;
+  }
+}
+
+/* Prose heading scale: capped at the post-title size (h1 = 1.525rem
+   / 24.4px, matches #title-block-header h1.title) and at the body
+   size (h6 = 0.9375rem / 15px, matches default body). Intermediate
+   steps follow a near-geometric ratio (~0.90 per step) so the scale
+   reads smoothly between the two anchors. Applied to post + about
+   so both surfaces share one prose scale; listing surfaces (home /
+   archive) keep Bootstrap defaults. */
+html.page-post h2,
+html.page-about h2 { font-size: 1.375rem; }   /* 22px */
+html.page-post h3,
+html.page-about h3 { font-size: 1.25rem; }    /* 20px */
+html.page-post h4,
+html.page-about h4 { font-size: 1.125rem; }   /* 18px */
+html.page-post h5,
+html.page-about h5 { font-size: 1rem; }       /* 16px */
+html.page-post h6,
+html.page-about h6 { font-size: 0.9375rem; }  /* 15px */
+
+/* Whole-card click target — listing-events.html binds a click handler
+   on each .quarto-post that navigates to the post URL. Cursor signals
+   the affordance; no other visual change (no underline, no background
+   tint) so the card still reads as plain text. */
+.quarto-listing-default .quarto-post {
+  cursor: pointer;
+}
+
+/* Narrow thumbnail — Quarto's default is flex-basis:30% which eats too
+   much of the card on wide screens. Cap at ~15% so title/description
+   get the space they need. */
+.quarto-listing-default .quarto-post .thumbnail {
+  flex-basis: 15% !important;
+  max-width: 180px;
+}
+
+/* Phone: Quarto stacks the card vertically at <768px (flex-direction:
+   column), turning the 15% slot into a full-width row. Cap the image
+   height so a landscape cover doesn't dominate the card. Title keeps
+   the same h2-matched scale as wider viewports for a unified heading
+   rhythm with About's section headers. */
+@media (max-width: 767.98px) {
+  .quarto-listing-default .quarto-post .thumbnail {
+    max-width: none;
+  }
+  /* `height` (not `max-height`) reserves the 140px row even before the
+     lazy <img> loads its bytes — otherwise an unloaded card is ~140px
+     shorter than a loaded one, and lazy images above the up-arrow target
+     grow the layout after scrollIntoView, pushing the highlighted card
+     out of view. Phone-only because desktop uses a horizontal card where
+     the text column governs height. */
+  .quarto-listing-default .quarto-post .thumbnail img {
+    height: 140px;
+    width: 100%;
+    object-fit: cover;
+  }
+}
+
+/* Default Quarto puts the date column at flex-basis 20% — way too wide
+   for short dates like "Apr 17, 2026". Shrink it so the title column
+   gets that space. */
+.quarto-listing-default .quarto-post .metadata {
+  flex-basis: auto !important;
+  flex-grow: 0 !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap;
+}
+
+/* Sidebar category cloud (Archive page right sidebar) — yellow glow on
+   hover, matching the highlight style used elsewhere. */
+.quarto-listing-category {
+  /* Inset padding so the 3px hover glow on the leftmost/topmost tag
+     isn't clipped by the sidebar's left edge. */
+  padding-left: 4px;
+}
+.quarto-listing-category .category {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.1s, box-shadow 0.1s;
+}
+.quarto-listing-category .category:hover {
+  background: color-mix(in srgb, var(--hl-yellow) 30%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hl-yellow) 50%, transparent);
+}
+
+/* Archive's tag cloud sits at the top of the right-margin sidebar;
+   archive-tag-cloud.html (Phase C) injects it into #quarto-margin-sidebar
+   client-side to replace Quarto's `categories: cloud`. Deliberately NO
+   `overflow-y: auto` or `max-height` on `.quarto-listing-category.category-cloud`
+   — the per-chip tooltip (`[data-tip-text]:hover::after` below) positions
+   via `bottom: calc(100% + 4px)`, and any scroll-container ancestor
+   would clip the top row's tooltips against the "Tags (N)" heading.
+   At 144 tags the cloud fits comfortably in-viewport and the sticky
+   margin sidebar scrolls with the page. Revisit if tag count grows
+   past ~500 (projected post-1000-posts). */
+
+/* Arrival-flash mitigation for archive landing when the URL arrives
+   with `#category=<slug>`. archive-filter-preflight.html (in-header)
+   sets `html.archive-filter-arriving` synchronously before first paint
+   — scoped to archive pages only; archive-tag-filter.html removes the
+   class once its async filter has replaced tbody (or after a 3s
+   failsafe timeout). Hides the listing so the reader doesn't briefly
+   see the default unfiltered rows before the filter applies. Visibility
+   (not display) keeps layout stable so there's no reflow when the class
+   flips off. Selector double-scopes to page-archive* as defense in
+   depth — the preflight already scopes, but pinning the CSS means a
+   future include-order change can't accidentally hide home/post listings. */
+html.archive-filter-arriving.page-archive .quarto-listing,
+html.archive-filter-arriving.page-archive-bucket .quarto-listing {
+  visibility: hidden;
+}
+
+/* Instant tag count tooltips */
+[data-tip-text] {
+  position: relative;
+}
+[data-tip-text]:hover::after {
+  content: attr(data-tip-text);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  padding: 2px 7px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 3px;
+  background: rgba(30, 30, 30, 0.88);
+  color: #fff;
+  pointer-events: none;
+  z-index: 1000;
+  /* Override the uppercase text-transform inherited from tag pills. */
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* Invert tooltip in dark mode so it stands out from the dark page bg. */
+body.quarto-dark [data-tip-text]:hover::after {
+  background: rgba(240, 240, 240, 0.95);
+  color: #1a1a1a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Vertical timeline in the home page right sidebar.
+   Sidebar sticks in place; timeline scrolls independently. */
+.post-timeline {
+  padding: 0 0 0 16px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.post-timeline::-webkit-scrollbar {
+  width: 4px;
+}
+.post-timeline::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.3);
+  border-radius: 2px;
+}
+
+#quarto-margin-sidebar {
+  z-index: 999 !important;
+  position: sticky !important;
+  top: 60px;
+  align-self: start;
+  /* No vertical divider between main content and the right sidebar.
+     (The timeline's own border-left serves as the timeline line.) */
+  border-left: none !important;
+  border-right: none !important;
+}
+/* Only the home page's sidebar (which contains the timeline) extends to
+   the right viewport border; other pages keep Quarto's default sidebar
+   column so things like the Categories cloud stay normally sized. */
+#quarto-margin-sidebar:has(.post-timeline) {
+  grid-column: body-content-end / screen-end-inset !important;
+}
+.post-timeline .timeline-title,
+#quarto-margin-sidebar > .timeline-title,
+.mobile-aside-sheet-header > .timeline-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  /* Match the --bs-emphasis-color used by the mobile-aside summary label
+     (near-black in light, near-white in dark) so the desktop heading
+     carries the same contrast as other page headings instead of the
+     faded 0.65-opacity muted tone it had originally. */
+  color: var(--bs-emphasis-color);
+  margin-bottom: 0.4rem;
+  /* Push down so the title baseline aligns with the page h1 "synesis"
+     when scrolled to the top of the page. */
+  padding-top: 1.5rem;
+}
+.post-timeline .timeline-strip {
+  position: relative;
+  padding-left: 0;
+  margin-left: 0;
+}
+.post-timeline .timeline-strip::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(128, 128, 128, 0.35);
+  z-index: 0;
+}
+body.quarto-dark .post-timeline .timeline-strip::before {
+  background: rgba(255, 255, 255, 0.22);
+}
+.post-timeline .timeline-year {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.55;
+  margin-top: 0.4rem;
+  margin-bottom: 0.15rem;
+  margin-left: -0.3em;
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  z-index: 2;
+  background: var(--bs-body-bg, #fff);
+  padding: 2px 4px 2px 0;
+  display: inline-block;
+}
+body.quarto-dark .post-timeline .timeline-year {
+  background: var(--bs-body-bg, #222);
+}
+/* .post-timeline .timeline-row carries an inline padding-top that encodes
+   the time gap to the previous post — set by timeline.html, not here. The
+   anchor inside is the visible content; hover highlights stay tight around
+   it, not the whitespace gap above. */
+.post-timeline .timeline-post {
+  /* inline-flex (not flex) so the link's hit area shrinks to its actual
+     content — without this, the row's empty whitespace to the right of
+     a short title still triggers :hover. max-width keeps long titles
+     constrained to the strip; the label still ellipsizes inside. */
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.5em;
+  position: relative;
+  text-decoration: none !important;
+  color: inherit !important;
+  cursor: pointer;
+  pointer-events: auto !important;
+  min-height: 8px;
+  padding: 1px 8px;
+}
+.post-timeline .timeline-post .timeline-dot {
+  display: block;
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+  margin-left: 0;
+  transition: opacity 0.1s, transform 0.1s, box-shadow 0.1s;
+}
+.post-timeline .timeline-post .timeline-label {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* don't grow past the text; can shrink so long titles ellipsize when
+     the parent inline-flex container hits its max-width */
+  flex: 0 1 auto;
+  min-width: 0;
+  transition: opacity 0.1s, transform 0.1s;
+  transform-origin: left center;
+}
+/* Scroll-spy: when the matching post card is substantially visible in the
+   home-page viewport, the corresponding timeline entry gets .in-view.
+   Treatment is intentionally calmer than :hover (no halo, smaller scale,
+   different color) so both can co-occur without visual conflict. */
+.post-timeline .timeline-post.in-view .timeline-dot {
+  opacity: 1;
+  background: var(--link-color);
+  /* --focus is 0..1, peaking at viewport center; produces a wave as scroll moves the peak. */
+  transform: scale(calc(1.2 + 0.4 * var(--focus, 0)));
+}
+body.quarto-dark .post-timeline .timeline-post.in-view .timeline-dot {
+  background: var(--link-color-dark);
+}
+.post-timeline .timeline-post.in-view .timeline-label {
+  opacity: 0.95;
+  font-weight: 500;
+  transform: scale(calc(1 + 0.06 * var(--focus, 0)));
+}
+.post-timeline .timeline-post:hover {
+  background-color: transparent !important;
+  z-index: 10;
+  width: max-content;
+  max-width: none;
+}
+.post-timeline .timeline-post:hover .timeline-dot {
+  opacity: 1;
+  transform: scale(1.8);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--hl-yellow) 50%, transparent);
+  background: currentColor;
+}
+.post-timeline .timeline-post:hover .timeline-label {
+  opacity: 1;
+  transform: scale(1.18);
+  font-weight: 500;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  width: max-content;
+  max-width: none;
+  flex: none;
+}
+
+.post-timeline .timeline-feed {
+  margin-top: 0.6rem;
+  padding-top: 0.4rem;
+}
+.post-timeline .timeline-feed a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-size: 0.72rem;
+  opacity: 0.55;
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: opacity 0.15s;
+}
+.post-timeline .timeline-feed a:hover {
+  opacity: 1;
+}
+
+
+/* Scroll-margin so clicking a timeline dot lands the post below the
+   fixed header rather than behind it */
+.quarto-post {
+  scroll-margin-top: 80px;
+}
+
+/* Same for in-page reference anchors (`<a id="ref-N">` inside the
+   References section) — without this, clicking a `[N]` cite-link in
+   the body lands the target right behind the fixed navbar. */
+a[id^="ref-"] {
+  scroll-margin-top: 80px;
+}
+
+/* Archive page: widen the date column so dates don't wrap, and render
+   tags as little clickable badges. Table font is a notch smaller than
+   body so date + title stay scannable as a dense list (the .archive-tag
+   badges below override back down to their own size). */
+.quarto-listing-table {
+  font-size: 0.8em;
+}
+/* Drop the column-header row — "Date / Title / Tags" just restates what
+   the rows already show. The <thead> stays in the DOM so list.js keeps
+   its data-sort hooks intact; we only hide it visually. Applied to
+   archive landing AND bucket pages so the table looks identical
+   across the archive surface. */
+html.page-archive .quarto-listing-table thead,
+html.page-archive-bucket .quarto-listing-table thead {
+  display: none;
+}
+.quarto-listing-table td:first-child,
+.quarto-listing-table th:first-child {
+  white-space: nowrap;
+  width: 1%;
+  padding-right: 1.2em;
+}
+.quarto-listing-table .listing-date {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+}
+.quarto-listing-table .listing-title,
+.quarto-listing-table .listing-title a {
+  font-size: 0.92em;
+}
+
+/* Per-post navigation strip injected by post-nav.html.
+   Three columns: older (left) | up-arrow back (center) | newer (right).
+   Each cell is a flex container so its content stays vertically centered
+   even when an adjacent cell wraps to multiple lines. */
+.post-nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.25);
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+.post-nav-prev,
+.post-nav-up,
+.post-nav-next {
+  display: flex;
+  align-items: flex-start;
+}
+.post-nav-prev { justify-content: flex-start; }
+.post-nav-up   { justify-content: center; }
+.post-nav-next { justify-content: flex-end; text-align: right; }
+.post-nav a {
+  text-decoration: none;
+  color: inherit !important;
+}
+.post-nav a:hover {
+  background-color: color-mix(in srgb, var(--hl-yellow) 18%, transparent);
+  border-radius: 2px;
+}
+.post-nav-up a {
+  display: inline-block;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.15em 0.45em;
+  opacity: 0.6;
+}
+.post-nav-up a:hover { opacity: 1; }
+
+/* Bucket pagination bar (rendered by _includes/pagination.html). Strip
+   Bootstrap/flatly's pill shape, colored fills, and rounded corners; the
+   bar is just numbered squares with a centered active state and hidden
+   scrollbar for the horizontal-scroll overflow case. */
+.bucket-pagination .pagination {
+  gap: 0.35rem;
+  justify-content: center;
+}
+/* Our managed strip: replicates the layout bits Bootstrap's .pagination
+   would have given us. We can't use class "pagination" on this element
+   because list.js's pagination plugin would bind to it as a second
+   list container and corrupt the parent list. */
+.bucket-pagination .managed-pagination {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  justify-content: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.bucket-pagination .managed-pagination::-webkit-scrollbar {
+  display: none;
+}
+.bucket-pagination .page-item {
+  margin: 0;
+}
+.bucket-pagination .page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.4rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent);
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: inherit !important;
+  text-decoration: none !important;
+  opacity: 0.75;
+  transition: opacity 0.1s, background 0.1s;
+  box-shadow: none !important;
+}
+.bucket-pagination .page-link:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--hl-yellow) 30%, transparent) !important;
+}
+.bucket-pagination .active .page-link,
+.bucket-pagination .page-item.active .page-link {
+  opacity: 1;
+  border-color: rgba(128, 128, 128, 0.7);
+  background: rgba(128, 128, 128, 0.15) !important;
+  font-weight: 600;
+}
+.bucket-pagination .page-item.disabled .page-link {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.bucket-pagination .nav-arrow .page-link {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+/* Replace Quarto's default toggle-off / toggle-on switch icons with a
+   sun (light mode) / moon (dark mode) icon. Uses mask-image so the icon
+   picks up currentColor (the navbar's light text), keeping it consistent
+   with the rest of the navbar styling. */
+.quarto-color-scheme-toggle .bi::before {
+  background-image: none !important;
+  background-color: currentColor;
+  height: 1.05rem !important;
+  width: 1.05rem !important;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708'/></svg>");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.quarto-color-scheme-toggle.alternate .bi::before {
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278'/></svg>");
+}
+
+/* Image lightbox (post pages). The ‹/› buttons are positioned over the
+   left and right edges; their backgrounds are transparent and they
+   stay invisible until the cursor enters their hit zone, so the
+   reading-mode chrome is minimal. */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+.lightbox[hidden] { display: none; }
+.lightbox-img {
+  max-width: 95vw;
+  /* Dynamic viewport height — adapts in real time as iOS Safari shows
+     or hides its URL/tab bar. With static `vh`, the image is sized
+     for the chrome-hidden viewport and ends up clipped or shifted
+     when chrome is visible. `dvh` keeps the image centered and fully
+     in view regardless of Safari's current chrome state. Falls back
+     to `vh` on older browsers via the cascade. */
+  max-height: 90vh;
+  max-height: 90dvh;
+  object-fit: contain;
+  cursor: default;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* Film-strip stage: two slides share the overlay, each full-viewport
+   and absolutely positioned. Nav translates both in lockstep so the
+   outgoing and incoming images move side-by-side into place. Stage
+   itself is pointer-transparent so backdrop clicks still close; each
+   slide re-enables pointer events for its image + caption. */
+.lightbox-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.lightbox-slide {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  pointer-events: none;
+  will-change: transform;
+}
+.lightbox-slide > * { pointer-events: auto; }
+.lightbox-caption {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  max-width: 70ch;
+  text-align: center;
+  user-select: text;
+}
+.lightbox-caption[hidden] { display: none; }
+/* Caption-link replacement spans (lightbox.html rewrites caption <a>s
+   into <span>s to defeat Safari's middle-click pass-through). */
+.lightbox-caption-link {
+  cursor: pointer;
+  text-decoration: underline;
+  color: inherit;
+}
+/* Body scroll-lock while the lightbox overlay is open. */
+body.lightbox-open {
+  overflow: hidden;
+}
+.lightbox-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 2.4rem;
+  height: 2.4rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  /* Above .lightbox-next: the next-button hit zone is 15% wide and
+     full-height, which covers the top-right corner where close sits.
+     Without this bump, taps on the × advance to the next image. */
+  z-index: 3;
+}
+.lightbox-close:hover { opacity: 1; }
+/* iPad Safari overlays a persistent system exit-fullscreen control on
+   element fullscreen; hide ours there to avoid a duplicate ×. Gate on
+   touch ("hover: none, pointer: coarse") so macOS desktop browsers —
+   which only flash a transient "Press Esc" toast — keep our × as the
+   sole visible close affordance. Exiting fullscreen via the system
+   control fires fullscreenchange, which closes the lightbox. */
+@media (hover: none) and (pointer: coarse) {
+  .lightbox:fullscreen .lightbox-close,
+  .lightbox:-webkit-full-screen .lightbox-close { display: none; }
+}
+
+/* Edge-hover navigation. Each button is a 15%-wide invisible hit zone
+   pinned to its side; the chevron only fades in when the cursor enters
+   that zone. */
+.lightbox-prev,
+.lightbox-next {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 15%;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 4rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+.lightbox-prev { left: 0; justify-content: flex-start; padding-left: 1rem; }
+.lightbox-next { right: 0; justify-content: flex-end; padding-right: 1rem; }
+.lightbox-prev:hover,
+.lightbox-next:hover { opacity: 1; }
+.lightbox-prev[hidden],
+.lightbox-next[hidden] { display: none; }
+
+/* Hi-res upgrading indicator: a small spinner in the bottom-right of
+   the slide while the -full.ext loader/decode is in flight. Hides once
+   the pixels land (or on error). Subtle on purpose — it's an "if you
+   care, wait a beat" hint, not a load-blocker. */
+.lightbox-upgrading {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  animation: lightbox-upgrading-spin 0.8s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+.lightbox-upgrading[hidden] { display: none; }
+@keyframes lightbox-upgrading-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Motion-sensitive users still get the visual signal — the ring is
+     visible, just not rotating. */
+  .lightbox-upgrading { animation: none; }
+}
+
+/* Permalink-copy button on listing post titles. Subtle by default,
+   reveals on hover/focus, transient "Copied!" badge after a successful
+   click. Two layouts: `.quarto-post .listing-title` (home, h3-wrapped)
+   and `a.listing-title + button` (archive, table cell). */
+.permalink-copy {
+  display: inline-block;
+  margin-left: 0.2em;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  vertical-align: 0.05em;
+  opacity: 0.25;
+  transition: opacity 0.12s;
+  position: relative;
+}
+.quarto-post:hover .permalink-copy,
+tr:hover .permalink-copy { opacity: 0.7; }
+.permalink-copy:hover { opacity: 1 !important; outline: none; }
+.permalink-copy:focus {
+  opacity: 1 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(127, 127, 127, 0.5);
+  border-radius: 3px;
+}
+.permalink-copy:focus:not(:focus-visible) {
+  box-shadow: none;
+}
+.permalink-copy svg {
+  width: 0.85em;
+  height: 0.85em;
+  vertical-align: middle;
+}
+.permalink-copy.copied::after {
+  content: 'Copied!';
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(30, 30, 30, 0.88);
+  padding: 2px 7px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+body.quarto-dark .permalink-copy.copied::after {
+  background: rgba(240, 240, 240, 0.95);
+  color: #1a1a1a;
+}
+
+/* Same "Copied!" bubble for in-post heading permalinks (AnchorJS links
+   next to .anchored headings). See _includes/heading-anchor-copy.html. */
+a.anchorjs-link { position: relative; }
+a.anchorjs-link.copied::after {
+  content: 'Copied!';
+  position: absolute;
+  left: calc(100% + 6px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(30, 30, 30, 0.88);
+  padding: 2px 7px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+body.quarto-dark a.anchorjs-link.copied::after {
+  background: rgba(240, 240, 240, 0.95);
+  color: #1a1a1a;
+}
+
+/* Per-post share + contact row, injected by _includes/post-share.html
+   immediately after .quarto-title-meta. Two clusters separated by
+   .post-share-divider:
+     [mastodon] [linkedin] [hn] [bluesky]  │  [email]
+            — share —                          — contact —
+   Subtle by default; full opacity + platform-tinted color on hover. */
+.post-share {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid color-mix(in srgb, var(--muted) 25%, transparent);
+}
+.post-share-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4em;
+  height: 1.4em;
+  color: inherit !important;
+  opacity: 0.5;
+  transition: opacity 0.12s, color 0.12s;
+  text-decoration: none !important;
+}
+.post-share-icon svg {
+  width: 1em;
+  height: 1em;
+  display: block;
+}
+.post-share-icon:hover,
+.post-share-icon:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+.post-share-icon:focus-visible {
+  box-shadow: 0 0 0 2px rgba(127, 127, 127, 0.5);
+  border-radius: 3px;
+}
+.post-share-mastodon:hover { color: #6364ff !important; }
+.post-share-linkedin:hover { color: #0a66c2 !important; }
+.post-share-hn:hover       { color: #ff6600 !important; }
+.post-share-bluesky:hover  { color: #0085ff !important; }
+.post-share-email:hover    { color: var(--hl-amber, #d97706) !important; }
+.post-share-divider {
+  display: inline-block;
+  width: 1px;
+  height: 1.1em;
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+  margin: 0 0.2rem;
+}
+
+/* Mermaid: drive colors via CSS variables so diagrams adapt live to
+   light/dark theme (instead of being baked in by mermaid's built-in
+   "default" theme). Variable names match Quarto's mermaid-init.js
+   themeCSS, which it injects when no `mermaid: theme:` is set in
+   _quarto.yml. */
+:root {
+  --mermaid-fg-color: #333;
+  --mermaid-fg-color--lighter: #999;
+  --mermaid-fg-color--lightest: #f3f3f3;
+  --mermaid-bg-color: #ffffff;
+  --mermaid-edge-color: #333;
+  --mermaid-node-bg-color: #ECECFF;
+  --mermaid-node-fg-color: #9370DB;
+  --mermaid-label-fg-color: #333;
+  --mermaid-label-bg-color: #e8e8e8;
+  --mermaid-font-family: inherit;
+  --mermaid-font-weight: 400;
+}
+body.quarto-dark {
+  --mermaid-fg-color: #e9ecef;
+  --mermaid-fg-color--lighter: #6c757d;
+  --mermaid-fg-color--lightest: #343a40;
+  --mermaid-bg-color: #2d3338;
+  --mermaid-edge-color: #e9ecef;
+  --mermaid-node-bg-color: #343a40;
+  --mermaid-node-fg-color: #adb5bd;
+  --mermaid-label-fg-color: #f8f9fa;
+  --mermaid-label-bg-color: #343a40;
+}
+
+/* Center mermaid diagrams in the body. Mermaid renders an <svg> inside
+   the .mermaid-js container; the SVG is left-aligned by default and
+   often narrower than the prose column, so it reads as off-axis. */
+svg.mermaid-js,
+.mermaid-js > svg,
+pre.mermaid svg {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Mermaid: harden overrides against the lavender defaults baked in
+   via mermaid's id-scoped, higher-specificity selectors. Without
+   !important these would lose to mermaid's own injected styles. */
+svg.mermaid-js .cluster rect {
+  fill: var(--mermaid-fg-color--lightest) !important;
+  stroke: var(--mermaid-fg-color--lighter) !important;
+}
+svg.mermaid-js .cluster text,
+svg.mermaid-js .cluster .nodeLabel,
+svg.mermaid-js .cluster .nodeLabel p,
+svg.mermaid-js .cluster span,
+svg.mermaid-js .cluster foreignObject {
+  color: var(--mermaid-label-fg-color) !important;
+  fill: var(--mermaid-label-fg-color) !important;
+}
+/* Same fix for unstyled nodes — Mermaid's default theme bakes a
+   dark text fill that's invisible on the dark node background.
+   Use body.quarto-dark prefix to win the specificity battle against
+   mermaid's id-scoped (#mermaid-N) injected styles. */
+body svg.mermaid-js .node text,
+body svg.mermaid-js .node .nodeLabel,
+body svg.mermaid-js .node .nodeLabel *,
+body svg.mermaid-js .node foreignObject,
+body svg.mermaid-js .node foreignObject *,
+body svg.mermaid-js .label,
+body svg.mermaid-js .label * {
+  color: var(--mermaid-label-fg-color) !important;
+  fill: var(--mermaid-label-fg-color) !important;
+}
+/* Edge labels live in <foreignObject><div><span>; mermaid's inline
+   light background bleeds through unless we override at the inner
+   leaf nodes with !important. */
+svg.mermaid-js .edgeLabel,
+svg.mermaid-js .edgeLabel rect,
+svg.mermaid-js .edgeLabel foreignObject,
+svg.mermaid-js .edgeLabel foreignObject > div,
+svg.mermaid-js .edgeLabel foreignObject > div > span,
+svg.mermaid-js .edgeLabel p {
+  background-color: var(--mermaid-label-bg-color) !important;
+  fill: var(--mermaid-label-bg-color) !important;
+  color: var(--mermaid-label-fg-color) !important;
+}
+
+/* Footer: only .center is populated, so let it stretch instead of claiming
+   a third of the row and wrapping prematurely. */
+.nav-footer-center { flex: 1 1 100%; }
+.nav-footer-left,
+.nav-footer-right { flex: 0 0 auto; }
+
+/* Footer hint linking to the keyboard-shortcut help overlay. */
+.footer-shortcuts-hint {
+  display: inline-block;
+  margin-top: 0.25em;
+  font-size: 0.78em;
+  opacity: 0.6;
+  cursor: pointer;
+  user-select: none;
+}
+.footer-shortcuts-hint:hover { opacity: 0.95; }
+.footer-shortcuts-hint kbd {
+  font-size: 0.85em;
+  padding: 0 0.35em;
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.18);
+}
+
+/* Floating utility buttons — small circles pinned to the viewport corners,
+   visible on every page (navbar is global). Each stays quiet (low opacity)
+   until hovered / focused. Both share the same pill shape, border, blurred
+   background, and hover animation; only the corner assignment differs.
+
+   Corner layout:
+     top-right    — #quarto-search         (magnifying glass; wrapped in
+                                             .search-tools pill by
+                                             ask-ai-button.html — +Ask AI)
+     bottom-right — .theme-tools           (pill: ? · palette · font · sun/moon)
+
+   The `?` help button used to live on its own in the bottom-left, but it
+   now rides inside the .theme-tools pill (see wrapToggle in
+   _includes/theme-cycle.html) alongside the palette cycler; font-cycle.html
+   injects its own button between palette and sun/moon via a sibling
+   MutationObserver so the four discoverability affordances cluster at the
+   same corner.
+
+   #quarto-search and .quarto-color-scheme-toggle live in the navbar DOM;
+   `position: fixed` pulls them out of the navbar flow so only brand +
+   Archive + About remain in the bar. Both pages where the search type
+   is set to `overlay` (via _quarto.yml) so Quarto emits a single button
+   that opens the full-screen search overlay — not an inline input —
+   which is what a circle can host. */
+#quarto-search,
+.quarto-color-scheme-toggle,
+.mobile-aside-toggle {
+  position: fixed !important;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: var(--glass-border);
+  /* Frosted glass: shared recipe with the bar↔pill navbar and the
+     theme-tools wrapper — see --glass-* tokens on :root. */
+  background: var(--glass-bg);
+  color: inherit;
+  cursor: pointer;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  z-index: 1040;
+  opacity: 0.7;
+  /* `top` is transitioned here for #quarto-search specifically — it
+     shifts during the bar↔pill morph (see its two `top` rules below).
+     .quarto-color-scheme-toggle and .kbd-help-button pin via `bottom`
+     so the `top` transition is inert on those; it's on the shared
+     selector only because all three share the rest of the styling. */
+  transition: opacity 0.15s ease, transform 0.15s ease, top var(--navbar-dur) var(--navbar-ease);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  /* Kill the two sources of square "hover/focus" artifacts that make
+     a round <a>/button read as a rectangle:
+       1. Bootstrap reboot's `a:hover { text-decoration: underline }` —
+          draws a rectangular baseline underneath a circular icon.
+       2. Browser default focus rings, which Safari renders as a
+          rectangle around the anchor hitbox regardless of
+          border-radius. outline:none strips it; :focus-visible ring
+          below restores a circular keyboard-focus indicator for a11y. */
+  text-decoration: none !important;
+  outline: none;
+  box-shadow: var(--glass-shadow);
+}
+:is(#quarto-search, .quarto-color-scheme-toggle, .mobile-aside-toggle):focus-visible {
+  box-shadow: var(--glass-shadow),
+              0 0 0 3px rgba(127, 127, 127, 0.45);
+}
+/* Bulletproof shape lock across every interaction state. Some browsers
+   (Safari especially) paint rectangular focus rings, and Bootstrap's
+   `a:hover { text-decoration: underline }` + Quarto's navigation-tool
+   theming can bleed rectangular artifacts onto a circular <a> button.
+   Forcing border-radius/width/height/padding/box-shadow/text-decoration
+   across :hover/:focus/:active/:focus-within keeps the button reliably
+   circular in every state. */
+:is(#quarto-search, .quarto-color-scheme-toggle, .mobile-aside-toggle),
+:is(#quarto-search, .quarto-color-scheme-toggle, .mobile-aside-toggle):is(
+  :hover, :focus, :focus-within, :active
+) {
+  border-radius: 50% !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  padding: 0 !important;
+  text-decoration: none !important;
+  outline: none !important;
+}
+/* #quarto-search and .quarto-color-scheme-toggle reach into child
+   elements (Quarto's search autocomplete, the color-scheme inner icon),
+   so :focus-within catches focus landing inside either wrapper. */
+:is(#quarto-search, .quarto-color-scheme-toggle, .mobile-aside-toggle):is(:hover, :focus-within) {
+  opacity: 1;
+  transform: scale(1.05);
+}
+body.quarto-dark :is(#quarto-search, .quarto-color-scheme-toggle, .mobile-aside-toggle) {
+  background: rgba(30, 30, 30, 0.8);
+  border-color: rgba(200, 200, 200, 0.25);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+}
+body.quarto-dark :is(#quarto-search, .quarto-color-scheme-toggle, .mobile-aside-toggle):focus-visible {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7), 0 0 0 3px rgba(200, 200, 200, 0.4);
+}
+
+/* Per-corner offsets. `max(1rem, env(safe-area-inset-*))` keeps phones
+   clear of the iOS home indicator and dynamic-island / Safari URL bar. */
+.quarto-color-scheme-toggle {
+  bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  right: max(1rem, env(safe-area-inset-right, 1rem));
+  left: auto;
+  top: auto;
+}
+
+/* .mobile-aside-toggle lives bottom-left — the corner that historically
+   held the `?` help button before it merged into `.theme-tools`. Shared
+   frosted-circle styling is inherited from the selector group above;
+   this block only sets the per-corner offset. Hidden at desktop widths
+   (see the @media (min-width: 992px) rule near the mobile-aside-sheet
+   block below). */
+.mobile-aside-toggle {
+  bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  left: max(1rem, env(safe-area-inset-left, 1rem));
+  right: auto;
+  top: auto;
+}
+
+/* Floating theme-tools pill: holds the `?` help button + palette cycle
+   button + font cycle button + sun/moon toggle (left → right order).
+   Collapsed state is a single circle (same size as the standalone
+   toggle); on hover (desktop) or `.is-expanded` class (touch, set by
+   the IIFE in _includes/theme-cycle.html), the wrapper grows
+   horizontally and reveals the three hidden buttons to the left of
+   the sun/moon.
+
+   The frosted-glass styling lives here (not on the inner buttons) so the
+   morph is one continuous surface changing shape, not three separate
+   tints. Inner buttons get transparent backgrounds / no border / no
+   shadow inside the wrapper; they still keep their own `?`, palette,
+   and sun/moon glyphs (text or mask-image) below. */
+.theme-tools {
+  position: fixed;
+  bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  right: max(1rem, env(safe-area-inset-right, 1rem));
+  z-index: 1040;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  height: 2.25rem;
+  width: 2.25rem;
+  padding: 0;
+  border-radius: 9999px;
+  border: var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  /* Note: no `overflow: hidden` here — it would clip the focus-visible
+     ring on inner buttons. `border-radius: 9999px` already clips the
+     backdrop-filter content to the pill shape; the collapsed help and
+     palette are hidden via `visibility: hidden; width: 0` below, which
+     keeps them out of the tab order AND out of layout. */
+  opacity: 0.7;
+  transition: width var(--navbar-dur) var(--navbar-ease),
+              opacity 0.15s ease;
+}
+/* Expanded state. `:hover` is scoped to mouse-capable devices only —
+   on iOS Safari and most touch browsers, a tap latches `:hover` until
+   another element is tapped, which would trap the pill open even after
+   our JS removes `.is-expanded`. Touch devices rely on the class +
+   `:focus-within`, both of which our JS controls deterministically.
+
+   Width = 5 buttons (2.25rem each) + 4 gaps (0.25rem each) = 12.25rem.
+   Grew 3→4 when font-cycle.html injected .font-cycle-btn, 4→5 when
+   line-spacing-cycle.html injected .line-cycle-btn. */
+.theme-tools.is-expanded,
+.theme-tools:focus-within {
+  width: 12.25rem;
+  opacity: 1;
+}
+@media (hover: hover) {
+  .theme-tools:hover {
+    width: 12.25rem;
+    opacity: 1;
+  }
+}
+/* Inside the wrapper, the toggle drops its own circular visual treatment
+   (bg/border/shadow/backdrop-filter) — the wrapper provides those. It also
+   reverts from fixed positioning to in-flow so the flex layout places it
+   at the right edge of the pill. */
+.theme-tools .quarto-color-scheme-toggle {
+  position: static !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+  flex: 0 0 2.25rem;
+}
+/* Help + palette + font buttons: same 2.25rem hit-target as sun/moon,
+   hidden by default (width 0) and revealed when the wrapper expands.
+   Palette + font icons drawn via the same mask-image technique as the
+   sun/moon (see the sibling rule on .quarto-color-scheme-toggle
+   .bi::before earlier in this file) so all three icon glyphs carry
+   equal visual weight and pick up currentColor; the help button
+   renders a plain `?` text glyph. */
+.theme-cycle-btn,
+.font-cycle-btn,
+.line-cycle-btn,
+.theme-tools .kbd-help-button {
+  flex: 0 0 0;
+  width: 0;
+  height: 2.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  /* `visibility: hidden` removes the button from the tab order and
+     accessibility tree while collapsed; revealed state below unsets it.
+     Transitioning `visibility` alongside opacity lets the fade-in read
+     cleanly: the browser flips to `visible` at the start of the expand,
+     then the opacity animation completes. */
+  visibility: hidden;
+  pointer-events: none;
+  transition: flex-basis var(--navbar-dur) var(--navbar-ease),
+              width var(--navbar-dur) var(--navbar-ease),
+              opacity var(--navbar-dur) var(--navbar-ease),
+              visibility var(--navbar-dur) var(--navbar-ease);
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+.theme-tools .kbd-help-button {
+  font: 600 1.05rem/1 inherit;
+  /* The `?` glyph carries its ink right-of-center (it leans into the
+     descender), so in an otherwise-centered flex box it reads as slightly
+     pulled left. A small left pad visually rebalances against the
+     filled mask-icons in the palette and sun/moon buttons without
+     changing the 2.25rem hit-target width. */
+  padding-left: 0.15rem;
+}
+.theme-tools.is-expanded :is(.theme-cycle-btn, .font-cycle-btn, .line-cycle-btn, .kbd-help-button),
+.theme-tools:focus-within :is(.theme-cycle-btn, .font-cycle-btn, .line-cycle-btn, .kbd-help-button) {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+@media (hover: hover) {
+  .theme-tools:hover :is(.theme-cycle-btn, .font-cycle-btn, .line-cycle-btn, .kbd-help-button) {
+    flex: 0 0 2.25rem;
+    width: 2.25rem;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+.theme-cycle-btn .bi::before {
+  content: "";
+  display: inline-block;
+  background-image: none !important;
+  background-color: currentColor;
+  height: 1.05rem;
+  width: 1.05rem;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M15.825.12a.5.5 0 0 1 .132.584c-1.53 3.43-4.743 8.17-7.095 10.64a6.1 6.1 0 0 1-2.373 1.534c-.018.227-.06.538-.16.868-.201.659-.667 1.479-1.708 1.74a8.1 8.1 0 0 1-3.078.132 4 4 0 0 1-.562-.135 1.4 1.4 0 0 1-.466-.247.7.7 0 0 1-.204-.288.62.62 0 0 1 .004-.445c.072-.185.226-.348.48-.502.35-.213.654-.396.904-.554.293-.185.464-.294.592-.397.13-.105.213-.2.342-.367.105-.14.2-.282.32-.461.17-.25.376-.555.63-.961.446-.71 1.103-1.023 1.722-1.166a5.4 5.4 0 0 1 1.250-.114c.061-.22.153-.489.290-.793.356-.79.967-1.813 2.098-3.045 2.128-2.321 5.273-4.985 8.303-6.534a.5.5 0 0 1 .569.06'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M15.825.12a.5.5 0 0 1 .132.584c-1.53 3.43-4.743 8.17-7.095 10.64a6.1 6.1 0 0 1-2.373 1.534c-.018.227-.06.538-.16.868-.201.659-.667 1.479-1.708 1.74a8.1 8.1 0 0 1-3.078.132 4 4 0 0 1-.562-.135 1.4 1.4 0 0 1-.466-.247.7.7 0 0 1-.204-.288.62.62 0 0 1 .004-.445c.072-.185.226-.348.48-.502.35-.213.654-.396.904-.554.293-.185.464-.294.592-.397.13-.105.213-.2.342-.367.105-.14.2-.282.32-.461.17-.25.376-.555.63-.961.446-.71 1.103-1.023 1.722-1.166a5.4 5.4 0 0 1 1.250-.114c.061-.22.153-.489.290-.793.356-.79.967-1.813 2.098-3.045 2.128-2.321 5.273-4.985 8.303-6.534a.5.5 0 0 1 .569.06'/></svg>");
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+          mask-position: center;
+}
+/* Font-cycle glyph: Bootstrap Icons `bi-fonts` (serif capital A).
+   Same mask-image treatment as .theme-cycle-btn so it picks up
+   currentColor and keeps equal visual weight inside the pill. */
+.font-cycle-btn .bi::before {
+  content: "";
+  display: inline-block;
+  background-image: none !important;
+  background-color: currentColor;
+  height: 1.05rem;
+  width: 1.05rem;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M12.258 3h-8.51l-.083 2.46h.479c.26-1.544.758-1.783 2.693-1.845l.424-.013v7.827c0 .663-.144.82-1.3.923v.52h4.082v-.52c-1.162-.103-1.306-.26-1.306-.923V3.602l.43.013c1.93.062 2.433.301 2.694 1.846h.479z'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M12.258 3h-8.51l-.083 2.46h.479c.26-1.544.758-1.783 2.693-1.845l.424-.013v7.827c0 .663-.144.82-1.3.923v.52h4.082v-.52c-1.162-.103-1.306-.26-1.306-.923V3.602l.43.013c1.93.062 2.433.301 2.694 1.846h.479z'/></svg>");
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+          mask-position: center;
+}
+/* Line-spacing-cycle glyph: three horizontal bars evenly spaced. */
+.line-cycle-btn .bi::before {
+  content: "";
+  display: inline-block;
+  background-image: none !important;
+  background-color: currentColor;
+  height: 1.05rem;
+  width: 1.05rem;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 3h12v1.5H2zM2 7.25h12v1.5H2zM2 11.5h12v1.5H2z'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 3h12v1.5H2zM2 7.25h12v1.5H2zM2 11.5h12v1.5H2z'/></svg>");
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+          mask-position: center;
+}
+/* Inner-button hover/focus feedback: since the wrapper now owns the glass
+   background, restore a subtle per-button tint + circular focus ring so
+   each icon still feels interactive. */
+.theme-tools .quarto-color-scheme-toggle:hover,
+.theme-tools .theme-cycle-btn:hover,
+.theme-tools .font-cycle-btn:hover,
+.theme-tools .line-cycle-btn:hover,
+.theme-tools .kbd-help-button:hover {
+  background-color: rgba(var(--bs-emphasis-color-rgb), 0.08) !important;
+}
+.theme-tools .theme-cycle-btn:focus-visible,
+.theme-tools .font-cycle-btn:focus-visible,
+.theme-tools .line-cycle-btn:focus-visible,
+.theme-tools .kbd-help-button:focus-visible {
+  box-shadow: 0 0 0 3px rgba(127, 127, 127, 0.45);
+  border-radius: 50%;
+}
+
+#quarto-search {
+  /* Vertically center on the bar (top state). Bar height ≈ 4.725rem given
+     the current navbar chrome (0 navbar + 1rem container + 0.5rem link +
+     ~1.725rem text + 0.5rem link + 1rem container + 0 navbar). Button is
+     2.25rem, so centered top ≈ (4.725 - 2.25) / 2 ≈ 1.24rem. Floor at
+     env(safe-area-inset-top) so iPhone notch doesn't overlap. */
+  top: max(1.25rem, env(safe-area-inset-top, 0px));
+  right: max(1rem, env(safe-area-inset-right, 1rem));
+  bottom: auto;
+  left: auto;
+  overflow: hidden;
+}
+/* In pill state the bar collapses to ~3.4rem tall (0.5rem navbar + 0.3rem
+   container + 0.3rem link + 1.2rem text + 0.3rem link + 0.3rem container +
+   0.5rem navbar), so the button re-centers closer to the top: ~(3.4 - 2.25) / 2
+   ≈ 0.575rem. Morph transitions `top` alongside the bar↔pill duration/easing
+   (see #quarto-search transition above). Keyed on `body.navbar-pill`,
+   the same body class that drives the navbar morph itself (see
+   _includes/navbar-content-align.html). */
+body.navbar-pill #quarto-search {
+  top: max(0.55rem, env(safe-area-inset-top, 0px));
+}
+@media (max-width: 767.98px) {
+  /* Phone: pill morph is a no-op (bar stays in flow), so keep search
+     aligned to the bar-state center even when navbar-pill is set. */
+  body.navbar-pill #quarto-search {
+    top: max(1.25rem, env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Normalize Quarto's detached-search button (injected by autocomplete.js
+   into #quarto-search when search type is `overlay`) so it fills the
+   circle cleanly. Algolia's default magnifying-glass SVG has its glass
+   circle in the upper-left quadrant of the viewBox (with the handle
+   extending down-right), so centering the SVG bounding box leaves the
+   *circle* visibly off to the upper-left of our button. Hide Algolia's
+   icon and paint our own SVG where the circle sits at the viewBox's
+   dead center (cx=8, cy=8 in a 16×16 viewBox), so the two concentric
+   circles (button outline + magnifying glass) line up. */
+#quarto-search .aa-DetachedSearchButton {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#quarto-search .aa-DetachedSearchButtonPlaceholder,
+#quarto-search .aa-DetachedSearchButtonIcon {
+  display: none !important;
+}
+#quarto-search .aa-DetachedSearchButton::before {
+  content: '';
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='3.6' fill='none' stroke='black' stroke-width='1.4'/><path d='M10.6 10.6 L13.2 13.2' stroke='black' stroke-width='1.4' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='3.6' fill='none' stroke='black' stroke-width='1.4'/><path d='M10.6 10.6 L13.2 13.2' stroke='black' stroke-width='1.4' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
+
+/* Keyboard-shortcut help overlay. Hidden by default; toggled via the
+   `?` key or by clicking the footer hint. */
+.kbd-help {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+.kbd-help.open { display: flex; }
+.kbd-help-panel {
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: 10px;
+  padding: 1.5rem 1.75rem 1.25rem;
+  max-width: 520px;
+  width: 100%;
+  max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45),
+              0 4px 12px rgba(0, 0, 0, 0.25);
+  position: relative;
+  font-size: 0.95rem;
+}
+body.quarto-dark .kbd-help-panel {
+  background: #2d3338;
+  color: #f8f9fa;
+}
+.kbd-help-panel h3 {
+  margin: 0 0 0.9rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+.kbd-help-panel dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 1.25rem;
+  row-gap: 0.55rem;
+  margin: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.kbd-help-panel dt {
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+.kbd-help-panel dd { margin: 0; }
+.kbd-help-panel kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 1px 0.45em;
+  border: 1px solid rgba(128, 128, 128, 0.45);
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.12);
+  /* Bootstrap's reboot sets kbd { color: var(--bs-body-bg) } (inverted —
+     white-on-dark). We want normal panel text on a subtle pill, so
+     inherit from .kbd-help-panel (near-black in light, near-white in
+     dark). */
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: center;
+}
+.kbd-help-scope {
+  margin-left: 0.4em;
+  font-size: 0.85em;
+  opacity: 0.6;
+}
+.kbd-help-footer {
+  margin: 0.9rem 0 0 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+  font-size: 0.85rem;
+  opacity: 0.8;
+  flex: 0 0 auto;
+}
+.kbd-help-close {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+}
+.kbd-help-close:hover { opacity: 1; }
+
+/* ============================================================
+   Tag picker (`#` shortcut). Shell mirrors .kbd-help — fixed
+   overlay, dim backdrop, panel with light/dark surface — but
+   anchored near the top of the viewport so it reads as a
+   command palette rather than a centered modal. The panel
+   holds an input on top and a scrollable list of matched tags.
+   See _includes/tag-shortcut.html for behavior.
+   ============================================================ */
+.tag-picker {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  padding-top: 18vh;
+}
+.tag-picker.open { display: flex; }
+.tag-picker-panel {
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: 10px;
+  padding: 0.6rem;
+  max-width: 480px;
+  width: 100%;
+  max-height: calc(100dvh - 4rem);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45),
+              0 4px 12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  font-size: 0.95rem;
+}
+body.quarto-dark .tag-picker-panel {
+  background: #2d3338;
+  color: #f8f9fa;
+}
+.tag-picker-input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.95rem;
+  outline: none;
+}
+.tag-picker-input:focus { border-color: rgba(128, 128, 128, 0.7); }
+.tag-picker-list {
+  margin-top: 0.5rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.tag-picker-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.7rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.tag-picker-item:hover,
+.tag-picker-item.active { background: rgba(128, 128, 128, 0.18); }
+.tag-picker-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-picker-count {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-left: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+}
+.tag-picker-empty {
+  padding: 0.7rem;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+/* Body scroll-lock while the picker is open — parallels .ask-ai-locked
+   and .mobile-aside-locked. Prevents the page underneath from scrolling
+   when the reader wheels / two-finger-scrolls over the backdrop. */
+html.tag-picker-locked,
+html.tag-picker-locked body {
+  overflow: hidden;
+}
+
+/* ============================================================
+   Search-tools pill (top-right): wraps #quarto-search + Ask-AI
+   button. Mirrors bottom-right .theme-tools's slide-to-expand
+   pattern — collapsed = search-only circle; expanded = 4.75rem
+   pill with Ask-AI on the LEFT and search on the RIGHT. Only
+   visible on post pages (wrap is gated by the JS in
+   _includes/ask-ai-button.html).
+   ============================================================ */
+.search-tools {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top, 1rem));
+  right: max(1rem, env(safe-area-inset-right, 1rem));
+  z-index: 1040;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  height: 2.25rem;
+  width: 2.25rem;
+  padding: 0;
+  border-radius: 9999px;
+  border: var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  opacity: 0.7;
+  transition: width var(--navbar-dur) var(--navbar-ease),
+              opacity 0.15s ease;
+}
+/* Width = 3 buttons (2.25rem each) + 2 gaps (0.25rem) = 7.25rem. */
+.search-tools.is-expanded,
+.search-tools:focus-within {
+  width: 7.25rem;
+  opacity: 1;
+}
+@media (hover: hover) {
+  .search-tools:hover {
+    width: 7.25rem;
+    opacity: 1;
+  }
+}
+/* #quarto-search inside the pill drops its own corner-fixed treatment
+   (the wrapper provides glass + position) and flows into the pill's
+   flex layout at the right edge. Mirrors the .theme-tools override
+   of .quarto-color-scheme-toggle. */
+.search-tools #quarto-search {
+  position: static !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  top: unset !important;
+  right: unset !important;
+  opacity: 1 !important;
+  flex: 0 0 2.25rem;
+}
+/* Ask-AI button: hidden-by-default (width 0), revealed on expand.
+   Mirrors .theme-cycle-btn's collapsed/expanded recipe. */
+.ask-ai-btn {
+  flex: 0 0 0;
+  width: 0;
+  height: 2.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: flex-basis var(--navbar-dur) var(--navbar-ease),
+              width var(--navbar-dur) var(--navbar-ease),
+              opacity var(--navbar-dur) var(--navbar-ease),
+              visibility var(--navbar-dur) var(--navbar-ease);
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+.search-tools.is-expanded :is(.ask-ai-btn, .tag-btn),
+.search-tools:focus-within :is(.ask-ai-btn, .tag-btn) {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+@media (hover: hover) {
+  .search-tools:hover :is(.ask-ai-btn, .tag-btn) {
+    flex: 0 0 2.25rem;
+    width: 2.25rem;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+.ask-ai-btn:hover .ask-ai-btn-glyph,
+.ask-ai-btn:focus-visible .ask-ai-btn-glyph {
+  opacity: 1;
+}
+.ask-ai-btn:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: -1px;
+  border-radius: 50%;
+}
+/* bi-chat-dots (Bootstrap Icons) — chat bubble with `…` inside. Drawn
+   via mask-image so it picks up currentColor and flips with the theme,
+   same recipe as the sun/moon + palette glyphs earlier in this file. */
+.ask-ai-btn-glyph {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+  opacity: 0.75;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2'/><path d='m2.165 15.803.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.437 10.437 0 0 1-.524 2.318l-.003.011a10.722 10.722 0 0 1-.244.637c-.079.186.074.394.273.362a21.673 21.673 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6-3.004 6-7 6a8 8 0 0 1-2.088-.272 1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a10.97 10.97 0 0 0 .398-2'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2'/><path d='m2.165 15.803.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.437 10.437 0 0 1-.524 2.318l-.003.011a10.722 10.722 0 0 1-.244.637c-.079.186.074.394.273.362a21.673 21.673 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6-3.004 6-7 6a8 8 0 0 1-2.088-.272 1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a10.97 10.97 0 0 0 .398-2'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  transition: opacity 0.15s ease;
+}
+
+/* Tag-picker button: same collapsed/expanded recipe as .ask-ai-btn,
+   different glyph. Reveal rules above use :is(.ask-ai-btn, .tag-btn)
+   so both buttons fade in together when the pill expands. */
+.tag-btn {
+  flex: 0 0 0;
+  width: 0;
+  height: 2.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: flex-basis var(--navbar-dur) var(--navbar-ease),
+              width var(--navbar-dur) var(--navbar-ease),
+              opacity var(--navbar-dur) var(--navbar-ease),
+              visibility var(--navbar-dur) var(--navbar-ease);
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+.tag-btn:hover .tag-btn-glyph,
+.tag-btn:focus-visible .tag-btn-glyph { opacity: 1; }
+.tag-btn:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: -1px;
+  border-radius: 50%;
+}
+/* bi-hash (Bootstrap Icons) — `#` glyph. Matches the `#` keyboard
+   shortcut so the trigger and the icon agree. mobile-aside.html
+   correspondingly uses bi-tag-fill (the price-tag) on archive so the
+   two corners stay visually distinct. */
+.tag-btn-glyph {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+  opacity: 0.75;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8.39 12.648a1.32 1.32 0 0 0-.015.18c0 .305.21.508.5.508.266 0 .492-.172.555-.477l.554-2.703h1.204c.421 0 .617-.234.617-.547 0-.312-.188-.51-.617-.51h-.985l.516-2.444h1.265c.43 0 .618-.227.618-.555 0-.32-.188-.5-.618-.5h-1.054l.474-2.265a1.32 1.32 0 0 0 .015-.18c0-.305-.21-.508-.5-.508-.266 0-.492.172-.555.477L9.388 5.09H7.91l.474-2.265c.016-.078.016-.117.016-.18 0-.305-.21-.508-.5-.508-.266 0-.492.172-.555.477L6.79 5.09H5.524c-.43 0-.617.18-.617.5 0 .328.187.555.617.555h1.046l-.515 2.445H4.79c-.43 0-.618.198-.618.51 0 .313.188.547.618.547h1.265L5.5 11.852c-.016.078-.016.117-.016.18 0 .305.21.508.5.508.266 0 .492-.172.555-.477l.554-2.703h1.477l-.502 2.288zm-1.118-3.42.515-2.445h1.477l-.515 2.445H7.272z'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M8.39 12.648a1.32 1.32 0 0 0-.015.18c0 .305.21.508.5.508.266 0 .492-.172.555-.477l.554-2.703h1.204c.421 0 .617-.234.617-.547 0-.312-.188-.51-.617-.51h-.985l.516-2.444h1.265c.43 0 .618-.227.618-.555 0-.32-.188-.5-.618-.5h-1.054l.474-2.265a1.32 1.32 0 0 0 .015-.18c0-.305-.21-.508-.5-.508-.266 0-.492.172-.555.477L9.388 5.09H7.91l.474-2.265c.016-.078.016-.117.016-.18 0-.305-.21-.508-.5-.508-.266 0-.492.172-.555.477L6.79 5.09H5.524c-.43 0-.617.18-.617.5 0 .328.187.555.617.555h1.046l-.515 2.445H4.79c-.43 0-.618.198-.618.51 0 .313.188.547.618.547h1.265L5.5 11.852c-.016.078-.016.117-.016.18 0 .305.21.508.5.508.266 0 .492-.172.555-.477l.554-2.703h1.477l-.502 2.288zm-1.118-3.42.515-2.445h1.477l-.515 2.445H7.272z'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  transition: opacity 0.15s ease;
+}
+
+/* ============================================================
+   Ask-AI popover (modal dialog). Styled as a clone of .kbd-help
+   — same fullscreen backdrop, same centered 520px panel, same
+   dark-mode flip. Phase A has no scroll-lock / Esc / focus-trap
+   yet — those land in Phase B.
+   ============================================================ */
+.ask-ai {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+.ask-ai.open { display: flex; }
+/* Body scroll-lock while modal is open — parallel to .mobile-aside-locked.
+   Prevents the page underneath from scrolling when the reader wheels /
+   two-finger-scrolls over the backdrop. */
+html.ask-ai-locked,
+html.ask-ai-locked body {
+  overflow: hidden;
+}
+.ask-ai-panel {
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: 10px;
+  padding: 1.5rem 1.75rem 1.25rem;
+  max-width: 520px;
+  width: 100%;
+  /* Cap to viewport so the panel never overflows on phones — mirrors
+     .kbd-help-panel. The middle `.ask-ai-body` scrolls; h3 + actions +
+     notes stay pinned so the action buttons remain reachable. */
+  max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45),
+              0 4px 12px rgba(0, 0, 0, 0.25);
+  position: relative;
+  font-size: 0.95rem;
+}
+body.quarto-dark .ask-ai-panel {
+  background: #2d3338;
+  color: #f8f9fa;
+}
+.ask-ai-panel h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+/* Scrollable middle region. Pattern parallels .kbd-help-panel dl —
+   `min-height: 0` is the load-bearing bit that lets a flex child
+   actually scroll inside its capped parent. */
+.ask-ai-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ask-ai-close {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+}
+.ask-ai-close:hover { opacity: 1; }
+
+.ask-ai-intro {
+  margin: 0.5rem 0 0.75rem 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  line-height: 1.4;
+}
+.ask-ai-intro-glyph {
+  display: inline-block;
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.15rem;
+  background-color: currentColor;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2'/><path d='m2.165 15.803.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.437 10.437 0 0 1-.524 2.318l-.003.011a10.722 10.722 0 0 1-.244.637c-.079.186.074.394.273.362a21.673 21.673 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6-3.004 6-7 6a8 8 0 0 1-2.088-.272 1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a10.97 10.97 0 0 0 .398-2'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2'/><path d='m2.165 15.803.02-.004c1.83-.363 2.948-.842 3.468-1.105A9 9 0 0 0 8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6a10.437 10.437 0 0 1-.524 2.318l-.003.011a10.722 10.722 0 0 1-.244.637c-.079.186.074.394.273.362a21.673 21.673 0 0 0 .693-.125m.8-3.108a1 1 0 0 0-.287-.801C1.618 10.83 1 9.468 1 8c0-3.192 3.004-6 7-6s7 2.808 7 6-3.004 6-7 6a8 8 0 0 1-2.088-.272 1 1 0 0 0-.711.074c-.387.196-1.24.57-2.634.893a10.97 10.97 0 0 0 .398-2'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.ask-ai-scope {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+}
+.ask-ai-scope-pill {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 9999px;
+  background: rgba(128, 128, 128, 0.18);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin-left: 0.15rem;
+  /* Long post titles wrap inside the pill rather than overflowing the
+     panel. Breaks at word boundaries; keeps the pill shape on short
+     labels like "this blog". */
+  word-break: break-word;
+  white-space: normal;
+}
+
+.ask-ai-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+  margin: 0.5rem 0 0.3rem 0;
+}
+.ask-ai-panel textarea {
+  width: 100%;
+  min-height: 6em;
+  max-height: 20em;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  resize: vertical;
+  box-sizing: border-box;
+}
+body.quarto-dark .ask-ai-panel textarea {
+  background: rgba(0, 0, 0, 0.25);
+}
+.ask-ai-panel textarea:focus {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+.ask-ai-question-row {
+  margin-top: 0.6rem;
+}
+.ask-ai-question-row[hidden] { display: none; }
+.ask-ai-question-input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+body.quarto-dark .ask-ai-question-input {
+  background: rgba(0, 0, 0, 0.25);
+}
+.ask-ai-question-input:focus {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+.ask-ai-chars {
+  text-align: right;
+  font-size: 0.75rem;
+  opacity: 0.55;
+  min-height: 1.1em;
+  margin-top: 0.2rem;
+}
+.ask-ai-chars.ask-ai-chars-warn {
+  opacity: 1;
+  color: #c06a00;
+}
+body.quarto-dark .ask-ai-chars.ask-ai-chars-warn { color: #f0b340; }
+
+.ask-ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+  flex: 0 0 auto;
+}
+.ask-ai-actions button {
+  flex: 1 1 auto;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.ask-ai-actions button:hover {
+  background: rgba(128, 128, 128, 0.18);
+}
+.ask-ai-actions button:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 1px;
+}
+.ask-ai-note {
+  margin: 0.6rem 0 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  opacity: 0.55;
+  flex: 0 0 auto;
+}
+/* Phone: shrink the textarea min-height so the "Your question" field
+   that appears under it stays above the soft-keyboard fold. The user
+   can still drag-resize the textarea up via `resize: vertical` if they
+   want more room. */
+@media (max-width: 575.98px) {
+  .ask-ai-panel textarea {
+    min-height: 4em;
+  }
+}
+
+
+/* Keyboard focus highlight on a listing item (home + archive). The
+   left border + soft tint signal "this is the one Enter will open".
+   For the archive table variant, the background/box-shadow paint on
+   the individual <td> cells rather than the <tr> — browsers with
+   collapsed table borders often drop tr-level backgrounds and
+   box-shadow on tr never renders consistently across engines, so
+   the tr.kbd-focus class on its own was functionally correct but
+   visually invisible. */
+.quarto-listing-default .quarto-post.kbd-focus {
+  background: color-mix(in srgb, var(--hl-yellow) 10%, transparent);
+  box-shadow: inset 3px 0 0 0 color-mix(in srgb, var(--hl-amber) 85%, transparent);
+  border-radius: 2px;
+}
+.quarto-listing-table tbody tr.kbd-focus > td {
+  background: color-mix(in srgb, var(--hl-yellow) 10%, transparent);
+}
+.quarto-listing-table tbody tr.kbd-focus > td:first-child {
+  box-shadow: inset 3px 0 0 0 color-mix(in srgb, var(--hl-amber) 85%, transparent);
+}
+body.quarto-dark .quarto-listing-default .quarto-post.kbd-focus {
+  background: color-mix(in srgb, var(--hl-yellow) 7%, transparent);
+}
+body.quarto-dark .quarto-listing-table tbody tr.kbd-focus > td {
+  background: color-mix(in srgb, var(--hl-yellow) 7%, transparent);
+}
+
+/* On phones, Quarto's `::: {layout-ncol=N}` rows flip to a single
+   column at <768px (it sets flex-direction: column on the row), but
+   the per-cell `flex-basis: 50%` inline style and image intrinsic
+   widths combine to produce uneven column widths. Force every cell
+   to fill the column and stretch its image to match, so a stack of
+   stacked images aligns at a common left/right edge. */
+@media (max-width: 767.98px) {
+  .quarto-layout-cell {
+    flex-basis: auto !important;
+    width: 100%;
+    margin-right: 0 !important;
+    margin-bottom: 0.5rem;
+  }
+  .quarto-layout-cell img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* Mobile-aside disclosure: bottom-sheet pattern. At <992px (phone +
+   iPad-portrait widths) a bottom-left frosted corner button toggles
+   a bottom-sheet carrying the current page's sidebar contents —
+   Activity timeline on home, Tags cloud on archive, TOC on post pages.
+   At >=992px the button and sheet are display:none; Quarto's right-
+   margin sidebar renders in place as usual.
+
+   The toggle button shares its frosted-circle material with #quarto-search
+   and .quarto-color-scheme-toggle (see the selector group above). The
+   sheet, by contrast, uses a solid opaque surface matching
+   `.kbd-help-panel` (near-white in light, near-black in dark) — earlier
+   iterations tried to match the toggle's frosted glass but the
+   translucent sheet let post-body content bleed through and fought
+   legibility; opaque reads better as a floating modal card. */
+.mobile-aside-sheet {
+  position: fixed;
+  /* Anchored to the lower-left with reasonable edge padding so the
+     panel floats in the corner instead of being flush against the
+     viewport. 80% × 80% of the viewport — math (viewport - 2*edge gap
+     - panel) shares the top/right gaps with the bottom/left padding. */
+  left: max(1rem, env(safe-area-inset-left, 1rem));
+  bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  top: auto;
+  right: auto;
+  width: 80vw;
+  height: 80vh;
+  /* Fully rounded corners — panel is a floating card, not flush with
+     any viewport edge. */
+  border-radius: 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  /* No z-index here: the sheet is a DOM descendant of
+     .mobile-aside-backdrop (z-index: 1044), so the whole backdrop+sheet
+     subtree stacks at 1044 in the root context, and painting order
+     within the subtree puts the sheet above the backdrop's fill. */
+  display: flex;
+  flex-direction: column;
+  /* Mirror .kbd-help-panel: near-white in light, near-black in dark,
+     so the two overlays read as the same surface family. Dark-mode
+     override lives in `body.quarto-dark .mobile-aside-sheet` below. */
+  background: #fff;
+  color: #1a1a1a;
+  /* Drop shadow — lifts the panel off the underlying page, signals
+     "floating card" rather than "painted surface." */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45),
+              0 4px 12px rgba(0, 0, 0, 0.25);
+  /* Closed state: invisible but in layout so the open/close transition
+     can animate. Don't use `hidden` attribute or display:none — both
+     kill the transition. */
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  /* Corner-anchored slide-in: initial 24px below-and-left of final
+     position, fades to opacity 1 + translate(0,0) on open. */
+  transform: translate(-8px, 24px);
+  transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+}
+.mobile-aside-sheet.is-open {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(0, 0);
+}
+/* During theme-cycle's cascade swap, the stylesheet re-append window
+   can briefly shift an element's computed opacity/visibility — which
+   would otherwise run the 180ms transition above and manifest as a
+   "flash" of the sheet on theme toggle. theme-cycle.html sets this
+   attribute during the swap and clears it after the settle timeouts. */
+html[data-theme-transitioning] .mobile-aside-sheet {
+  transition: none !important;
+}
+body.quarto-dark .mobile-aside-sheet {
+  background: #2d3338;
+  color: #f8f9fa;
+}
+
+/* Backdrop wraps the sheet. Because the sheet is a DOM descendant of
+   the backdrop, it always paints on top of the backdrop's own fill by
+   CSS painting rules — no z-index battle, no risk of the dim overlay
+   ever covering the panel itself. */
+.mobile-aside-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1044;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+.mobile-aside-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+html[data-theme-transitioning] .mobile-aside-backdrop {
+  transition: none !important;
+}
+
+/* Sheet header: live label + count. Pulls its text from the
+   `.timeline-title` H5 that mobile-aside.html moves up from the
+   timeline / tag-cloud (or synthesizes for post pages). */
+.mobile-aside-sheet-header {
+  flex: 0 0 auto;
+  padding: 1rem 1.25rem 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: inherit;
+  user-select: none;
+}
+.mobile-aside-sheet-header .timeline-title {
+  display: inline;
+  font: inherit;
+  margin: 0;
+  padding: 0;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+/* Sheet content region: scrollable inside the sheet; overscroll-behavior
+   prevents scroll-chain from reaching the body beneath. Inherits the
+   sheet's light/dark-aware text color (set on .mobile-aside-sheet and
+   flipped in `body.quarto-dark .mobile-aside-sheet` above). */
+.mobile-aside-sheet-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 1.25rem 1rem;
+  -webkit-overflow-scrolling: touch;
+  font-size: 1rem;
+  color: inherit;
+}
+.mobile-aside-sheet-content,
+.mobile-aside-sheet-content a,
+.mobile-aside-sheet-content .nav-link,
+.mobile-aside-sheet-content .timeline-year,
+.mobile-aside-sheet-content h2,
+.mobile-aside-sheet-content h3 {
+  color: #1a1a1a !important;
+}
+body.quarto-dark .mobile-aside-sheet-content,
+body.quarto-dark .mobile-aside-sheet-content a,
+body.quarto-dark .mobile-aside-sheet-content .nav-link,
+body.quarto-dark .mobile-aside-sheet-content .timeline-year,
+body.quarto-dark .mobile-aside-sheet-content h2,
+body.quarto-dark .mobile-aside-sheet-content h3 {
+  color: #f8f9fa !important;
+}
+/* Hover/active feedback for links — a subtle opacity shift keeps the
+   sheet's text color but signals interactivity. */
+.mobile-aside-sheet-content a:hover,
+.mobile-aside-sheet-content .nav-link:hover,
+.mobile-aside-sheet-content .nav-link.active {
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+/* Keyboard focus ring for links inside the sheet. Uses `box-shadow: inset`
+   (not `outline`) because timeline rows and TOC links can sit flush
+   against their scroll container's right edge — an outline with
+   outline-offset would project past the container and get clipped. An
+   inset shadow lives inside the element's border box, so no clipping
+   regardless of scroll-container overflow. Theme-aware: dark ring on
+   the light panel, light ring on the dark panel. */
+.mobile-aside-sheet-content a:focus-visible,
+.mobile-aside-sheet-content .nav-link:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.55);
+  border-radius: 2px;
+}
+body.quarto-dark .mobile-aside-sheet-content a:focus-visible,
+body.quarto-dark .mobile-aside-sheet-content .nav-link:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+/* Inside the sheet, the timeline / tag cloud render at full natural
+   size — no sticky-sidebar height cap needed. */
+.mobile-aside-sheet-content .post-timeline,
+.mobile-aside-sheet-content .quarto-listing-category.category-cloud {
+  max-height: none;
+}
+
+/* Post-page TOC inside the sheet:
+   - One font-size step smaller than Activity / Tags (which inherit
+     1rem from sheet-content), matching the denser nested structure
+     of a TOC.
+   - display: block !important overrides Quarto's own
+     `@media (max-width: 767.98px) { nav[role="doc-toc"] { display: none } }`
+     — that rule is the right default for the margin sidebar on
+     narrow viewports, but when the TOC is moved into our bottom-sheet
+     we need it rendered regardless of viewport width.
+   - Hide Quarto's own `#toc-title` ("On this page") H2 — our sheet
+     header already shows "Contents", so the H2 would be a duplicate. */
+.mobile-aside-sheet-content nav[role="doc-toc"] {
+  display: block !important;
+  font-size: 0.875rem;
+}
+.mobile-aside-sheet-content #toc-title {
+  display: none;
+}
+
+/* While the sheet is open, strip the toggle button's own glass so it
+   reads as a flat chip over the already-frosted sheet (avoids the
+   stacked-glass "double blur" muddy look). !important is required
+   because the shared corner-button group uses :is(#quarto-search, …)
+   which gets id-level specificity (1,0,0) — without !important this
+   body-scoped override at 0,2,0 would lose. Also boost z-index above
+   the sheet so the close-X button sits over the open sheet. */
+body.mobile-aside-open .mobile-aside-toggle {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  z-index: 1050 !important;
+}
+
+/* Scroll-lock while the sheet is open: overflow:hidden on both root
+   and body. iOS Safari doesn't fully honor `overflow: hidden` on body
+   alone (touch-scroll can still fire), so the background may rubber-
+   band slightly behind the sheet on iOS — accepted tradeoff. An
+   earlier iteration used the position-fixed-swap pattern (body
+   position:fixed; top:-Ypx) for iOS-safe locking but that caused a
+   visible scroll-jump flash on dismiss (body unfixes → flows at
+   scrollY=0 → window.scrollTo restores). The flash was worse than
+   the rubber-band, so we reverted. */
+html.mobile-aside-locked,
+html.mobile-aside-locked body {
+  overflow: hidden;
+}
+
+/* Hide toggle + sheet at desktop widths. Desktop renders the right-
+   margin sidebar in place as Quarto intends; the disclosure is a
+   phone + iPad-portrait affordance only. */
+@media (min-width: 992px) {
+  .mobile-aside-toggle,
+  .mobile-aside-sheet,
+  .mobile-aside-backdrop {
+    display: none !important;
+  }
+}
+
+/* Conversely: at <992px, hide Quarto's right-margin sidebar. Quarto's
+   own CSS only hides it at <768px; between 768-991.98px (iPad portrait)
+   the sidebar stays visible — and after mobile-aside.html moves its
+   content into the bottom-sheet, that leaves an EMPTY sticky sidebar
+   flashing in layout. Hide the empty shell so the sheet is the only
+   surface showing this content at mobile widths.
+
+   Hiding the sidebar isn't enough on its own: Quarto's <992px grid
+   still reserves a right outset (35px + minmax(75px, 145px) + 35px +
+   5fr) for it, so a blank ~150px strip remains on iPad portrait. Merge
+   those tracks into a single 5fr (mirroring the left side) and bump
+   body-content's max so the feed/prose absorbs the reclaimed space.
+   Scope the grid override to >=768px only — below that, Quarto already
+   collapses to a single-column layout and a 500px min-width body track
+   would overflow an iPhone viewport (320-430px wide). */
+@media (max-width: 991.98px) {
+  #quarto-margin-sidebar {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) and (max-width: 991.98px) {
+  body .page-columns {
+    grid-template-columns:
+      [screen-start] 1.5em
+      [screen-start-inset page-start page-start-inset body-start-outset] 5fr
+      [body-start] 1.5em
+      [body-content-start] minmax(500px, calc(1000px - 3em))
+      [body-content-end] 1.5em
+      [body-end body-end-outset page-end-inset page-end] 5fr
+      [screen-end-inset] 1.5em
+      [screen-end] !important;
+  }
+}
+
+/* Honor user-agent reduced-motion preference. Long transitions and
+   animations (navbar bar-pill morph, timeline dot tracking, lightbox
+   fades) collapse to ~0 so they do not trigger vestibular symptoms.
+   Durations stay non-zero so transitionend/animationend listeners still
+   fire for any JS that waits on them. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== Font palettes ================================================
+   Runtime font-family cycler paired with _includes/font-cycle.html and
+   _includes/font-override-init.html. Browsers lazy-load @font-face
+   sources only when a matching CSS rule paints — so palette-scoped
+   rules below guarantee that readers who stay on `default` fetch zero
+   webfont bytes. Per-palette woff2 files live at /vendor/fonts/<slug>/.
+   Families are OFL-1.1 except Ubuntu Sans (Ubuntu Font Licence 1.0,
+   used by the almanac palette); license copies live beside each .woff2.
+   ==================================================================== */
+
+/* ---- editorial palette (Fraunces / Source Serif 4 / IBM Plex Mono) --- */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('vendor/fonts/editorial/fraunces-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('vendor/fonts/editorial/fraunces-wght-italic.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/editorial/source-serif-4-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/editorial/source-serif-4-400-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('vendor/fonts/editorial/source-serif-4-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/editorial/ibm-plex-mono-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/editorial/ibm-plex-mono-400-italic.woff2') format('woff2');
+}
+
+/* ---- modern palette (Inter / Literata / JetBrains Mono) ------------- */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('vendor/fonts/modern/inter-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('vendor/fonts/modern/inter-wght-italic.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Literata';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/modern/literata-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Literata';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/modern/literata-400-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Literata';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('vendor/fonts/modern/literata-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/modern/jetbrains-mono-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/modern/jetbrains-mono-400-italic.woff2') format('woff2');
+}
+
+/* ---- reader palette (Newsreader / IBM Plex Sans / IBM Plex Mono) ---
+   Inspired by Yale E360's feature-article palette: warm old-style serif
+   body (Newsreader ≈ Ashbury) with a neo-grotesque sans for UI and
+   alternating subheads (IBM Plex Sans ≈ Moderat). IBM Plex Mono for
+   code is reused from the editorial palette's @font-face. */
+@font-face {
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('vendor/fonts/reader/newsreader-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Newsreader';
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('vendor/fonts/reader/newsreader-wght-italic.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/reader/ibm-plex-sans-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/reader/ibm-plex-sans-400-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('vendor/fonts/reader/ibm-plex-sans-700-normal.woff2') format('woff2');
+}
+
+/* Palette-scoped font-family rules. Fallback stacks are picked for
+   x-height similarity so the FOUT swap (fallback → webfont once the
+   woff2 lands) shifts layout as little as possible. */
+html[data-font-palette="editorial"] body,
+html[data-font-palette="editorial"] p,
+html[data-font-palette="editorial"] li,
+html[data-font-palette="editorial"] figcaption,
+html[data-font-palette="editorial"] blockquote {
+  font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
+}
+html[data-font-palette="editorial"] h1,
+html[data-font-palette="editorial"] h2,
+html[data-font-palette="editorial"] h3,
+html[data-font-palette="editorial"] h4,
+html[data-font-palette="editorial"] h5,
+html[data-font-palette="editorial"] h6,
+html[data-font-palette="editorial"] .navbar,
+html[data-font-palette="editorial"] .navbar-brand,
+html[data-font-palette="editorial"] .nav-link {
+  font-family: 'Fraunces', 'Source Serif 4', Charter, Georgia, serif;
+}
+html[data-font-palette="editorial"] code,
+html[data-font-palette="editorial"] pre,
+html[data-font-palette="editorial"] kbd,
+html[data-font-palette="editorial"] samp {
+  font-family: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+html[data-font-palette="modern"] body,
+html[data-font-palette="modern"] p,
+html[data-font-palette="modern"] li,
+html[data-font-palette="modern"] figcaption,
+html[data-font-palette="modern"] blockquote {
+  font-family: 'Literata', Charter, 'Iowan Old Style', Georgia, serif;
+}
+html[data-font-palette="modern"] h1,
+html[data-font-palette="modern"] h2,
+html[data-font-palette="modern"] h3,
+html[data-font-palette="modern"] h4,
+html[data-font-palette="modern"] h5,
+html[data-font-palette="modern"] h6,
+html[data-font-palette="modern"] .navbar,
+html[data-font-palette="modern"] .navbar-brand,
+html[data-font-palette="modern"] .nav-link {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+html[data-font-palette="modern"] code,
+html[data-font-palette="modern"] pre,
+html[data-font-palette="modern"] kbd,
+html[data-font-palette="modern"] samp {
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* ---- reader palette: long-form magazine feel ---------------------
+   Inspired by Yale E360's feature-article typography. Newsreader
+   (warm old-style serif) carries body text and odd-level subheads;
+   IBM Plex Sans (neo-grotesque) carries even-level subheads and the
+   navbar — the alternating subhead pattern is the e360 signature.
+   Slightly larger body size for unhurried leading. Line-height is
+   owned by the independent line-spacing axis. @font-face blocks live
+   under /vendor/fonts/reader/; IBM Plex Mono is reused from the
+   editorial palette. */
+html[data-font-palette="reader"] body,
+html[data-font-palette="reader"] p,
+html[data-font-palette="reader"] li,
+html[data-font-palette="reader"] figcaption,
+html[data-font-palette="reader"] blockquote {
+  font-family: 'Newsreader', Charter, 'Iowan Old Style', Georgia, serif;
+}
+html[data-font-palette="reader"] body {
+  font-size: 1.05rem;
+}
+html[data-font-palette="reader"] h1,
+html[data-font-palette="reader"] h3,
+html[data-font-palette="reader"] h5 {
+  font-family: 'Newsreader', Charter, Georgia, serif;
+}
+html[data-font-palette="reader"] h2,
+html[data-font-palette="reader"] h4,
+html[data-font-palette="reader"] h6,
+html[data-font-palette="reader"] .navbar,
+html[data-font-palette="reader"] .navbar-brand,
+html[data-font-palette="reader"] .nav-link {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+/* Cap heading weight at 700 on the reader palette's sans-rendered
+   subheads (h2/h4/h6 use IBM Plex Sans, vendored only at 400 / 400-italic
+   / 700 — the site-wide `h1..h6 { font-weight: 800 }` would synthesize
+   bold otherwise, producing uneven strokes and kerning drift). h1/h3/h5
+   use Newsreader (variable-axis 200-800) and render 800 correctly, so
+   they stay on the unconditional rule. Same reasoning for .nav-link
+   which sits at 500 in the base — pin to 400 on this palette. */
+html[data-font-palette="reader"] h2,
+html[data-font-palette="reader"] h4,
+html[data-font-palette="reader"] h6 {
+  font-weight: 700;
+}
+html[data-font-palette="reader"] .nav-link {
+  font-weight: 400;
+}
+html[data-font-palette="reader"] code,
+html[data-font-palette="reader"] pre,
+html[data-font-palette="reader"] kbd,
+html[data-font-palette="reader"] samp {
+  font-family: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* ---- Site default typography (system-stack reading-mode) -----------
+   Modeled on Reeder.app's reading view. System-stack body (SF Pro on
+   Apple, Segoe UI on Windows, etc.) at 15px; headings use the same
+   stack at weight 800 with tight tracking to approximate Reeder's
+   custom display title face — close-but-not-identical (Reeder's title
+   face is more condensed; matching it exactly would need a vendored
+   webfont). Code uses the system monospace stack. Zero font bytes
+   fetched. These rules are unconditional (no data-font-palette guard)
+   so they apply on the `default` palette and override Bootswatch's
+   theme fonts; non-default palettes win via higher selector
+   specificity (html[data-font-palette="<slug>"] ...). */
+body,
+p,
+li,
+figcaption,
+blockquote {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+body {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+h1, h2, h3, h4, h5, h6,
+.navbar, .navbar-brand, .navbar .nav-link {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* ---- almanac palette (Ledger headings / Ubuntu Sans body) ----------
+   Serif-over-sans inversion: narrow bookish slab-ish serif for display
+   (Ledger is single-weight 400, so heading weight maps to the regular
+   cut), humanist sans for running text. Code uses the system monospace
+   stack — no webfont fetched for code under this palette. Ubuntu Sans
+   ships under UFL-1.0 (not OFL); see header comment above. */
+@font-face {
+  font-family: 'Ledger';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/almanac/ledger-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Ubuntu Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/almanac/ubuntu-sans-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Ubuntu Sans';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/almanac/ubuntu-sans-400-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Ubuntu Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('vendor/fonts/almanac/ubuntu-sans-700-normal.woff2') format('woff2');
+}
+html[data-font-palette="almanac"] body,
+html[data-font-palette="almanac"] p,
+html[data-font-palette="almanac"] li,
+html[data-font-palette="almanac"] figcaption,
+html[data-font-palette="almanac"] blockquote {
+  font-family: 'Ubuntu Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+html[data-font-palette="almanac"] h1,
+html[data-font-palette="almanac"] h2,
+html[data-font-palette="almanac"] h3,
+html[data-font-palette="almanac"] h4,
+html[data-font-palette="almanac"] h5,
+html[data-font-palette="almanac"] h6,
+html[data-font-palette="almanac"] .navbar,
+html[data-font-palette="almanac"] .navbar-brand,
+html[data-font-palette="almanac"] .nav-link {
+  font-family: 'Ledger', Charter, 'Iowan Old Style', Georgia, serif;
+}
+html[data-font-palette="almanac"] code,
+html[data-font-palette="almanac"] pre,
+html[data-font-palette="almanac"] kbd,
+html[data-font-palette="almanac"] samp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* =====================================================================
+   Line-spacing axis. Independent of font-palette and theme. Written by
+   _includes/line-spacing-cycle.html (after-body; `l` key + pill button)
+   and pre-painted by _includes/line-spacing-override-init.html
+   (in-header; avoids FOUC). Three slugs map to three line-height
+   values applied to body prose selectors; default is `normal` (1.5).
+   ===================================================================== */
+html[data-line-spacing="tight"] body,
+html[data-line-spacing="tight"] p,
+html[data-line-spacing="tight"] li,
+html[data-line-spacing="tight"] figcaption,
+html[data-line-spacing="tight"] blockquote {
+  line-height: 1.6;
+}
+html[data-line-spacing="normal"] body,
+html[data-line-spacing="normal"] p,
+html[data-line-spacing="normal"] li,
+html[data-line-spacing="normal"] figcaption,
+html[data-line-spacing="normal"] blockquote {
+  line-height: 1.7;
+}
+html[data-line-spacing="loose"] body,
+html[data-line-spacing="loose"] p,
+html[data-line-spacing="loose"] li,
+html[data-line-spacing="loose"] figcaption,
+html[data-line-spacing="loose"] blockquote {
+  line-height: 1.8;
+}
+
+/* MathJax CHTML — keep display equations inside the column. Inline math
+   reflows with surrounding text and is fine; display math (`$$…$$`,
+   `\begin{aligned}`, etc.) renders at the equation's natural typographic
+   width and otherwise punches out beyond the content column on long
+   equations (worst offenders ~280–300 chars of TeX). Horizontal scroll on
+   overflow is the same pattern used elsewhere in this file for code
+   blocks, tables, and the navbar-3row chip strip. The padding-block keeps
+   a thin scrollbar from clipping descenders. The phone-size shrink keeps
+   mid-length equations from triggering scroll at all in the common case. */
+mjx-container[display="true"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-block: 0.25em;
+}
+@media (max-width: 575.98px) {
+  mjx-container[display="true"] { font-size: 92% !important; }
+}
+
+/* Print override for non-default palettes. Webfonts render inconsistently
+   in browser Print-to-PDF pipelines (Chrome/Safari sometimes skip woff2
+   loads when emulating print media, producing fallback-stack drift).
+   Scope on :not([data-font-palette="default"]) so readers on default
+   inherit the Bootswatch theme's print behavior unchanged; the attribute
+   is absent-or-default in that case so the selector is safe either way. */
+@media print {
+  html[data-font-palette]:not([data-font-palette="default"]) body,
+  html[data-font-palette]:not([data-font-palette="default"]) p,
+  html[data-font-palette]:not([data-font-palette="default"]) li,
+  html[data-font-palette]:not([data-font-palette="default"]) figcaption,
+  html[data-font-palette]:not([data-font-palette="default"]) blockquote,
+  html[data-font-palette]:not([data-font-palette="default"]) h1,
+  html[data-font-palette]:not([data-font-palette="default"]) h2,
+  html[data-font-palette]:not([data-font-palette="default"]) h3,
+  html[data-font-palette]:not([data-font-palette="default"]) h4,
+  html[data-font-palette]:not([data-font-palette="default"]) h5,
+  html[data-font-palette]:not([data-font-palette="default"]) h6,
+  html[data-font-palette]:not([data-font-palette="default"]) .sidebar {
+    font-family: Georgia, 'Times New Roman', serif !important;
+  }
+  html[data-font-palette]:not([data-font-palette="default"]) code,
+  html[data-font-palette]:not([data-font-palette="default"]) pre,
+  html[data-font-palette]:not([data-font-palette="default"]) kbd,
+  html[data-font-palette]:not([data-font-palette="default"]) samp {
+    font-family: ui-monospace, Menlo, Consolas, monospace !important;
+  }
+}
+

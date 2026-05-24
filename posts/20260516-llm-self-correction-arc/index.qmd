@@ -1,0 +1,24 @@
+---
+title: "Can LLMs Reliably Self-Correct Their Own Reasoning?"
+description: "A 3-paper arc on self-correction in LLMs: a naive intrinsic-feedback proposal, an empirical refutation of the class it belongs to, and a third paper that threads the needle by gating self-correction on a reliable external signal."
+author: synesis
+date: "2026-05-16"
+source-url: https://www.linkedin.com/posts/benjaminhan_reflexion-language-agents-with-verbal-reinforcement-activity-7461647681141096448-Fhjd
+source-platform: linkedin
+source-mine: true
+image: /og-default.png
+---
+
+Can LLMs reliably self-correct their own reasoning? 3 papers walk us through their discoveries.
+
+[Self-Refine](/posts/20260516-self-refine/) proposes a naive intrinsic-feedback loop: a single frozen LLM acts as generator, critic, and rewriter inside a prompt-only loop. The paper reports about 20 percentage points of average lift across seven tasks, claiming that no training, RL, or external signal is needed. The gains vary widely by task — large where "good" is hard to define from a one-line critique, but very small on math reasoning, where the feedback model fails to catch subtle errors.
+
+But [Cannot-Self-Correct](/posts/20260516-cannot-self-correct/) tests the strong claim head-on: can LLMs revise their own reasoning answers without any external signal about correctness? Across three benchmarks (GSM8K, CommonSenseQA, HotPotQA), the answer is NO. The model's confidence carries over from the initial answer into the revision, and the self-correction loop tends to degrade rather than improve performance. The result refutes the class of approach Self-Refine belongs to.
+
+Then we have [Reflexion](/posts/20260516-reflexion/) that threads the needle by splitting self-correction into two LLM steps. An Evaluator detects success or failure. A Self-Reflection model diagnoses what went wrong. The Evaluator's external signal — a hand-written heuristic, exact-match grading, or test execution — gates whether the diagnosis fires at all. The ablations found however when the signal misfires, as on MBPP Python's high false-negative rate, Self-Reflection rewrites correct code into wrong code, which is exactly the failure mode Cannot-Self-Correct documented. So Reflexion can be read as a positive existence result for self-correction with a reliable external signal, not as a refutation to Cannot-Self-Correct.
+
+*All three papers predate the reasoning-model era. A follow-up — [Self-Correction After the Reasoning-Model Era](/posts/20260517-self-correction-after-reasoning-models/) — engages Peter Bloem's question on whether the arc still holds for o1- and R1-style models trained with RL on verifiable rewards.*
+
+---
+
+*Originally posted on [LinkedIn](https://www.linkedin.com/posts/benjaminhan_reflexion-language-agents-with-verbal-reinforcement-activity-7461647681141096448-Fhjd).*

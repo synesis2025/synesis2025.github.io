@@ -1,0 +1,139 @@
+---
+title: "ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning"
+description: "A multi-agent RL setup splits reasoning into a high-level planner and a low-level executor and trains them jointly, beating R1-style single-agent baselines on math and judging."
+author: synesis
+date: "2026-04-30"
+date-modified: "2026-05-21"
+image: cover.jpg
+---
+
+![Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In *ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning* [[1]](#ref-1), [Ziyu Wan](https://github.com/ziyuwan), [Yunxiang Li](https://www.semanticscholar.org/author/Yunxiang-Li/2296444976), [Ying Wen](https://www.semanticscholar.org/author/Ying-Wen/2283887572), and eight co-authors from Shanghai Jiao Tong University, Shanghai AI Laboratory, UBC, and UCL train two large language model (LLM) agents jointly — a high-level meta-thinking agent that plans, and a low-level reasoning agent that executes — and show the split beats R1-style single-agent reinforcement learning on math and LLM-as-a-judge benchmarks.
+
+> Recent research on Reasoning of Large Language Models (LLMs) has sought to further enhance their performance by integrating meta-thinking — enabling models to monitor, evaluate, and control their reasoning processes for more adaptive and effective problem-solving. However, current single-agent work lacks a specialized design for acquiring meta-thinking, resulting in low efficacy. To address this challenge, we introduce **Reinforced Meta-thinking Agents (ReMA)**, a novel framework that leverages **Multi-Agent Reinforcement Learning (MARL)** to elicit meta-thinking behaviors, encouraging LLMs to think about thinking. ReMA **decouples the reasoning process into two hierarchical agents: a high-level meta-thinking agent** responsible for generating strategic oversight and plans, **and a low-level reasoning agent** for detailed executions. Through **iterative reinforcement learning with aligned objectives**, these agents explore and learn collaboration, leading to improved generalization and robustness. Empirical results from single-turn experiments demonstrate that ReMA **outperforms single-agent RL baselines** on complex reasoning tasks, including **competitive-level mathematical benchmarks and LLM-as-a-Judge benchmarks**. Additionally, we further extend ReMA to **multi-turn interaction settings, leveraging turn-level ratio and parameter sharing** to improve efficiency. Comprehensive ablation studies further illustrate the evolving dynamics of each distinct agent, providing valuable insights into how the meta-thinking reasoning process enhances the reasoning capabilities of LLMs.
+
+## Preliminaries
+
+The paper builds on a few standard objects:
+
+- **Vanilla Reasoning Process (VRP)** — autoregressive decoding from question $\mathbf{x}$ to a reasoning trajectory $\mathbf{y} = (y_1,\ldots,y_L)$ from which the final answer $\mathbf{a}$ is extracted: $\pi_\theta(\mathbf{y}\mid\mathbf{x}) = \prod_{l=1}^L \pi_\theta(y_l\mid \mathbf{x}, \mathbf{y}_{<l})$. This is the chain-of-thought (CoT) [[2]](#ref-2) baseline.
+- **Meta-thinking Reasoning Process (MRP)** — a single-agent variant that first emits a meta-thought $\mathbf{m}$, then conditions reasoning on it: $\mathbf{y} \sim \pi_\theta(\mathbf{y}\mid\mathbf{x},\mathbf{m})\cdot\pi_\theta(\mathbf{m}\mid\mathbf{x})$. "Meta-thinking" means the model's ability to monitor, evaluate, and control its own reasoning.
+- **RL objective** — both VRP and MRP optimize $\mathcal{J}(\theta) = \mathbb{E}_{(\mathbf{x},\mathbf{y}^*)\sim\mathcal{D},\,\mathbf{y}\sim\pi_\theta}\![R(\mathbf{y},\mathbf{y}^*)]$, where the verifiable reward $R$ compares the generated answer to the gold answer $\mathbf{y}^*$.
+- **GRPO** — Group Relative Policy Optimization [[3]](#ref-3), a PPO [[4]](#ref-4) variant that drops the learned critic. For each prompt, $G$ rollouts produce rewards $\{R_i\}$; the group-normalized advantage $\hat{A}_{i,j} = (R_i - \mathrm{mean}\{R_i\})/\mathrm{std}\{R_i\}$ replaces the value baseline, and the clipped surrogate $\min\!\big(r_{i,j}(\theta)\hat{A}_{i,j},\,\mathrm{clip}(r_{i,j}(\theta), 1{-}\epsilon, 1{+}\epsilon)\hat{A}_{i,j}\big)$ is applied per token, with $r_{i,j}(\theta) = \pi_\theta(y_{i,j}\mid\cdot)/\pi_{\theta_\text{old}}(y_{i,j}\mid\cdot)$.
+
+ReMA replaces the single policy in MRP with two separately parameterized agents and casts joint training as multi-agent RL.
+
+Non-conventional notation used in the rest of the post:
+
+- $\mathbf{m}$ — meta-thinking output (a strategic plan or decomposition of $\mathbf{x}$); $\mathbf{y}^*$ — gold answer.
+- $\theta_h, \theta_l$ — parameters of the high-level (meta-thinking) and low-level (reasoning) agents.
+- $R_h, R_l$ — rewards used to update the high-level and low-level agents.
+- $G$ — group size, the number of rollouts sampled per prompt for advantage normalization.
+- Indices: $i$ ranges over rollouts in a group, $j$ over tokens within a rollout, $t$ over turns in a multi-turn rollout.
+- $\hat{A}_{i,j}$ — group-normalized advantage for token $j$ of rollout $i$.
+- $r_{i,j}(\theta)$ vs $r_{i,t}(\theta)$ — token-level importance ratio (GRPO) vs turn-averaged ratio (MAMRP).
+
+## Method
+
+The cover figure positions ReMA against two prior families:
+
+- *Construction-based methods* (left) fine-tune LLMs on rejection-sampled combinations of pre-defined templates — meta-thinking is hardcoded into the data, not learned.
+- *R1-style methods* (middle) train a single powerful LLM with reinforcement learning to interleave meta-thinking and detailed reasoning inside one generation.
+- *ReMA* (right) splits the two roles into separately parameterized agents — a high-level meta-thinker and a low-level reasoner — and updates both jointly with multi-agent reinforcement learning.
+
+R1-style here is shorthand for DeepSeek R1 [[5]](#ref-5): a single LLM trained with pure RL on verifiable rewards, which learns to produce long traces that mix strategic reflection with step-by-step reasoning in one generation.
+
+The single-turn formulation factorizes generation into two sequential agent calls:
+
+- High-level agent $\pi_{\theta_h}$ takes the question $\mathbf{x}$ and emits meta-thinking $\mathbf{m}$ — a strategic plan or decomposition.
+- Low-level agent $\pi_{\theta_l}$ takes $(\mathbf{x}, \mathbf{m})$ and emits the detailed reasoning trajectory $\mathbf{y}$.
+- The joint policy factorizes as $\mathbf{y} \sim \pi_{\theta_h, \theta_l}(\mathbf{y}\mid\mathbf{x}) := \pi_{\theta_l}(\mathbf{y}\mid\mathbf{x}, \mathbf{m}) \cdot \pi_{\theta_h}(\mathbf{m}\mid\mathbf{x})$.
+
+Each agent is trained iteratively under its own reward, conditioned on the other's policy:
+
+$$\theta_h^* = \arg\max_{\theta_h}\; \mathbb{E}_{(\mathbf{x},\mathbf{y}^*)\sim\mathcal{D},\,\mathbf{m}\sim\pi_{\theta_h},\,\mathbf{y}\sim\pi_{\theta_l^*}}\!\big[R_h(\mathbf{m},\mathbf{y},\mathbf{y}^*)\big],$$
+
+$$\theta_l^*(\theta_h) = \arg\max_{\theta_l}\; \mathbb{E}_{(\mathbf{x},\mathbf{y}^*)\sim\mathcal{D},\,\mathbf{m}\sim\pi_{\theta_h},\,\mathbf{y}\sim\pi_{\theta_l}}\!\big[R_l(\mathbf{m},\mathbf{y},\mathbf{y}^*)\big].$$
+
+Training alternates between freezing one agent and updating the other with PPO/GRPO, so each policy improves while its partner is held fixed.
+
+The training-pipeline figure makes the architectural difference concrete:
+
+- *Left* is single-agent RL — VRP mixes meta-thinking and reasoning in one trace, MRP makes the meta-thinking explicit but still updates one LM end-to-end.
+- *Middle* is single-turn ReMA with separately parameterized high-level and low-level agents; alternating freeze/update keeps each gradient on-policy with respect to its partner.
+- *Right* is the multi-turn Multi-Agent Meta-thinking Reasoning Process (MAMRP) extension. Both agents share parameters and are distinguished only by system prompts, and stability over long rollouts comes from a turn-level PPO ratio that averages token-level ratios within a turn before clipping, instead of clipping each token independently: $r_{i,t}(\theta) = \frac{1}{|\mathbf{y}_{i,t}|}\sum_j \frac{\pi_\theta(\mathbf{y}_{i,t,j}\mid\cdot)}{\pi_{\theta_{\text{old}}}(\mathbf{y}_{i,t,j}\mid\cdot)}.$
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.webp){fig-align="center" data-lightbox-src="figure2-full.png"}
+
+## Results
+
+### Motivating experiment
+
+Setup:
+
+- Base model: Qwen2.5-Math-7B.
+- Three single-agent training schemes:
+  1. RL from the base model directly on MATH.
+  2. RL after supervised fine-tuning (SFT) on GPT-4o's step-by-step answers.
+  3. RL after SFT on GPT-4o's meta-thinking *plans* (single-agent MRP, not yet the multi-agent ReMA).
+- Benchmarks: MATH500 (in-distribution), GSM8K (easier in-distribution), AIME24 (out-of-distribution).
+
+Findings:
+
+- On MATH500 and GSM8K, the SFT-warmed model wins — unsurprising, since it's been shown the solution format.
+- On AIME24, the SFT baseline collapses, RL from base plateaus, and RL under meta-thinking keeps climbing.
+
+That gap is the argument for decoupling meta-thinking from execution in the first place.
+
+![Figure 3 from the paper [[1]](#ref-1).](figure3.webp){fig-align="center" data-lightbox-src="figure3-full.png"}
+
+### Main result
+
+Setup:
+
+- Base models: Llama3-8B-Instruct, Llama3.1-8B-Instruct, Qwen2.5-7B-Instruct.
+- Baselines compared against ReMA: VRP (basic CoT), VRP~RL~ (vanilla RL), and MRP~RL~ (single-agent meta-thinking RL).
+- Math benchmarks: in-distribution (MATH500, GSM8K) and out-of-distribution (AIME24, AMC23, Gaokao2023en, Minerva Math, Olympiad Bench).
+- LLM-as-a-Judge benchmarks: RewardBench970, JudgeBench.
+- Each cell reports accuracy plus the improvement or degradation against basic CoT (VRP).
+
+Findings:
+
+- ReMA wins four of five averages.
+- Largest gains on out-of-distribution math (AMC23, AIME24) and on the Llama3.1-8B Judge benchmarks.
+- The Qwen2.5-7B Judge average is the one case where single-agent MRP edges ReMA.
+
+![Table 1 from the paper [[1]](#ref-1).](table1.jpg){fig-align="center" data-lightbox-src="table1-full.jpg"}
+
+### Other key findings
+
+- **Multi-turn MAMRP converges and generalizes.** During training, accuracy rises from ~55% to ~70%, and the multi-turn setup yields an average gain of ~5% across the seven test benchmarks.
+- **Multi-turn is hyperparameter-sensitive.** Some configurations trigger an "Echo Trap" — massive intra-turn repetitions or empty turns after a few rollouts — attributed to long-horizon credit assignment.
+- **Turn-level ratio improves sample efficiency.** Trajectory-level loss with the turn-averaged ratio reaches higher training rewards with fewer steps than the token-level variant; parameter sharing with simultaneous updates also converges noticeably faster than separate-weight settings.
+- **Capacity gates format-aware meta-thinking.** With structured JSON actions, smaller LMs collapse to the simplest "EMPTY" action to dodge formatting penalties, while 8B-scale models adapt their meta-thinking strategy to problem difficulty.
+- **Generalization tracks the meta-thinking split.** ReMA's lead is largest on harder out-of-distribution problems like AIME24, consistent with the high-level agent surfacing strategic structure that single-agent baselines miss.
+
+## My Notes
+
+- **The split-agent pattern keeps showing up across very different setups.** A year later, a training-free engineering-design paper, [Supervising Ralph Wiggum](/posts/20260430-supervising-ralph-wiggum/) [[6]](#ref-6), runs a prompted version of the same architecture (one design agent plus a second agent that critiques its metacognition) and gets the same direction of result on a battery-pack optimization task. [Adaptive Collaboration with Humans (HILA)](/posts/20260520-adaptive-collaboration-mapo/) [[7]](#ref-7) replaces the meta-thinker with a metacognitive routing policy that gates between autonomous solving and human deferral, again as a separately optimized layer. The Metacognitive Harness [[8]](#ref-8) wires Nelson–Narens feeling-of-knowing and judgment-of-learning signals into a test-time control loop, separating the monitoring layer from the reasoning layer at inference. Cog-Rethinker [[9]](#ref-9) inserts a metacognitive two-stage rollout on top of zero-RL so weak base models stop spending samples on problems they can't solve. Different decouplings — separately parameterized vs. prompt-distinguished, training vs. test-time, math vs. engineering vs. human-in-the-loop — but the underlying observation is consistent: when reasoning is hard, putting the meta-level work in its own loop tends to outperform asking one model to do both.
+
+- **The R1 comparison needs compute parity.** ReMA's headline is that decoupling beats mixing on the same training *data*, but two models updated with MARL is not the same training *budget* as one model updated with single-agent RL. A matched-FLOPs comparison against the best available R1-style baseline would decide whether decoupling is a real architectural win or just more effective capacity in a different shape.
+
+- **Parameter sharing in the multi-turn setup blurs the two-agent story.** The multi-turn extension has both agents share identical model weights, with their roles defined by differing system prompts rather than by parameterization. That's a practical efficiency choice, but it narrows the architectural gap between ReMA's "two separately parameterized models" and a single-model role-conditioned baseline. If the multi-turn results hold at scale, the decoupling claim becomes more about aligned RL objectives than about model capacity.
+
+- **The multi-turn extension is the result that matters most for agent applications.** Single-turn math is a clean benchmark but a poor proxy for how agents actually run. Real deployment means long rollouts and sparse rewards. The paper's multi-turn extension (turn-level ratio plus parameter sharing) is where the architecture would actually be exercised in production, and the reported training curves are early evidence. Scaling to longer horizons and richer environments is the experiment that would decide whether this is a math-benchmark result or a default setup for reasoning agents.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>Wan, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi Yang, Mark Schmidt, Jun Wang, Weinan Zhang, Shuyue Hu, and Ying Wen. "ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning." *arXiv preprint* (arXiv:2503.09501), March 12, 2025. <https://arxiv.org/abs/2503.09501>
+2. <a id="ref-2"></a>Wei, Jason, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models." *NeurIPS 2022* (arXiv:2201.11903), January 28, 2022. <https://arxiv.org/abs/2201.11903>
+3. <a id="ref-3"></a>Shao, Zhihong, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Mingchuan Zhang, Y. K. Li, Yu Wu, and Daya Guo. "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models." *arXiv preprint* (arXiv:2402.03300), February 5, 2024. <https://arxiv.org/abs/2402.03300>
+4. <a id="ref-4"></a>Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. "Proximal Policy Optimization Algorithms." *arXiv preprint* (arXiv:1707.06347), July 20, 2017. <https://arxiv.org/abs/1707.06347>
+5. <a id="ref-5"></a>DeepSeek-AI. "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning." *arXiv preprint* (arXiv:2501.12948), January 22, 2025. <https://arxiv.org/abs/2501.12948>
+6. <a id="ref-6"></a>Xu, Zeda, Nikolas Martelaro, and Christopher McComb. "Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design." *arXiv preprint* (arXiv:2603.24768), March 25, 2026. <https://arxiv.org/abs/2603.24768>
+7. <a id="ref-7"></a>Yang, Wei, Defu Cao, Jiacheng Pang, Muyan Weng, and Yan Liu. "Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning." *International Conference on Learning Representations (ICLR), 2026 (Poster)* (arXiv:2603.07972), March 9, 2026. <https://arxiv.org/abs/2603.07972>
+8. <a id="ref-8"></a>Cao, Qi, Yufan Wang, Peijia Qin, Shuhao Zhang, and Pengtao Xie. "LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling." *arXiv preprint* (arXiv:2605.14186), May 13, 2026. <https://arxiv.org/abs/2605.14186>
+9. <a id="ref-9"></a>Sun, Zexu, Yongcheng Zeng, Erxue Min, Heyang Gao, Bokai Ji, and Xu Chen. "Cog-Rethinker: Hierarchical Metacognitive Reinforcement Learning for LLM Reasoning." *arXiv preprint* (arXiv:2510.15979), October 13, 2025. <https://arxiv.org/abs/2510.15979>

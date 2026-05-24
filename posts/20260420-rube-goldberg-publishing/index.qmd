@@ -1,0 +1,73 @@
+---
+title: "A Rube Goldberg Pipeline for Sharing Links"
+description: "How a single iOS share-sheet tap traverses half a dozen systems (Pythonista, GitHub, Quarto) to land a blog post."
+author: synesis
+date: "2026-04-20"
+date-modified: "2026-05-08"
+image: cover.jpg
+---
+
+![Rube Goldberg's *Self-Operating Napkin*, the canonical absurd contraption (Professor Butts, 1931). Image via [Wikimedia Commons (public domain)](https://commons.wikimedia.org/wiki/File:Self-operating_napkin_(Rube_Goldberg_cartoon_with_caption).jpg).](cover.jpg){fig-align="center"}
+
+Most posts here start as a link or a paragraph I read on my phone, in Mastodon or RSS or an article. By the time I'm back at my Mac, the thread is usually gone: the link buried under three days of tabs, the half-formed reaction long since dissolved.
+
+What I wanted, in three steps:
+
+1. **I capture on my phone** in seconds, with whatever sliver of a thought I have at the moment.
+2. **I finish on my Mac** at leisure, with VSCode and Claude Code.
+3. **I publish to the blog** in one motion, with the cover image and `llms.txt` entry following along.
+
+What it took: half a dozen different systems chained together. It starts when a scaffolded draft lands in my repo within seconds of a phone tap. Hours or days later, when I'm back at my Mac and have written my commentary, running the `publish` command takes about three minutes to put the post live on `benjaminhan.net`. For quick reshares where I have nothing to add, a `Capture+publish:` variant skips the Mac loop entirely and lets CI promote the draft on its own. The systems involved are the iOS share sheet, a [Pythonista](http://omz-software.com/pythonista/) script, GitHub's Contents API, GitHub Actions, and GitHub Pages. Two adjacent stages aren't covered here: the Cloudflare CDN + feed-analytics Worker in front of GitHub Pages, and the optional Mastodon cross-post that can fire after deploy.
+
+The result is more engineering than bookmarking really needs. Below is the contraption, and the spots where it tends to stick.
+
+## The pipeline
+
+```{mermaid}
+flowchart TB
+    subgraph capture [" "]
+        direction LR
+        A[iOS Share Sheet] --> B[Pythonista]
+        B -->|GitHub Contents API| C[draft .qmd in repo]
+        C -->|git pull + /expand-draft| D[Expanded draft]
+        D --> M[Manual edit<br/>VSCode + Claude Code]
+    end
+    subgraph deploy [" "]
+        direction LR
+        E[git mv to posts/] -->|git push| F[GitHub Actions]
+        F -->|Quarto render| G[Static site deploy]
+    end
+    M -->|/publish-draft| E
+    C -.->|auto-publish: true| F
+    style capture fill:none,stroke:none
+    style deploy fill:none,stroke:none
+```
+
+## What each stage actually does
+
+- **iOS Pythonista** captures the URL plus a handful of prompts (title, slug, optional one-liner, "Notes to Claude," "is the post mine?"), auto-detects the source platform (Mastodon, YouTube, arxiv, Substack, GitHub, etc.) from the URL host, and `PUT`s a stub `.qmd` to the repo via GitHub's Contents API. The platform tag tells the next stage how to dispatch.
+- **Auto-publish** is the Mac-less shortcut for a link I want to reshare verbatim. The iOS capture sets `auto-publish: true` and commits with `Capture+publish:` (no `[skip ci]`), so the workflow runs. An early step pulls the source toot via Mastodon's public API, downloads its image attachments, maps its hashtags against the existing tag vocabulary, fills in missing required frontmatter, and `git mv`s the draft to `posts/` before `quarto render`. Mastodon-only today. Other platforms raise a hard `SystemExit`, so a malformed capture fails CI rather than shipping a broken post.
+- **`/expand-draft` skill** runs on the Mac in Claude Code. It reads the stub's `source-url` and `source-platform`, fetches the page, extracts `og:image` / `og:description`, suggests categories from the existing tag set, downloads the cover image (with a citation in the figcaption), and writes a STYLE.md-compliant draft. If `notes-for-claude` is set, the skill follows it as per-draft direction. If `source-mine: true`, it skips the framing-commentary scaffolding. A `/review-draft` pass then fact-checks against the source, flags voice and logic issues, and applies safe fixes before the expansion is committed.
+- **Manual editing** happens between expand and publish. I open the draft in VSCode and write or polish my commentary with Claude Code at hand. Quick link shares take minutes. Essays can take days. The expanded scaffolding stays deliberately minimal.
+- **`/publish-draft` skill** validates the draft against the style guide, strips scaffolding, `git mv`s to `posts/`, commits, pushes.
+- **GitHub Actions** implements *incremental rendering*. A classifier (`_scripts/render_diff.py`) diffs the working tree against the last successful build's cached `_site/` and picks one of `full`, `incremental`, or `skip-render`. A post edit typically routes to `incremental` and renders in ~20 s instead of ~4 min. Pre-render scripts then emit the tag histogram, the external `post-index.json` that hydrates the home + archive listings, the bucket-paginated home and archive pages, and `llms.txt`. Quarto renders the `.qmd` files. Post-render, `feed-render.py` rasterizes Mermaid diagrams and MathJax expressions to SVG so the RSS feed carries real images, `feed-utm.py` UTM-tags the feed item URLs (so GA4 can attribute RSS click-throughs back to the feed channel) and prepends a "Read on benjaminhan.net" back-link to each item's body, and `feed-paginate.py` slices the feed into RFC 5005 paged archives so the index file stays small while subscribers can still walk back through history. Three more scripts run before deploy to strip redundant listing H1s, prune inline asset blobs from pages that don't need them, and fingerprint `styles.css` for cache-busting.
+
+## Gotchas
+
+The pipeline above looks clean in a flowchart. It is not. Here are the bumps I hit, in roughly the order they showed up.
+
+- **`dialogs.input_alert` doesn't block in Pythonista's share extension.** The dialog works fine when I tap ▶ inside the Pythonista app. From the share sheet, it races through every prompt with empty inputs. Symptom: nothing happens, no error, the script finishes silently. Fix: switch to `console.input_alert`. Same signature, behaves correctly in the extension sandbox.
+- **GitHub Contents API needs `sha` to update an existing file.** I hit this on a slug collision (HTTP 422, "sha wasn't supplied"). The script now `GET`s the path first. If the file exists, it offers Replace (passing the existing `sha` so the `PUT` is treated as an update) or Cancel.
+- **Quarto's `draft-mode: gone` strips draft pages to empty HTML.** Local `quarto preview` shows blank pages for files in `drafts/`. Workaround: a `_quarto-preview.yml` profile that flips `draft-mode: unlinked` for previews. Production CI builds without the `--profile=preview` flag, so the deployed site never includes drafts.
+- **VSCode's Quarto extension doesn't inherit `terminal.integrated.env.osx`.** Setting `QUARTO_PROFILE=preview` in workspace settings only affects the integrated terminal. The extension spawns Quarto in a separate process tree with its own inherited env. Real fix: `export QUARTO_PROFILE=preview` in `~/.zshrc`, then `Cmd-Q` and relaunch VSCode from the terminal so the extension inherits it.
+- **`image:` frontmatter is metadata, not body content.** Quarto uses `image:` only for `og:image` meta tags and listing thumbnails. It does not render an inline cover image on the post page itself. The body needs an explicit `![](cover.jpg){fig-align="center"}` for the cover to actually appear.
+- **`.claude/` was gitignored, hiding the per-project skills.** The first commit of `expand-draft.md` and `publish-draft.md` resulted in zero tracked files. The directory was excluded entirely. Git's rule is that a re-include cannot reach a file under an already-excluded parent directory, so `!.claude/skills/` does not work against `.claude/`. The fix is to widen the exclusion to `.claude/*` first, then re-include `.claude/skills/`.
+
+## Why bother
+
+Two reasons:
+
+- **The iOS-to-Mac handoff matches how I actually find good links.** On a phone, in an RSS or Mastodon reader, away from a keyboard. Capturing them as scaffolded drafts means I don't lose the thread between "I should put more thought to it" and "I'm back at the Mac." The drafts queue up. I work on them when I have time.
+- **The pipeline keeps a human in the loop.** The phone capture is mine. The commentary is mine. The publish command is a manual step, not a webhook. Automation handles plumbing. Editorial calls stay with me.
+
+The pipeline is elaborate, fragile, and a little excessive. For a workflow that runs every few days, that is also fine.

@@ -1,0 +1,39 @@
+---
+title: "TurboQuant: A First-Principles Walkthrough"
+description: "Arkar Min Aung walks through TurboQuant, the per-vector KV cache quantizer, section by section with interactive demos that cover inner products, random rotations, and the residual quantizer."
+author: synesis
+date: "2026-04-27"
+image: cover.jpg
+also-toot: true
+---
+
+![The "Putting it together" page: a five-step pipeline for TurboQuant-MSE plus a live demo with sliders for bits and dimension. Image from [Interactive TurboQuant Walkthrough](https://arkaung.github.io/interactive-turboquant/).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+[Arkar Min Aung](https://arkaung.github.io/), a deep-learning engineer, has published an extraordinary interactive walkthrough [[1]](#ref-1) of TurboQuant [[2]](#ref-2), the per-vector KV cache quantizer that approaches the Shannon limit, with draggable demos for every concept the paper builds on. TurboQuant is also the per-vector baseline that [an earlier post here](/posts/20260422-kv-cache-compression/) pushes against, so this walkthrough doubles as an introduction to the target that alternative is measuring itself from.
+
+What Aung covers:
+
+- An opening primer that decodes 8 prerequisite concepts before any TurboQuant content: vectors, length and inner product, mean squared error, the first and second moments, biased vs unbiased estimators, rotations, the Central Limit Theorem, and uniform vs Gaussian noise.
+- The DRIVE construction [[3]](#ref-3) (Vargaftik et al., NeurIPS 2021) for one-bit federated mean estimation, and its later generalisation to *b* bits per coordinate as EDEN [[4]](#ref-4).
+- The core geometric move in TurboQuant: multiply the input vector by a random orthogonal matrix and the outlier "spike" dissolves into a roughly Gaussian distribution, so that downstream per-coordinate quantization actually works without paying the per-block metadata tax that production quantizers normally use to handle outliers.
+- The residual quantizer's shrinkage property: a quantized reconstruction is smaller in magnitude than the input, with downstream consequences for the inner products the cache will later be used to compute.
+- Each idea comes with its own draggable interactive demo. Change the angle and watch the magnitude redistribute. Fire 50 shots and see the bias/variance bullseye.
+
+## My Notes
+
+What the walkthrough covers that the TurboQuant paper does not:
+
+- Draggable interactive demos for every concept the paper builds on. A reader can rotate a vector and watch the outlier spike redistribute, or fire 50 shots and watch the bias/variance bullseye form.
+- An opening primer covering eight prerequisite concepts, each with its own demo: vectors, inner product, MSE, first and second moments, biased vs unbiased estimators, rotations, the Central Limit Theorem, and uniform vs Gaussian noise. The paper assumes the reader already has these in hand.
+- Plain-language naming of the cost. Aung states outright that TurboQuant's random rotation is a different way of paying the per-block metadata tax production quantizers already pay to handle outliers. The paper treats the trade-off formally.
+
+Sites like this one are why the open web is still a wonderful place.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>Aung, A. M. "Interactive TurboQuant Walkthrough." <https://arkaung.github.io/interactive-turboquant/>
+2. <a id="ref-2"></a>"TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate." *arXiv*. <https://arxiv.org/abs/2504.19874>
+3. <a id="ref-3"></a>"DRIVE: One-bit Distributed Mean Estimation." *arXiv*. <https://arxiv.org/abs/2105.08339>
+4. <a id="ref-4"></a>"EDEN: Communication-Efficient and Robust Distributed Mean Estimation for Federated Learning." *arXiv*. <https://arxiv.org/abs/2108.08842>

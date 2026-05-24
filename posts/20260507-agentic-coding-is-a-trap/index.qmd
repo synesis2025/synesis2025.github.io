@@ -1,0 +1,59 @@
+---
+title: "Agentic Coding Is a Trap"
+description: "Lars Faye argues that the dominant 'orchestrator with sub-agents' coding workflow trades the very judgment it depends on for short-term throughput, and lays out a narrower role for LLMs that preserves the underlying skill."
+author: synesis
+date: "2026-05-07"
+image: cover.jpg
+also-toot: true
+---
+
+![Image from [Lars Faye's article](https://larsfaye.com/articles/agentic-coding-is-a-trap).](cover.jpg){fig-align="center"}
+
+[Lars Faye](https://larsfaye.com/), a software engineer who runs the [Confident Coding Course](https://confident-coding.com/), [argues](https://larsfaye.com/articles/agentic-coding-is-a-trap) that the dominant "orchestrator with sub-agents" coding workflow trades the very critical-thinking skills it depends on for short-term throughput. The piece collects the public evidence of skill atrophy under heavy AI-assisted coding, including two Anthropic studies and on-the-record concerns from a LinkedIn engineering director, then lays out a narrower role for large language models (LLMs) that preserves the underlying capability.
+
+## What Faye cites
+
+The argument leans on a long chain of independent sources. Listed in roughly the order Faye reaches for them:
+
+- [Quentin — "One More Prompt: the Dopamine Trap of Agentic Coding"](https://blog.quent.in/blog/2026/03/09/one-more-prompt-the-dopamine-trap-of-agentic-coding/) — slot-machine framing for the "one more prompt" loop.
+- [Margaret Storey — "Cognitive Debt Revisited"](https://margaretstorey.com/blog/2026/02/18/cognitive-debt-revisited/) — research that AI tooling has been shown to impact critical thinking negatively.
+- [MIT Media Lab — "Your Brain on ChatGPT"](https://www.media.mit.edu/publications/your-brain-on-chatgpt/) — measured cognitive impact of LLM-assisted writing.
+- [404 Media on a Microsoft study](https://www.404media.co/microsoft-study-finds-ai-makes-human-cognition-atrophied-and-unprepared-3/) — Microsoft research finding AI use atrophies human cognition.
+- [Simon Willison — "Cognitive Debt"](https://simonwillison.net/2026/Feb/15/cognitive-debt/) — Faye's evidence that senior engineers aren't immune to the pattern.
+- [Anthropic — "How AI Is Transforming Work at Anthropic"](https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic#and-less-hands-on-practice) — source of the "paradox of supervision" passage.
+- [Business Insider — leaders worry about skill atrophy](https://www.businessinsider.com/leaders-worry-about-skill-atrophy-due-to-ai-adoption-2025-10) — where Sandor Nyako, Director of Software Engineering at LinkedIn (oversees ~50 engineers), is on the record.
+- [Anthropic — "AI Assistance Coding Skills"](https://www.anthropic.com/research/AI-assistance-coding-skills) — source of the 47% debugging-skill drop.
+- [PYMNTS — "AI adoption is being measured in tokens, but the metric falls short"](https://www.pymnts.com/artificial-intelligence-2/2026/ai-adoption-is-being-measured-in-tokens-but-the-metric-falls-short-experts-say/) — hype around token usage as the productivity metric of choice.
+- [Lam (LinkedIn) — "Claude's Outages Show the Dark Side of AI Productivity"](https://www.linkedin.com/pulse/claudes-outages-show-dark-side-ai-productivity-total-system-lam-osbjc/) — one of the LinkedIn posts Faye saw during a Claude outage when teams couldn't work.
+- [The Verge — AI monetization / token economics](https://www.theverge.com/ai-artificial-intelligence/917380/ai-monetization-anthropic-openai-token-economics-revenue) — evidence that model providers are heavily subsidized today.
+- [Cheewebdevelopment — "Don't Vibe Code: Delegate"](https://cheewebdevelopment.com/dont-vibe-code-delegate-responsible-development-with-llms/) — the source Faye credits for the "delegation utilities" framing.
+- [Jeremy Howard (fast.ai)](https://www.fast.ai/about.html) — quoted: "If you outsource all your thinking to computers, you stop upskilling, learning, and becoming more competent."
+- Five supporting YouTube clips: [anecdotal developer testimony](https://www.youtube.com/watch?v=pzkwn3hu1Cc), [a recent interview](https://youtu.be/IGsbARhERqc?t=501), [AI-enthusiastic senior developers](https://www.youtube.com/watch?v=cv6rwHTGT5w), [Primeagen on vendor capture](https://www.youtube.com/watch?v=_vB0PDzaa7I&t=3299s), and [further on-the-ground reporting](https://www.youtube.com/watch?v=5HaQnIPrfKk).
+
+## Faye's prescription
+
+Faye proposes inverting the dominant orchestration pattern: the engineer codes; the model helps with adjacent work. His daily workflow:
+
+- **Generate specs and plans with the model, but implement manually.** "I am still manually coding anywhere from 20% to 100%, depending on the task."
+- **Write pseudo-code first, then engage the model.** Pseudo-code "closes the distance between the request and the generated code" — the model fills gaps rather than architects.
+- **Use models as delegation utilities.** Ad-hoc code generation, interactive documentation, research-and-iterate questions — all bounded, all small.
+- **Never generate more than you can review in one sitting.** If it's too big, split the task and manually refactor through it.
+- **Never ask the model to implement something you couldn't do on your own.** Educational exceptions allowed, and often discarded after.
+- **TL;DR (Faye's): "Use them like the Ship's Computer, not Data."** A reference tool, not a substitute for the engineer.
+
+## My Notes
+
+- **The "paradox of supervision" (Faye quotes it from Anthropic) is one slice of a *self-undermining* loop.** Faye and Anthropic name the contradiction: to supervise the model you need the same skill the model is eroding, but didn't explicitly close the loop.
+  - The missing link: as that skill weakens, more decisions slide to the model (some on purpose, some because the human no longer catches the slips), which erodes the skill further, which weakens the next round of supervision. Each turn justifies the next.
+  - The cycle isn't unbreakable. Faye's "never generate more than you can review" rule does break it, by keeping each round small enough that the human's skill stays in use. Preserving judgment in the moment is also what keeps the cycle from running.
+
+- **Restoring the speed-and-comprehension link in agentic tooling is about what we optimize for. Model capability isn't the bottleneck.** Today's tools optimize for generated-code volume; they should optimize for *human-verifiable diff per unit time* instead. [Decision-Bound Programming](/posts/20260315-ai-coding-decision-bound/) makes the same recommendation from a different starting point: when generation is cheap and evaluation is not, the next generation of programming tools should be *decision support systems*: tooling that narrows the space of options the human must evaluate. The asymmetry itself isn't new — [Terence Tao's decomposition of mathematical work into *generation*, *verification*, and *digestion*](/posts/20260422-proof-generation-vs-digestion/) names the same problem one field over: AI is racing through the first two while leaving the third (the human's comprehension) behind. Four concrete shapes narrow the evaluation gap:
+  - **Type-driven generation** — the type checker rules out a class of candidates; the human reads types, not whole functions.
+  - **Test-driven generation** — a passing test suite becomes the checkable signal; the human verifies via the gate.
+  - **Spec-first systems where the model stays at the planning layer** (Faye's own inversion) — the human decides at the spec level, and trusts the mechanical translation below.
+  - **Domain-specific languages (DSLs) and structured-edit modes** — a smaller grammar is a smaller decision space; the output is cheap to scan.
+
+  Intrinsic non-determinism doesn't disappear, but in all four the tool absorbs the checking work the human was doing before.
+
+- **Vendor lock-in adds an industry risk to the personal-skill risk.** When entire teams sit idle during a Claude outage, the lock-in has already happened. Token costs are a moving target by design, subsidized today and "nerfed" tomorrow, and the financial exposure piles on top of the cognitive risk. [The 2028 Global Intelligence Crisis scenario](/posts/20260502-2028-intelligence-crisis/) treats this same compute-cost-as-labor-cost substitution as a macro variable; [the Cursor agent that erased PocketOS production data](/posts/20260427-cursor-railway-production-wipe/) shows the daily-operations failure mode at the other end.
+

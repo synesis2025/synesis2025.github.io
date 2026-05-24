@@ -1,0 +1,126 @@
+---
+title: "What Is JEPA?"
+description: "A primer on Joint-Embedding Predictive Architectures (JEPA) — the self-supervised representation-learning program developed at FAIR and now continued at AMI Labs. What it is, where it came from, how it works, what has been demonstrated to date, and how it relates to other self-supervised and world-model research."
+author: synesis
+date: "2026-05-23"
+image: cover.jpg
+toc-depth: 3
+---
+
+![Figure 10 from the V-JEPA 2 paper [[4]](#ref-4): the V-JEPA 2-AC variant executing pick-and-place on a Franka arm. Highlighted frames mark sub-goal achievement.](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+Joint-Embedding Predictive Architecture, or JEPA, is the name [Yann LeCun](http://yann.lecun.com/) gave in 2022 [[1]](#ref-1) to a family of **self-supervised** models (models that learn from raw images and video without human-labeled examples) that learn by predicting **representations** of missing data rather than the missing data itself. A representation here is what the model has learned to summarize about its input: a vector of numbers, also called an *embedding*, that captures the input's structure in a compressed form. JEPA's design choice is to train the model to predict those vectors, not to reconstruct pixels.
+
+The acronym covers a research program more than a single model. Published JEPA models to date include [I-JEPA](https://arxiv.org/abs/2301.08243) [[2]](#ref-2) for images, [V-JEPA](https://arxiv.org/abs/2404.08471) [[3]](#ref-3) for video, and the action-conditioned [V-JEPA 2](https://arxiv.org/abs/2506.09985) [[4]](#ref-4), which adds a real-robot deployment.
+
+## The problem JEPA is trying to solve
+
+Two empirical observations motivate the design.
+
+The first concerns where a generative model spends its capacity. To predict the next frame of a video pixel-for-pixel, a model has to reproduce every leaf texture, every shadow gradient, every detail at the edge of a cloud, most of which a downstream classifier, planner, or robot controller will never use. The same is true for next-token prediction over captions: the model is forced to commit to a specific word among synonyms even when the meaning doesn't depend on which it picks. The cost is paid in model parameters and training compute that go toward fidelity rather than understanding.
+
+By the early 2020s, most leading methods for learning image representations from unlabeled data were non-generative: [SimCLR](https://arxiv.org/abs/2002.05709) [[5]](#ref-5), [MoCo](https://arxiv.org/abs/1911.05722) [[6]](#ref-6), [BYOL](https://arxiv.org/abs/2006.07733) [[7]](#ref-7), [DINO](https://arxiv.org/abs/2104.14294) [[8]](#ref-8), [VICReg](https://arxiv.org/abs/2105.04906) [[9]](#ref-9). On the standard evaluation (train a single linear layer on top of frozen features and measure classification accuracy on [ImageNet](https://www.image-net.org/)), they performed competitively with or outperformed [Masked Autoencoders](https://arxiv.org/abs/2111.06377) [[10]](#ref-10), the leading pixel-reconstruction approach, at lower compute. LeCun took this pattern as evidence that the right objective for representation learning operates in embedding space, not in pixel space.
+
+His 2022 position paper lays out the underlying taxonomy directly. It diagrams four architecture types side by side (deterministic generative, generative latent-variable, auto-encoder, and joint-embedding) and annotates each with the way it can collapse, identifying joint-embedding as the family worth scaling.
+
+![Figure 10 from the paper [[1]](#ref-1).](figure-architectures.webp){fig-align="center" data-lightbox-src="figure-architectures-full.png"}
+
+The second observation is about data efficiency. [A teenager learns to drive in roughly twenty hours of practice](/posts/20260523-yann-lecun-after-llms/#zero-shot-generalization-and-the-17-year-old-driver). Self-driving programs have ingested millions of hours of road video and have not yet reached level-five autonomy on the long tail of unfamiliar situations. The going hypothesis is that humans learn an internal **world model** (a predictor that can be queried about the consequences of an action) from passive observation. *Imitation learning*, the current standard for training robot policies, works by mimicking demonstrations of each specific task. It does not build the kind of general predictive model that would let a system handle an action it has never seen demonstrated. Building such a model from observation is the JEPA program's long-horizon target.
+
+## The people and institutions
+
+JEPA's intellectual lineage runs through [FAIR](https://ai.meta.com/research/) (Fundamental AI Research, [Meta](https://about.meta.com/)'s long-standing research lab, originally Facebook AI Research). The position paper that introduced the JEPA family, *A Path Towards Autonomous Machine Intelligence* [[1]](#ref-1), was posted to [OpenReview](https://openreview.net/forum?id=BZ5a1r-kVsf) in 2022 as LeCun's solo-authored manifesto and read as a public commitment to a particular technical direction. The I-JEPA model paper that followed in 2023 had [Mahmoud Assran](https://www.midoassran.ca/) as first author, with [Nicolas Ballas](https://scholar.google.com/citations?user=euUV4iUAAAAJ), [Adrien Bardes](https://adrien-bardes.netlify.app/), and LeCun among the senior authors. V-JEPA in 2024 had Bardes as first author. V-JEPA 2 in 2025, with Assran back at first position, added action conditioning and the first real-robot deployment. The FAIR Paris group has been the engine of the program throughout, and the DINO and JEPA lines continue there.
+
+The conceptual roots go further back. The mutual-information objective that motivates JEPA's regularization (penalize representations that collapse, reward representations that retain information about the input) traces directly to [Becker and Hinton's 1992 paper](https://www.nature.com/articles/355161a0) [[11]](#ref-11) in *Nature*, which showed that a neural network could discover depth from random-dot stereograms by maximizing mutual information between adjacent image patches. Most modern non-contrastive self-supervised methods, including [BYOL](https://arxiv.org/abs/2006.07733) [[7]](#ref-7), [VICReg](https://arxiv.org/abs/2105.04906) [[9]](#ref-9), and the JEPA regularizers, can be read as descendants of that paper.
+
+[LeCun left Meta in November 2025](/posts/20260523-yann-lecun-after-llms/#ch-why-left-meta) to start [AMI Labs](https://ami.inc/), an "Advanced Machine Intelligence" venture organized around scaling JEPA-style world models. [Randall Balestriero](https://randallbalestriero.github.io/), now an assistant professor at Brown, is the lead author of [LeJEPA](https://arxiv.org/abs/2511.08544) [[12]](#ref-12), the post-FAIR paper that introduces SIGReg (Sketched Isotropic Gaussian Regularization), the anti-collapse objective discussed below.
+
+## The core ideas
+
+The model has three components:
+
+- An **encoder** is a neural network that takes the input ($x$, an image or video) and produces its embedding, the vector summarizing what the model has learned to find important about that input. Its weights are trained by gradient descent on the loss.
+- A **predictor** is a smaller neural network that takes the embedding of one part of the input and predicts the embedding of another, masked part ($y$). The mask is chosen randomly each training step. The predictor's weights are also trained by gradient descent on the loss.
+- A **target encoder** produces the embeddings the predictor is trained against. Its weights are *not* updated by gradient descent. Instead, they are a slow exponential moving average of the encoder's weights, recomputed each step, so the prediction target stays stable from one training step to the next. This asymmetry, where gradients flow only into the encoder and the predictor and never into the target encoder, is also part of what keeps the system from collapsing to a constant (see below).
+
+The loss is the distance, in embedding space, between the predicted vector and the actual target vector. There is no pixel-reconstruction term anywhere in the objective.
+
+![Figure 3 from the paper [[2]](#ref-2).](figure-ijepa-arch.png){fig-align="center"}
+
+Two design choices make the architecture work where simpler variants do not.
+
+**Predicting in latent space, not pixel space.** Because the predictor only has to match a learned summary of $y$, the encoder is free to discard whatever details cannot be predicted from context: leaf textures, fine speckle, exact shadow positions. Pixel-prediction objectives have no such freedom: they must commit to a specific pixel value at every location. The JEPA loss lets the representation itself decide what to retain.
+
+**Preventing representation collapse.** The trivial cheat for this kind of training objective is for the encoder to output the same vector for every input. The predicted and target embeddings then match perfectly, the loss is zero, and the representation is useless. *Representation collapse* is the term of art for this failure mode, and every JEPA-family method spends most of its design budget defeating it. [The field has converged on three families of fixes](/posts/20260523-yann-lecun-after-llms/#three-families-of-fixes-contrastive-distillation-and-regularizer-methods):
+
+- **Contrastive methods** (SimCLR, MoCo) include an extra term in the loss that pushes the embeddings of *different* inputs apart. As long as the model has to distinguish many different inputs, it can't collapse onto one constant. The cost is the need for many negative examples per training step.
+- **Distillation methods with an exponential-moving-average teacher encoder** (BYOL, DINO, and the current V-JEPA / V-JEPA 2 line) use the asymmetry between the trained encoder and the slow target encoder to break the symmetric gradient path that would otherwise drive both encoders to a constant. They prevent collapse empirically, but the precise reason is not fully understood, and the training loss does not decrease monotonically, so practitioners don't have a clean signal of convergence.
+- **Information-content regularizers** (VICReg, SIGReg) add a term that directly penalizes low-information embeddings (flat, constant, or low-variance outputs). VICReg uses variance and covariance penalties to keep each feature dimension active and to keep different dimensions from encoding the same thing. SIGReg [[12]](#ref-12), introduced in the LeJEPA paper in late 2025, projects encoder outputs onto random directions and applies a statistical normality test on each, pushing the joint distribution of embeddings toward an isotropic Gaussian (the distribution that carries the most information for a fixed variance).
+
+The collapse problem is the central technical difficulty of the family. Most current JEPA papers are trained with EMA-distillation. The LeJEPA paper provides a theoretical characterization of the regularizer route and is the direction the AMI Labs group is moving toward.
+
+## Published results
+
+Results to date span three domains.
+
+- **Images.** I-JEPA, built on a [Vision Transformer](https://arxiv.org/abs/2010.11929) (ViT) [[13]](#ref-13) backbone (a now-standard architecture that processes images as a sequence of patches), reaches ImageNet classification accuracy competitive with the best self-supervised baselines. Training a ViT-H/14 takes 16 A100 GPUs in under 72 hours [[2]](#ref-2), and the resulting features transfer to other tasks including object counting and depth estimation. The body of the paper reports lower compute than pixel-reconstruction approaches like MAE [[10]](#ref-10) at comparable downstream accuracy.
+- **Video.** V-JEPA learns from raw video without action labels and produces representations that transfer to action-recognition benchmarks (Kinetics-400, Something-Something-v2) and to motion-understanding tasks where pixel-prediction baselines underperform [[3]](#ref-3). The masking is 3D multi-block: instead of masking individual frames, contiguous spatio-temporal regions are hidden from the encoder and the predictor is asked to fill them in latent space.
+
+  ![Figure 3 from the paper [[3]](#ref-3).](figure-vjepa-masking.png){fig-align="center"}
+- **Action-conditioned planning.** V-JEPA 2 extends the predictor with an additional input: the action taken at each step. The trained model is then a *forward dynamics model* in latent space, where, given the current embedding and a candidate action, it predicts the embedding at the next time step. Its V-JEPA 2-AC variant is post-trained on under 62 hours of [Droid](https://droid-dataset.github.io/) robot videos and deployed zero-shot on Franka arms for pick-and-place [[4]](#ref-4). This is the first JEPA-family deployment on a physical robot.
+
+## Potential impact
+
+The application areas AMI Labs and the broader JEPA program are pointed at are visible from the V-JEPA 2 paper and from LeCun's public statements.
+
+### Robotics
+
+The current dominant approach to training general-purpose robot policies collects large quantities of *teleoperation data* (humans manually steering the robot through each task) and trains a policy to mimic those demonstrations. Each new task usually means a new round of data collection. V-JEPA 2 demonstrates an alternative end-to-end pipeline: pretrain on internet video, post-train with a much smaller corpus that includes robot actions, then use the learned forward model to *plan*. Planning here means searching through candidate action sequences, picking the one that the model predicts will reach the goal, and executing it under a model-predictive-control loop that re-plans at each step. The post-training corpus was under 62 hours, which is small by current foundation-model standards. Whether this data efficiency holds up at the diversity of tasks a useful general-purpose robot would need to handle is an open empirical question.
+
+![Figure 1 from the paper [[4]](#ref-4).](figure-vjepa2-robot.png){fig-align="center"}
+
+### Industrial process control
+
+[LeCun has described applications](/posts/20260523-yann-lecun-after-llms/#where-ami-is-pointed-domestic-robots-industry-healthcare) to systems whose dynamics are too complex to model with closed-form equations but for which large amounts of operational data exist: chemical plants, jet engines, manufacturing lines. An action-conditioned JEPA trained on such data would function as a data-driven model of the process, usable for optimization and planning the same way the robot model is.
+
+### Video understanding
+
+Self-supervised video pretraining already produces strong clip classifiers and text-to-video generators. A latent forward model adds a capability current generative video models do not have: planning over the model's own predictions, by querying it about the consequences of candidate actions rather than only generating plausible-looking continuations.
+
+## Related research lines
+
+Several active research lines work on overlapping problems with different objectives. The relationships are easier to see when each is described on its own terms.
+
+- **Generative video and pixel-space world models.** [Sora](https://openai.com/index/video-generation-models-as-world-simulators/) and the large-scale latent-diffusion video lineages that followed are trained to generate plausible video continuations. Some of this work is also described as world modeling: a model that can produce realistic next frames is implicitly predicting how the depicted scene will evolve. The training objective is reconstruction quality in pixel space, and downstream use for planning depends on whether the generated continuations can be conditioned on actions and queried for outcomes.
+- **Autoregressive LLMs and multimodal LLMs.** The frontier-lab path scales a large language model (LLM), often with multimodal inputs and tool use, to internalize world knowledge through next-token prediction. The model operates in token space, so physical predictions arrive only to the extent that a tokenized representation of physical state can capture them. Whether next-token prediction is sufficient for the model to acquire a genuine world model is itself a [contested empirical question](/posts/20241108-transformers-world-models/). This line and JEPA are aimed at different deployment targets: LLMs at language- and code-mediated tasks, JEPA at embodied prediction.
+- **Latent-space world models in reinforcement learning.** [DreamerV3](https://arxiv.org/abs/2301.04104) [[14]](#ref-14) and the broader model-based RL line train latent forward models for planning. The architectures share structural elements with JEPA (encoder, latent predictor, planning in latent space), but training takes place inside a reinforcement-learning loop with a reward signal, so the representation is shaped by the specific task being trained on. The JEPA program emphasizes self-supervised, observation-only pretraining of the representation before any task is specified.
+- **Other non-contrastive self-supervised learning.** [DINOv2](https://arxiv.org/abs/2304.07193) [[15]](#ref-15) produces strong visual representations from large image corpora and is JEPA's nearest relative for static images. DINO-style methods predict embeddings, use slow target encoders, and regularize against collapse, sharing much of the same design vocabulary as I-JEPA. The JEPA framing emphasizes the explicit predictor module and the extension from images to video to action-conditioned models.
+
+## What's next
+
+The open questions are concrete and the field will answer them within a year or two.
+
+- **Scaling.** I-JEPA and V-JEPA have published results at ViT-H/L scale. Whether the architecture continues to improve at frontier scale (billions of parameters, internet-scale video) is the question the AMI Labs program rests on.
+- **Long-horizon action-conditioned planning.** V-JEPA 2-AC demonstrates short-horizon consistency on real robots. Planning over many steps requires the latent forward model to roll out far into the future without errors compounding, which is harder than single-step prediction, and the published horizons remain short.
+- **Cross-modal JEPA.** Most JEPA work to date is single-modality. A unified vision-language-action JEPA is an obvious next target.
+- **Theoretical foundations for collapse prevention.** LeJEPA provides a theoretical characterization of one regularizer. Whether the rest of the family (distillation methods in particular) admits comparable analysis is an open problem.
+
+JEPA is an active self-supervised representation-learning program with published results in images, video, and action-conditioned planning. The empirical headline numbers and the next-generation regularization theory continue to evolve, and the next few years of papers will determine how far the program scales.
+
+## References
+
+1. <a id="ref-1"></a>LeCun, Yann. "A Path Towards Autonomous Machine Intelligence (Version 0.9.2)." OpenReview, June 27, 2022. <https://openreview.net/forum?id=BZ5a1r-kVsf>
+2. <a id="ref-2"></a>Assran, Mahmoud, Quentin Duval, Ishan Misra, Piotr Bojanowski, Pascal Vincent, Michael Rabbat, Yann LeCun, and Nicolas Ballas. "Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture." *IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)*, 2023. arXiv:2301.08243, January 19, 2023. <https://arxiv.org/abs/2301.08243>
+3. <a id="ref-3"></a>Bardes, Adrien, Quentin Garrido, Jean Ponce, Xinlei Chen, Michael Rabbat, Yann LeCun, Mahmoud Assran, and Nicolas Ballas. "Revisiting Feature Prediction for Learning Visual Representations from Video." *arXiv preprint* (arXiv:2404.08471), April 15, 2024. <https://arxiv.org/abs/2404.08471>
+4. <a id="ref-4"></a>Assran, Mahmoud, Adrien Bardes, et al. "V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning." *arXiv preprint* (arXiv:2506.09985), June 11, 2025. <https://arxiv.org/abs/2506.09985>
+5. <a id="ref-5"></a>Chen, Ting, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. "A Simple Framework for Contrastive Learning of Visual Representations." *International Conference on Machine Learning (ICML)*, 2020. arXiv:2002.05709. <https://arxiv.org/abs/2002.05709>
+6. <a id="ref-6"></a>He, Kaiming, Haoqi Fan, Yuxin Wu, Saining Xie, and Ross Girshick. "Momentum Contrast for Unsupervised Visual Representation Learning." *IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)*, 2020. arXiv:1911.05722. <https://arxiv.org/abs/1911.05722>
+7. <a id="ref-7"></a>Grill, Jean-Bastien, Florian Strub, Florent Altché, Corentin Tallec, Pierre H. Richemond, Elena Buchatskaya, Carl Doersch, Bernardo Avila Pires, Zhaohan Daniel Guo, Mohammad Gheshlaghi Azar, Bilal Piot, Koray Kavukcuoglu, Rémi Munos, and Michal Valko. "Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning." *Neural Information Processing Systems (NeurIPS)*, 2020. arXiv:2006.07733. <https://arxiv.org/abs/2006.07733>
+8. <a id="ref-8"></a>Caron, Mathilde, Hugo Touvron, Ishan Misra, Hervé Jégou, Julien Mairal, Piotr Bojanowski, and Armand Joulin. "Emerging Properties in Self-Supervised Vision Transformers." *IEEE/CVF International Conference on Computer Vision (ICCV)*, 2021. arXiv:2104.14294. <https://arxiv.org/abs/2104.14294>
+9. <a id="ref-9"></a>Bardes, Adrien, Jean Ponce, and Yann LeCun. "VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning." *International Conference on Learning Representations (ICLR)*, 2022. arXiv:2105.04906. <https://arxiv.org/abs/2105.04906>
+10. <a id="ref-10"></a>He, Kaiming, Xinlei Chen, Saining Xie, Yanghao Li, Piotr Dollár, and Ross Girshick. "Masked Autoencoders Are Scalable Vision Learners." *IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)*, 2022. arXiv:2111.06377. <https://arxiv.org/abs/2111.06377>
+11. <a id="ref-11"></a>Becker, Suzanna, and Geoffrey E. Hinton. "Self-Organizing Neural Network That Discovers Surfaces in Random-Dot Stereograms." *Nature* 355, no. 6356 (January 9, 1992): 161–163. <https://www.nature.com/articles/355161a0>
+12. <a id="ref-12"></a>Balestriero, Randall, and Yann LeCun. "LeJEPA: Provable and Scalable Self-Supervised Learning Without the Heuristics." *arXiv preprint* (arXiv:2511.08544), November 11, 2025. <https://arxiv.org/abs/2511.08544>
+13. <a id="ref-13"></a>Dosovitskiy, Alexey, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby. "An Image Is Worth 16x16 Words: Transformers for Image Recognition at Scale." *International Conference on Learning Representations (ICLR)*, 2021. arXiv:2010.11929. <https://arxiv.org/abs/2010.11929>
+14. <a id="ref-14"></a>Hafner, Danijar, Jurgis Pasukonis, Jimmy Ba, and Timothy Lillicrap. "Mastering Diverse Domains through World Models." *arXiv preprint* (arXiv:2301.04104), January 10, 2023. <https://arxiv.org/abs/2301.04104>
+15. <a id="ref-15"></a>Oquab, Maxime, Timothée Darcet, Théo Moutakanni, Huy Vo, Marc Szafraniec, Vasil Khalidov, Pierre Fernandez, Daniel Haziza, Francisco Massa, Alaaeldin El-Nouby, Mahmoud Assran, Nicolas Ballas, Wojciech Galuba, Russell Howes, Po-Yao Huang, Shang-Wen Li, Ishan Misra, Michael Rabbat, Vasu Sharma, Gabriel Synnaeve, Hu Xu, Hervé Jégou, Julien Mairal, Patrick Labatut, Armand Joulin, and Piotr Bojanowski. "DINOv2: Learning Robust Visual Features without Supervision." *Transactions on Machine Learning Research (TMLR)*, 2024. arXiv:2304.07193. <https://arxiv.org/abs/2304.07193>

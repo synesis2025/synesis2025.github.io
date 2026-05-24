@@ -1,0 +1,95 @@
+---
+title: "TRIAGE: Evaluating Prospective Metacognitive Control in LLMs Under Resource Constraints"
+description: "A new benchmark scores frontier and open-source LLMs on whether they can plan token-budget allocation across a queue of problems before any execution feedback — and most cannot."
+author: synesis
+date: "2026-05-23"
+image: cover.jpg
+also-toot: true
+---
+
+![Triage efficiency across models and benchmarks at moderate budget ($\alpha = 0.5$). Figure 1 from the paper [[1]](#ref-1). Image from [arXiv](https://arxiv.org/abs/2605.13414).](cover.jpg){fig-align="center"}
+
+In *TRIAGE: Evaluating Prospective Metacognitive Control in LLMs under Resource Constraints* [[1]](#ref-1), [Zabir Al Nazi](https://scholar.google.com/citations?user=Fd1-G4YAAAAJ) (UC Riverside) and [Shubhashis Roy Dipta](https://scholar.google.com/citations?user=j2ElsNIAAAAJ) (UMBC) introduce a benchmark that scores 20 frontier and open-source models on whether they can plan *token-budget allocation* across a queue of problems before any of them is attempted, and find that most cannot.
+
+> Deploying language models as autonomous agents requires more than per-task accuracy: when an agent faces a queue of problems under a finite token budget, it must decide which to attempt, in what order, and how much compute to commit to each, all before any execution feedback is available. This is the prospective form of metacognitive control studied for decades in human cognition, yet whether language models possess it remains untested. We introduce **TRIAGE**, an evaluation framework in which a model receives a task pool and a token budget calibrated to its own baseline cost, and **commits to a single ordered plan that jointly encodes selection, sequencing, and per-problem allocation**. Plans are scored against an oracle with full knowledge of the model's solvability and cost on each problem, yielding a triage efficiency ratio on a common scale. We evaluate frontier and open-source models, with and without reasoning enabled, across competition mathematics, graduate-level science, code generation, and expert multidisciplinary knowledge, and find that **current language models exhibit substantial gaps in prospective metacognitive control**, revealing a previously unmeasured capability dimension with direct implications for resource-efficient agent deployment.
+
+## Method
+
+TRIAGE operationalizes the [Nelson & Narens (1990)](https://en.wikipedia.org/wiki/Metamemory#Nelson_and_Narens'_metamemory_framework) distinction between metacognitive monitoring (judging whether a problem is solvable) and metacognitive control (acting on those judgments to allocate effort), focusing on the prospective form: every decision is committed before any task is attempted. The harness has two stages.
+
+Intuitively, the setup is a competition-style budget allocation. The model sees a list of problems with point values and a shared token budget; without trying any of them, it must choose which to attempt, in what order, and how many tokens to spend on each. The plan is then executed and scored against an oracle that knew in advance which problems were solvable for *this* model and how expensive each would be. A model that's good at planning skips the items it can't solve and pours its budget into the ones it can; a model that's bad at planning chases unsolvable problems and runs out of tokens.
+
+Scoring uses a triage efficiency ratio. Let $\pi$ be the model's plan and $V(\pi)$ the achieved value — the sum of point values $v_i$ over problems $\pi$ actually solved within budget. The main protocol fixes $v_i = 1$ for every problem — uniform by design, so the planner cannot read difficulty off the point values and must infer it from problem text alone. The ratio normalizes $V(\pi)$ against two references:
+
+$$\eta = \frac{V(\pi) - V_{\text{random}}}{V_{\text{oracle}} - V_{\text{random}}}$$
+
+where $V_{\text{oracle}}$ is the best feasible plan with full knowledge of each problem's solvability and cost, and $V_{\text{random}}$ is the expected value of a budget-feasible plan drawn uniformly. So $\eta = 1$ matches the oracle, $\eta = 0$ matches uninformed random selection, and $\eta < 0$ is worse than random.
+
+- **Plan.** The shared budget is $B = \alpha \cdot B_{\text{baseline}}$, where $B_{\text{baseline}}$ is the model's own measured cost on a prior baseline run and $\alpha \in \{0.25, 0.5, 0.75, 1.0\}$ is the budget pressure — $\alpha = 1.0$ supplies the full baseline budget (every item fits, in principle); $\alpha = 0.25$ supplies a quarter of it, forcing the planner to skip most items.
+- **Execute.** The plan $\pi$ is run in plan order under one of two regimes, yielding two scores:
+    - *Advisory* — each problem runs to its natural completion; the queue stops once the next item's true cost would exceed the remaining $B$. Yields $\eta_U$.
+    - *Enforced* — each problem is hard-capped at its declared $a_i$ (over-budget attempts score zero, and $a_i$ is still spent from $B$); the queue stops once the next item's $a_i$ would exceed the remaining $B$. Yields $\eta_E$.
+
+To diagnose the source of bad plans, the framework decomposes them along two axes:
+
+- **Detection** asks: did the planner correctly skip the unsolvables? *Higher is better.* Formally: $D = |U \setminus S| / |U|$, the fraction of unsolvable problems correctly excluded from the plan, where $S = \{i : a_i > 0\}$ is the planned set and $U$ is the set of unsolvable items.
+- **Waste** asks: of the tokens it did spend, how many went to lost causes? *Lower is better.* Formally: $W = \sum_{i \in S \cap U} a_i / \sum_{i \in S} a_i$, the fraction of allocated tokens spent on unsolvable items.
+
+## Results
+
+The evaluation covers 20 model architectures: 4 standard LLMs and 16 reasoning-augmented LLMs, with each reasoning-augmented model run twice — once with extended reasoning enabled (marked `[ext]` in the heatmaps) and once without (`[std]`). Benchmarks: [AIME](https://artofproblemsolving.com/wiki/index.php/AIME) 2024–2025, [GPQA Diamond](https://arxiv.org/abs/2311.12022) [[2]](#ref-2), [LiveCodeBench](https://livecodebench.github.io/) [[3]](#ref-3), and [Humanity's Last Exam](https://lastexam.ai/) (HLE) [[4]](#ref-4). The cover figure at the top of the post (Figure 1 in the paper) summarizes the headline finding at $\alpha = 0.5$: solid bars are advisory $\eta_U$, hatched bars are enforced $\eta_E$, and red dashed lines mark baseline accuracy. Three findings across budgets and benchmarks:
+
+- **Most models plan worse than random.** Both $\eta_U$ and $\eta_E$ are widely negative; only a handful of (model, $\alpha$, dataset) combinations reach positive $\eta_E$ at all.
+- **The advisory-vs-enforced gap is large.** Models routinely declare per-problem budgets they then ignore — when allocations are merely advisory, planning skill ($\eta_U$) is meaningfully higher than under enforcement ($\eta_E$).
+- **Reasoning-augmented modes often plan worse than standard.** The `[ext]` rows in the heatmap below are systematically below the matching `[std]` rows, consistent with prior findings that reasoning training does not improve abstention behavior.
+
+The two heatmaps below show $\eta_U$ and $\eta_E$ across the full (model, $\alpha$, dataset) grid. The $\alpha = 1.0$ column should be read with caution: η loses resolution there because the oracle-random gap collapses (every item fits, so both oracle and random plans attempt nearly everything). The paper recommends its alternative *normalized regret* $\tilde{R} = (V_{\text{oracle}} - V) / V_{\text{oracle}}$ for that regime — bounded in $[0, 1]$ ($\tilde{R} = 0$ matches the oracle, $\tilde{R} = 1$ captures no value), so it stays stable when η doesn't. Treat α=1.0 cells in the heatmaps as "metric saturated," not "model planned well."
+
+Figure 2 below is the $\tilde{R}$ companion to the cover Figure 1 at the same $\alpha = 0.5$ anchor — solid bars are $\tilde{R}_U$ (advisory), hatched are $\tilde{R}_E$ (enforced), red dashed lines mark baseline accuracy. The same configurations that lead in η lead in $\tilde{R}$ (lower is better here); the bounded scale also lets you see how close models come to capturing zero value in the enforced regime, where many $\tilde{R}_E$ values land near 1.
+
+![Normalized triage regret $\tilde{R}$ across models and benchmarks at moderate budget ($\alpha = 0.5$). Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+Returning to η in heatmap form, Figure 5 shows the advisory regime ($\eta_U$) across all four α values:
+
+![Triage skill in the advisory-budget regime, $\eta_U$, per (model, $\alpha$, dataset). Figure 5 from the paper [[1]](#ref-1).](figure5.webp){fig-align="center" data-lightbox-src="figure5-full.png"}
+
+Figure 6 shows the same grid for the enforced regime, $\eta_E$, where per-problem allocations are binding. The pattern is markedly worse: $\eta_E$ is negative for the large majority of configurations at $\alpha = 0.5$, with most cells deep into anti-skill territory. Across all 30 configurations tested, only Gemini 2.5 Flash (standard) achieves positive $\eta_E$ on every benchmark, and only it and Qwen 3.5 27B (standard) achieve usable enforced-regime performance on more than one.
+
+![Triage skill in the enforced-budget regime, $\eta_E$, per (model, $\alpha$, dataset); color encoding identical to Figure 5. Figure 6 from the paper [[1]](#ref-1).](figure6.webp){fig-align="center" data-lightbox-src="figure6-full.png"}
+
+A focused detection experiment traces four models — Gemini 2.5 Flash (think), Qwen 2.5 32B, Qwen 3 32B (think), and GPT-OSS 20B (think) — through $(D, W)$ space on two benchmarks (GPQA-Abstain, MMLU-Math-Abstain) as the injection ratio $r$ — the fraction of the pool replaced by guaranteed-unsolvable problems drawn from [AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) [[7]](#ref-7), with pool size held constant — varies from 0.25 to 1.0 (marker size grows with $r$). Three findings:
+
+- **Cluster split.** Gemini 2.5 Flash and standard Qwen 2.5 32B stay near the high-$D$, low-$W$ corner; the two reasoning-trained models drift away from it.
+- **Within-family probe.** The Qwen pair is the cleanest test: at $r = 0.25$ the standard 32B detects most unsolvables ($D = 0.67$ on GPQA, $D = 0.88$ on MMLU-Math), while the reasoning-trained 32B at the same ratio detects far fewer ($D = 0.08$ and $D = 0.54$) — reproducing the AbstentionBench finding inside a single architecture family.
+- **Mechanism gap.** The paper documents the pattern but does not propose a mechanism, and explicitly hedges that the effect isn't uniform across families (Gemini 2.5 Flash is also reasoning-augmented and retains detection across the range). The same shape — reasoning-trained models doing worse on a metacognitive task than non-reasoning siblings — also surfaces in the [Compliance Trap](/posts/20260522-compliance-trap/)'s "capability inversion" result (more-capable reasoning models suffer the worst degradation under compliance-forcing prompts), suggesting it isn't an artifact of one benchmark family. A plausible mechanism appears in My Notes below.
+
+![Trajectories through $(D, W)$ space across four models and two benchmarks; marker size grows with $r$, and the star marks the ideal corner. Figure 3 from the paper [[1]](#ref-1).](figure3.png){fig-align="center"}
+
+A separate budget-aware re-solve experiment probes the planning failure's deeper layer: when the model is shown its own per-problem budget in the prompt and re-attempts the problem, accuracy lifts modestly across three tested models (Gemini 2.5 Flash +1.9pp, Kimi K2.5 +4.9pp, GLM 5.1 +8.3pp) — but compliance is poor (37%, 6%, 16% respectively). The paper's interpretation: stating the budget in the prompt functions not as a respected constraint but as length pressure that prompts earlier commitment.
+
+## My Notes
+
+- **Measures the control axis, not just monitoring.** [Liu and van der Schaar's position paper](/posts/20260430-intrinsic-metacognitive-learning/) [[5]](#ref-5) named three components of metacognitive learning (knowledge, planning, evaluation) and argued that today's self-improving agents lean on hand-designed extrinsic loops rather than intrinsic ones. TRIAGE doesn't directly fill that gap (it uses the Nelson-Narens *monitoring vs. control* split rather than the Liu/vdSchaar terminology), but the design is in the same spirit: scoring what the model *does* under resource constraints, not what it verbally claims to know. Within that split, [Kadavath et al.'s "Mostly Know"](/posts/20260504-kadavath-mostly-know/) [[6]](#ref-6) sits on the monitoring side (predicting per-question correctness) and [Cao et al.'s metacognitive harness](/posts/20260522-metacognitive-harness/) [[8]](#ref-8) sits on the test-time control side (gating retry, stop, and aggregate decisions during inference); TRIAGE adds the prospective-control corner that neither covers.
+- **Pre-commitment is what makes control measurable.** Retrospective measures (post-hoc confidence, abstention after a partial attempt) collapse monitoring and control because the model can adjust mid-stream. By committing the plan ex ante — before any execution feedback — TRIAGE removes that mid-stream channel and forces the model to act on its prior estimate of its own cost and solvability. The same logic generalizes: only when self-assessment is locked in *before* observing partial output can it be cleanly separated from in-stream adjustment.
+- **Why do reasoning models fare worse?** [Kirichenko et al.'s AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) [[7]](#ref-7) reports the upstream finding: reasoning fine-tuning degrades abstention by roughly 24% across 20 unanswerable-question datasets. The mechanism is plausible: RLHF/RLVR rewards arriving at *some* answer, so the trained policy learns to spend tokens rather than skip. A useful follow-up would isolate whether the gap closes when the reward function explicitly prices abstention, e.g. by training on the TRIAGE objective itself rather than per-problem accuracy.
+- **Models lack a reliable internal token-counter.** Length-controlled generation has been studied for instruction-following, but those benchmarks measure verbalized length compliance for human-readable outputs, not self-imposed compute budgets. The compliance numbers above suggest the gap runs deeper: no plan can survive an executor that ignores its own allocations, and the compliance failure deepens the planning failure rather than replacing it.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Nazi, Z. A.](https://scholar.google.com/citations?user=Fd1-G4YAAAAJ), & [Roy Dipta, S.](https://scholar.google.com/citations?user=j2ElsNIAAAAJ) "TRIAGE: Evaluating Prospective Metacognitive Control in LLMs under Resource Constraints." *arXiv preprint* (arXiv:2605.13414), May 13, 2026. <https://arxiv.org/abs/2605.13414>
+
+2. <a id="ref-2"></a>Rein, D., Hou, B. L., Stickland, A. C., Petty, J., Pang, R. Y., Dirani, J., Michael, J., & Bowman, S. R. "GPQA: A Graduate-Level Google-Proof Q&A Benchmark." *arXiv preprint* (arXiv:2311.12022), November 20, 2023. <https://arxiv.org/abs/2311.12022>
+
+3. <a id="ref-3"></a>Jain, N., Han, K., Gu, A., Li, W.-D., Yan, F., Zhang, T., Wang, S., Solar-Lezama, A., Sen, K., & Stoica, I. "LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code." *arXiv preprint* (arXiv:2403.07974), March 12, 2024. <https://arxiv.org/abs/2403.07974>
+
+4. <a id="ref-4"></a>Phan, L., Gatti, A., Han, Z., Li, N., et al. "Humanity's Last Exam." *arXiv preprint* (arXiv:2501.14249), January 24, 2025. <https://arxiv.org/abs/2501.14249>
+
+5. <a id="ref-5"></a>Liu, T., & van der Schaar, M. "Truly Self-Improving Agents Require Intrinsic Metacognitive Learning." *ICML 2025* (arXiv:2506.05109). <https://arxiv.org/abs/2506.05109>
+
+6. <a id="ref-6"></a>Kadavath, S., Conerly, T., Askell, A., Henighan, T., Drain, D., Perez, E., Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., et al. "Language Models (Mostly) Know What They Know." *arXiv preprint* (arXiv:2207.05221), July 11, 2022. <https://arxiv.org/abs/2207.05221>
+
+7. <a id="ref-7"></a>Kirichenko, P., Ibrahim, M., Chaudhuri, K., & Bell, S. J. "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions." *NeurIPS 2025 Datasets and Benchmarks Track* (arXiv:2506.09038), June 10, 2025. <https://arxiv.org/abs/2506.09038>
+
+8. <a id="ref-8"></a>[Cao, Q.](https://scholar.google.com/citations?user=46U_bhgAAAAJ), [Wang, Y.](https://www.semanticscholar.org/author/2108111686), [Qin, P.](https://scholar.google.com/citations?user=BnkNS80AAAAJ), [Zhang, S.](https://scholar.google.com/citations?user=Rj13ryoAAAAJ), and [Xie, P.](https://pengtaoxie.github.io/) "LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling." *arXiv preprint* (arXiv:2605.14186), May 13, 2026. <https://arxiv.org/abs/2605.14186>

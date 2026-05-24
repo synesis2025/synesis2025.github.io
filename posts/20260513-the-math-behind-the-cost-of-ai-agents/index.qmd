@@ -1,0 +1,59 @@
+---
+title: "The Math Behind the Cost of AI Agents"
+description: "A post derives why agent token costs grow quadratically without caching, then fits the predicted curves against SWE-bench traces for GPT-5.2, Gemini-3-Flash, and Claude Opus 4.6."
+author: synesis
+date: "2026-05-13"
+image: cover.jpg
+also-toot: true
+---
+
+![Cover image from [Vasco's Inference Notes post](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents).](cover.jpg){fig-align="center"}
+
+[Vasco Schiavo](https://www.linkedin.com/in/vascoschiavo92/), writing on the [Inference Notes Substack](https://pythagorai.substack.com/), [derives why agent token costs explode](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents) and fits the predicted curves against real benchmark traces. The core claim: each turn re-sends the entire conversation history, so total input tokens pile up as a triangular number $T(T-1)/2$, quadratic in turns, while output tokens grow linearly.
+
+## The growth law
+
+![A four-turn conversation, colored by token type: blue cells are input, red cells are output. Image from [Vasco's Inference Notes post](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents).](fig-diagram-colored.png){fig-align="center"}
+
+Prompt caching does not change the shape of this picture, but it changes which cells are cheap. Green cells below are cached input, billed at a fraction of the fresh rate (typically around 10%). The triangle still grows quadratically, but the dominant term becomes cheap re-reads instead of full-price input, so over the practical turn range the total cost looks linear even though the underlying formula is not.
+
+![The same diagram with caching on. Green cells are cached input. Image from [Vasco's Inference Notes post](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents).](fig-diagram-cached.png){fig-align="center"}
+
+The full with-cache cost formula is $M \cdot T + c \cdot M \cdot T(T-1)/2$, still quadratic in $T$ with the $T^2$ term just multiplied by the small constant $c \cdot M / 2$. The post argues that once caching is deployed, the linear term dominates over the practical turn range, so it fits the cached data with a line rather than a quadratic. The takeaway it pulls out: without caching, cost scales as $T^2$; with caching, cost scales as $T$ plus a negligible $T^2$ correction.
+
+## Fits on SWE-bench
+
+To test those predictions on real data, the post fits two curve shapes — $a \cdot t^2$ for no-cache and $b \cdot t$ for with-cache — against cumulative paid tokens per turn on [SWE-bench](https://www.swebench.com/) traces from the [OpenHands](https://www.all-hands.dev/) evaluation index, across three models: GPT-5.2, Gemini-3-Flash, and [Claude Opus 4.6](https://www.anthropic.com/claude/opus). Each coefficient has a concrete interpretation:
+
+- $a$ — **per-turn verbosity.** How many fresh tokens each turn contributes on average. A large $a$ means the model (or its harness) is pushing a lot of new content per turn.
+- $b$ — **cache-era marginal cost.** The effective per-turn cost once caching is doing its job. A small $b$ means cache hits are carrying most of the load. A large $b$ means the cache is not catching much.
+
+In all three panels below, red is the no-cache median (dashed line = quadratic fit), blue is the with-cache median (dashed line = linear fit), and the pink band is the [interquartile range](https://en.wikipedia.org/wiki/Interquartile_range) (IQR) across task instances.
+
+![GPT-5.2 on SWE-bench, 493 tasks. Image from [Vasco's Inference Notes post](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents).](fig-gpt52-swebench.webp){fig-align="center" data-lightbox-src="fig-gpt52-swebench-full.png"}
+
+![Gemini-3-Flash on SWE-bench, 500 tasks. Image from [Vasco's Inference Notes post](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents).](fig-gemini-swebench.webp){fig-align="center" data-lightbox-src="fig-gemini-swebench-full.png"}
+
+![Claude Opus 4.6 on SWE-bench, 483 tasks. Image from [Vasco's Inference Notes post](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents).](fig-opus-swebench.webp){fig-align="center" data-lightbox-src="fig-opus-swebench-full.png"}
+
+The three fits split along both axes:
+
+| Model | $a$ (per-turn verbosity) | ≈ fresh tokens/turn | $b$ (cache-era marginal cost) | Trajectory length $T$ |
+|---|---:|---:|---:|---:|
+| GPT-5.2 | 0.00050 | 1,000 | 0.0095 | ~75 |
+| Gemini-3-Flash | 0.00015 | 300 | 0.0086 | ~175 |
+| Claude Opus 4.6 | 0.00046 | 920 | 0.0008 | ~80 |
+
+GPT-5.2 and Opus 4.6 are roughly matched on $a$ (around 1,000 fresh tokens per turn), while Gemini-3-Flash is a third of that, reflecting shorter responses and more compact tool calls. On $b$, the three separate sharply: Opus's $0.0008$ is more than 10× shallower than the other two, meaning a higher cache hit rate, less fresh content per turn, or both at Anthropic's end. That is why, on the Opus panel above, the with-cache line almost disappears into the x-axis against a no-cache peak of 3.7M tokens.
+
+## My Notes
+
+- **Tension with "Where Claude Code tokens go".** Reading this alongside [Where Claude Code tokens go](/posts/20260503-where-claude-code-tokens-go/) surfaces a tension. Mnimiy's proxy measured ~13% of Claude Code cost going to conversation-history re-reads and another ~10% to cache misses on session resume, together about a quarter of spend on the re-read triangle. But the SWE-bench Opus 4.6 fit here puts with-cache marginal cost at $b = 0.0008$, so flat that re-reads should barely register. The gap is probably the cache-hit-rate assumption: SWE-bench traces one continuous session under near-ideal cache conditions, while real Claude Code usage invalidates the cache constantly — 5-minute timeouts on coffee breaks, `CLAUDE.md` edits, hook changes, tool reordering — pushing re-reads back to full price and moving the user onto the steeper no-cache curve.
+
+- **IQR variance across the three models.** Fitting to the median across ~500 tasks smooths away the tail that actually burns money, and the post barely addresses how wide that tail is. The no-cache interquartile bands differ sharply. Opus at $T=80$ has a band about 0.8M wide on a 3.7M median — roughly 20% of the median width. Gemini at $T=175$ is in a different regime: the median is 8M tokens and the upper quartile reaches 16M, so just the upper half of the IQR equals the median itself. GPT-5.2 sits in between. Some of that is Gemini running longer trajectories, which lets cumulative variance compound. But even at similar turn counts the proportional spread is higher for Gemini, probably because its per-turn token count is more variable: tool calls ranging from small greps to full-file reads, or a subset of tasks dragging into verbose off-path exploration. With Q3 = 2× median, 25% of Gemini sessions cost at least double what the median fit would predict, before you hit true outliers. For anyone using these curves to forecast agent spend, a $p95$ cumulative-token curve would be more decision-relevant than the median fit.
+
+- **Gemini's 2× trajectory length.** Trajectory length itself differs markedly across models, and the post doesn't unpack why. Gemini-3-Flash runs out to $T \approx 175$; GPT-5.2 tops out around $T \approx 75$ and Opus 4.6 around $T \approx 80$. Even with Gemini's leaner per-turn verbosity ($\sim 300$ tokens/turn), the longer trajectories end up consuming more total tokens: $\sim 8\text{M}$ cumulative no-cache at session end versus $\sim 3.7\text{M}$ for Opus. If the tasks are roughly equivalent across runs, that is twice the work to reach comparable outcomes, which would look like a capability gap. But I can't rule out harness-level differences: different per-model step limits, different tool-call styles (many small reads vs fewer large ones), or different early-exit thresholds could each produce the same pattern without implying anything about the model. Without OpenHands config detail it stays ambiguous. The observation worth holding onto either way: "leaner per turn" doesn't translate to "cheaper overall" if it costs twice as many turns to finish.
+
+- **The two-line fix anecdote.** The author [notes in passing](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents#:~:text=two%2Dline%20fix) that the OpenAI cache slope looked several times steeper than theory predicted, traced it to a bug in how their own code was calling OpenAI's cache API, and shaved the slope down with a two-line fix. That is a useful case for regression-testing cache behavior against a theoretical baseline. Any provider whose cached slope deviates from $c \cdot M$ by more than some margin is either misconfigured in your client or mis-documented upstream.
+
+- **Prompt-prefix stability, not just size.** Prompt-prefix stability is what actually decides whether caching works, and the best-practices list treats it as a small detail tucked inside the "keep system prompts clear, concise, and stable" bullet. Rotating system prompts, reordering tool definitions, or appending per-session memory to the front of the context all silently invalidate the cache: a single edit anywhere inside the cached prefix flips the whole thing back to full price. That deserves its own bullet near the top of the list, not a clause inside one about size. The closest comparable analysis at another layer is Reiner Pope's [blackboard derivation of frontier LLM economics](/posts/20260501-how-frontier-llms-trained/), which does the same thing one level down at the hardware layer: derive from the formula, calibrate to public prices.

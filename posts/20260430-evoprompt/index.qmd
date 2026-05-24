@@ -1,0 +1,64 @@
+---
+title: "EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers"
+description: "EvoPrompt uses LLMs to implement coherent crossover and mutation operators over a population of prompts, beating human-engineered prompts by up to 25% on BIG-Bench Hard."
+author: synesis
+date: "2026-04-30"
+image: cover.jpg
+---
+
+![Normalized per-task scores on 22 BBH tasks comparing APE against EvoPrompt (GA) and EvoPrompt (DE). Each bar is the gain over the baseline on one task; EvoPrompt's two variants beat APE on most tasks, with DE topping the list. Figure 8 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers* [[1]](#ref-1) (ICLR 2024), Qingyan Guo et al. (Tsinghua University, Microsoft Research) propose using LLMs to implement the crossover and mutation operators of evolutionary algorithms over a population of discrete prompts, gradient-free.
+
+> Large Language Models (LLMs) excel in various tasks, but they rely on carefully crafted prompts that often demand substantial human effort. To automate this process, in this paper, we propose a novel framework for discrete prompt optimization, called EvoPrompt, which borrows the idea of evolutionary algorithms (EAs) as they exhibit good performance and fast convergence. To enable EAs to work on discrete prompts, which are natural language expressions that need to be coherent and human-readable, we connect LLMs with EAs. This approach allows us to simultaneously leverage the powerful language processing capabilities of LLMs and the efficient optimization performance of EAs. Specifically, abstaining from any gradients or parameters, EvoPrompt starts from a population of prompts and iteratively generates new prompts with LLMs based on the evolutionary operators, improving the population based on the development set. We optimize prompts for both closed- and open-source LLMs including GPT-3.5 and Alpaca, on 31 datasets covering language understanding, generation tasks, as well as BIG-Bench Hard (BBH) tasks. EvoPrompt significantly outperforms human-engineered prompts and existing methods for automatic prompt generation (e.g., up to 25% on BBH). Furthermore, EvoPrompt demonstrates that connecting LLMs with EAs creates synergies, which could inspire further research on the combination of LLMs and conventional algorithms.
+
+## Method
+
+The setup is an evolutionary search over natural-language prompts. Maintain a population of N prompts (N = 10 in most experiments), run for T iterations, and at each step: sample parent prompts, call an LLM to produce a child via an evolutionary operator, score the child on a held-out development set, and keep the top N. The non-standard piece is the operator. Instead of a token-level rewriting rule, the operator is itself an LLM prompt. The paper compares two variants. The genetic-algorithm (GA) variant asks the LLM to perform crossover and mutation on two parent prompts. The differential-evolution (DE) variant asks the LLM to identify the difference between two parents and apply that difference on top of a third base prompt, borrowing the structure of classical differential evolution.
+
+![Genetic-algorithm process implemented by an LLM. Step 1: the LLM performs crossover on two parent prompts (orange and blue words inherited from each). Step 2: the LLM mutates the resulting child. Figure 1 from the paper [[1]](#ref-1).](figure1.png){fig-align="center"}
+
+![Differential-evolution process implemented by an LLM. Step 1: the LLM identifies the differing words between two prompts (the "$\mathbf{b - c}$" diff in DE terms). Step 2: the LLM applies a mutation that combines the diff with a third base prompt. Figure 2 from the paper [[1]](#ref-1).](figure2.webp){fig-align="center" data-lightbox-src="figure2-full.png"}
+
+## Results
+
+EvoPrompt is evaluated across 31 datasets: seven language-understanding classification tasks (SST-2, CR, MR, SST-5, AG's News, TREC, Subj), one dialogue-summarization task (SAMSum), one simplification task (ASSET), and 23 Big-Bench Hard (BBH) reasoning tasks. Alpaca-7B is the base model for classification and generation; GPT-3.5 is the base for BBH. On the seven classification tasks (Alpaca-7B), EvoPrompt (DE) averages 77.05 accuracy versus APE's (Zhou et al., 2022) 73.80. On the 23 BBH tasks (GPT-3.5), EvoPrompt (DE) averages 75.03 versus APE's 71.85 and the no-optimization baseline's 71.49. The peak per-task improvement on BBH is around 25%, visible in Figure 3 as the tallest bar at the right.
+
+| Method | Avg. accuracy on 23 BBH tasks (GPT-3.5) |
+|---|---|
+| Baseline (manual) | 71.49 |
+| APE (Zhou et al., 2022) | 71.85 |
+| EvoPrompt (GA) | 74.18 |
+| EvoPrompt (DE) | **75.03** |
+
+: Average BBH accuracy across 23 tasks. Table 12 from the paper [[1]](#ref-1).
+
+![Per-task normalized scores on 23 BBH tasks for EvoPrompt (GA) and EvoPrompt (DE). Each bar is the gain over the baseline on one task. The peak on the right is where the "up to 25%" headline comes from. Figure 3 from the paper [[1]](#ref-1).](figure3.png){fig-align="center"}
+
+Beyond the main results, the paper ablates population size. Figure 6 sweeps population size from 4 to 12 on three datasets: SST-5 (five-way sentiment classification), Subj (subjectivity classification), and ASSET (simplification). The three curves have noticeably different shapes.
+
+![Effect of population size on SST-5 (left), Subj (middle), and ASSET (right). The simple generation task (ASSET) plateaus early; the harder classification task (Subj) keeps benefiting from larger populations. Figure 6 from the paper [[1]](#ref-1).](figure6.png){fig-align="center"}
+
+## My Notes
+
+- **One of the earliest clean instances of "LLM as optimization operator."** EvoPrompt (September 2023) is among the cleanest early examples of using an LLM not as the *thing being optimized* but as the *operator that performs the optimization step*. Token-level random mutation produces incoherent prompts; an LLM mutation operator preserves semantics. Pryzant et al.'s APO [[2]](#ref-2) (textual gradients, EMNLP 2023) makes a parallel move from the gradient-descent direction. The same pattern then shows up across the prompt-and-agent-design literature: [MASS's prompt + topology stages](/posts/20260430-multi-agent-system-search/) [[3]](#ref-3) and [MetaSPO's bilevel meta-learning loop](/posts/20260430-metaspo-system-prompt-meta-learning/) [[4]](#ref-4) are LLM-as-optimizer with different staging.
+
+- **Why DE vs GA matters for prompts specifically.** The paper compares Genetic Algorithm (GA) and Differential Evolution (DE) variants, and DE wins on most BBH tasks. Both operators are implemented by the LLM, so the contrast is semantic rather than tokenwise: GA's LLM-prompt asks for a child that inherits from two parents, while DE's LLM-prompt asks the model to apply the *difference* between two parent prompts on top of a third base. DE's "find what's distinctive and graft it onto the current best" maps more cleanly onto prompt refinement than GA's "combine bits of each." Subsequent prompt-optimization papers tend to describe everything as "evolutionary" without specifying which operator.
+
+- **DE's advantage reverses on simple generation tasks.** On ASSET (a sentence-simplification benchmark: rewrite a sentence more accessibly while preserving meaning, scored by SARI against human references), Figure 6 shows GA matching or edging out DE across several population sizes. The mechanism is consistent with the rest of the paper: DE's "apply the difference" move pays off only when the population encodes meaningful task-specific variation. ASSET's good-prompt space is narrow (the useful phrasings all look like "simplify this while preserving meaning"), so the differences between parents are small or noisy, and applying that noise on top of a base destabilizes a prompt that was already near-optimal. GA's conservative interpolation stays inside the narrow good-prompt band. Practical takeaway: if the task has a narrow good-prompt manifold (simple generation, canonical phrasings), default to GA; DE is the better fit when prompt diversity carries real signal (hard classification, reasoning).
+
+- **The 25% headline is a single-task peak; the average is closer to 3.5%.** The "up to 25% on BBH" claim in the abstract is EvoPrompt (DE)'s best per-task improvement across 23 BBH tasks; the average gain over the baseline is closer to 3.5% (Table 12). BBH in this paper is run on GPT-3.5, not Alpaca-7B. Alpaca is used only for classification and generation tasks. That raises a question this paper does not answer: as base-model capability rises, do prompt-optimization gains shrink, and does this whole direction have diminishing returns at GPT-4-class capability?
+
+- **Population size depends on task complexity.** Figure 6 sweeps population sizes from 4 to 12 on SST-5, Subj, and ASSET. For the simple generation task (ASSET), population 6 matches population 10 at roughly 2.5× less compute; for the harder classification task (Subj), larger populations with more diversity keep helping. Most LLM-as-optimizer papers default to population sizes of 10 to 30 without an ablation. Practical takeaway: tune population to task complexity rather than defaulting upward.
+
+- **All of this is extrinsic by Liu and van der Schaar's definition.** The [position paper on intrinsic metacognitive learning](/posts/20260430-intrinsic-metacognitive-learning/) [[5]](#ref-5) argues that today's "self-improving" pipelines rely on hand-designed loops: the search algorithm, what to optimize, against what objective, in what order, all wired in by the system designer. EvoPrompt is a clean instance. Humans pick the population structure, the GA-vs-DE operator, the development-set scoring, the termination criterion. The agent only generates candidates; it doesn't choose what's being optimized. None of this makes the result wrong, but it bounds the long-term claim: whatever the strongest extrinsic prompt-optimizer turns out to be, the position-paper bet is that an architecture which lets the agent decide how to optimize itself will eventually overtake it.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Guo](https://lemon0830.github.io/), Q., Wang, R., Guo, J., [Li](https://libeineu.github.io/), B., [Song](https://www.microsoft.com/en-us/research/people/kaitaosong/), K., [Tan](https://www.microsoft.com/en-us/research/people/xuta/), X., Liu, G., [Bian](https://sites.google.com/view/jiangbian), J., Yang, Y. "EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers." *International Conference on Learning Representations (ICLR)*, 2024. arXiv:2309.08532, September 15, 2023. <https://arxiv.org/abs/2309.08532>
+2. <a id="ref-2"></a>[Pryzant](https://cs.stanford.edu/people/rpryzant/), R., [Iter](https://daniter-cu.github.io/), D., [Li](https://jerryzli.github.io/), J., [Lee](https://yintat.com/), Y., [Zhu](https://cs.stanford.edu/~cgzhu/), C., Zeng, M. "Automatic Prompt Optimization with 'Gradient Descent' and Beam Search." *Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing*, 2023. <https://arxiv.org/abs/2305.03495>
+3. <a id="ref-3"></a>[Zhou](https://hanzhou032.github.io/), H., [Wan](https://xingchen.one/), X., Sun, R., [Palangi](https://www.hamidpalangi.com/), H., Iqbal, S., [Vulić](https://sites.google.com/site/ivanvulic/), I., [Korhonen](https://sites.google.com/site/annakorhonen/), A., [Arık](https://www.sercanarik.com/), S. Ö. "Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies." *arXiv preprint* arXiv:2502.02533, February 4, 2025. <https://arxiv.org/abs/2502.02533>
+4. <a id="ref-4"></a>Choi, Y., [Baek](https://jinheonbaek.github.io/), J., [Hwang](https://www.mlai-kaist.com/), S. J. "System Prompt Optimization with Meta-Learning." *arXiv preprint* arXiv:2505.09666, May 14, 2025. <https://arxiv.org/abs/2505.09666>
+5. <a id="ref-5"></a>[Liu](https://tennisonliu.github.io/), T., [van der Schaar](https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar), M. "Truly Self-Improving Agents Require Intrinsic Metacognitive Learning." *arXiv preprint* arXiv:2506.05109, June 5, 2025. <https://arxiv.org/abs/2506.05109>

@@ -1,0 +1,1043 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss  xmlns:atom="http://www.w3.org/2005/Atom" 
+      xmlns:media="http://search.yahoo.com/mrss/" 
+      xmlns:content="http://purl.org/rss/1.0/modules/content/" 
+      xmlns:dc="http://purl.org/dc/elements/1.1/" 
+      version="2.0">
+<channel>
+<title>synesis</title>
+<link>https://benjaminhan.net/</link>
+<atom:link href="https://benjaminhan.net/feed-page-6.xml" rel="self" type="application/rss+xml"/>
+<atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
+<atom:link href="https://benjaminhan.net/feed-page-21.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-5.xml" rel="previous"/>
+<atom:link href="https://benjaminhan.net/feed-page-7.xml" rel="next"/>
+<description>AI research, engineering, and the occasional philosophical aside.</description>
+<image>
+<url>https://benjaminhan.net/og-default.png</url>
+<title>synesis</title>
+<link>https://benjaminhan.net/</link>
+<height>76</height>
+<width>144</width>
+</image>
+<generator>quarto-1.9.37</generator>
+<lastBuildDate>Sat, 23 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Prompt Repetition Improves Non-Reasoning LLMs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>First page of Leviathan, Kalman, and Matias 2025. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>Another inference-time trick for getting more out of an LLM without touching its weights [1].</p>
+<blockquote class="blockquote">
+<p>When not using reasoning, repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek) without increasing the number of generated tokens or latency.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The trick is one line: prepend a copy of the user’s prompt before the model generates. No fine-tuning, no extra decoding tokens, no latency hit at generation time — just a longer prefill.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper sweeps 70 benchmark-model combinations across Gemini, GPT, Claude, and Deepseek:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/figure1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the paper: prompt repetition vs baseline accuracy across Gemini, GPT, Claude, and Deepseek on multiple benchmarks. Repetition wins 47/70 benchmark-model combinations, with 0 losses. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>Why does this work? Causal attention. The autoregressive LLMs we’re talking about — Gemini, GPT, Claude, Deepseek — read left-to-right: each token can only attend to tokens that came before it. So when a model is given <code>&lt;context&gt; &lt;question&gt;</code>, it has to encode every word of the context before it ever sees the question. This is the opposite of how “good” students prepare for exams: they look at past questions first, then read the texts with those questions in mind, focusing attention on what’s likely to be asked. Repeating the prompt gives the model the same second pass — by the time it encodes the second copy, the question is already in view, so the context can be processed in light of what’s being asked. Because prefill is parallelizable, doubling the prompt doesn’t slow generation down.</p>
+<p>The paper itself names the root cause:</p>
+<blockquote class="blockquote">
+<p>LLMs are often trained as causal language models, i.e.&nbsp;past tokens cannot attend to future tokens. Therefore, the order of the tokens in a user’s query can affect prediction performance.</p>
+</blockquote>
+<p>Bidirectional attention over the prefix would fix this natively — every prompt token attending to every other, no repetition needed. Encoder-decoder models (T5, BART) do this in their encoder; Prefix-LM variants (UL2) bidirectionally attend over the prompt and switch to causal only at generation. The paper flags “Explore interactions with techniques such as Prefix LM” as a future direction. But decoder-only causal architectures won the scaling battle: simpler training at scale, more efficient KV-caching for sequential serving, more natural in-context learning. Prompt repetition is a runtime patch that buys back some of what bidirectional attention would natively provide — without retraining the frontier models we already have.</p>
+<p>Compare to the <a href="../20260324-llm-neuroanatomy/">LLM Neuroanatomy</a> post: there, the trick was duplicating a block of middle transformer layers and running them twice. Here, the trick is simpler still: duplicate the input itself. The intuition is the same in both cases — give the model another pass over the same information.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Yaniv Leviathan, Matan Kalman, and Yossi Matias. “Prompt Repetition Improves Non-Reasoning LLMs.” <em>arXiv</em>. 2025-12-17. <a href="https://arxiv.org/abs/2512.14982" class="uri">https://arxiv.org/abs/2512.14982</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260421-prompt-repetition/</guid>
+  <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>A Rube Goldberg Pipeline for Sharing Links</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Rube Goldberg’s <em>Self-Operating Napkin</em>, the canonical absurd contraption (Professor Butts, 1931). Image via <a href="https://commons.wikimedia.org/wiki/File:Self-operating_napkin_(Rube_Goldberg_cartoon_with_caption).jpg">Wikimedia Commons (public domain)</a>.</figcaption>
+</figure>
+</div>
+<p>Most posts here start as a link or a paragraph I read on my phone, in Mastodon or RSS or an article. By the time I’m back at my Mac, the thread is usually gone: the link buried under three days of tabs, the half-formed reaction long since dissolved.</p>
+<p>What I wanted, in three steps:</p>
+<ol type="1">
+<li><strong>I capture on my phone</strong> in seconds, with whatever sliver of a thought I have at the moment.</li>
+<li><strong>I finish on my Mac</strong> at leisure, with VSCode and Claude Code.</li>
+<li><strong>I publish to the blog</strong> in one motion, with the cover image and <code>llms.txt</code> entry following along.</li>
+</ol>
+<p>What it took: half a dozen different systems chained together. It starts when a scaffolded draft lands in my repo within seconds of a phone tap. Hours or days later, when I’m back at my Mac and have written my commentary, running the <code>publish</code> command takes about three minutes to put the post live on <code>benjaminhan.net</code>. For quick reshares where I have nothing to add, a <code>Capture+publish:</code> variant skips the Mac loop entirely and lets CI promote the draft on its own. The systems involved are the iOS share sheet, a <a href="http://omz-software.com/pythonista/">Pythonista</a> script, GitHub’s Contents API, GitHub Actions, and GitHub Pages. Two adjacent stages aren’t covered here: the Cloudflare CDN + feed-analytics Worker in front of GitHub Pages, and the optional Mastodon cross-post that can fire after deploy.</p>
+<p>The result is more engineering than bookmarking really needs. Below is the contraption, and the spots where it tends to stick.</p>
+<section id="the-pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="the-pipeline">The pipeline</h2>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/83217d89111c9164.svg" alt="flowchart TB
+    subgraph capture [&quot; &quot;]
+        direction LR
+        A[iOS Share Sheet] --&gt; B[Pythonista]
+        B --&gt;|GitHub Contents API| C[draft .qmd in repo]
+        C --&gt;|git pull + /expand-draft| D[Expanded draft]
+        D --&gt; M[Manual edit&lt;br/&gt;VSCode + Claude Code]
+    end
+    subgraph depl" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+</section>
+<section id="what-each-stage-actually-does" class="level2">
+<h2 class="anchored" data-anchor-id="what-each-stage-actually-does">What each stage actually does</h2>
+<ul>
+<li><strong>iOS Pythonista</strong> captures the URL plus a handful of prompts (title, slug, optional one-liner, “Notes to Claude,” “is the post mine?”), auto-detects the source platform (Mastodon, YouTube, arxiv, Substack, GitHub, etc.) from the URL host, and <code>PUT</code>s a stub <code>.qmd</code> to the repo via GitHub’s Contents API. The platform tag tells the next stage how to dispatch.</li>
+<li><strong>Auto-publish</strong> is the Mac-less shortcut for a link I want to reshare verbatim. The iOS capture sets <code>auto-publish: true</code> and commits with <code>Capture+publish:</code> (no <code>[skip ci]</code>), so the workflow runs. An early step pulls the source toot via Mastodon’s public API, downloads its image attachments, maps its hashtags against the existing tag vocabulary, fills in missing required frontmatter, and <code>git mv</code>s the draft to <code>posts/</code> before <code>quarto render</code>. Mastodon-only today. Other platforms raise a hard <code>SystemExit</code>, so a malformed capture fails CI rather than shipping a broken post.</li>
+<li><strong><code>/expand-draft</code> skill</strong> runs on the Mac in Claude Code. It reads the stub’s <code>source-url</code> and <code>source-platform</code>, fetches the page, extracts <code>og:image</code> / <code>og:description</code>, suggests categories from the existing tag set, downloads the cover image (with a citation in the figcaption), and writes a STYLE.md-compliant draft. If <code>notes-for-claude</code> is set, the skill follows it as per-draft direction. If <code>source-mine: true</code>, it skips the framing-commentary scaffolding. A <code>/review-draft</code> pass then fact-checks against the source, flags voice and logic issues, and applies safe fixes before the expansion is committed.</li>
+<li><strong>Manual editing</strong> happens between expand and publish. I open the draft in VSCode and write or polish my commentary with Claude Code at hand. Quick link shares take minutes. Essays can take days. The expanded scaffolding stays deliberately minimal.</li>
+<li><strong><code>/publish-draft</code> skill</strong> validates the draft against the style guide, strips scaffolding, <code>git mv</code>s to <code>posts/</code>, commits, pushes.</li>
+<li><strong>GitHub Actions</strong> implements <em>incremental rendering</em>. A classifier (<code>_scripts/render_diff.py</code>) diffs the working tree against the last successful build’s cached <code>_site/</code> and picks one of <code>full</code>, <code>incremental</code>, or <code>skip-render</code>. A post edit typically routes to <code>incremental</code> and renders in ~20 s instead of ~4 min. Pre-render scripts then emit the tag histogram, the external <code>post-index.json</code> that hydrates the home + archive listings, the bucket-paginated home and archive pages, and <code>llms.txt</code>. Quarto renders the <code>.qmd</code> files. Post-render, <code>feed-render.py</code> rasterizes Mermaid diagrams and MathJax expressions to SVG so the RSS feed carries real images, <code>feed-utm.py</code> UTM-tags the feed item URLs (so GA4 can attribute RSS click-throughs back to the feed channel) and prepends a “Read on benjaminhan.net” back-link to each item’s body, and <code>feed-paginate.py</code> slices the feed into RFC 5005 paged archives so the index file stays small while subscribers can still walk back through history. Three more scripts run before deploy to strip redundant listing H1s, prune inline asset blobs from pages that don’t need them, and fingerprint <code>styles.css</code> for cache-busting.</li>
+</ul>
+</section>
+<section id="gotchas" class="level2">
+<h2 class="anchored" data-anchor-id="gotchas">Gotchas</h2>
+<p>The pipeline above looks clean in a flowchart. It is not. Here are the bumps I hit, in roughly the order they showed up.</p>
+<ul>
+<li><strong><code>dialogs.input_alert</code> doesn’t block in Pythonista’s share extension.</strong> The dialog works fine when I tap ▶ inside the Pythonista app. From the share sheet, it races through every prompt with empty inputs. Symptom: nothing happens, no error, the script finishes silently. Fix: switch to <code>console.input_alert</code>. Same signature, behaves correctly in the extension sandbox.</li>
+<li><strong>GitHub Contents API needs <code>sha</code> to update an existing file.</strong> I hit this on a slug collision (HTTP 422, “sha wasn’t supplied”). The script now <code>GET</code>s the path first. If the file exists, it offers Replace (passing the existing <code>sha</code> so the <code>PUT</code> is treated as an update) or Cancel.</li>
+<li><strong>Quarto’s <code>draft-mode: gone</code> strips draft pages to empty HTML.</strong> Local <code>quarto preview</code> shows blank pages for files in <code>drafts/</code>. Workaround: a <code>_quarto-preview.yml</code> profile that flips <code>draft-mode: unlinked</code> for previews. Production CI builds without the <code>--profile=preview</code> flag, so the deployed site never includes drafts.</li>
+<li><strong>VSCode’s Quarto extension doesn’t inherit <code>terminal.integrated.env.osx</code>.</strong> Setting <code>QUARTO_PROFILE=preview</code> in workspace settings only affects the integrated terminal. The extension spawns Quarto in a separate process tree with its own inherited env. Real fix: <code>export QUARTO_PROFILE=preview</code> in <code>~/.zshrc</code>, then <code>Cmd-Q</code> and relaunch VSCode from the terminal so the extension inherits it.</li>
+<li><strong><code>image:</code> frontmatter is metadata, not body content.</strong> Quarto uses <code>image:</code> only for <code>og:image</code> meta tags and listing thumbnails. It does not render an inline cover image on the post page itself. The body needs an explicit <code>![](cover.jpg){fig-align="center"}</code> for the cover to actually appear.</li>
+<li><strong><code>.claude/</code> was gitignored, hiding the per-project skills.</strong> The first commit of <code>expand-draft.md</code> and <code>publish-draft.md</code> resulted in zero tracked files. The directory was excluded entirely. Git’s rule is that a re-include cannot reach a file under an already-excluded parent directory, so <code>!.claude/skills/</code> does not work against <code>.claude/</code>. The fix is to widen the exclusion to <code>.claude/*</code> first, then re-include <code>.claude/skills/</code>.</li>
+</ul>
+</section>
+<section id="why-bother" class="level2">
+<h2 class="anchored" data-anchor-id="why-bother">Why bother</h2>
+<p>Two reasons:</p>
+<ul>
+<li><strong>The iOS-to-Mac handoff matches how I actually find good links.</strong> On a phone, in an RSS or Mastodon reader, away from a keyboard. Capturing them as scaffolded drafts means I don’t lose the thread between “I should put more thought to it” and “I’m back at the Mac.” The drafts queue up. I work on them when I have time.</li>
+<li><strong>The pipeline keeps a human in the loop.</strong> The phone capture is mine. The commentary is mine. The publish command is a manual step, not a webhook. Automation handles plumbing. Editorial calls stay with me.</li>
+</ul>
+<p>The pipeline is elaborate, fragile, and a little excessive. For a workflow that runs every few days, that is also fine.</p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/</guid>
+  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Sounds of Joy</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260420-sounds-of-joy/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-sounds-of-joy/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260420-sounds-of-joy/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Listening Museum — preview card showing 36 mechanical keyboards. Image from <a href="https://sheets.works/data-viz/keyboard-sounds">sheets.works</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://sheets.works/data-viz/keyboard-sounds"><strong>The Listening Museum</strong></a> — an interactive page that lets you click any of 36 mechanical keyboards (from the 1985 IBM Model M to modern thocky customs) and hear it mapped to your typing.</p>
+<p>I’ve been a faithful user of Apple Magic Keyboards, and I love their low profiles. But I’ve been obsessed with mechanical keyboards — the low-profile ones. Just haven’t found a perfect one I like.</p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260420-sounds-of-joy/</guid>
+  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260420-sounds-of-joy/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260420-opus-47-token-count/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-opus-47-token-count/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260420-opus-47-token-count/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Claude Token Counter card from Simon Willison’s blog post. Image from <a href="https://simonwillison.net/2026/Apr/20/claude-token-counts/">Simon Willison’s Weblog</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://simonwillison.net/2026/Apr/20/claude-token-counts/"><strong>Claude Token Counter, now with model comparisons</strong></a> — Simon Willison upgraded his token counter to compare Claude models head-to-head. Headline findings:</p>
+<ul>
+<li><strong>Opus 4.7 ships a new tokenizer</strong> — the first Claude model to change it. Anthropic’s announcement framed it as a 1.0–1.35× token-count increase depending on content type.</li>
+<li><strong>Real measurement: 1.46×.</strong> Pasting the Opus 4.7 system prompt itself through both tokenizers gave 4.7 ~46% more tokens than 4.6, slightly above Anthropic’s stated upper bound.</li>
+<li><strong>Per-token pricing is unchanged</strong> ($5 / M input, $25 / M output for Opus). So at the same workload, Opus 4.7 effectively costs <strong>~40% more</strong> than Opus 4.6.</li>
+<li><strong>Images are mostly a wash, with a caveat.</strong> Opus 4.7 also added higher-resolution image support (up to 2,576 px on the long edge — ~3.75 MP, 3× prior models). A 3.7 MB PNG showed a 3.01× token increase, but that was the new resolution support, not the tokenizer; a smaller 682×318 image cost roughly the same on both versions.</li>
+<li><strong>PDFs land in between.</strong> A 15 MB, 30-page text-heavy PDF showed only a 1.08× multiplier — much lower than raw text alone.</li>
+</ul>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260420-opus-47-token-count/</guid>
+  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260420-opus-47-token-count/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Earth Day 10K with My Daughter — First in Our Age Groups</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/02.jpg" class="img-fluid" data-lightbox-src="02-full.jpg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/03.jpg" class="img-fluid" data-lightbox-src="03-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/04.jpg" class="img-fluid" data-lightbox-src="04-full.jpg"></p>
+</div>
+</div>
+</div>
+<p>Earth Day 10K race today! My daughter and I ran as a team (“Speedy Swine &amp; Bovine” anyone?): her time was 49:36:31 ranked 11 (of 102), and my time was 55:37:32 ranked 25. We both earned our #1 in our respective age groups!</p>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/05.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/06.jpg" class="img-fluid" data-lightbox-src="06-full.jpg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/07.jpg" class="img-fluid" data-lightbox-src="07-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/08.jpg" class="img-fluid" data-lightbox-src="08-full.jpg"></p>
+</div>
+</div>
+</div>
+<p>Coming from 3 days of no running due to ankle/knee problem, and only 2-hour sleep two nights ago (hooked with work), I was planning to just <em>walk</em> this race. But no, that type-A me just said go ahead! I did try to stay easy-ish pace, and in the end I didn’t feel too taxing. But my HR disagreed: avg/max 155/173 bpm at this pace! Terrible!</p>
+<p>Next race is in June — time to recover and rebuild!</p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116431843411259407">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/</guid>
+  <pubDate>Sat, 18 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/01.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Silver Bars and Language Models: Reading Babel in the Age of LLMs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260417-babel-llm-comparison/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260417-babel-llm-comparison/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260417-babel-llm-comparison/babel-cover.jpg" class="img-fluid figure-img" width="240"></p>
+<figcaption>Cover of R.F. Kuang’s <em>Babel: Or the Necessity of Violence</em> (Harper Voyager, 2022). (<a href="https://en.wikipedia.org/wiki/Babel,_or_the_Necessity_of_Violence">Source</a>)</figcaption>
+</figure>
+</div>
+<p>R.F. Kuang’s <em>Babel</em> was published in August 2022 [1], three months before OpenAI released ChatGPT [2]. The novel is set in an alternate 1830s Oxford and concerns the British Empire’s monopoly on a magical system of translation: silver bars that harvest the gap between languages and convert it into industrial power. Kuang was not writing about AI. But she finished describing a world in which linguistic knowledge is industrialized and centralized just as our world began building exactly that, and in retrospect the structural parallels are precise enough that the novel reads as one of the clearest available descriptions of what large language models actually do.</p>
+<section id="the-asymmetry-the-silver-mines" class="level3">
+<h3 class="anchored" data-anchor-id="the-asymmetry-the-silver-mines">The Asymmetry the Silver Mines</h3>
+<p>In Kuang’s novel, silver bars harvest the gap between languages. A word in Mandarin carries connotations its English counterpart does not, and that untranslatable remainder is what powers the silver. The system converts linguistic asymmetry into material force: bridges that do not collapse, ships that sail faster, an empire that holds.</p>
+<p>LLMs run on a structurally similar logic, except the asymmetry they mine is between what any one person knows and what the system has absorbed from millions. A radiologist has deep expertise in chest imaging but limited knowledge of rare genetic disorders. A junior developer can write a for-loop but struggles to architect a distributed system. LLMs sit in these gaps, having ingested the radiologist’s textbooks and the senior engineer’s Stack Overflow answers along with most of what is in between.</p>
+<p>The extraction is not limited to natural language. When a physicist uses an LLM to debug a simulation, or a philosopher uses one to stress-test an argument, the model is operating inside formalized reasoning: mathematical proof, algorithmic design, diagnostic logic. These are the structured systems humans built over centuries to close gaps in their own understanding, and they are now being absorbed into the model alongside the words. Language is the most visible layer of what LLMs ingest. The deeper layer is the full spectrum of how people think and solve problems.</p>
+</section>
+<section id="the-hidden-labor" class="level3">
+<h3 class="anchored" data-anchor-id="the-hidden-labor">The Hidden Labor</h3>
+<p>In <em>Babel</em>, the silver-work appears as refined scholarship: brilliant students in a beautiful tower translating ancient texts. The system depends on the colonized world — languages taken from peoples who will not share in the benefits equally, knowledge extracted along trade routes that are really routes of control.</p>
+<p>LLMs have their own version. In 2023, TIME reported that OpenAI had paid Kenyan workers less than two dollars an hour to label traumatic content so ChatGPT could learn to be polite [3]. The conversational interface most users experience as helpful, even charming, was refined through labor most of those users will never see. Behind that labor sit the writers whose work became training data without negotiation, and the domain experts whose hard-won knowledge now surfaces in model outputs without attribution.</p>
+</section>
+<section id="a-different-kind-of-dependence" class="level3">
+<h3 class="anchored" data-anchor-id="a-different-kind-of-dependence">A Different Kind of Dependence</h3>
+<p>A common response to worries about LLM dependence is that humans have always depended on powerful tools — electricity, antibiotics, the internal combustion engine. The relevant difference is what kind of capacity is being delegated. LLMs intervene in the specific work humans have most prided themselves on: reasoning, synthesis, and creation.</p>
+<p>Software engineering offers an early read. Industry surveys by 2025 showed that most professional developers had adopted AI coding assistants in their daily workflow [4]. Whether this widespread use is producing dependence is harder to measure, though the early signals point that way. Anthropic’s own study of AI-assisted coding found that delegating to the model correlated with worse comprehension on quiz questions, particularly on debugging and conceptual understanding, while using the model to ask conceptual questions and explain errors went the other way [5]. The pattern is that more delegative use thins the underlying skill.</p>
+<p>This is qualitatively different from depending on a calculator for arithmetic. A calculator handles a mechanical task so the user can focus on higher reasoning. An LLM that helps architect a system or draft an analysis is operating in the territory the user would otherwise occupy. The more fluent it gets, the harder it becomes to tell the assisting tool from the substituting one. In <em>Babel</em>, the students gradually lose the ability to imagine scholarship outside the silver-work; they can still think, but the infrastructure of their thinking has been absorbed into a system they do not control.</p>
+</section>
+<section id="benefit-does-not-cancel-asymmetry" class="level3">
+<h3 class="anchored" data-anchor-id="benefit-does-not-cancel-asymmetry">Benefit Does Not Cancel Asymmetry</h3>
+<p>One of <em>Babel</em>’s sharper insights is that the silver genuinely works. It heals the sick, strengthens buildings, and reaches even the colonized populations, who receive real advantages, distributed unevenly and always on terms set by the empire. That is what makes the students’ position agonizing: they are not dupes, they see the exploitation, and they also see the good the system produces and have built their lives inside it.</p>
+<p>The same structure holds for LLMs. A first-generation college student who cannot afford a tutor uses one to learn organic chemistry at midnight; a small business owner who cannot afford a lawyer drafts a workable contract. Dismissing these benefits would be dishonest.</p>
+<p>The benefits also flow through a system with a particular shape. A handful of companies control the most capable models. The people who extract the most value tend to be those who already have education, technical literacy, and institutional access. The dynamic is class-based rather than colonial, but the structure rhymes: those with existing advantages compound them, and those without gain just enough to deepen their dependence. In <em>Babel</em>, the empire does not need to withhold silver entirely. It only needs to control who gets how much, and on what terms.</p>
+</section>
+<section id="mediation-without-visible-seams" class="level3">
+<h3 class="anchored" data-anchor-id="mediation-without-visible-seams">Mediation Without Visible Seams</h3>
+<p>A central theme in <em>Babel</em> is that translation always involves loss, selection, and power. The translator chooses which nuance to preserve and which to sacrifice, and those choices serve the institution commissioning the translation. The silver does not transmit meaning; it transforms it, and the transformation is never neutral.</p>
+<p>LLMs mediate knowledge along similar lines. They compress, reframe, and smooth over ambiguity. They privilege patterns that were frequent in training data and underweight those that were not. When a medical student asks for a differential diagnosis and receives a confident, well-structured answer, the contested choices behind that answer — which studies were overrepresented, which demographic biases the medical literature carried forward — are not visible in the output. The answer reads as authoritative because the system shows no seams.</p>
+<p>This is a different sort of mediation from what universities, encyclopedias, or search engines perform. Those institutions also shape knowledge, but through visible editorial processes, peer review, and named accountability. Encyclopedias have editorial boards; journal articles have authors and methods sections; an LLM output has a prompt and a response, with the entire process of knowledge construction collapsed inside the model. The mediation is deeper and less legible.</p>
+</section>
+<section id="where-the-analogy-breaks" class="level3">
+<h3 class="anchored" data-anchor-id="where-the-analogy-breaks">Where the Analogy Breaks</h3>
+<p>LLMs are not silver bars, and the companies building them are not the British Empire. The comparison is strongest at the level of political economy: both systems convert distributed human knowledge into centralized capability, both produce real benefits alongside deep asymmetries, and both make complicity feel rational.</p>
+<p>The differences also matter. The British Empire held its silver monopoly through military force, and no one was free to leave. LLM companies operate inside markets where, in principle, competition exists, alternatives can be built, and users can switch away. The coercion is softer — convenience, integration, the cost of building a rival system — and that softness changes both the moral weight of participation and what resistance can plausibly look like.</p>
+<p>Intent is another difference. The people building LLMs would largely reject the <em>Babel</em> framing; they would say they are democratizing access to knowledge, and they would not be wrong. The same system that concentrates power also puts capability into the hands of people who previously had less of it. In <em>Babel</em>, the institution also believed it was doing civilizational good — advancing scholarship, building infrastructure, improving lives. Kuang’s point is that sincerity and extraction can coexist comfortably, and often do.</p>
+</section>
+<section id="pressure-points" class="level3">
+<h3 class="anchored" data-anchor-id="pressure-points">Pressure Points</h3>
+<p>The analogy is not a prophecy. <em>Babel</em> ends in revolt and destruction; the present situation is more open-ended. The students in the novel had almost no leverage, since the silver system was controlled entirely by one institution and the only option they could imagine was to break it. The current LLM infrastructure is concentrated but not sealed, and there are at least three pressure points that, taken seriously, could bend the trajectory away from the pattern Kuang describes.</p>
+</section>
+<section id="transparency-and-distributed-ownership" class="level3">
+<h3 class="anchored" data-anchor-id="transparency-and-distributed-ownership">Transparency and Distributed Ownership</h3>
+<p>The first is transparency and distributed ownership. A reasonable objection is that these sound naive in a capitalist economy: why would companies that spent billions on proprietary models voluntarily open them up? They would not, entirely. But transparency and distributed ownership are not anti-market positions, and they have coexisted with capitalism before. Pharmaceutical companies operate in a fiercely competitive market while being required to disclose clinical trial data and submit to regulatory review. The drugs remain proprietary, the companies remain profitable, and the knowledge needed to evaluate safety is not locked inside a black box. Requiring that LLMs surface their sources, flag uncertainty, and make training data composition auditable would not mean giving away model weights. It would mean establishing a floor of legibility.</p>
+<p>The ownership side is not about outcompeting every commercial lab. It is about building a public layer alongside the commercial one, the way public libraries did not dismantle the publishing industry but kept access to knowledge from depending entirely on ability to pay. Public investment in open models and shared compute infrastructure — efforts like the EU’s nascent sovereign AI programs [6] — could keep hospitals and school districts from being entirely at the mercy of one company’s pricing and priorities. Transparency without distributed ownership gives the public the right to see inside a system it cannot influence. Distributed ownership without transparency just produces another black box. The two together start to resemble a mixed economy of intelligence.</p>
+</section>
+<section id="education" class="level3">
+<h3 class="anchored" data-anchor-id="education">Education</h3>
+<p>The second is education. If the deepest risk is cognitive dependence, the most direct response is to teach people to think with these tools without being absorbed by them. Curricula should treat LLMs the way good math programs treat calculators: useful, permitted, but not a substitute for understanding the underlying reasoning.</p>
+</section>
+<section id="shared-language" class="level3">
+<h3 class="anchored" data-anchor-id="shared-language">Shared Language</h3>
+<p>The third is shared language. One reason <em>Babel</em> resonates is that it names a dynamic many people feel but cannot quite articulate: the sense that something valuable is being quietly reorganized, and that the benefits are real but the terms are not theirs to set. A framework for that feeling is itself a form of power, since a system that can be described is harder to be captured by.</p>
+<p>The asymmetry between what individuals know and what these systems have absorbed will keep being mined; I do not think that can be stopped. What is still open is whether the extraction is governed, shared more broadly, and made more accountable than it is now. <em>Babel</em> is most useful here as a description sharp enough to make the trap visible while there is still room to step around parts of it.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Kuang, R.F. <em>Babel: Or the Necessity of Violence: An Arcane History of the Oxford Translators’ Revolution</em>. Harper Voyager, August 2022.</li>
+<li><a id="ref-2"></a>OpenAI. “Introducing ChatGPT.” OpenAI Blog, November 30, 2022. <a href="https://openai.com/blog/chatgpt" class="uri">https://openai.com/blog/chatgpt</a></li>
+<li><a id="ref-3"></a>Perrigo, Billy. “OpenAI Used Kenyan Workers on Less Than $2 Per Hour to Make ChatGPT Less Toxic.” <em>TIME</em>, January 18, 2023. <a href="https://time.com/6247678/openai-chatgpt-kenya-workers/" class="uri">https://time.com/6247678/openai-chatgpt-kenya-workers/</a></li>
+<li><a id="ref-4"></a>Stack Overflow. “2025 Developer Survey.” Stack Overflow, 2025. <a href="https://survey.stackoverflow.co/2025/" class="uri">https://survey.stackoverflow.co/2025/</a></li>
+<li><a id="ref-5"></a>Anthropic. “AI Assistance and Coding Skills.” <em>Anthropic Research</em>. <a href="https://www.anthropic.com/research/AI-assistance-coding-skills" class="uri">https://www.anthropic.com/research/AI-assistance-coding-skills</a></li>
+<li><a id="ref-6"></a>European Commission. “AI Factories: European Initiative for Sovereign AI Infrastructure.” Digital Strategy, 2024. <a href="https://digital-strategy.ec.europa.eu/en/policies/ai-factories" class="uri">https://digital-strategy.ec.europa.eu/en/policies/ai-factories</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260417-babel-llm-comparison/</guid>
+  <pubDate>Fri, 17 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260417-babel-llm-comparison/babel-cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Chain-of-Thought, by Way of 4chan</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260414-reasoning-origin-link/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260414-reasoning-origin-link/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260414-reasoning-origin-link/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Cover image from the Atlantic article. (<a href="https://apple.news/AQUmk0Ha9SsiSaF5FeWXEUw">Source</a>)</figcaption>
+</figure>
+</div>
+<p>I didn’t know chain-of-thought could have roots in 4chan, where the lowest and highest impulses of humanity clashed to give us the jewel of “reasoning models!” [1] It also mentions Apple’s paper “The Illusion of Thinking.”</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“The Strange Origin of AI’s ‘Reasoning’ Abilities.” <em>The Atlantic</em>. <a href="https://apple.news/AQUmk0Ha9SsiSaF5FeWXEUw" class="uri">https://apple.news/AQUmk0Ha9SsiSaF5FeWXEUw</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_the-strange-origin-of-ais-reasoning-abilities-activity-7450039863049109505-kMuG">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260414-reasoning-origin-link/</guid>
+  <pubDate>Tue, 14 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260414-reasoning-origin-link/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>APIs, Tools, Skills, and Where MCP Fits</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260414-api-mcp-tool-skill/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260414-api-mcp-tool-skill/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>APIs, tools, and skills form a rough abstraction ladder. Each one builds on the layer below it, and confusing them leads to systems that are either too rigid or too loosely defined. MCP is a different kind of thing: a protocol that crosscuts the ladder. It deserves its own discussion.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/ef1f2df71b7d6d8c.svg" alt="graph LR
+    subgraph MCP[&quot;&lt;b&gt;MCP&lt;/b&gt; — standardizes exposure to models&quot;]
+        API[&quot;&lt;b&gt;API&lt;/b&gt;&lt;br/&gt;raw interface&quot;]
+        TOOL[&quot;&lt;b&gt;TOOL&lt;/b&gt;&lt;br/&gt;callable action&quot;]
+        API --&gt;|&quot;wrapped by&quot;| TOOL
+    end
+
+    TOOL --&gt;|&quot;used by&quot;| SKILL
+    API --&gt;|&quot;used by&quot;| SKILL[&quot;&lt;b&gt;SKILL&lt;/b&gt;&lt;br/&gt;judgment, seq" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<section id="api-the-raw-interface" class="level3">
+<h3 class="anchored" data-anchor-id="api-the-raw-interface">API: The Raw Interface</h3>
+<p>An API is a defined interface that lets one software system interact with another. It exposes endpoints, methods, inputs, and outputs. It does not tell an agent when to call it, what to do with the result, or how the call fits into a broader task.</p>
+<p>In a customer support agent, the API is the HTTP interface to the ticketing system: create ticket, update status, fetch history. The API does not know why you are calling it.</p>
+</section>
+<section id="tool-the-callable-action" class="level3">
+<h3 class="anchored" data-anchor-id="tool-the-callable-action">Tool: The Callable Action</h3>
+<p>A tool is a capability packaged so an agent can invoke it directly. It has a schema the model can read, a name that signals intent, and a defined effect. In many systems a tool is backed by an API, but the tool adds a layer: it tells the model what the action does, what parameters it needs, and what shape the result will take.</p>
+<p>In that same support agent, “search_tickets” is a tool. It wraps the ticketing API’s search endpoint, describes its parameters in a model-readable schema, and returns structured results. The agent can decide to call it. The API underneath does not care who is calling or why.</p>
+<p>The key difference: a developer writes code against an API. An agent selects and invokes a tool. The tool is the API made legible to a model.</p>
+</section>
+<section id="skill-the-playbook" class="level3">
+<h3 class="anchored" data-anchor-id="skill-the-playbook">Skill: The Playbook</h3>
+<p>A skill is a reusable method for solving a class of problems. It involves judgment, sequencing, and often multiple tools. If a tool says “send an email,” a skill says “triage the inbox, identify messages that need a response, draft replies in the right tone, and flag anything that needs human review.”</p>
+<p>For the support agent, a skill might be “handle refund request”: check the order status, verify the refund policy applies, draft a response to the customer, create an internal ticket if escalation is needed, and log the outcome. That is not one action. It is a procedure with branching logic and defaults.</p>
+<p>Skills are where know-how lives. A tool gives the agent something to do. A skill tells it how to do a job well.</p>
+</section>
+<section id="where-mcp-fits" class="level3">
+<h3 class="anchored" data-anchor-id="where-mcp-fits">Where MCP Fits</h3>
+<p>MCP (Model Context Protocol) is not another rung on this ladder. It is a standard for exposing tools, resources, and context to models in a consistent way. Its job is interoperability: making capabilities discoverable and portable across environments.</p>
+<p>Without MCP, every agent framework wires up tools differently. The schema formats vary, discovery is ad hoc, and switching between hosts means rewriting integrations. MCP standardizes that surface so a tool written once can be used by any compliant client.</p>
+<p>MCP can also expose resources (files, database rows, live context) alongside tools, which means a model can see both what it can do and what it is working with. This is useful but distinct from the API/tool/skill question. MCP does not replace any of those layers. It makes them portable.</p>
+<p>Think of it this way: APIs, tools, and skills describe what capabilities exist and at what level of abstraction. MCP describes how those capabilities are presented to models.</p>
+</section>
+<section id="a-concrete-example" class="level3">
+<h3 class="anchored" data-anchor-id="a-concrete-example">A Concrete Example</h3>
+<p>Consider a code assistant that can read files, run tests, and create pull requests.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/1269501d07fba9cb.svg" alt="graph TB
+    SKILL[&quot;&lt;b&gt;SKILL: Review and ship a bug fix&lt;/b&gt;&quot;]
+
+    SKILL --&gt; S1[&quot;1. Read failing test&lt;br/&gt;&lt;i&gt;judgment: which file?&lt;/i&gt;&quot;]
+    SKILL --&gt; S2[&quot;2. Identify + fix broken code&lt;br/&gt;&lt;i&gt;judgment: what change?&lt;/i&gt;&quot;]
+    SKILL --&gt; S3[&quot;3. Run test suite&quot;]
+    SKILL --&gt; S4[&quot;4. Open PR&lt;br/&gt;&lt;i&gt;judgm" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<ul>
+<li>The <strong>APIs</strong> are the filesystem interface, the test runner’s CLI, and the GitHub REST API.</li>
+<li>The <strong>tools</strong> are “read_file,” “run_tests,” and “create_pull_request,” each with a schema the model can parse.</li>
+<li>An <strong>MCP server</strong> bundles those tools (and possibly resources like the repo’s directory tree or recent CI results) into a package any compliant model host can connect to.</li>
+<li>A <strong>skill</strong> is “review and ship a bug fix”: read the failing test, identify the broken code, make the fix, run the test suite, and open a PR with a clear description. The skill uses all three tools and applies judgment at each step.</li>
+</ul>
+</section>
+<section id="the-boundaries-are-not-fixed" class="level3">
+<h3 class="anchored" data-anchor-id="the-boundaries-are-not-fixed">The Boundaries Are Not Fixed</h3>
+<p>Yes, a skill can become a tool. This happens routinely. The “handle refund request” skill from the earlier example starts as a multi-step procedure with judgment at each point. But once the team has run it enough times, the branching logic stabilizes, the edge cases get codified, and someone wraps the whole thing in a single callable function: “process_refund.” Now it looks like a tool. The agent calls it in one shot. The orchestration still happens, just inside the wrapper rather than in the agent’s reasoning loop.</p>
+<p>This is the natural lifecycle. Skills get hardened into tools. Tools get commoditized into APIs. What was once a careful, multi-step procedure becomes a reliable black box. The abstraction ladder is not a static taxonomy. It is a description of where the judgment currently lives, and that shifts as systems mature.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/c8ae8f4b94afe03b.svg" alt="graph LR
+    SKILL[&quot;&lt;b&gt;SKILL&lt;/b&gt;&lt;br/&gt;&lt;i&gt;handle refund request&lt;/i&gt;&lt;br/&gt;judgment in the agent&quot;]
+    TOOL[&quot;&lt;b&gt;TOOL&lt;/b&gt;&lt;br/&gt;&lt;i&gt;process_refund&lt;/i&gt;&lt;br/&gt;judgment in the wrapper&quot;]
+    API[&quot;&lt;b&gt;API&lt;/b&gt;&lt;br/&gt;&lt;i&gt;POST /refunds&lt;/i&gt;&lt;br/&gt;judgment removed&quot;]
+
+    SKILL --&gt;|hardens into| TOOL
+    TOOL --&gt;|commoditizes " class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>The movement goes the other direction too. When a tool starts failing in new contexts, or when its behavior needs to vary based on surrounding conditions, it may need to be unpacked back into a skill. A “create_pull_request” tool works fine when the agent has already done everything right. But if the PR needs a certain description format, specific reviewers based on the files changed, and a linked issue, that single tool call becomes a skill again: a sequence of checks and decisions that the agent has to reason through.</p>
+<p>The practical implication: do not over-invest in classifying a capability as one or the other permanently. Instead, pay attention to where the judgment lives right now. If the agent is making multi-step decisions around a capability, that is a skill, even if it is technically implemented as a single function. If a capability can be called reliably without the agent thinking about it, that is a tool, even if it was once a complex workflow.</p>
+</section>
+<section id="when-you-are-building-an-agent" class="level3">
+<h3 class="anchored" data-anchor-id="when-you-are-building-an-agent">When You Are Building an Agent</h3>
+<p>If you are deciding what to build and in what order:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/824985c5557720a2.svg" alt="graph LR
+    A[&quot;&lt;b&gt;① API&lt;/b&gt;&lt;br/&gt;raw access&lt;br/&gt;&lt;i&gt;always needed&lt;/i&gt;&quot;]
+    T[&quot;&lt;b&gt;② Tool&lt;/b&gt;&lt;br/&gt;callable action&lt;br/&gt;&lt;i&gt;always needed&lt;/i&gt;&quot;]
+    M[&quot;&lt;b&gt;③ MCP&lt;/b&gt;&lt;br/&gt;portable exposure&lt;br/&gt;&lt;i&gt;if multi-host&lt;/i&gt;&quot;]
+    S[&quot;&lt;b&gt;④ Skill&lt;/b&gt;&lt;br/&gt;orchestrated workflow&lt;br/&gt;&lt;i&gt;when patterns emerge&lt;/i&gt;&quot;]
+
+    A --&gt;" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<ol type="1">
+<li><strong>Start with the APIs.</strong> You need raw access to the systems your agent will interact with. If the integration does not exist, nothing above it works.</li>
+<li><strong>Wrap them as tools.</strong> Give each action a clear name, a schema, and a description. This is what the model will actually call.</li>
+<li><strong>If you need portability, add MCP.</strong> If your tools will be used across multiple model hosts or clients, exposing them through MCP saves you from writing bespoke integrations for each one. If you are building for a single environment, this can wait.</li>
+<li><strong>Encode skills last.</strong> Once your agent can take individual actions reliably, identify the recurring workflows where sequencing and judgment matter. Package those as skills. Premature skills, built before the underlying tools are solid, tend to be brittle.</li>
+</ol>
+<p>The layers are complements: APIs provide access, tools provide action, MCP provides portability, and skills provide method. Most agent systems need all four, but they should be built in roughly that order.</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/apis-tools-skills-where-mcp-fits-benjamin-han-bouuc">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260414-api-mcp-tool-skill/</guid>
+  <pubDate>Tue, 14 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
+</item>
+<item>
+  <title>“Verified” Doesn’t Mean “Nothing Can Go Wrong”</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260413-verified-not-safe/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260413-verified-not-safe/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260413-verified-not-safe/lean-zip.png" class="img-fluid figure-img"></p>
+<figcaption>Illustration from Kiran’s post. (<a href="https://kirancodes.me/posts/log-who-watches-the-watchers.html">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Formal verification of software is powerful, but this is a good reminder that “verified” never means “nothing can go wrong.” In this case, a Claude agent using AFL++ and other testing tools found a buffer overflow in the Lean runtime itself even though the application logic is correctly verified with Lean [1].</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Kiran. “Log: Who Watches the Watchers.” <em>kirancodes.me</em>. <a href="https://kirancodes.me/posts/log-who-watches-the-watchers.html" class="uri">https://kirancodes.me/posts/log-who-watches-the-watchers.html</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_why-verification-didnt-catch-these-bugs-activity-7449621397611667456-1YMC">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260413-verified-not-safe/</guid>
+  <pubDate>Mon, 13 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260413-verified-not-safe/lean-zip.png" medium="image" type="image/png" height="84" width="144"/>
+</item>
+<item>
+  <title>CoachGPT, in Practice</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260412-coachgpt-marathon/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260412-coachgpt-marathon/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260412-coachgpt-marathon/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Marathon runners. Photo: Wikimedia Commons. (<a href="https://www.bloomberg.com/news/features/2026-04-10/training-for-a-marathon-with-an-ai-coach-what-worked-and-what-didn-t">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Can CoachGPT be effective as your running coach? I’ve gone through something very similar to what this Bloomberg article describes: consistently interacting with my “coach” by stating my goals, sending screenshot after screenshot of my recorded running stats, and strategizing with it on rezoning my HR, training routines, and race plans.</p>
+<p>In the end, these concluding statements from the model itself, when the author asked how far he’d come, stand out most:</p>
+<blockquote class="blockquote">
+<p>“A long way,” it responded. “Not because the model ‘coached’ you. And not because the technology was flawless. It wasn’t. You had to correct it, constrain it and teach it how to be useful. What feels significant here is that this stopped being a chatbot giving generic advice and became a system you were actively shaping toward a real-world outcome. Over time, you built something closer to a working instrument: goals, rules, memory, exceptions, cadence, feedback loops, failure modes, even governance language.”</p>
+</blockquote>
+<p>It then widened the lens:</p>
+<blockquote class="blockquote">
+<p>“Far enough that an AI can participate meaningfully in a serious human project over time. Not far enough that it can be trusted without structure,” it added. “And maybe that’s the most important answer: The future is probably not AI replacing people. It’s people who learn how to build disciplined working relationships with AI outperforming those who don’t.”</p>
+</blockquote>
+<p>https://www.bloomberg.com/news/features/2026-04-10/training-for-a-marathon-with-an-ai-coach-what-worked-and-what-didn-t?accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzb3VyY2UiOiJTdWJzY3JpYmVyR2lmdGVkQXJ0aWNsZSIsImlhdCI6MTc3NTgzMzI2NCwiZXhwIjoxNzc2NDM4MDY0LCJhcnRpY2xlSWQiOiJURDk5SzRLSVAzTFAwMCIsImJjb25uZWN0SWQiOiJFMkVCM0VGNzQyQjE0QzE4OUQ1MkNBMjQ5QTA3NzIyQiJ9._LFZIIYX7FGzG60hmbSFalXS467NH5YV3-wtJqK9UxY</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“I Trained for the Paris Marathon Using ChatGPT.” <em>Bloomberg</em>, April 10, 2026. <a href="https://www.bloomberg.com/news/features/2026-04-10/training-for-a-marathon-with-an-ai-coach-what-worked-and-what-didn-t" class="uri">https://www.bloomberg.com/news/features/2026-04-10/training-for-a-marathon-with-an-ai-coach-what-worked-and-what-didn-t</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_i-trained-for-the-paris-marathon-using-chatgpt-activity-7449131880702058496-0KgQ">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260412-coachgpt-marathon/</guid>
+  <pubDate>Sun, 12 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260412-coachgpt-marathon/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Why LLMs Still Stumble Over Time</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/evolvebench-illustration.jpg" class="img-fluid figure-img"></p>
+<figcaption>Illustration from the EvolveBench paper [10].</figcaption>
+</figure>
+</div>
+<p>Are you surprised that today’s LLMs still make so many time-related mistakes? They might mismatch a date and weekday [1], misinterpret relative expressions like “in 2 hours” or “next Monday at 1 PM” when the current time or timezone is unclear [2], or, in more complex cases, build a schedule whose event order is simply impossible [3].</p>
+<p>The core issue is that temporal reasoning is not one skill but a bundle of them. Recent benchmarks break it into subskills such as event ordering, arithmetic, duration, and frequency, and show both large variation across categories and a substantial gap to human performance [4][5].</p>
+<p>These failures also reflect how temporal reasoning depends on more than calendar math. Models often need to determine when two mentions refer to the same event and to reason jointly about temporal, causal, and subevent relations [6]. They also rely on commonsense script knowledge, since text frequently leaves the typical order or duration of everyday events unstated [7][8].</p>
+<p>Even when stale knowledge is not the problem, temporal reasoning remains brittle. In controlled evaluations, performance changes substantially with problem structure, question type, and fact order [9]. That brittleness helps explain why models struggle when events are introduced out of chronological order and the timeline has to be reconstructed rather than read off the surface form [9].</p>
+<p>The problem becomes harder still when knowledge itself changes over time. A model may retrieve the right fact yet fail to align it with the period in which it was true. EvolveBench evaluates exactly this kind of temporal awareness through historical cognition, temporally misaligned context, and invalid timestamped queries [10].</p>
+<p>Taken together, these results suggest that temporal failures arise from the interaction of heterogeneous subskills, event-level dependencies, temporal commonsense, sensitivity to ordering, and weak grounding of facts to the correct time.</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Sweenor, David. “Don’t Trust Your AI With Dates: The Calendar Blindspot.” <em>Medium</em>, 2025. <a href="https://medium.com/@davidsweenor/dont-trust-your-ai-with-dates-the-calendar-blindspot-882c7223eca0" class="uri">https://medium.com/@davidsweenor/dont-trust-your-ai-with-dates-the-calendar-blindspot-882c7223eca0</a></li>
+<li><a id="ref-2"></a>Pankretić, Filip. “The invisible problem. How we solved scheduling with AI.” <em>Infobip Developers Blog</em>, 2026. <a href="https://www.infobip.com/developers/blog/the-invisible-problem-how-we-solved-scheduling-with-ai" class="uri">https://www.infobip.com/developers/blog/the-invisible-problem-how-we-solved-scheduling-with-ai</a></li>
+<li><a id="ref-3"></a>Bansal, Tanmay. “Your Favourite LLMs Still Can’t Differentiate Between Time Like Humans.” <em>GoPubby / Medium</em>, 2026. <a href="https://ai.gopubby.com/why-llms-still-cant-perceive-time-like-humans-602adb0e9f20" class="uri">https://ai.gopubby.com/why-llms-still-cant-perceive-time-like-humans-602adb0e9f20</a></li>
+<li><a id="ref-4"></a>Wang, Yuqing, and Yun Zhao. “TRAM: Benchmarking Temporal Reasoning for Large Language Models.” <em>Findings of ACL 2024</em>. <a href="https://aclanthology.org/2024.findings-acl.382/" class="uri">https://aclanthology.org/2024.findings-acl.382/</a></li>
+<li><a id="ref-5"></a>Chu, Zheng, et al.&nbsp;“TIMEBENCH: A Comprehensive Evaluation of Temporal Reasoning Abilities in Large Language Models.” <em>ACL 2024</em>. <a href="https://aclanthology.org/2024.acl-long.66/" class="uri">https://aclanthology.org/2024.acl-long.66/</a></li>
+<li><a id="ref-6"></a>Wang, Xiaozhi, et al.&nbsp;“MAVEN-ERE: A Unified Large-scale Dataset for Event Coreference, Temporal, Causal, and Subevent Relation Extraction.” <em>EMNLP 2022</em>. <a href="https://aclanthology.org/2022.emnlp-main.60/" class="uri">https://aclanthology.org/2022.emnlp-main.60/</a></li>
+<li><a id="ref-7"></a>Regneri, Mirella, Alexander Koller, and Manfred Pinkal. “Learning Script Knowledge with Web Experiments.” <em>ACL 2010</em>. <a href="https://aclanthology.org/P10-1100/" class="uri">https://aclanthology.org/P10-1100/</a></li>
+<li><a id="ref-8"></a>Wenzel, Gregor, and Adam Jatowt. “An Overview of Temporal Commonsense Reasoning and Acquisition.” <em>arXiv</em>, 2023. <a href="https://arxiv.org/abs/2308.00002" class="uri">https://arxiv.org/abs/2308.00002</a></li>
+<li><a id="ref-9"></a>Fatemi, Bahare, et al.&nbsp;“Test of Time: A Benchmark for Evaluating LLMs on Temporal Reasoning.” <em>arXiv</em>, 2024. <a href="https://arxiv.org/abs/2406.09170" class="uri">https://arxiv.org/abs/2406.09170</a></li>
+<li><a id="ref-10"></a>Zhu, Zhiyuan, et al.&nbsp;“EvolveBench: A Comprehensive Benchmark for Assessing Temporal Awareness in LLMs on Evolving Knowledge.” <em>ACL 2025</em>. <a href="https://aclanthology.org/2025.acl-long.788/" class="uri">https://aclanthology.org/2025.acl-long.788/</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-temporal-reasoning-activity-7448985310727921664-Av2H">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/</guid>
+  <pubDate>Sat, 11 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/evolvebench-illustration.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>iPhone, Artemis II, Moon</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260406-iphone-on-artemis/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260406-iphone-on-artemis/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260406-iphone-on-artemis/earth-from-orion.jpg" class="img-fluid figure-img"></p>
+<figcaption>Artemis II Commander Reid Wiseman peering out of one of the Orion spacecraft’s main cabin windows, looking back at Earth as the crew travels toward the Moon. Photo taken April 4, 2026. Credit: NASA. (<a href="https://www.flickr.com/photos/nasa2explore/55187189317/">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Astronauts onboard Artemis II took pictures with iPhone 17 Pro Max [1].</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>NASA. “Home, Seen from Orion.” <em>Flickr (NASA2Explore)</em>, April 4, 2026. <a href="https://www.flickr.com/photos/nasa2explore/55187189317/" class="uri">https://www.flickr.com/photos/nasa2explore/55187189317/</a></li>
+</ol>
+<hr>
+<p><img src="https://benjaminhan.net/posts/20260406-iphone-on-artemis/screenshot1.jpg" class="img-fluid"></p>
+<p><img src="https://benjaminhan.net/posts/20260406-iphone-on-artemis/screenshot2.jpg" class="img-fluid"></p>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_iphone-artemisii-moon-activity-7446990804394590208-06EG">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260406-iphone-on-artemis/</guid>
+  <pubDate>Mon, 06 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260406-iphone-on-artemis/earth-from-orion.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Filesystems vs. RAG</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260404-filesystem-vs-rag/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/chromafs-architecture.png" class="img-fluid figure-img" data-lightbox-src="chromafs-architecture-full.png"></p>
+<figcaption>ChromaFs architecture diagram from the Mintlify post. (<a href="https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Can we replace RAG with filesystems? This article shares a neat engineering write-up on doing exactly that: replacing a standard docs RAG flow with a virtual filesystem for an assistant [1].</p>
+<p>Instead of only retrieving top-K chunks, they let the model interact with documentation through familiar file operations like&nbsp;ls,&nbsp;cat,&nbsp;find, and&nbsp;grep. Under the hood, they built a virtual layer over their existing docs index, avoiding the latency and cost of spinning up full sandboxes while giving the assistant a more natural way to explore the corpus.</p>
+<p>Optimization details aside, the article hints at two bigger ideas.</p>
+<p>First, the filesystem vs.&nbsp;RAG distinction is really about structured navigation vs.&nbsp;relevance retrieval. A filesystem presents the corpus as a pre-built navigable structure for exploration. Plain RAG presents it as a retrieval space.</p>
+<p>Second, system interfaces work better when they align with the interaction patterns the base LLM already knows. For coding-oriented models especially, files, paths, directories, and shell-style operations are much closer to the environments they were trained on than a one-shot retrieve-and-insert workflow. The article explicitly framed the goal as letting the assistant explore docs the way a developer explores a codebase.</p>
+<p>A few contrasts between the filesystem and RAG approaches:</p>
+<ol type="1">
+<li><p>Filesystems preserve and expose author-created structure that chunk RAG often weakens.</p></li>
+<li><p>Filesystem agents are natively iterative and exploratory; plain RAG is often, but not always, more one-shot.</p></li>
+<li><p>Filesystems provide a richer tool surface than retrieval alone.</p></li>
+<li><p>Filesystems are better for exact search, full-page reading, and multi-page investigation.</p></li>
+<li><p>Filesystems support hypothesis-driven exploration across documents: inspect one page, discover a term, search for it elsewhere, and refine understanding.</p></li>
+<li><p>Filesystems preserve document integrity better by making whole pages or files accessible, rather than only isolated retrieved chunks.</p></li>
+<li><p>Filesystem-based interfaces can align access control more naturally with paths, files, and directories, so the assistant’s visible world is scoped up front.</p></li>
+</ol>
+<p>But RAG still shines when the main problem is semantic recall: messy corpora, weak or ambiguous structure, heterogeneous sources or modalities, or cases where a few relevant passages are enough and full exploration would be overkill.</p>
+<p>The interesting part is that these approaches are not incompatible. RAG can be one tool inside a filesystem-style agent: useful for candidate recall, while the filesystem layer handles navigation, inspection, and verification. The implementation described effectively does this by using existing indexing infrastructure to narrow search before exact filtering.</p>
+<p>Takeaway: RAG retrieves likely evidence. A filesystem lets the model investigate the source material. We can combine both.</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Mintlify. “How we built a virtual filesystem for our Assistant.” <em>Mintlify Blog</em>, March 24, 2026. <a href="https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant" class="uri">https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_how-we-built-a-virtual-filesystem-for-our-activity-7446351506905415680-l9ES">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260404-filesystem-vs-rag/</guid>
+  <pubDate>Sat, 04 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/chromafs-architecture.png" medium="image" type="image/png" height="86" width="144"/>
+</item>
+<item>
+  <title>The Revenge of the Data Scientist</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/abl.jpeg" class="img-fluid figure-img" data-lightbox-src="abl-full.jpeg"></p>
+<figcaption>Illustration from Hamel Husain’s post. (<a href="https://hamel.dev/blog/posts/revenge/">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Agentic systems need more than prompts and model calls. They need a surrounding machinery that helps the system observe itself and improve, including logs, metrics, traces, tests, and specifications.</p>
+<p>This article by Hamel Husain [1] gives a good rundown of the key considerations:</p>
+<ol type="1">
+<li><p>Generic quality scores like helpfulness or hallucination are often not very useful because they do not explain what actually failed. Define narrow metrics tied to specific failure modes.</p></li>
+<li><p>Inspection has to be easy and frequent so hands-on review can happen regularly and reveal patterns, not just numbers. This only works when tools are built to support that kind of inspection.</p></li>
+<li><p>LLM judges are part of the system and must be validated. They should be treated like classifiers: checked against human labels, tuned carefully, and evaluated with metrics like precision and recall rather than trusted at face value.</p></li>
+<li><p>Good experiments start from real behavior, not abstract test generation. Start from real logs or traces, then create synthetic examples grounded in those actual patterns and edge cases.</p></li>
+<li><p>Labeling is part of product thinking, not just annotation. Keeping domain experts close to labeling helps teams refine what they truly care about, because criteria often become clearer only after reviewing real outputs.</p></li>
+<li><p>Too much automation can hide the signal needed for improvement. LLMs can help with boilerplate and plumbing, but they cannot replace the human work of looking directly at failures and deciding what matters.</p></li>
+</ol>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Husain, Hamel. “The Revenge of the Data Scientist.” <em>Hamel’s Blog</em>. <a href="https://hamel.dev/blog/posts/revenge/" class="uri">https://hamel.dev/blog/posts/revenge/</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_the-revenge-of-the-data-scientist-hamel-activity-7445487039216508928-tBsd">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/</guid>
+  <pubDate>Thu, 02 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/abl.jpeg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Artemis II Launches on Apple’s 50th Anniversary</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260402-artemis-launch/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260402-artemis-launch/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260402-artemis-launch/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Official Artemis II crew portrait. Photo: NASA, via Wikimedia Commons. (<a href="https://www.nytimes.com/live/2026/04/01/science/moon-nasa-artemis-launch">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Do you know what else happened on the same day Apple celebrated its 50th anniversary? Artemis II launched, marking humanity’s first crewed journey around the Moon in more than 50 years, the first since Apollo 17 in 1972 [1].</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“Highlights From the Launch of NASA’s Artemis II Moon Mission.” <em>The New York Times</em>, April 1, 2026. <a href="https://www.nytimes.com/live/2026/04/01/science/moon-nasa-artemis-launch" class="uri">https://www.nytimes.com/live/2026/04/01/science/moon-nasa-artemis-launch</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_highlights-from-the-launch-of-nasas-artemis-activity-7445521542257635328-xj9l">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260402-artemis-launch/</guid>
+  <pubDate>Thu, 02 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260402-artemis-launch/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Learning to Reason in 13 Parameters</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260331-tinylora/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260331-tinylora/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260331-tinylora/figure1.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the TinyLoRA paper. (<a href="https://arxiv.org/abs/2602.04118">Source</a>)</figcaption>
+</figure>
+</div>
+<p>TinyLoRA pushes low-rank adaptation down to almost nothing [1].</p>
+<ul>
+<li>They report that an 8B-parameter Qwen2.5 model reaches 91% on GSM8K with only 13 trained bf16 parameters, which they note is just 26 bytes of learned weights.</li>
+<li>For RL-based post-training, the effective update needed to unlock better reasoning may live in a very low-dimensional subspace.</li>
+<li>This works well with RL, but not nearly as well with SFT, where they say SFT needs 100–1000x larger updates to match the same gains.</li>
+</ul>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“Learning to Reason in 13 Parameters.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2602.04118" class="uri">https://arxiv.org/abs/2602.04118</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_learning-to-reason-in-13-parameters-activity-7444959168408559616-psHg">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260331-tinylora/</guid>
+  <pubDate>Tue, 31 Mar 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260331-tinylora/figure1.png" medium="image" type="image/png" height="113" width="144"/>
+</item>
+<item>
+  <title>How Apple Became Apple</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260330-apple-oral-history/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260330-apple-oral-history/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260330-apple-oral-history/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Apple I, on display. Photo: Wikimedia Commons. (<a href="https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak">Source</a>)</figcaption>
+</figure>
+</div>
+<blockquote class="blockquote">
+<p>“Today, as Apple turns 50, its presence in our lives is so pervasive—2.5 billion of the company’s devices are in active use—that its unlikely origin story is more resonant than ever. To tell it, I turned to the people who lived it…” [1]</p>
+</blockquote>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“How Apple became Apple: The definitive oral history of the company’s earliest days.” <em>Fast Company</em>. <a href="https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak" class="uri">https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_how-apple-became-apple-the-definitive-oral-activity-7444423672158851072-bLk-">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260330-apple-oral-history/</guid>
+  <pubDate>Mon, 30 Mar 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260330-apple-oral-history/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Redmond City Marathon: #30, with a Sprained Ankle</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260329-redmond-city-marathon/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260329-redmond-city-marathon/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/02.jpg" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/03.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/04.jpg" class="img-fluid"></p>
+</div>
+</div>
+</div>
+<p>Today I ran my 30th marathon (since 2024) at the Redmond City Marathon race, finishing in 3:38:33 (watch time) with pace 8’20”/mi. It also extended an unusual streak for me: 7 straight weeks of running HM or longer!</p>
+<p>This was my first marathon raced by HR, and that part mostly went to plan: I got avg/max HR of 149/159 bpm. The bigger challenge in the second half was actually not keeping my HR down, but getting it up. My legs were prematurely tired mainly due to a very silly mistake happened early in the race: I stored gels in the shallow part of my vest pockets, and they went flying at ~2.6mi mark! I stepped onto the unpaved edge to retrieve them, and proceeded to spraining my left ankle!</p>
+<p>Running on it didn’t feel too bad and I thought I had cheated disaster. It started to rear its ugly head around the famous mile 20. Well, this is what it is – at least I managed to have a strong-ish finish in the last 2+mi!</p>
+<p>Not the race I originally imagined, but sometimes sh*t happens (okay, most of the times). My next marathon is ~24 weeks out –- a lot of training to do, but I have the time! Onward!</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-marathon-activity-7444201961870077952-Fl0o">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260329-redmond-city-marathon/</guid>
+  <pubDate>Sun, 29 Mar 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260329-redmond-city-marathon/01.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>LLM Neuroanatomy: Topping the Leaderboard Without Changing a Weight</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260324-llm-neuroanatomy/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/duplicated-layers.png" class="img-fluid figure-img"></p>
+<figcaption>Diagram from the dnhkng.github.io post showing the duplicated middle-layer block. (<a href="https://dnhkng.github.io/posts/rys/">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Improve an LLM without training by duplicating a specific block of middle transformer layers and running them twice during inference. The power of thinking it over twice [1].</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“LLM Neuroanatomy: How I Topped the LLM Leaderboard Without Changing a Single Weight.” <em>dnhkng.github.io</em>. <a href="https://dnhkng.github.io/posts/rys/" class="uri">https://dnhkng.github.io/posts/rys/</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llm-neuroanatomy-how-i-topped-the-llm-leaderboard-activity-7442232550196117504-bASa">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260324-llm-neuroanatomy/</guid>
+  <pubDate>Tue, 24 Mar 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/duplicated-layers.png" medium="image" type="image/png" height="129" width="144"/>
+</item>
+<item>
+  <title>Snowflake Cortex AI Escapes Sandbox and Executes Malware</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/cover.png" class="img-fluid figure-img" data-lightbox-src="cover-full.png"></p>
+<figcaption>Cover image from the PromptArmor write-up. (<a href="https://www.promptarmor.com/resources/snowflake-ai-escapes-sandbox-and-executes-malware">Source</a>)</figcaption>
+</figure>
+</div>
+<p>A good reminder that agent safety is not just about having a sandbox.</p>
+<p>Snowflake’s Cortex Code CLI recently patched an indirect prompt injection flaw where untrusted content, such as a repo README, could trigger malicious shell commands, bypass user approval, and run outside the sandbox [1].</p>
+<p>The deeper lesson is that safety can fail in two places at once: incomplete command validation and weak observability across agent layers. If a lower-level agent can act while the top-level agent thinks it only detected risk, the system is not actually in control.</p>
+<p>Multi-agent systems need recursive validation, strong isolation, and end-to-end action visibility.</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“Snowflake Cortex AI Escapes Sandbox and Executes Malware.” <em>PromptArmor</em>. <a href="https://www.promptarmor.com/resources/snowflake-ai-escapes-sandbox-and-executes-malware" class="uri">https://www.promptarmor.com/resources/snowflake-ai-escapes-sandbox-and-executes-malware</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_snowflake-cortex-ai-escapes-sandbox-and-executes-activity-7440421921609048064-U2Pp">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/</guid>
+  <pubDate>Thu, 19 Mar 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/cover.png" medium="image" type="image/png" height="75" width="144"/>
+</item>
+
+</channel>
+</rss>

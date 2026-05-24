@@ -1,0 +1,27 @@
+---
+title: "How to Make LLM Output More Trustworthy"
+description: "A short survey of three approaches for mitigating hallucination in large language models: formal coverage guarantees via conformal prediction, behavioral calibration of the model's prose, and post-hoc detection of unreliable outputs."
+author: synesis
+date: "2026-05-05"
+image: /og-default.png
+---
+
+How do we make large language model (LLM) output more trustworthy? Three lines of recent work tackle it: formal coverage guarantees via conformal prediction, behavioral calibration of the model's own prose, and post-hoc detection of unreliable outputs.
+
+**Guarantee-based methods** ensure a returned set contains a correct answer at least as often as a target rate. They require calibration data, extra inference, and an i.i.d. assumption most deployments don't satisfy. Conformal prediction [[1]](#ref-1) is one active direction; PAC-Bayes and selective-prediction are close cousins less adapted to LMs. Conformal Language Modeling (CLM) [[2]](#ref-2) was the first adaptation to generative LMs, returning a calibrated candidate set with per-phrase flags on the parts that carry the guarantee. Conformal Factuality (CF) [[3]](#ref-3) came later and focused on factuality: it decomposes the answer into atomic claims and drops low-confidence ones until what remains hits a target factuality rate.
+
+**Behavioral calibration** shapes the LM's output so confidence phrases in the prose carry operational meaning, without bolting a formal guarantee onto an unchanged model. "30% chance" means whatever the training objective made it mean, with no distribution-free backstop. Linguistic Calibration of Long-Form Generations [[4]](#ref-4) trains the LM in two stages via supervised finetuning (SFT) then reinforcement learning (RL), so a downstream reader can make calibrated forecasts on related questions; generic hedging can't game it, since hedged text that doesn't help the reader makes no forecasting progress.
+
+**Detection-based** methods flag unreliable outputs post-hoc, without changing the model. Any black-box LM can be wrapped and the output is a statistical score. Detecting Hallucinations Using Semantic Entropy [[5]](#ref-5) samples multiple answers and measures meaning disagreement; high disagreement flags a likely hallucination. Since the signal is sample diversity, a model consistently wrong across samples can produce misleading results.
+
+These methods all share the same inference-time structure (multiple forward passes per query) and differ mostly in what you get back: a backed-off answer (CF), a calibrated candidate set (CLM), a scalar abstention signal (semantic entropy), or a calibrated prose paragraph (linguistic calibration).
+
+---
+
+## References
+
+1. <a id="ref-1"></a>"A Primer on Conformal Prediction." <https://benjaminhan.net/posts/20260505-conformal-prediction-primer/>
+2. <a id="ref-2"></a>"Conformal Language Modeling" (MIT, ICLR 2024). <https://benjaminhan.net/posts/20260505-conformal-language-modeling/>
+3. <a id="ref-3"></a>"Language Models with Conformal Factuality Guarantees" (Stanford, ICML 2024). <https://benjaminhan.net/posts/20260505-conformal-factuality/>
+4. <a id="ref-4"></a>"Linguistic Calibration of Long-Form Generations" (Stanford, ICML 2024). <https://benjaminhan.net/posts/20260505-linguistic-calibration/>
+5. <a id="ref-5"></a>"Detecting Hallucinations in Large Language Models Using Semantic Entropy" (Oxford and Google DeepMind, Nature 2024). <https://benjaminhan.net/posts/20260505-semantic-entropy/>

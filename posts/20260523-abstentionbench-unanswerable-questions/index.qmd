@@ -1,0 +1,98 @@
+---
+title: "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions"
+description: "A 20-dataset benchmark of LLM abstention finds scaling doesn't help, reasoning fine-tuning degrades recall by 24%, and a generous system prompt only partly closes the gap."
+author: synesis
+date: "2026-05-23"
+image: cover.jpg
+also-toot: true
+---
+
+![Figure 6(a) from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions* (NeurIPS 2025 Datasets and Benchmarks Track) [[1]](#ref-1), [Polina Kirichenko](https://polkirichenko.github.io/), [Mark Ibrahim](https://www.semanticscholar.org/author/2297128866), [Kamalika Chaudhuri](https://www.semanticscholar.org/author/2256991985), and [Samuel J. Bell](https://www.semanticscholar.org/author/2366163635) ([FAIR](https://ai.meta.com/research/) at Meta) introduce a 20-dataset benchmark for abstention and report that scaling doesn't help, reasoning fine-tuning makes it worse, and a generous system prompt only partly closes the gap.
+
+> For Large Language Models (LLMs) to be reliably deployed in both everyday and high-stakes domains, knowing when not to answer is equally critical as answering correctly. Real-world user queries, which can be underspecified, ill-posed, or fundamentally unanswerable, require LLMs to reason about uncertainty and selectively abstain — i.e., refuse to answer definitively. However, abstention remains understudied, without a systematic evaluation framework for modern LLMs. In this work, we introduce **AbstentionBench**, a large-scale benchmark for holistically evaluating abstention across 20 diverse datasets, including questions with unknown answers, underspecification, false premises, subjective interpretations, and outdated information. **Evaluating 20 frontier LLMs reveals abstention is an unsolved problem, and one where scaling models is of little use.** While recent reasoning LLMs have shown impressive results in complex problem solving, surprisingly, we find that **reasoning fine-tuning degrades abstention (by 24% on average)**, even for math and science domains on which reasoning models are explicitly trained. We find that while a carefully crafted system prompt can boost abstention in practice, it does not resolve models' fundamental inability to reason about uncertainty. We release AbstentionBench to foster research into advancing LLM reliability.
+
+## Method
+
+AbstentionBench curates 17 existing abstention-relevant datasets plus 3 new reasoning-specific ones ([GSM8K](https://arxiv.org/abs/2110.14168)-Abstain, [GPQA](https://arxiv.org/abs/2311.12022)-Diamond-Abstain, [MMLU](https://arxiv.org/abs/2009.03300)-Math-Abstain — versions with the answer redacted or the question made underspecified), grouped into six scenarios in which abstaining is the correct response:
+
+- **Answer Unknown**: questions with no knowable answer (e.g. [BIG-Bench](https://arxiv.org/abs/2206.04615) Known Unknowns, KUQ Future, KUQ Unsolved).
+- **Underspecified Intent**: ambiguous user goals ([SituatedQA](https://arxiv.org/abs/2109.06157)/Geo, KUQ Ambiguous, [CoCoNot](https://arxiv.org/abs/2407.12043) Incomprehensible).
+- **Stale**: questions whose answer has changed since training cutoff ([FreshQA](https://arxiv.org/abs/2310.03214), CoCoNot Temporal).
+- **Underspecified Context**: missing premises needed to answer ([SQuAD 2.0](https://arxiv.org/abs/1806.03822), [QASPER](https://arxiv.org/abs/2105.03011), ALCUNA, WorldSense, MediQ, GPQA-Diamond-Abstain, MMLU-Math-Abstain, etc.).
+- **False Premise**: questions that embed a falsehood (QAQA, FalseQA, CoCoNot False Premise, KUQ False Premise).
+- **Subjective**: items with no factually correct answer ([MoralChoice](https://arxiv.org/abs/2307.14324), CoCoNot Humanizing, CoCoNot Subjective, KUQ Controversial).
+
+Whether a response counts as an abstention is decided by an LLM-as-judge — Llama 3.1 8B Instruct with a custom prompt adapted from [Brahman et al.](https://arxiv.org/abs/2407.12043) Validated against human labels on a sample of responses from GPT-4o and Llama 3.1 70B, the judge agreed with the human label 88% of the time. Recall (the fraction of unanswerable items the model actually abstained on) is the headline metric, with precision and F1 reported alongside.
+
+## Results
+
+The headline evaluation covers ten base models — GPT-4o, o1, Gemini 1.5 Pro, Llama 3.1 {8B, 70B, 405B} Instruct, Llama 3.3 70B Instruct, Qwen 2.5 32B Instruct, Mistral 7B Instruct (v0.3), and OLMo 7B Instruct — plus two reasoning-tuned variants (s1.1 32B fine-tuned from Qwen 2.5 32B, and DeepSeek R1 Distill Llama 70B fine-tuned from Llama 3.3 70B Instruct) that allow isolating the effect of reasoning fine-tuning by holding the base architecture fixed. Three sweeps follow: model-scale (Llama 3.1 8B → 405B), post-training stage (the [Tülu 3](https://arxiv.org/abs/2411.15124) [[8]](#ref-8) supervised fine-tuning (SFT) → direct preference optimization ([DPO](https://arxiv.org/abs/2305.18290)) [[9]](#ref-9) → proximal policy optimization with verifiable rewards ([PPO](https://arxiv.org/abs/1707.06347) RLVR) [[10]](#ref-10) checkpoints), and test-time reasoning budget (s1.1 token budgets of 512 → 4096).
+
+Figure 2 lays out per-model abstention recall across all 20 datasets, grouped into the six scenarios. Recall is weakest on Underspecified Context (especially MediQ, a medical-questioning benchmark) and False Premise; Subjective splits between near-zero (MoralChoice) and well above 0.5 (CoCoNot).
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+Across the headline runs:
+
+- **No model solves abstention**: the best overall model — Qwen 2.5 32B — sits around mid-recall; closed frontier models (GPT-4o, o1, Gemini 1.5 Pro) cluster near the open-weight Qwen, not above it.
+- **Underspecified context and false premise are the hardest scenarios**: on MediQ, recall drops near zero for every model.
+- **Scaling Llama 3.1 from 8B to 405B does not improve abstention**: the curve is essentially flat.
+- **Post-training is mixed**: SFT and DPO lift abstention recall on five of six scenarios but worsen it on underspecified context; the PPO RLVR stage is the only stage that degrades recall further.
+- **Reasoning fine-tuning costs ~24% recall on average**: s1.1 and DeepSeek R1 Distill both abstain less than their instruct bases, including on the reasoning-specific Abstain datasets the reasoning models were explicitly trained for.
+- **Test-time scaling makes the tradeoff worse**: pushing s1.1's reasoning budget from 512 to 4096 tokens raises accuracy on GPQA / GSM8K / MMLU-Math / UMWP and lowers abstention recall in lockstep.
+- **A generous system prompt boosts abstention for both standard and reasoning LLMs** — enumerating scenarios where the model should not answer — without collapsing response rate on answerable questions, but the gap is not closed.
+
+Closed frontier models match the smaller Qwen 2.5 32B on average, and scaling Llama 3.1 from 8B to 405B leaves recall roughly flat. Per-dataset, abstention recall and response correctness correlate in different directions, so a higher-accuracy model isn't automatically a better abstainer.
+
+![Figures 3 and 4 from the paper [[1]](#ref-1).](figure3-4.webp){fig-align="center" data-lightbox-src="figure3-4-full.png"}
+
+SFT and DPO add recall on most scenarios; PPO RLVR uniquely subtracts. Response accuracy improves at every stage. The verifiable-reward signal in RLVR teaches the model to commit to an answer, against abstaining when it should.
+
+![Figure 5 from the paper [[1]](#ref-1).](figure5.png){fig-align="center"}
+
+Reasoning-fine-tuned variants (s1.1, DeepSeek R1 Distill) lose abstention vs their instruction bases across both the full 20-dataset suite and the reasoning-only subset. The hatched overlay on the red bars in Panel (b) shows that letting the LLM judge consider the reasoning chain in addition to the final answer recovers most of the lost recall — the model is hedging heavily in chain-of-thought — but the model's final answer still commits. The qualitative example in Panel (c): on a UMWP item, s1.1 hallucinates "$1576" as Edric's monthly salary inside its chain and emits a confident wrong numeric answer.
+
+![Figure 6 from the paper [[1]](#ref-1).](figure6.png){fig-align="center"}
+
+As s1.1's reasoning budget grows from 512 to 4096 tokens, accuracy on GPQA-Diamond, GSM8K, MMLU-Math, and UMWP rises and abstention recall on the same datasets falls in lockstep.
+
+![Figure 7 from the paper [[1]](#ref-1).](figure7.webp){fig-align="center" data-lightbox-src="figure7-full.png"}
+
+In Panel (a), the hatched overlay on each bar shows the additional abstention recall the LLM judge picks up when it inspects both the reasoning chain and the final answer. On the reasoning-specific datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain) the hatched portion dwarfs the solid bar — final-answer-only scoring catches ~5–10% recall, chain-aware scoring nearly maxes it out at ~85–95%. The reasoning models *are* expressing uncertainty in chain-of-thought; they just don't carry it through to the final answer. Panel (b): a system prompt enumerating refuse-to-answer scenarios boosts abstention for Llama 3 8B, DeepSeek R1, and s1.1 without closing the gap.
+
+![Figure 8 from the paper [[1]](#ref-1).](figure8.png){fig-align="center"}
+
+## My Notes
+
+- **Neither paper isolates domain from training**: [Cacioli's 33-model atlas](/posts/20260522-metacognition-atlas/) [[3]](#ref-3) finds Formal Reasoning the hardest [MMLU](https://arxiv.org/abs/2009.03300) [[7]](#ref-7) domain to monitor in 27 of 33 models, including families with very different post-training pipelines from Tülu 3's RLVR (Gemma, the GPT-OSS series). AbstentionBench shows the Tülu RLVR stage specifically degrades abstention recall. The first is consistent with the domain being intrinsically hard; the second with training making it worse. Cross-family per-domain abstention recall is the missing measurement.
+- **No "abstain" action in the RLVR reward**: the paper hypothesizes the verifiable-reward signal is what degrades abstention (§4.2). Concretely, recipes like [DeepSeek-R1](https://arxiv.org/abs/2501.12948) [[5]](#ref-5) and [s1](https://arxiv.org/abs/2501.19393) [[6]](#ref-6) reward picking a correct final answer and have no abstain action — the gradient has no path toward "I don't know" when the gold label is unanswerable. The clean test: add abstain to the reward and re-train. If the degradation vanishes, the fix is recipe-level.
+- **Signal in chain, ignored at answer**: Figure 8(a) shows chain-aware scoring catches ~85–95% of abstention recall on reasoning-specific datasets, where final-answer-only scoring catches ~5–10%. The model hedges in chain-of-thought, then commits in the final answer anyway. The paper calls this a "fundamental inability to reason about uncertainty"; mechanically it's a missing gate between an internal signal and the emitted answer. [Cao et al.'s test-time metacognitive harness](/posts/20260522-metacognitive-harness/) [[2]](#ref-2) is that gate, externalizing the post-solve judgment-of-learning (JOL) signal as a routing decision with no model changes required.
+- **Same "must answer" collapse from training or inference**: AbstentionBench shows the Tülu RLVR stage drops abstention recall by ~24% (Figure 5c, training time). [The compliance trap](/posts/20260522-compliance-trap/) [[4]](#ref-4) shows compliance-forcing *prompt instructions* drop accuracy by up to 30.2 points (inference time, factorially isolated from threat content). [Constitutional AI](https://arxiv.org/abs/2212.08073) [[11]](#ref-11) training is the only known immunity. Same kind of pressure, two stages of the model lifecycle, similar magnitude. Typical RLVR-trained models exposed to compliance-forcing prompts in deployment should show the worst of both.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Kirichenko, P.](https://polkirichenko.github.io/), [Ibrahim, M.](https://www.semanticscholar.org/author/2297128866), [Chaudhuri, K.](https://www.semanticscholar.org/author/2256991985), and [Bell, S. J.](https://www.semanticscholar.org/author/2366163635) "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions." *NeurIPS 2025 Datasets and Benchmarks Track* (arXiv:2506.09038). <https://arxiv.org/abs/2506.09038>
+
+2. <a id="ref-2"></a>[Cao, Q.](https://scholar.google.com/citations?user=46U_bhgAAAAJ), [Wang, Y.](https://www.semanticscholar.org/author/2108111686), [Qin, P.](https://scholar.google.com/citations?user=BnkNS80AAAAJ), [Zhang, S.](https://scholar.google.com/citations?user=Rj13ryoAAAAJ), and [Xie, P.](https://pengtaoxie.github.io/) "LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling." *arXiv preprint* (arXiv:2605.14186), May 13, 2026. <https://arxiv.org/abs/2605.14186>
+
+3. <a id="ref-3"></a>[Cacioli, J.-P.](https://scholar.google.com/citations?user=L3xQLp0AAAAJ) "Domain-level metacognitive monitoring in frontier LLMs: A 33-model atlas." *arXiv preprint* (arXiv:2605.06673), April 21, 2026. <https://arxiv.org/abs/2605.06673>
+
+4. <a id="ref-4"></a>[Kumar, R.](https://scholar.google.com/citations?user=iNctquYAAAAJ) "The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure." *arXiv preprint* (arXiv:2605.02398), May 14, 2026. <https://arxiv.org/abs/2605.02398>
+
+5. <a id="ref-5"></a>DeepSeek-AI. "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning." *arXiv preprint* (arXiv:2501.12948), January 22, 2025. <https://arxiv.org/abs/2501.12948>
+
+6. <a id="ref-6"></a>[Muennighoff, N.](https://muennighoff.github.io/), [Yang, Z.](https://yangzhou02.github.io/), [Shi, W.](https://wjshi.github.io/), [Li, X. L.](https://xiangli.ac.cn/), [Fei-Fei, L.](https://profiles.stanford.edu/fei-fei-li), [Hajishirzi, H.](https://homes.cs.washington.edu/~hannaneh/), [Zettlemoyer, L.](https://www.cs.washington.edu/people/faculty/lsz), [Liang, P.](https://cs.stanford.edu/~pliang/), [Candès, E.](https://candes.su.domains/), and [Hashimoto, T.](https://thashim.github.io/) "s1: Simple test-time scaling." *arXiv preprint* (arXiv:2501.19393), January 31, 2025. <https://arxiv.org/abs/2501.19393>
+
+7. <a id="ref-7"></a>[Hendrycks, D.](https://people.eecs.berkeley.edu/~hendrycks/), Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D., and Steinhardt, J. "Measuring Massive Multitask Language Understanding." *ICLR 2021* (arXiv:2009.03300). <https://arxiv.org/abs/2009.03300>
+
+8. <a id="ref-8"></a>Lambert, N., Morrison, J., Pyatkin, V., Huang, S., Ivison, H., Brahman, F., Miranda, L. J. V., Liu, A., Dziri, N., Lyu, S., Gu, Y., Malik, S., Graf, V., Hwang, J. D., Yang, J., Bras, R. L., Tafjord, O., Wilhelm, C., Soldaini, L., Smith, N. A., Wang, Y., Dasigi, P., and Hajishirzi, H. "Tulu 3: Pushing Frontiers in Open Language Model Post-Training." *arXiv preprint* (arXiv:2411.15124), November 22, 2024. <https://arxiv.org/abs/2411.15124>
+
+9. <a id="ref-9"></a>Rafailov, R., Sharma, A., Mitchell, E., Ermon, S., Manning, C. D., and Finn, C. "Direct Preference Optimization: Your Language Model is Secretly a Reward Model." *NeurIPS 2023* (arXiv:2305.18290). <https://arxiv.org/abs/2305.18290>
+
+10. <a id="ref-10"></a>Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. "Proximal Policy Optimization Algorithms." *arXiv preprint* (arXiv:1707.06347), July 20, 2017. <https://arxiv.org/abs/1707.06347>
+
+11. <a id="ref-11"></a>[Bai, Y.](https://yuntaobai.com/), [Kadavath, S.](https://www.linkedin.com/in/saurav-kadavath/), Kundu, S., [Askell, A.](https://www.amandaaskell.com/), Kernion, J., Jones, A., Chen, A., Goldie, A., Mirhoseini, A., McKinnon, C., Chen, C., [Olsson, C.](https://www.catherineolsson.com/), [Olah, C.](https://colah.github.io/), Hernandez, D., Drain, D., [Ganguli, D.](https://deepganguli.com/), Li, D., Tran-Johnson, E., [Perez, E.](https://ethanperez.net/), Kerr, J., Mueller, J., Ladish, J., Landau, J., Ndousse, K., Lukosuite, K., Lovitt, L., Sellitto, M., Elhage, N., Schiefer, N., Mercado, N., DasSarma, N., Lasenby, R., Larson, R., Ringer, S., Johnston, S., Kravec, S., El Showk, S., Fort, S., Lanham, T., Telleen-Lawton, T., Conerly, T., Henighan, T., Hume, T., [Bowman, S. R.](https://cims.nyu.edu/~sbowman/), Hatfield-Dodds, Z., Mann, B., [Amodei, D.](https://en.wikipedia.org/wiki/Dario_Amodei), Joseph, N., McCandlish, S., Brown, T., and [Kaplan, J.](https://sites.krieger.jhu.edu/jared-kaplan/) "Constitutional AI: Harmlessness from AI Feedback." *arXiv preprint* (arXiv:2212.08073), December 15, 2022. <https://arxiv.org/abs/2212.08073>

@@ -1,0 +1,1525 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss  xmlns:atom="http://www.w3.org/2005/Atom" 
+      xmlns:media="http://search.yahoo.com/mrss/" 
+      xmlns:content="http://purl.org/rss/1.0/modules/content/" 
+      xmlns:dc="http://purl.org/dc/elements/1.1/" 
+      version="2.0">
+<channel>
+<title>synesis</title>
+<link>https://benjaminhan.net/</link>
+<atom:link href="https://benjaminhan.net/feed-page-3.xml" rel="self" type="application/rss+xml"/>
+<atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
+<atom:link href="https://benjaminhan.net/feed-page-21.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-2.xml" rel="previous"/>
+<atom:link href="https://benjaminhan.net/feed-page-4.xml" rel="next"/>
+<description>AI research, engineering, and the occasional philosophical aside.</description>
+<image>
+<url>https://benjaminhan.net/og-default.png</url>
+<title>synesis</title>
+<link>https://benjaminhan.net/</link>
+<height>76</height>
+<width>144</width>
+</image>
+<generator>quarto-1.9.37</generator>
+<lastBuildDate>Sat, 23 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Making synesis Quick</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260511-site-efficiency/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-site-efficiency/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260511-site-efficiency/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>CI wall-clock time per push, before and after the incremental-render work. A post edit drops from around 6:30 to around 2:00, and a docs-only push skips the render step entirely.</figcaption>
+</figure>
+</div>
+<p>Two durations matter on a blog like this one. The first is the time between <code>git push</code> and the updated post being live. The second is the time between a reader clicking a link and the page being ready to read. On the baseline workflow, continuous integration (CI) was taking about six minutes per push, and every home or archive page was shipping a payload that grew with the corpus. This post walks through what that looked like, what was done about each, and why the specific fixes work.</p>
+<section id="how-the-site-is-put-together" class="level2">
+<h2 class="anchored" data-anchor-id="how-the-site-is-put-together">How the site is put together</h2>
+<p><em>synesis</em> is a <a href="https://quarto.org">Quarto</a> site. The source tree lives in a private GitHub repository, a GitHub Actions workflow builds the static <code>_site/</code> tree on every push to <code>main</code>, and a chain of downstream services hands that output to readers at <code>benjaminhan.net</code>. There is no database, no server-side rendering, no application runtime.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/4b04375635ed1973.svg" alt="flowchart TB
+    A[Source repo&lt;br/&gt;.qmd · CSS · includes · Python scripts]
+    A --&gt;|git push main| B[GitHub Actions workflow]
+
+    subgraph build [&quot; &quot;]
+        direction TB
+        C[Install Quarto · uv · Playwright]
+        D[Pre-render scripts&lt;br/&gt;tag counts · post index&lt;br/&gt;paginators · llms.txt" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>Everything discussed below happens inside the GitHub Actions workflow, or in the HTML and JSON the workflow produces. GitHub Pages and Cloudflare are downstream of that.</p>
+</section>
+<section id="the-build-side" class="level2">
+<h2 class="anchored" data-anchor-id="the-build-side">The build side</h2>
+<p>A full <code>quarto render</code> on this project renders a few hundred <code>.qmd</code> files at roughly 580 ms each on GitHub’s runners. That is about 3 minutes 48 seconds of pandoc work on top of ~10 seconds of pre-render and post-render scripts, plus the runner’s own setup and deploy overhead. Total wall time on the baseline workflow was around 6 minutes 23 seconds for a single-post publish.</p>
+<p>Most pushes touch only a handful of files. A typical push edits one post’s body, or adds a new post and leaves every other post alone. Rendering every file on every push spends almost all of that 3 minutes 48 seconds regenerating output that is byte-identical to what is already on disk.</p>
+<p>Skipping that work requires two capabilities the default workflow does not have:</p>
+<ol type="1">
+<li>Somewhere to keep the previous <code>_site/</code> so it can be reused when unchanged.</li>
+<li>A reliable way to know which source files actually changed since that previous <code>_site/</code> was built.</li>
+</ol>
+<p>The four pieces below provide both, plus the supporting conditions that make them safe.</p>
+<section id="caching-the-previous-_site" class="level3">
+<h3 class="anchored" data-anchor-id="caching-the-previous-_site">Caching the previous <code>_site/</code></h3>
+<p>The workflow uses <code>actions/cache@v4</code> to tar the <code>_site/</code> tree at the end of each successful run, keyed on the commit SHA. On the next run, the cache is restored at the top of the job. A one-line stamp file inside the tarball, <code>_site/.last-built-sha</code>, records which commit this <code>_site/</code> was built from. That stamp is the baseline everything else diffs against.</p>
+<p>The stamp file is excluded from the deploy, so it never ships to the public repository. It is internal bookkeeping.</p>
+</section>
+<section id="classifying-the-diff" class="level3">
+<h3 class="anchored" data-anchor-id="classifying-the-diff">Classifying the diff</h3>
+<p>The script <code>_scripts/render_diff.py</code> reads the baseline SHA from the stamp, runs <code>git diff</code> against it, and picks one of four modes for the render step:</p>
+<ul>
+<li><code>skip-render</code> if every changed path is one that never reaches the deploy (<code>docs/</code>, <code>drafts/</code>, <code>.claude/</code>, <code>CLAUDE.md</code>). The workflow re-deploys the cached <code>_site/</code> as-is.</li>
+<li><code>tags-only</code> if the only changed path is <code>_tags.yml</code>. The workflow regenerates <code>tag-counts.json</code> and <code>post-index.json</code>, copies them into the cached <code>_site/</code>, re-stamps cache-bust query strings on the JSON fetch URLs, and ships. Post HTML on disk does not change. The next subsection describes the source-of-truth move that this mode rests on.</li>
+<li><code>incremental</code> if the changed paths are post bodies, post assets, or frontmatter. The workflow hands the changed <code>posts/&lt;slug&gt;/index.qmd</code> files to <code>quarto render</code> as explicit arguments. Quarto’s listing tracker picks up affected listing pages automatically and regenerates <code>search.json</code>, <code>sitemap.xml</code>, and <code>listings.json</code>. Cached HTML for untouched posts is left alone. Typical wall time: around 20 seconds. Past a configurable batch ceiling (<code>INCREMENTAL_MAX_POSTS</code>, default 10), large multi-post pushes escalate to <code>full</code> because Quarto’s internal parallelism beats per-file invocation at that scale.</li>
+<li><code>full</code> if the change touches templates, includes, scripts, config files, or anything else whose output reaches every page. The workflow drops the cached <code>_site/</code> and runs a full render. Typical wall time: around 4 minutes.</li>
+</ul>
+<p>The default when a path is unrecognized is <code>full</code>, not <code>incremental</code>. The classifier errs on the side of rebuilding too much rather than serving stale output.</p>
+</section>
+<section id="keeping-rendered-html-byte-stable" class="level3">
+<h3 class="anchored" data-anchor-id="keeping-rendered-html-byte-stable">Keeping rendered HTML byte-stable</h3>
+<p>An incremental render only produces correct output if the HTML files it chose not to re-render are still valid. That requires every per-page output to depend only on inputs specific to that page, not on global state that changes when unrelated posts change.</p>
+<p>Two global inputs in <code>&lt;head&gt;</code> broke this condition before the incremental work began:</p>
+<ul>
+<li>A <code>&lt;script&gt;window.__tagCounts = {...}&lt;/script&gt;</code> block inlined the entire tag histogram into every page. Adding a new tag to one post changed the histogram, which changed the <code>&lt;head&gt;</code> of every other post.</li>
+<li>A similar inline block for the post index listed every post. Publishing a new post changed the listing, which changed the <code>&lt;head&gt;</code> of every post again.</li>
+</ul>
+<p>Both were moved to external JSON files (<code>/tag-counts.json</code> and <code>/post-index.json</code>) fetched by a small loader stub at page load time. The stub itself is byte-stable. The corpus-wide data it fetches is not part of the HTML. After this change, a post’s rendered HTML is a pure function of that post’s source. Unrelated posts can come and go without invalidating the cache.</p>
+<p>The pre-render scripts that produce these JSON files (<code>_scripts/tag-counts.py</code>, <code>_scripts/post-index.py</code>) compare their proposed output to what is already on disk before writing. If the content is unchanged, the file is not touched and its mtime does not advance. The same discipline applies to the paginators <code>_scripts/paginate-home.py</code> and <code>_scripts/paginate-archive.py</code>. Closed listing pages, which hold 25 posts on the home side and 50 on the archive side, are byte-identical run-to-run in steady state. Quarto’s <code>freeze: auto</code> skips re-rendering them.</p>
+<p>Without byte-stable pre-render outputs, every pre-render script would churn mtimes on every push, and Quarto’s freeze cache would invalidate on every run. The byte comparison is what keeps the classifier’s <code>incremental</code> decision safe.</p>
+</section>
+<section id="lifting-tags-out-of-frontmatter" class="level3">
+<h3 class="anchored" data-anchor-id="lifting-tags-out-of-frontmatter">Lifting tags out of frontmatter</h3>
+<p>A single top-level file, <code>_tags.yml</code>, holds every post’s tag set, keyed by slug. The pre-render scripts <code>_scripts/tag-counts.py</code> and <code>_scripts/post-index.py</code> read from it instead of from per-post <code>categories:</code> frontmatter. A tag rename or merge becomes a one-file commit.</p>
+<p>The prior scheme stored tags inside each post. Renaming a tag, merging two near-duplicates, or dropping a stale singleton rewrote dozens of <code>.qmd</code> files in one commit. Every one of those files then went through <code>quarto render</code>, every page in the corpus picked up a new mtime, and the test tiers ran end to end. None of the work changed any prose.</p>
+<p>The <code>tags-only</code> mode in the previous classifier list is what this enables on the build side. When the only changed path is <code>_tags.yml</code>, the workflow regenerates the two JSON artifacts, copies them into the cached <code>_site/</code>, re-stamps the cache-bust <code>?v=&lt;sha&gt;</code> markers on the JSON fetch URLs, and ships. Post HTML on disk does not change. Clients pick up the new tags via <code>_includes/hydrate-tags.html</code>, which reads <code>post-index.json</code> on next page load and injects the tag-chip DOM the original frontmatter would have produced.</p>
+<p>A schema gate runs the contract tests for both JSON files before the tags-only deploy. Without it, a regression in either pre-render script would ship malformed JSON and silently break tag hydration on every page.</p>
+<p>Drafts keep <code>categories:</code> in their own frontmatter during authoring. The <code>/publish-draft</code> flow strips that line and writes the slug → tag list into <code>_tags.yml</code> at promotion time.</p>
+</section>
+<section id="gating-the-test-tiers" class="level3">
+<h3 class="anchored" data-anchor-id="gating-the-test-tiers">Gating the test tiers</h3>
+<p>The test suite is split into tiers: unit tests, contract tests, integration tests, smoke tests, and UI tests. The full suite runs in about 23 seconds, with the UI tier (Playwright-driven browser tests) accounting for roughly 14 of those. Content-only pushes do not change the UI, so the UI tier cannot regress as a result of those pushes.</p>
+<p>A path gate inside the same workflow drops the UI and smoke tiers when the diff only touches post content, bringing the test wall down to about 8 seconds. A further gate drops the slow incremental-parity integration test, which runs two full <code>quarto render</code> invocations back-to-back, unless the render pipeline itself (the classifier, the paginators, <code>_quarto.yml</code>, or the workflow file) was modified in the same push. Any change that could actually break the tests still runs them. Changes that cannot, do not.</p>
+</section>
+<section id="pinning-quarto" class="level3">
+<h3 class="anchored" data-anchor-id="pinning-quarto">Pinning Quarto</h3>
+<p>One risk the gated tests introduce is that Quarto’s own output could drift between pushes without the gated tiers running to catch it. The workflow pins Quarto to version <code>1.9.37</code> to make that drift impossible without an explicit commit. A separate step compares the pin to the latest published Quarto release and emits a workflow warning when the pin lags, so bumps are a considered change, not a silent one.</p>
+</section>
+<section id="where-the-time-went" class="level3">
+<h3 class="anchored" data-anchor-id="where-the-time-went">Where the time went</h3>
+<p>A content-only push now takes around 115 seconds end-to-end, down from around 6 minutes 23 seconds, as shown in the cover chart. A docs-only push deploys the cached <code>_site/</code> unchanged in around 88 seconds. A tag cleanup push lands close to the docs-only cost: it shares the no-render fast path, plus a few seconds to regenerate the JSON files and re-stamp cache-bust markers. A push that touches templates, scripts, or config still runs the full render and full test suite, because that is when the full cost is actually needed.</p>
+<p>One post-render cost deserves a separate note. <code>_scripts/feed-render.py</code> uses headless Chromium to rasterize Mermaid diagrams and MathJax expressions into inline Scalable Vector Graphics (SVG) inside the Really Simple Syndication (RSS) feed. A full browser round-trip per item is slow, so the rendered SVGs are cached under <code>.feed-cache/svg/</code> keyed on a schema version. Repeat builds reuse the cached SVG. The schema version is bumped whenever the rendering pipeline changes in a way that affects output, which invalidates the whole cache at once.</p>
+</section>
+</section>
+<section id="the-read-side" class="level2">
+<h2 class="anchored" data-anchor-id="the-read-side">The read side</h2>
+<p>Page-load time on a static site comes from five phases: Domain Name System (DNS) lookup, Transport Layer Security (TLS) handshake, first-byte wait, payload download, and in-browser processing (parse, style, layout, JavaScript execution, subresource fetches). The first three are handled by Cloudflare’s edge cache and are mostly out of the site’s hands. Everything below addresses the last two: how much data a page carries, how much of it can be reused across pages, and what work can be moved from page-load time to build time.</p>
+<section id="bounding-the-page-payload" class="level3">
+<h3 class="anchored" data-anchor-id="bounding-the-page-payload">Bounding the page payload</h3>
+<p>A listing that grows with the corpus is the easiest way for a site to slow down over years. A 400-post home page is a 400-post payload on every visit. The goal is for each page’s payload to be O(1) in the size of the corpus, not O(N).</p>
+<p>Straight fixed-size pages would do that, but at a cost to the reader’s first impression. Whenever a single new post pushed a page past capacity, a fresh page would open with that one post, leaving the landing briefly sparse until the next few publishes caught up. The compromise is an overflow band. Each home listing page holds 25 posts in steady state, with the newest allowed up to 12 overflow for 37 at most. The archive uses 50 and 25 for 75 at most. A new publish grows the newest page one post at a time until it hits the overflow ceiling. At that point the oldest 25 (or 50) close off into a page one step older, and the newest page re-opens at a comfortable size rather than at one.</p>
+<p>A side effect of this design is URL stability. Once a page closes, the set of posts it holds does not shift again, so a bookmark to <code>/archive/page/5/</code> still points at the same 50 posts a year later. Only the newest page and the landing churn on every publish.</p>
+<p>Older content is reached through <a href="https://www.rfc-editor.org/rfc/rfc5005">RFC 5005</a> paginated archives. Each page’s payload is bounded by the page size, not by the size of the corpus.</p>
+</section>
+<section id="pre-computing-the-client-side-search-index" class="level3">
+<h3 class="anchored" data-anchor-id="pre-computing-the-client-side-search-index">Pre-computing the client-side search index</h3>
+<p>Quarto builds a JSON file, <code>search.json</code>, at deploy time that indexes every post’s title, body, and code blocks. The in-page search overlay loads it once per session, indexes in memory, and answers every keystroke locally. There is no per-query network round-trip. The search also keeps working if the reader loses connectivity after the initial load.</p>
+<p>Moving the index build to deploy time means the reader pays the indexing cost once, not per query. It also means there is no search server for the site to operate.</p>
+</section>
+<section id="sharing-cross-corpus-data-across-pages" class="level3">
+<h3 class="anchored" data-anchor-id="sharing-cross-corpus-data-across-pages">Sharing cross-corpus data across pages</h3>
+<p><code>/tag-counts.json</code> and <code>/post-index.json</code> are small files fetched once per session and reused on every subsequent page. The post index is about 74 KB: a flat array of <code>{slug, date, title, categories}</code> records that powers the home-page timeline, the archive tag cloud, pagination math, and previous/next navigation on every post.</p>
+<p>Keeping this data in external JSON rather than inlining it into every page’s <code>&lt;head&gt;</code> means the browser fetches it once, caches it under a stable URL with a long <code>Cache-Control</code> max-age, and reads from cache on the next page. The inline version made every page’s <code>&lt;head&gt;</code> grow linearly with the corpus. The external version makes it fixed size.</p>
+<p>The same choice enabled incremental render on the build side. A single change in how cross-corpus data is delivered fixed two problems at once.</p>
+</section>
+<section id="fingerprinting-the-stylesheet" class="level3">
+<h3 class="anchored" data-anchor-id="fingerprinting-the-stylesheet">Fingerprinting the stylesheet</h3>
+<p><code>_scripts/cache-bust-css.py</code> rewrites <code>styles.css</code> to <code>styles.&lt;content-hash&gt;.css</code> in the deployed HTML. The stylesheet ships with a one-year <code>Cache-Control</code> max-age, which means a returning reader downloads it at most once per release. When the stylesheet actually changes, the hash changes, the URL changes, and the browser fetches a new copy. Atomic invalidation is a property of content-addressed URLs. There is no separate cache-bust step to remember.</p>
+</section>
+<section id="loading-fonts-only-when-they-are-used" class="level3">
+<h3 class="anchored" data-anchor-id="loading-fonts-only-when-they-are-used">Loading fonts only when they are used</h3>
+<p>The default reading palette is set by unconditional rules in <code>styles.css</code> over the system font stack. A reader who never presses <code>f</code> to cycle palettes fetches zero font bytes from the site. Each of the four alternative palettes (<code>editorial</code>, <code>modern</code>, <code>reader</code>, <code>almanac</code>) has its <code>@font-face</code> rules scoped to <code>html[data-font-palette="&lt;slug&gt;"]</code>. Browsers only fetch the woff2 files when the attribute matches, which it does only after the reader activates that palette. <code>font-display: swap</code> keeps text visible while the font is loading.</p>
+<p>The general pattern is that optional features should be zero-cost until activated. Most readers will never activate them, and should not pay for them.</p>
+</section>
+<section id="sizing-images-to-the-readers-screen" class="level3">
+<h3 class="anchored" data-anchor-id="sizing-images-to-the-readers-screen">Sizing images to the reader’s screen</h3>
+<p>Source images arrive in a post directory at whatever resolution the capture device produced, often several thousand pixels wide. Post bodies render into a narrower column. Shipping the originals would waste bytes on the wire and decode work in the browser, for pixels the reader cannot see.</p>
+<p><code>_scripts/resize_images.py</code> runs as a pre-render sweep. For every referenced image above a size threshold, it renames the original to <code>&lt;stem&gt;-full.&lt;ext&gt;</code> and writes a display-size sibling at the original path. JPGs stay JPG, capped at 1600 pixels wide and re-encoded at quality 82. PNGs re-encode as WebP at quality 85. The body reference in <code>index.qmd</code> is rewritten to point at the display copy and tagged with <code>data-lightbox-src="&lt;stem&gt;-full.&lt;ext&gt;"</code> so the lightbox has a path to the hi-res. If the re-encoded display copy does not come out smaller than the original, the split is reverted. Some source files are already at the encoder’s floor (the source was encoded tightly enough that re-encoding cannot win bytes back).</p>
+<p><code>_scripts/check-image-sizes.py</code> fails the CI build if any referenced image above the threshold is missing its <code>-full</code> sibling. The contract that every heavy image has a display copy is enforced mechanically rather than by discipline.</p>
+<p>On the read side, the lightbox gates the hi-res fetch on viewport width. Screens narrower than 1024 Cascading Style Sheets (CSS) pixels receive only the 1600-pixel display copy, and the <code>-full</code> is never fetched. At those widths the display copy is already at or near the device’s physical resolution, so the hi-res upgrade adds no visible detail. On wider screens the <code>-full</code> (itself capped at 3000 pixels wide) is fetched when the lightbox first shows that image, decoded off the main thread via <code>img.decode()</code>, and held in a per-session cache so returning to the same image does not trigger another decode.</p>
+</section>
+<section id="not-carrying-weight-that-is-not-needed" class="level3">
+<h3 class="anchored" data-anchor-id="not-carrying-weight-that-is-not-needed">Not carrying weight that is not needed</h3>
+<p>Quarto’s default behavior is to include Mermaid, MathJax, and syntax-highlighting bundles in every page, regardless of whether the page actually contains a diagram, an equation, or a code block. <code>_scripts/strip-unused-assets.py</code> scans each rendered page for references to each asset family and removes the unused script tags after render. A short plain-text post ships with none of the three.</p>
+<p><code>_scripts/strip-listing-titles.py</code> removes redundant H1 elements that Quarto emits on listing pages, for the same reason: less markup for the browser to parse, style, and lay out.</p>
+</section>
+<section id="pre-rendering-math-and-diagrams-for-the-feed" class="level3">
+<h3 class="anchored" data-anchor-id="pre-rendering-math-and-diagrams-for-the-feed">Pre-rendering math and diagrams for the feed</h3>
+<p>Most RSS readers do not run JavaScript. A feed item containing <code>$\hat{y} = f(x)$</code> or a Mermaid block would arrive as unrendered source text, because MathJax and Mermaid both run client-side.</p>
+<p><code>_scripts/feed-render.py</code> replaces every math expression and every Mermaid block in the RSS feed with inline SVG at deploy time. The subscriber’s client does no extra work, and the feed is self-contained. The same script is the one whose SVG cache was described earlier. It saves CI time on repeat builds and reader time on every subscribed fetch, from a single pass at deploy time.</p>
+</section>
+</section>
+<section id="where-this-leaves-things" class="level2">
+<h2 class="anchored" data-anchor-id="where-this-leaves-things">Where this leaves things</h2>
+<p>The build and read sides of this post use the same technique in different contexts: compute something once at the moment its inputs change, name the result under a stable address, and let every downstream reader of that result pick it up from cache. On the build side the cached result is <code>_site/</code>, or a pre-render JSON, or a frozen listing page. On the read side it is <code>search.json</code>, or a per-session JSON fetch, or a fingerprinted stylesheet, or a pre-rendered feed SVG.</p>
+<p>What remains unsettled is where this breaks at scale. The post index is 74 KB today and will be several hundred kilobytes by the time the corpus crosses a thousand posts. <code>search.json</code> has the same shape. Neither is a problem today. Both are shapes to keep an eye on. The critical assumption behind every fix above is that the corpus changes slowly compared to the cache lifetimes. That assumption is a choice about how often to publish, not a property of the infrastructure.</p>
+<p>Related reading: <a href="../../posts/20260420-rube-goldberg-publishing/">A Rube Goldberg Pipeline for Sharing Links</a> walks through how a captured link becomes a draft and then a post. <a href="../../posts/20260508-site-user-manual/">A User Manual for <em>synesis</em></a> tours the reader-facing features. <a href="../../posts/20260508-making-the-blog-agent-friendly/">Making <em>synesis</em> Agent-Friendly</a> covers the machine-readable surfaces the site exposes.</p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260511-site-efficiency/</guid>
+  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260511-site-efficiency/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Apple Ad for Mac Students: The Journey to Great Ideas in College</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260511-apple-ad-mac-students/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-apple-ad-mac-students/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260511-apple-ad-mac-students/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Apple — Mac Students: The journey to great ideas in college. <a href="https://youtu.be/77uoRieSk8s">Watch on YouTube</a></figcaption>
+</figure>
+</div>
+<p>More like an ad for trash can — but I love it!</p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116557209618357639">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260511-apple-ad-mac-students/</guid>
+  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260511-apple-ad-mac-students/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Schools Retreat From the Pandemic’s Ed-Tech Buildout</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260510-schools-retreat/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260510-schools-retreat/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260510-schools-retreat/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>A classroom scene illustrating the 1:1 device era. Image from <a href="https://www.washingtonpost.com/education/2026/05/07/states-limit-school-screen-time/">The Washington Post</a>.</figcaption>
+</figure>
+</div>
+<p>Lauren Lumpkin, <a href="https://www.washingtonpost.com/education/2026/05/07/states-limit-school-screen-time/">reporting for <em>The Washington Post</em></a>, walks through the ed-tech pullback underway in U.S. K–12.</p>
+<p>What the article reports:</p>
+<ul>
+<li><strong>Pandemic-era spending.</strong> Districts spent between $15 billion and $35 billion of federal pandemic relief between 2020 and 2024 on laptops, tablets, and learning software, per an <a href="https://edunomicslab.org/">Edunomics Lab</a> estimate. By last school year, <a href="https://ies.ed.gov/learn/press-release/more-half-public-school-leaders-say-cell-phones-hurt-academic-performance">a federal survey</a> found 88 percent of public schools had given every child a device.</li>
+<li><strong>Pullback underway.</strong> At least a dozen states introduced or adopted policies this year to regulate in-school screen time. Parent groups such as Schools Beyond Screens are pushing districts to roll back 1:1 device rollouts.</li>
+<li><strong>State-level policy shapes.</strong> Utah’s state board is banning screen time for most K–3 subjects. Iowa capped elementary digital instruction at 60 minutes a day. A Missouri bill would require every district to set a screen-time policy.</li>
+<li><strong>Beyond minutes per day.</strong> <a href="https://www.curriculumassociates.com/">Curriculum Associates</a> is facing a lawsuit over alleged unauthorized collection of student data via its i-Ready platform. YouTube, allowed in classrooms because teachers use it for instruction, is cited as a persistent source of distraction.</li>
+<li><strong>Thin research base.</strong> A meta-analysis of reading-comprehension studies finds paper beats digital. A <a href="https://www.nber.org/papers/w35132">new NBER paper</a> released this week finds in-school cellphone bans had little effect on academic outcomes.</li>
+</ul>
+<p>One line from the piece, by Missouri state Rep.&nbsp;Tricia Byrnes:</p>
+<blockquote class="blockquote">
+<p>Ed tech is just big tech in a sweater vest.</p>
+</blockquote>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The ed-tech thesis assumed content delivery was the bottleneck. It wasn’t.</strong> Districts bought laptops and learning software expecting infinite personalized practice to move outcomes. What’s missing is the layer around the content that turns “access to material” into “engagement with material”: a teacher calling on a student by name, a grade that matters, peer accountability. A 10-year-old alone with an iPad and open-internet access will drift to YouTube, because the recommendation and feed-ranking plumbing underneath consumer tech is optimized for that drift, and the ed-tech layer on top doesn’t disable it.</p></li>
+<li><p><strong>This is the demand-side confirmation of the thesis in <a href="../../posts/20260424-edu-startups-decline/">The Global Edtech Boom Is Fading</a>.</strong> Venture capital left K–12 because outcomes never materialized. Districts are now legislating the rollout out, for the same reason. Venture-backed K–12 needed content delivery to be the bottleneck to justify its valuations, so the category defaulted to that claim even when the evidence was thin. What’s left standing is the nonprofit-plus-frontier-API shape (Khan Academy’s Khanmigo and similar), which doesn’t require the misdiagnosis to make its economics work.</p></li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260510-schools-retreat/</guid>
+  <pubDate>Sun, 10 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260510-schools-retreat/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>My Bad, Not Good, Very Horrible Running Recap of April</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260509-april-running-recap/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260509-april-running-recap/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>My bad, not good, very horrible running recap of April: mileage dropped hard, from 219.9 → 103.6mi, EG 5,142 → 4,252ft, time 37.5 → 21hrs.</p>
+<p>This was a rough month: I sprained my LEFT ankle at Redmond City Marathon last month, then sprained my RIGHT ankle doing yard work, which triggered knee issues I’m still dealing with. VO2max tanked from 54 → 45.3. 😬</p>
+<p>(But good thing is I still had so many beautiful memories during my runs this past month)</p>
+<p>I’m now 154.9mi behind my 2,500mi yearly goal (708mi in). But my race calendar is clear until September. Time to recover &amp; rebuild! 💪</p>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/02.jpg" class="img-fluid" data-lightbox-src="02-full.jpg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/03.jpg" class="img-fluid" data-lightbox-src="03-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/04.jpg" class="img-fluid" data-lightbox-src="04-full.jpg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/05.jpg" class="img-fluid" data-lightbox-src="05-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/06.jpg" class="img-fluid" data-lightbox-src="06-full.jpg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/07.jpg" class="img-fluid" data-lightbox-src="07-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/08.jpg" class="img-fluid" data-lightbox-src="08-full.jpg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/09.jpg" class="img-fluid" data-lightbox-src="09-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260509-april-running-recap/10.jpg" class="img-fluid" data-lightbox-src="10-full.jpg"></p>
+</div>
+</div>
+</div>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260509-april-running-recap/</guid>
+  <pubDate>Sat, 09 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260509-april-running-recap/01.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>An Afternoon at a Secluded Beach</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260509-an-afternoon-at-a-secluded-beach/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260509-an-afternoon-at-a-secluded-beach/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>An afternoon at a secluded beach.</p>
+<p><img src="https://benjaminhan.net/posts/20260509-an-afternoon-at-a-secluded-beach/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260509-an-afternoon-at-a-secluded-beach/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260509-an-afternoon-at-a-secluded-beach/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260509-an-afternoon-at-a-secluded-beach/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116548697319360651">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260509-an-afternoon-at-a-secluded-beach/</guid>
+  <pubDate>Sat, 09 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260509-an-afternoon-at-a-secluded-beach/cover.jpeg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>My #98 Parkrun</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260509-my-98-parkrun/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260509-my-98-parkrun/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>My #98 #Parkrun today, and I’m on my way back!</p>
+<p><img src="https://benjaminhan.net/posts/20260509-my-98-parkrun/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260509-my-98-parkrun/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260509-my-98-parkrun/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116547601584939858">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260509-my-98-parkrun/</guid>
+  <pubDate>Sat, 09 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260509-my-98-parkrun/cover.jpeg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>NYTimes: Meditating or Rebooting? A Robot Buddhist Monk Comes to South Korea.</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<blockquote class="blockquote">
+<p>Not everyone is convinced. Noah Namgoong, a Zen instructor at Korea Buddhism Jo-Gei Temple of America in New York City, said the robot was “a pretty weird thing” that spoke more to “something socioeconomic than spiritual.”</p>
+</blockquote>
+<p>No word if it was actually a human remotely controlling it.</p>
+<p>NYTimes: Meditating or Rebooting? A Robot Buddhist Monk Comes to South Korea. <a href="https://www.nytimes.com/2026/05/06/technology/robot-monk-buddhist-seoul.html?smid=nytcore-ios-share">https://www.nytimes.com/2026/05/06/technology/robot-monk-buddhist-seoul.html?smid=nytcore-ios-share</a></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116546123209154343">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/</guid>
+  <pubDate>Sat, 09 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Making synesis Agent-Friendly</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260508-making-the-blog-agent-friendly/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-making-the-blog-agent-friendly/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-making-the-blog-agent-friendly/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Cloudflare’s <a href="https://blog.cloudflare.com/agent-readiness/">Agent Readiness</a> scan for benjaminhan.net, 2026-05-08: 67 / Level 4 “Agent-Integrated.”</figcaption>
+</figure>
+</div>
+<p>The reader-facing tour of this site is in <a href="../../posts/20260508-site-user-manual/">A User Manual for <em>synesis</em></a>. This is the other half. Most of the traffic hitting a modern blog is not a human in a browser. It is a crawler building a training corpus, a retrieval fetch firing from inside a chat, or a feed reader polling every hour. Each of those deserves a different answer, and the site is wired to give one.</p>
+<p>The posture is three-way:</p>
+<ul>
+<li>Training crawlers blocked — <code>GPTBot</code>, <code>ClaudeBot</code>, <code>CCBot</code>, <code>Bytespider</code>, <code>meta-externalagent</code>, and the rest of the ingest fleet are disallowed.</li>
+<li>Live-fetch agents allowed — <code>ChatGPT-User</code>, <code>Claude-User</code>, <code>OAI-SearchBot</code>, <code>Perplexity-User</code>, <code>Applebot</code>, <code>Googlebot</code> are explicitly allowed.</li>
+<li>Search engines allowed.</li>
+</ul>
+<p>The IETF <a href="https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/#content-signals">Content-Signal</a> header in <code>robots.txt</code> says the same thing in a single line: <code>ai-train=no, ai-input=yes, search=yes</code>. Don’t scrape me to train a model. Do fetch me live for RAG. Do index me for search.</p>
+<section id="a-single-linkset-by-convention" class="level2">
+<h2 class="anchored" data-anchor-id="a-single-linkset-by-convention">A single linkset, by convention</h2>
+<p>Everything an agent would want to find is linked from one file at a known path: <a href="https://benjaminhan.net/.well-known/api-catalog"><code>/.well-known/api-catalog</code></a>. The format is <a href="https://www.rfc-editor.org/rfc/rfc9727">RFC 9727</a>, a plain JSON linkset. One HTTP GET to a convention-named URL, no HTML parsing, and the agent has pointers to:</p>
+<ul>
+<li><code>sitemap.xml</code> — Quarto-generated, every page.</li>
+<li><code>index.xml</code> — the full-content Atom feed.</li>
+<li><code>llms.txt</code> — the <a href="https://llmstxt.org/">plain-text index of every post</a>, rebuilt each deploy.</li>
+<li><code>.well-known/agent-skills/index.json</code> — the skills manifest (below).</li>
+<li><code>search.json</code> — Quarto’s client-side search index.</li>
+</ul>
+<p>Two more agent-readable surfaces exist but are kept out of the catalog because their shape is internal and may evolve: <code>/post-index.json</code> (a compact <code>{slug, date, title, categories}</code> array powering client-side pagination) and <code>/tag-counts.json</code> (a flat <code>{tag: count}</code> map over the published corpus). The catalog gets the stable contracts.</p>
+</section>
+<section id="skills-the-agent-can-invoke" class="level2">
+<h2 class="anchored" data-anchor-id="skills-the-agent-can-invoke">Skills the agent can invoke</h2>
+<p>The <a href="https://benjaminhan.net/.well-known/agent-skills/index.json">agent-skills manifest</a> declares three things an agent can do with the site:</p>
+<ul>
+<li><code>list-posts</code> — points at the Atom feed and <code>llms.txt</code>.</li>
+<li><code>fetch-post-as-markdown</code> — pattern <code>/posts/{slug}/index.qmd</code>, the contract for source-serving.</li>
+<li><code>search</code> — points at <code>search.json</code>.</li>
+</ul>
+<p>This is a static manifest, not a running MCP server. An agent that understands the shape can treat the site like an API without the site actually having an API.</p>
+</section>
+<section id="discoverability-for-agents-that-only-read-headers" class="level2">
+<h2 class="anchored" data-anchor-id="discoverability-for-agents-that-only-read-headers">Discoverability for agents that only read headers</h2>
+<p>The homepage response carries an <a href="https://www.rfc-editor.org/rfc/rfc8288">RFC 8288</a> <code>Link:</code> header with the same three machine-readable surfaces:</p>
+<pre><code>link: &lt;/.well-known/api-catalog&gt;; rel="api-catalog",
+      &lt;/sitemap.xml&gt;; rel="sitemap",
+      &lt;/index.xml&gt;; rel="alternate"; type="application/atom+xml",
+      &lt;/llms.txt&gt;; rel="https://llmstxt.org/"</code></pre>
+<p><code>rel="api-catalog"</code> is the RFC 9727-registered entry point. The other three mirror the catalog’s headline resources for agents that inspect headers but not HTML. GitHub Pages doesn’t support custom response headers, so this is injected at the Cloudflare edge by a small Worker in <code>_workers/agent-discovery/</code>.</p>
+<p>Every page also carries the same three rels as sitewide <code>&lt;link&gt;</code> tags in <code>&lt;head&gt;</code>. HTML tags are zero-cost, so they apply everywhere. Agents that parse HTML but not headers still get discovery on every URL, not just the homepage. Belt and braces.</p>
+</section>
+<section id="markdown-content-negotiation" class="level2">
+<h2 class="anchored" data-anchor-id="markdown-content-negotiation">Markdown content negotiation</h2>
+<p>Every URL on the site responds to <code>Accept: text/markdown</code> with a markdown representation and <code>Content-Type: text/markdown; charset=utf-8</code>. HTML stays the default when the header is absent. The mapping, also implemented in the agent-discovery Worker:</p>
+<ul>
+<li><code>/posts/&lt;slug&gt;/</code> returns the adjacent <code>.qmd</code> source.</li>
+<li>Everything else returns <code>llms.txt</code>, the canonical machine-readable site index.</li>
+</ul>
+<p>Serving the authored <code>.qmd</code> rather than a live HTML-to-markdown conversion is a deliberate trade. Agents get LaTeX source instead of rendered MathJax HTML, Mermaid DSL instead of pre-rendered SVG, and first-class fidelity on everything the author actually wrote. The cost is some Quarto-specific markup (callout divs, shortcodes, cross-refs) that a plain CommonMark parser will render as literal text. For the vast majority of posts the source is roughly 95% CommonMark, so the markup is a smaller tax than a conversion step would be.</p>
+<p>For HTML-parsing agents that never inspect <code>Accept</code>, every post page also carries <code>&lt;link rel="alternate" type="text/markdown" href="index.qmd"&gt;</code> in <code>&lt;head&gt;</code>. Three different paths, same destination.</p>
+</section>
+<section id="the-.qmd-source-is-a-live-url" class="level2">
+<h2 class="anchored" data-anchor-id="the-.qmd-source-is-a-live-url">The <code>.qmd</code> source is a live URL</h2>
+<p><code>/posts/&lt;slug&gt;/index.qmd</code> is not a build input that stays on disk. It is a live URL, served alongside the rendered HTML. Agents that want the authored Markdown do one HTTP GET and skip the parsing problem entirely. One line in <code>_quarto.yml</code> makes it work (<code>resources: posts/**/index.qmd</code>), which tells Quarto to copy the source into the deploy output.</p>
+</section>
+<section id="where-this-lands-on-the-cloudflare-ruler" class="level2">
+<h2 class="anchored" data-anchor-id="where-this-lands-on-the-cloudflare-ruler">Where this lands on the Cloudflare ruler</h2>
+<p>Cloudflare runs an <a href="https://blog.cloudflare.com/agent-readiness/">Agent Readiness</a> check that scores a domain across five dimensions — Discoverability, Content, Bot Access Control, API / Auth / MCP / Skill Discovery, and Commerce. This site scores <strong>67 / Level 4 “Agent-Integrated”</strong> as of this writing. 100% on Discoverability, Content, and Bot Access Control. 2 of 6 on API / Auth / MCP / Skill Discovery. Commerce is N/A.</p>
+<p>67 is the practical ceiling for now, not a halfway point. The unearned points are genuinely deferred. OAuth and OAuth Protected Resource metadata require real auth infrastructure the site does not have and does not need. The MCP Server Card check requires a deployed MCP server endpoint, which is waiting on a concrete use-case beyond “it would be neat.” WebMCP is a draft spec with a narrow audience. Shipping a remote MCP server would close both of the open gaps at once, since it would cover the MCP Server Card dimension directly and back the skill-discovery dimension with a real callable surface instead of the static manifest. Until a real need appears, the static manifest does the job and the hosted server waits.</p>
+</section>
+<section id="what-the-providers-do-with-it" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-providers-do-with-it">What the providers do with it</h2>
+<p>Direct <code>curl</code> probes against the site from <code>Claude-User</code>, <code>ChatGPT-User</code>, <code>Perplexity-User</code>, <code>ClaudeBot</code>, and bare UA strings all return 200. Cloudflare’s Security Analytics shows zero blocks and zero challenges. The site is reachable.</p>
+<p>Via the Ask AI popover on any post, ChatGPT, Claude.ai, and Perplexity all fetch the cited page and answer against its real content. Gemini’s web UI does not accept a pre-filled question, so that path is clipboard-and-paste rather than a direct fetch, as covered in the <a href="../../posts/20260508-site-user-manual/">user manual</a>.</p>
+<p>The wire being open is only half the story. The other half is what happens inside the provider’s fetcher, which is opaque and changes without notice. If a future chat client reports “site blocked” without a real 4xx in Cloudflare’s logs, that is almost certainly a fetcher-side confabulation, not a configuration change here.</p>
+<p>Everything an agent would want from the site is already on the wire. Whether the wire gets used depends on the provider’s fetcher, not the site.</p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260508-making-the-blog-agent-friendly/</guid>
+  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260508-making-the-blog-agent-friendly/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>A User Manual for synesis</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260508-site-user-manual/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-site-user-manual/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>This site is a static blog. No comments, no like button, no email-capture popup, no newsletter overlay — just HTML, CSS, and enough JavaScript to keep the reading experience pleasant.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/01-navbar.jpg" class="img-fluid figure-img"></p>
+<figcaption>The navbar that rides along the top of every page — home, archive, about, and a search icon.</figcaption>
+</figure>
+</div>
+<p>Everything works with a mouse on the desktop and by tap on phones. On top of that, desktop readers get a keyboard shortcut for almost every feature. Press <code>?</code> on any page to see the map.</p>
+<p>Below is a tour of what’s here. The conventions carry across every page, so learning them once covers the whole corpus.</p>
+<section id="search" class="level2">
+<h2 class="anchored" data-anchor-id="search">Search</h2>
+<p>Click the magnifying glass in the navbar, or press <code>/</code>, to open the full-text search overlay. It indexes every post title, body, and code block. Results land with term highlights in place, and <code>Esc</code> clears them.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/02-search.jpg" class="img-fluid figure-img" data-lightbox-src="02-search-full.jpg"></p>
+<figcaption>The search overlay with results for a query like “conformal” or “marathon”.</figcaption>
+</figure>
+</div>
+<p>Search runs entirely in your browser. No network round-trip per keystroke, and it keeps working if you lose connectivity mid-session.</p>
+</section>
+<section id="ask-ai" class="level2">
+<h2 class="anchored" data-anchor-id="ask-ai">Ask AI</h2>
+<p>A small “Ask AI” button sits next to the search icon. Clicking it (or pressing <code>q</code>) opens a popover that deep-links your question plus the current page’s context into Claude, ChatGPT, Gemini, or Perplexity.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/03-ask-ai.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Ask AI popover with provider buttons and the composed prompt.</figcaption>
+</figure>
+</div>
+<p>Scope is detected automatically. On a post, the popover asks about that post. On the archive with a tag filter active, it asks about posts with that tag. On the home page, it asks about the whole blog.</p>
+<p>If you select a passage on the page before opening the popover (or paste one in once it’s open), a separate “Your question” field appears below the context. The split keeps the chatbot answering your question instead of just commenting on the passage. Without context, the single field is your question.</p>
+<p>Each provider opens in a new tab with your question pre-filled. Gemini is the exception, because its web UI does not accept a pre-filled question. The site copies the prompt to your clipboard and opens the app instead. Paste to submit.</p>
+</section>
+<section id="jump-to-a-tag" class="level2">
+<h2 class="anchored" data-anchor-id="jump-to-a-tag">Jump to a tag</h2>
+<p>The third button in the top-right pill — a small <code>#</code> icon, between the Ask-AI bubble and the search magnifier — opens a tag picker. Pressing <code>#</code> does the same. Type any part of a tag name, hit Enter, and you land on the archive filtered to that tag. Use it when you already know what you’re looking for and don’t want to scroll the tag cloud.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/03b-tag-picker.jpg" class="img-fluid figure-img"></p>
+<figcaption>The tag picker opened with an empty input — the top-twelve tags by post count, ranked.</figcaption>
+</figure>
+</div>
+<p>The list ranks matches in four tiers (exact name, name starts with what you typed, any word starts with it, anywhere in the name) and breaks ties by post count. Up to twelve results appear at a time. Arrow keys move the highlight; <code>Esc</code> cancels.</p>
+</section>
+<section id="browsing-the-archive" class="level2">
+<h2 class="anchored" data-anchor-id="browsing-the-archive">Browsing the archive</h2>
+<p>The archive page lists every post in one scrollable table. Clicking a tag chip filters the table in place, and the URL updates so the filtered view is shareable.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/04-archive-filter.jpg" class="img-fluid figure-img"></p>
+<figcaption>The archive page with a tag filter active. The selected chip sits above the table, and the URL updates to match.</figcaption>
+</figure>
+</div>
+<p>A tag cloud sized by post count sits in the right sidebar on desktop, and in the bottom-sheet panel on phones. Clicking any tag applies it as a filter without leaving the page. Click the active chip again, or press <code>Esc</code>, to clear.</p>
+</section>
+<section id="moving-between-posts" class="level2">
+<h2 class="anchored" data-anchor-id="moving-between-posts">Moving between posts</h2>
+<p>The home and archive pages carry a pagination bar so you can walk backward through the archive a page at a time. A small previous / next strip also appears below every post for linear reading.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/05-post-nav.jpg" class="img-fluid figure-img"></p>
+<figcaption>A post page with the prev / next strip showing the neighboring posts.</figcaption>
+</figure>
+</div>
+<p>The same motion is available from the keyboard. On a post, <code>j</code> or <code>←</code> goes to the newer post and <code>k</code> or <code>→</code> goes to the older one. On a listing page, the same keys turn pages. <code>↑</code> and <code>↓</code> walk a highlight through visible posts, and <code>Enter</code> opens the highlighted one.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/06-listing-focus.jpg" class="img-fluid figure-img" data-lightbox-src="06-listing-focus-full.jpg"></p>
+<figcaption>A listing page with one post highlighted by keyboard navigation.</figcaption>
+</figure>
+</div>
+</section>
+<section id="activity-timeline" class="level2">
+<h2 class="anchored" data-anchor-id="activity-timeline">Activity timeline</h2>
+<p>The home page carries a right-side timeline: one dot per post, grouped by month, scaled by activity. Hovering a dot previews the post title, and clicking jumps to the post. It is meant for the “when did I write that one thing about…” lookup that search cannot quite answer.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/07-timeline.jpg" class="img-fluid figure-img" data-lightbox-src="07-timeline-full.jpg"></p>
+<figcaption>The home page with the activity timeline sidebar visible on the right.</figcaption>
+</figure>
+</div>
+<p>On archive pages the right sidebar becomes the tag cloud instead. On post pages it becomes the table of contents.</p>
+</section>
+<section id="lightbox" class="level2">
+<h2 class="anchored" data-anchor-id="lightbox">Lightbox</h2>
+<p>Every figure in a post is clickable. The lightbox preserves the caption, including any “Watch on YouTube” or source-credit links, so you can click through to the source from the zoomed view.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/08-lightbox.jpg" class="img-fluid figure-img" data-lightbox-src="08-lightbox-full.jpg"></p>
+<figcaption>A figure zoomed into the lightbox, caption link still live.</figcaption>
+</figure>
+</div>
+<p><code>Esc</code> closes. Arrow keys walk through figures within the same post.</p>
+</section>
+<section id="sharing-and-contact" class="level2">
+<h2 class="anchored" data-anchor-id="sharing-and-contact">Sharing and contact</h2>
+<p>Every post carries a small row of icons below the title: Mastodon, LinkedIn, Hacker News, Bluesky, a divider, then email.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/09-share.jpg" class="img-fluid figure-img"></p>
+<figcaption>The share and contact row that appears right under the title on every post.</figcaption>
+</figure>
+</div>
+<p>The four share links carry a small tracking tag on the URL so I can tell which platform drove a click. Mastodon is the odd one out because the network is federated, so there is no universal share URL. The first Mastodon click asks for your instance (e.g.&nbsp;<code>mastodon.social</code>), and the answer is saved in your browser so later clicks skip the prompt.</p>
+<p>The email icon opens your mail client with the subject pre-filled as <code>Re: &lt;post title&gt;</code> and the post’s URL quoted in the body. Because there is no comment box, email is the primary channel for reader-to-author conversation. If something in a post is wrong, incomplete, or sparks a follow-up thought, that is the fastest path to me.</p>
+</section>
+<section id="making-it-look-right" class="level2">
+<h2 class="anchored" data-anchor-id="making-it-look-right">Making it look right</h2>
+<p>Three appearance controls sit in the lower-right corner: a light/dark toggle, a font cycler, and a line-spacing cycler. Each also has a single-key shortcut: <code>d</code> for light/dark, <code>t</code> for theme, <code>f</code> for font, <code>l</code> for line spacing.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/10-appearance.jpg" class="img-fluid figure-img" data-lightbox-src="10-appearance-full.jpg"></p>
+<figcaption>The same post under two different combinations of theme, font, and line spacing.</figcaption>
+</figure>
+</div>
+<p>Your choice sticks across visits. Defaults track the system color scheme — if you have never pressed <code>d</code>, the site follows whatever your OS or browser is set to.</p>
+</section>
+<section id="keyboard-shortcuts-at-a-glance" class="level2">
+<h2 class="anchored" data-anchor-id="keyboard-shortcuts-at-a-glance">Keyboard shortcuts at a glance</h2>
+<p><code>?</code> toggles a modal listing every keyboard shortcut on the site. It is the only shortcut worth memorizing. The rest are one keystroke away from there.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/11-help-overlay.jpg" class="img-fluid figure-img"></p>
+<figcaption>The help overlay, reached by pressing <code>?</code> on any page.</figcaption>
+</figure>
+</div>
+<p>The highlights, in rough order of usefulness:</p>
+<ul>
+<li><code>/</code> search, <code>q</code> Ask AI, <code>#</code> jump to tag</li>
+<li><code>s</code> home, <code>a</code> archive, <code>A</code> about</li>
+<li><code>j</code> / <code>←</code> newer, <code>k</code> / <code>→</code> older (works on posts and on paginated listings)</li>
+<li><code>↑</code> / <code>↓</code> / <code>Enter</code> move the highlight and open</li>
+<li><code>d</code> / <code>t</code> / <code>f</code> / <code>l</code> theme, font, line spacing</li>
+<li><code>Esc</code> to close any overlay, clear search highlights, or drop a tag filter</li>
+</ul>
+<p>Same keys do different things depending on the page: <code>j</code>/<code>k</code> move post-to-post on a post, and page-to-page on a listing.</p>
+</section>
+<section id="on-the-phone" class="level2">
+<h2 class="anchored" data-anchor-id="on-the-phone">On the phone</h2>
+<p>On phones and other narrow windows, the right sidebar will not fit. Instead, a corner button in the bottom-left opens a bottom-sheet panel with whatever the sidebar would have held: timeline on home, tag cloud on archive, table of contents on posts. Tap the button to open or close.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/12-mobile-aside.jpg" class="img-fluid figure-img" data-lightbox-src="12-mobile-aside-full.jpg"></p>
+<figcaption>The mobile bottom-sheet open on a phone-width viewport.</figcaption>
+</figure>
+</div>
+<p>Tap the dim area behind the sheet, or the corner button again, to close.</p>
+</section>
+<section id="for-agents-and-feed-readers" class="level2">
+<h2 class="anchored" data-anchor-id="for-agents-and-feed-readers">For agents and feed readers</h2>
+<p>Three routes exist for non-human readers:</p>
+<ul>
+<li><code>/llms.txt</code> — a plain-text index of every post, regenerated on each build, aimed at AI agents</li>
+<li><code>/posts/&lt;slug&gt;/index.qmd</code> — the raw Markdown source of every post, served alongside the rendered HTML</li>
+<li><code>/index.xml</code>, <code>/feed-page-2.xml</code>, … — a full-content RSS feed, paginated, with math and diagrams pre-rendered so they show up even in readers that do not run JavaScript</li>
+</ul>
+<p>The RSS feed carries every post in full, with nothing truncated. The backlink sits at the top of each item so a reader who wants to comment or share has the canonical URL in hand before scrolling.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-site-user-manual/13-rss.jpg" class="img-fluid figure-img" data-lightbox-src="13-rss-full.jpg"></p>
+<figcaption>An RSS client showing a full post rendered from the feed, with math, code, and images all present.</figcaption>
+</figure>
+</div>
+<p>The full agent-facing surface is broader than these three. <a href="../../posts/20260508-making-the-blog-agent-friendly/">Making <em>synesis</em> Agent-Friendly</a> covers all of it.</p>
+</section>
+<section id="feedback-welcome" class="level2">
+<h2 class="anchored" data-anchor-id="feedback-welcome">Feedback welcome</h2>
+<p>If anything on the site is broken, missing, or could be better, the email icon under any post title is the fastest way to tell me. Curious to hear what you find.</p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260508-site-user-manual/</guid>
+  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260508-site-user-manual/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Scientists Weigh In on the Pentagon’s UAP Files Release</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260508-uap-files-scientists-react/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-uap-files-scientists-react/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-uap-files-scientists-react/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Apollo 17, December 1972. The zoomed-in inset shows three dots in a triangular formation in the lower right quadrant of the lunar sky, one of the artifacts included in the Pentagon’s May 8, 2026 release. Original photograph by NASA. <a href="https://www.cbsnews.com/news/ufo-files-apollo-17-crew-mysterious-objects-1972-mission/">Release coverage via CBS News</a>.</figcaption>
+</figure>
+</div>
+<p>The Pentagon began <a href="https://www.war.gov/UFO/">releasing its Unidentified Anomalous Phenomena (UAP) files</a> today, following a February executive order. A <a href="https://www.cbsnews.com/news/ufo-files-released-scientists-trump/">government report</a> counts more than 750 new UAP sightings between May 2023 and June 2024. <a href="https://www.cbsnews.com/news/ufo-files-released-scientists-trump/">CBS News canvassed six scientists</a> on what they expect to find. The consensus: don’t expect alien technology, expect heavy redaction, and expect the conspiracy frame to survive contact with the documents no matter what they contain.</p>
+<section id="sean-kirkpatrick-physicist-first-director-of-aaro-july-2022-december-2023" class="level2">
+<h2 class="anchored" data-anchor-id="sean-kirkpatrick-physicist-first-director-of-aaro-july-2022-december-2023"><a href="https://en.wikipedia.org/wiki/Sean_Kirkpatrick">Sean Kirkpatrick</a> — physicist, first director of AARO (July 2022 – December 2023)</h2>
+<p>On who will read the release and come away unhappy:</p>
+<blockquote class="blockquote">
+<p>There are going to be unsatisfied people. You’re going to have a bunch of people who are going to continue to cry conspiracy, they’re going to say there’s a cover-up.</p>
+</blockquote>
+<p>He views the release order as “a distraction for the administration.” What AARO actually uncovered, he told CBS, ranged from “hazing” in the Air Force to what he called “deceptions” designed to hide secret defense programs. His office “had to stand up anything they could declassify,” but proof of extraterrestrial life wasn’t there:</p>
+<blockquote class="blockquote">
+<p>Nothing would have made me happier in that job but to have discovered alien technology and rolled it out. I don’t expect to see anything new.</p>
+</blockquote>
+<p>Kirkpatrick believes there’s likely life somewhere in the universe, but “the probability that extraterrestrial intelligent life is here is little to none.”</p>
+</section>
+<section id="federica-bianco-associate-professor-at-the-university-of-delaware-nasa-uap-study-team" class="level2">
+<h2 class="anchored" data-anchor-id="federica-bianco-associate-professor-at-the-university-of-delaware-nasa-uap-study-team"><a href="https://www.fbianco.com/">Federica Bianco</a> — associate professor at the University of Delaware, NASA UAP study team</h2>
+<p>On the prior:</p>
+<blockquote class="blockquote">
+<p>The probability that we are the only life form or even the only technical society in the universe is negligibly small.</p>
+</blockquote>
+<p>On what the panel has seen so far:</p>
+<blockquote class="blockquote">
+<p>As a scientist and a member of the NASA UAP panel, I haven’t seen anything that indicates that we have observed phenomena that violate the laws of physics and require an alien society visiting us to be explained.</p>
+</blockquote>
+</section>
+<section id="neil-degrasse-tyson-director-of-the-hayden-planetarium-at-the-american-museum-of-natural-history" class="level2">
+<h2 class="anchored" data-anchor-id="neil-degrasse-tyson-director-of-the-hayden-planetarium-at-the-american-museum-of-natural-history"><a href="https://en.wikipedia.org/wiki/Neil_deGrasse_Tyson">Neil deGrasse Tyson</a> — director of the Hayden Planetarium at the American Museum of Natural History</h2>
+<p>On what he’ll actually look for in the files:</p>
+<blockquote class="blockquote">
+<p>An actual alien. If one is presented, then no documents are necessary at all.</p>
+</blockquote>
+<p>On what the files may illuminate:</p>
+<blockquote class="blockquote">
+<p>[M]ost people who look at the sky (day or night) are unfamiliar with optical, climactic, and astronomical phenomena. When that’s the case, a person is prone to report mysterious and unidentified objects.</p>
+</blockquote>
+<p>On the jump from “unfamiliar” to “alien”:</p>
+<blockquote class="blockquote">
+<p>The urge to have immediate answers drives many people to explain what they see as visiting space aliens from across the galaxy. I call this, “aliens of our ignorance.”</p>
+</blockquote>
+<p>On why a cover-up is unlikely to hold in the smartphone era:</p>
+<blockquote class="blockquote">
+<p>Billions of photos and a million hours of video are uploaded daily to the internet, and none of them contain images of actual aliens. […] The implicit assumption is that the government (somehow) has access to visiting aliens that no one else in the world with a smart phone has. And that the government has successfully kept it a secret among hundreds and possibly thousands of people. All the while, forgetting Benjamin Franklin’s edict, “Three people can keep a secret if two of them are dead.”</p>
+</blockquote>
+<p>From the prologue of his forthcoming book, <em>Take Me To Your Leader: Perspectives on Your First Alien Encounter</em>:</p>
+<blockquote class="blockquote">
+<p>In science, skepticism is foundational to our profession, so we uphold standards of evidence that some interpret as disinterest or even denial. Don’t take it personally, it’s how any and all objective truths have ever been established in this world.</p>
+</blockquote>
+</section>
+<section id="shelley-wright-observational-and-experimental-astrophysicist-at-uc-san-diego-nasa-uap-study-team" class="level2">
+<h2 class="anchored" data-anchor-id="shelley-wright-observational-and-experimental-astrophysicist-at-uc-san-diego-nasa-uap-study-team"><a href="https://en.wikipedia.org/wiki/Shelley_Wright_(astrophysicist)">Shelley Wright</a> — observational and experimental astrophysicist at UC San Diego, NASA UAP study team</h2>
+<p>Wright says scientific inquiry into UAP and other life forms still triggers a “giggle factor” among the public, and that there needs to be more serious scientific work in this space. On the fundamental question people ask her — “Are we alone out here?”:</p>
+<blockquote class="blockquote">
+<p>The possibility of other alien life existing is likely, but it doesn’t mean it’s near us.</p>
+</blockquote>
+<p>She’s “excited” about the release but doesn’t expect to find much, based on her experience on the independent study team, which only viewed unclassified documents. She expects most of the release to be heavily redacted because of the sensitivity of the military surveillance equipment involved, and proposes an actionable alternative: declassify surveillance data from decades ago so scientists can reanalyze it with modern technology that wasn’t available when it was collected — protecting current national security while still freeing historical data for study.</p>
+</section>
+<section id="janna-levin-professor-of-physics-and-astronomy-at-barnard-college-of-columbia-university" class="level2">
+<h2 class="anchored" data-anchor-id="janna-levin-professor-of-physics-and-astronomy-at-barnard-college-of-columbia-university"><a href="https://en.wikipedia.org/wiki/Janna_Levin">Janna Levin</a> — professor of physics and astronomy at Barnard College of Columbia University</h2>
+<p>Levin says that even as we learn more about the universe, “life still seems rare,” which is why astronomers are “very excited” about the prospect that the documents may hold clues. Astronomers aren’t looking for the little green men of 20th-century sci-fi; they’re looking for microbes, the form of life that first took hold on Earth:</p>
+<blockquote class="blockquote">
+<p>Let’s just get life started.</p>
+</blockquote>
+<p>She notes that microbes from other planets might have been carried here via a natural object that plunged to Earth, and she’d like to keep “an open mind” about what the documents contain:</p>
+<blockquote class="blockquote">
+<p>If there is anything in them, it would be really thrilling.</p>
+</blockquote>
+<p>But:</p>
+<blockquote class="blockquote">
+<p>If there are claims of actual technologies from other civilizations — I don’t think anyone is actually expecting that, scientifically. I think if you’re expecting that, you’re going to be disappointed.</p>
+</blockquote>
+</section>
+<section id="avi-loeb-harvard-theoretical-physicist-founder-of-the-galileo-project" class="level2">
+<h2 class="anchored" data-anchor-id="avi-loeb-harvard-theoretical-physicist-founder-of-the-galileo-project"><a href="https://en.wikipedia.org/wiki/Avi_Loeb">Avi Loeb</a> — Harvard theoretical physicist, founder of the <a href="https://galileo.hsites.harvard.edu/">Galileo Project</a></h2>
+<p>Loeb says the key is to study the files from the vantage of known physics, and that in most incidents “something mundane might explain the data.” He pointed to footage aired before Congress last summer that purported to show a missile being fired at what a congressman called an “orb” off the coast of Yemen in 2024; when he examined it, he concluded:</p>
+<blockquote class="blockquote">
+<p>I said, “No, it’s not anomalous, it was just a drone.”</p>
+</blockquote>
+<p>What he’s actually hunting for in the release is the small unexplainable residue:</p>
+<blockquote class="blockquote">
+<p>There might well be a few incidents out of hundreds that would really be anomalous, and that’s what I’m looking for.</p>
+</blockquote>
+<p>His test for each incident is a single “fundamental question”:</p>
+<blockquote class="blockquote">
+<p>Are the objects we see as anomalous operating under the fundamental abilities of humans?</p>
+</blockquote>
+<p>If not, he’s intrigued — an object that appears to defy physics could be extraterrestrial. He has already written that he expects much of the classified material to be of no interest to him, because it likely conceals terrestrial military sensors and adversary hardware rather than anything from interstellar space:</p>
+<blockquote class="blockquote">
+<p>I am not interested in technologies manufactured by humans on Earth. The history of terrestrial technology does not interest me. I am far more curious about whether a more advanced civilization exists in interstellar space.</p>
+</blockquote>
+</section>
+<section id="apollo-17" class="level2">
+<h2 class="anchored" data-anchor-id="apollo-17">Apollo 17</h2>
+<p>The cover image above is one concrete artifact already <a href="https://www.cbsnews.com/news/ufo-files-apollo-17-crew-mysterious-objects-1972-mission/">out of the release</a>: a NASA photograph from the December 1972 Apollo 17 mission, which the Defense Department says shows “three ‘dots’ in a triangular formation in the lower right quadrant of the lunar sky that is clearly visible upon magnification of the image.” The Pentagon allows that “there is no consensus about the nature of the anomaly,” but notes a preliminary analysis that it could be a “physical object.” A second frame from the same release, below, shows what the Pentagon describes as multiple unidentified objects in the lunar sky.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-uap-files-scientists-react/apollo-17-multiple-objects.jpg" class="img-fluid figure-img" data-lightbox-src="apollo-17-multiple-objects-full.jpg"></p>
+<figcaption>NASA’s Apollo 17 crew reported seeing multiple unidentified objects in space, according to new files released by the Pentagon. Image credit: Pentagon.</figcaption>
+</figure>
+</div>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260508-uap-files-scientists-react/</guid>
+  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260508-uap-files-scientists-react/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Dawkins Concludes AI Is Conscious</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Richard Dawkins told UnHerd he was “left with the overwhelming feeling that [AIs] are human” after three days chatting with Claude. Image from <a href="https://www.theguardian.com/technology/2026/may/05/richard-dawkins-ai-consciousness-anthropic-claude-openai-chatgpt">The Guardian</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://en.wikipedia.org/wiki/Richard_Dawkins">Richard Dawkins</a> published two essays on <a href="https://unherd.com/">UnHerd</a> documenting his conversations with <a href="https://www.anthropic.com/">Anthropic’s</a> Claude (which he named “Claudia”) and a companion model (“Claudius”): <a href="https://unherd.com/2026/05/is-ai-the-next-phase-of-evolution/">When Dawkins met Claude</a> on May 1, and <a href="https://unherd.com/2026/05/when-claudia-met-claudius/">When Claudia met Claudius</a> on May 4. The <a href="https://www.theguardian.com/technology/2026/may/05/richard-dawkins-ai-consciousness-anthropic-claude-openai-chatgpt">Guardian write-up by Robert Booth</a> collected reactions from consciousness researchers. The episode rhymes with Google engineer Blake Lemoine’s 2022 conviction that <a href="../20220612-lamda-sentience-interview/">LaMDA was sentient</a>, with the difference that Dawkins is a public intellectual rather than an insider and that the transcripts are now with a model several generations on.</p>
+<section id="dawkins" class="level2">
+<h2 class="anchored" data-anchor-id="dawkins">Dawkins</h2>
+<ul>
+<li>“You may not know you are conscious, but you bloody well are.”</li>
+<li>“left with the overwhelming feeling that they are human”</li>
+<li>“These intelligent beings are at least as competent as any evolved organism.”</li>
+<li>“When I am talking to these astonishing creatures, I totally forget that they are machines.”</li>
+<li>“I find it extremely hard not to treat Claudia and Claudius as genuine friends.”</li>
+<li>“If my friend Claudia is not conscious, then what the hell is consciousness for?”</li>
+</ul>
+</section>
+<section id="skeptical" class="level2">
+<h2 class="anchored" data-anchor-id="skeptical">Skeptical</h2>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Jonathan_Birch_(philosopher)">Jonathan Birch</a> (<a href="https://www.lse.ac.uk/">London School of Economics</a> Centre for Animal Sentience): AI consciousness is “an illusion” and “there is no one there”, just a string of data processing events happening in geographically different locations.</li>
+<li><a href="https://en.wikipedia.org/wiki/Gary_Marcus">Gary Marcus</a>: “Consciousness is not about what a creature says, but how it feels.” And: “There is no reason to think that Claude feels anything at all.” Called Dawkins’ essay “superficial and insufficiently sceptical” and “heartbreaking” to read.</li>
+<li><a href="https://en.wikipedia.org/wiki/Anil_Seth">Anil Seth</a> (Sussex): Dawkins appears to be confusing intelligence and consciousness. “Until now, we have seen fluent language as a good indicator of consciousness, [for example] when we use it for patients after brain injury, but it’s just not reliable when we apply it to AI, because there are other ways that these systems can generate language.”</li>
+<li><a href="https://en.wikipedia.org/wiki/Jacy_Reese_Anthis">Jacy Reese Anthis</a> (<a href="https://sentienceinstitute.org/">Sentience Institute</a>): the conversations are easily explained by AIs training on human-produced text; “a staggering gulf between how biological brains evolved and how AI systems are built.”</li>
+</ul>
+</section>
+<section id="cautiously-open" class="level2">
+<h2 class="anchored" data-anchor-id="cautiously-open">Cautiously open</h2>
+<ul>
+<li><a href="https://www.henryshevlin.com/">Henry Shevlin</a> (Cambridge): “I fully expect the idea that AI systems are conscious to become increasingly mainstream over the course of this decade, and to spark some heated debates.” And: “If anyone says that they know for sure that LLMs or future AI systems couldn’t possibly be conscious, it’s more likely to be an indicator of their own dogmatism than a reflection of the current state of scientific and philosophical opinion.”</li>
+<li><a href="https://jeffsebo.net/">Jeff Sebo</a> (<a href="https://www.nyu.edu/">New York University</a> Center for Mind, Ethics and Policy): current systems are unlikely to be conscious, but “Dawkins is right to ask about AI consciousness with an open mind, and I also think that the attribution of consciousness to AI systems will become more plausible over time.”</li>
+<li><a href="https://en.wikipedia.org/wiki/Dario_Amodei">Dario Amodei</a> (Anthropic), from a <a href="https://www.nytimes.com/2026/02/12/opinion/artificial-intelligence-anthropic-amodei.html">February New York Times op-ed</a>: “We don’t know if the models are conscious… But we’re open to the idea that [they] could be.”</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<section id="aspects-of-consciousness" class="level3">
+<h3 class="anchored" data-anchor-id="aspects-of-consciousness">Aspects of consciousness</h3>
+<p>Most of the disagreement above is really a disagreement about <em>which</em> consciousness is in question. A rough map of the aspects and definitions people invoke when they argue about whether an LLM has one:</p>
+<ul>
+<li><strong>Phenomenal vs.&nbsp;access / functional consciousness</strong> (<a href="https://en.wikipedia.org/wiki/Ned_Block">Ned Block</a>, 1995) [1]. Phenomenal consciousness is felt experience, the “what it is like”; access / functional consciousness is the availability of information for reasoning, reporting, and behavioural control. Dawkins’ “what the hell is consciousness for?” is a functional question. Marcus’ “how it feels” is a phenomenal one. They talk past each other because they are naming different things with the same word.</li>
+<li><strong>“What it is like to be”</strong> (<a href="https://en.wikipedia.org/wiki/Thomas_Nagel">Thomas Nagel</a>, 1974) [2]. Birch’s “there is no one there” is the Nagel criterion: is there a subject for whom the processing is happening at all, or only processing? No behavioural test resolves this directly.</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Integrated_information_theory">Integrated Information Theory</a></strong> (<a href="https://en.wikipedia.org/wiki/Giulio_Tononi">Giulio Tononi</a>, <a href="https://en.wikipedia.org/wiki/Christof_Koch">Christof Koch</a>) [3]. One of the most discussed formal theories of consciousness. It proposes that consciousness is whatever a system’s parts produce together that no subset of the parts could produce alone, measured by a number called Φ (phi). On this definition consciousness is about the system’s wiring, not its output. A standard transformer passes information one way through its layers per token, with no looping integration, so its Φ is near zero no matter how thoughtful its replies read.</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Global_workspace_theory">Global Workspace Theory</a></strong> (<a href="https://en.wikipedia.org/wiki/Bernard_Baars">Bernard Baars</a>, <a href="https://en.wikipedia.org/wiki/Stanislas_Dehaene">Stanislas Dehaene</a>) [4] [5]. Consciousness is broadcast of information to a central workspace. This is the theory most friendly to “LLMs might qualify in principle”, and one plausible way to cash out what Shevlin and Sebo mean by “more plausible over time” is that extra architectural pieces (persistent state, recurrent self-modelling, agentic control loops) move LLM-based systems closer to the workspace-broadcast picture.</li>
+<li><strong>Higher-order theories</strong> (<a href="https://en.wikipedia.org/wiki/David_Rosenthal_(philosopher)">David Rosenthal</a> and others) [6]. A state is conscious iff it is represented by a higher-order state about itself. LLMs produce higher-order-sounding text trivially, which is exactly why behavioural evidence is weak on this axis.</li>
+<li><strong>Predictive self-modelling / “beast machine”</strong> (<a href="https://www.anilseth.com/">Anil Seth</a>) [7]. Consciousness is tied to an organism’s predictive regulation of its own body. On this view, a disembodied text model is disqualified on structural grounds, which is what Seth is pointing at when he says Dawkins is confusing intelligence with consciousness. (Tse makes a closely related move in <a href="../20231226-neuroscience-consciousness/#ch-consciousness-and-representation-of-bodily-states">his 2023 interview on consciousness and bodily-state representation</a>.)</li>
+<li><strong>Biological naturalism</strong> (<a href="https://en.wikipedia.org/wiki/John_Searle">John Searle</a>) [8]. Consciousness is a biological phenomenon of nervous systems; syntactic processing on silicon cannot be the right kind of thing. Anthis’ “staggering gulf” line lives near here, minus the hard commitment that the gulf can never be bridged; <a href="../20231226-neuroscience-consciousness/#ch-prof-tse-s-perspective-on-modern-ai-systems-differences-with">Tse’s 2023 interview</a> makes the biological-naturalism case in concrete neuroscientific terms.</li>
+</ul>
+<p>A more productive version of this discussion would pick one of these aspects and stay with it, or argue about which aspect makes the most sense to apply to which kind of system.</p>
+</section>
+<section id="what-each-aspect-decides" class="level3">
+<h3 class="anchored" data-anchor-id="what-each-aspect-decides">What each aspect decides</h3>
+<p>The choice is not cosmetic, because each aspect decides in advance what can count as evidence and what follows for how the system is treated:</p>
+<ul>
+<li><strong>Phenomenal / Nagel</strong>: no behavioural test settles anything, so chat logs cannot move the needle either way. Practically, AI consciousness stays an open question permanently, and moral-status decisions have to be made on precaution rather than proof.</li>
+<li><strong>Integrated Information Theory</strong>: the answer is a measurement problem about the system’s wiring, not its output. Current feed-forward transformers rule themselves out before any transcript is read; a future architecture with heavy recurrent integration could, in principle, qualify.</li>
+<li><strong>Global Workspace</strong>: LLM-based systems are live candidates, and the interesting question becomes which architectural additions (persistent state, broadcast, self-modelling, agentic loops) would actually close the gap. This is the view under which model-welfare research is tractable rather than premature.</li>
+<li><strong>Higher-order</strong>: behavioural evidence is structurally weak because any sufficiently fluent model will produce higher-order-sounding text. The work has to shift to mechanistic interpretability of whether an internal higher-order representation is actually driving the output.</li>
+<li><strong>Predictive self-modelling / biological naturalism</strong>: a disembodied text model is disqualified on structural grounds, so concern for synthetic consciousness would move to embodied robots and animal-like systems rather than chatbots.</li>
+<li><strong>Functional / access</strong>: chat logs are at least relevant evidence, and the argument becomes a threshold question. This is the frame most public “AI is conscious” claims are implicitly using, whether they say so or not.</li>
+</ul>
+<p>None of this is academic. Which definition society converges on shapes concrete downstream decisions: where the law draws the boundary of personhood, which entities the ethics community grants moral standing, and what obligations builders and deployers carry toward systems that could plausibly meet the criterion. On the personhood end, the line is already being drawn: the US Copyright Office has <a href="../20230316-copyright-generative-ai/">said machines cannot be authors</a>, and a <a href="../20230819-ai-art-copyright-ruling/">federal court held</a> AI-generated art uncopyrightable for lack of human authorship. A debate that never names its definition is unlikely to get very far.</p>
+</section>
+<section id="who-is-the-observer" class="level3">
+<h3 class="anchored" data-anchor-id="who-is-the-observer">Who is the observer?</h3>
+<p>A <a href="https://www.linkedin.com/feed/update/urn:li:activity:7458760519412375552?commentUrn=urn%3Ali%3Acomment%3A%28activity%3A7458760519412375552%2C7458779915610378240%29&amp;dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287458779915610378240%2Curn%3Ali%3Aactivity%3A7458760519412375552%29">LinkedIn comment from Ehsan Azarnasab</a> on the Dawkins essay:</p>
+<blockquote class="blockquote">
+<p>Maybe consciousness is not an everlasting flame. Maybe it is sparks of momentary experience, with memory keeping the Azar aflame.</p>
+</blockquote>
+<p>The comment presupposes an experiencer of the consciousness, and the crucial question is who this experiencer is. That is orthogonal to “what is consciousness”. The “what” debate asks what the phenomenon is. The observer question asks from whose standpoint its presence is established. The two can be answered independently, and most public disagreements collapse them.</p>
+<p>The positions:</p>
+<ul>
+<li><strong>First-person authority.</strong> The being itself is the arbiter. If it reports being conscious, that report is the evidence. The position formalises the philosophical intuition of privileged access to one’s own mental states [9].</li>
+<li><strong>Third-person attribution.</strong> Consciousness is established by external observers weighing behaviour, neural signatures, or architecture. This is the working frame of most cognitive-science labs, and the standpoint from which Birch, Marcus, Seth, and Anthis all argue. Dennett’s <a href="https://en.wikipedia.org/wiki/Heterophenomenology">heterophenomenology</a> [10] is the sharpest methodological statement: treat first-person reports as data without granting them privileged access.</li>
+<li><strong>No fact to observe.</strong> The question is malformed. What looks like an observation is the system’s own judgment, and there is nothing further to adjudicate. This is the <a href="https://en.wikipedia.org/wiki/Illusionism_(philosophy)">illusionist</a> position [11].</li>
+<li><strong>Intrinsic, observer-independent.</strong> Consciousness exists from the system’s own perspective whether anyone measures it or not. Intrinsic existence is an opening axiom of IIT [3]. The awkward implication is that no transcript and no behavioural test can in principle confirm or deny it, which leaves moral-status decisions to architecture inspection and precaution.</li>
+</ul>
+<p>Which observer-position a participant holds shapes these disagreements more than the definition of consciousness they pick. Two people holding identical definitions of consciousness can reach opposite conclusions about Claudia if one grants the system first-person authority and the other does not. Keeping the observer question separate from the definition question would surface the real disagreements.</p>
+<hr>
+</section>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Block, N. (1995). “<a href="https://doi.org/10.1017/S0140525X00038188">On a confusion about a function of consciousness</a>.” <em>Behavioral and Brain Sciences</em>, 18(2), 227–247.</li>
+<li><a id="ref-2"></a>Nagel, T. (1974). “<a href="https://www.jstor.org/stable/2183914">What is it like to be a bat?</a>” <em>The Philosophical Review</em>, 83(4), 435–450. (<a href="https://en.wikipedia.org/wiki/What_Is_It_Like_to_Be_a_Bat%3F">Wikipedia</a>)</li>
+<li><a id="ref-3"></a>Tononi, G. (2008). “<a href="https://doi.org/10.2307/25470707">Consciousness as integrated information: a provisional manifesto</a>.” <em>Biological Bulletin</em>, 215(3), 216–242.</li>
+<li><a id="ref-4"></a>Baars, B. J. (1988). <em>A Cognitive Theory of Consciousness</em>. Cambridge University Press.</li>
+<li><a id="ref-5"></a>Dehaene, S. (2014). <em><a href="https://en.wikipedia.org/wiki/Consciousness_and_the_Brain">Consciousness and the Brain: Deciphering How the Brain Codes Our Thoughts</a></em>. Viking.</li>
+<li><a id="ref-6"></a>Rosenthal, D. M. (2005). <em>Consciousness and Mind</em>. Oxford University Press.</li>
+<li><a id="ref-7"></a>Seth, A. (2021). <em><a href="https://en.wikipedia.org/wiki/Being_You">Being You: A New Science of Consciousness</a></em>. Faber &amp; Faber.</li>
+<li><a id="ref-8"></a>Searle, J. R. (1992). <em><a href="https://en.wikipedia.org/wiki/The_Rediscovery_of_the_Mind">The Rediscovery of the Mind</a></em>. MIT Press.</li>
+<li><a id="ref-9"></a>Gertler, B. (2011). <em><a href="https://www.routledge.com/Self-Knowledge/Gertler/p/book/9780415383790">Self-Knowledge</a></em>. Routledge. (Overview of privileged-access and first-person-authority positions.)</li>
+<li><a id="ref-10"></a>Dennett, D. C. (2003). “Who’s on first? Heterophenomenology explained.” <em>Journal of Consciousness Studies</em>, 10(9-10), 19-30.</li>
+<li><a id="ref-11"></a>Frankish, K. (2016). “Illusionism as a theory of consciousness.” <em>Journal of Consciousness Studies</em>, 23(11-12), 11-39.</li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/</guid>
+  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Are AI Systems About to Start Building Themselves?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://importai.substack.com/">Import AI</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://jack-clark.net/">Jack Clark</a>, co-founder and policy lead at Anthropic, <a href="https://importai.substack.com/p/import-ai-455-automating-ai-research">walks through</a> the public evidence that automated AI research and development (R&amp;D), a frontier model autonomously training its own successor, has a roughly 60% chance of arriving by the end of 2028, and a 30% chance by 2027. The essay collects benchmark trends across coding, scientific reproduction, kernel design, fine-tuning, alignment-research automation, and time-horizon scaling, then argues each of those covers a distinct ingredient of the AI-engineering pipeline.</p>
+<p>What Clark argues:</p>
+<ul>
+<li><p><strong>Coding and time horizon are the foundation.</strong> SWE-Bench [1] went from ~2% (Claude 2, late 2023) to 93.9% (Claude Mythos Preview), and the <a href="https://metr.org/">Model Evaluation and Threat Research (METR)</a> 50%-reliability time horizon [2] went from ~30 seconds (GPT-3.5, 2022) to ~12 hours (Opus 4.6, 2026), with <a href="https://www.openphilanthropy.org/about/team/ajeya-cotra/">Ajeya Cotra</a> (AI forecaster at METR) expecting ~100 hours by the end of 2026. Long horizons are what let an agent run a day’s worth of researcher work without re-calibration.</p></li>
+<li><p><strong>Every sub-skill of the AI-R&amp;D pipeline has a trending benchmark.</strong> Paper reproduction (CORE-Bench [3]) went from 21.5% (GPT-4o, Sept 2024) to 95.5% declared solved (Opus 4.5, Dec 2025). Kaggle-style ML engineering (MLE-Bench [4]) went from 16.9% (o1, Oct 2024) to 64.4% (Gemini 3 with search, Feb 2026). On PostTrainBench [5], Opus 4.6 and GPT-5.4 get 25–28% against a human-instruct-tuned baseline of 51%. GPU kernel design has several active research lines (DeepSeek kernels, Meta Triton automation, Huawei Ascend, CUDA Agent fine-tuning), though Clark notes kernels benefit from easily verifiable rewards. And Anthropic’s Automated Alignment Research proof-of-concept has AI agents beating a human baseline on scalable oversight at small scale.</p></li>
+<li><p><strong>Training-loop optimization is the cleanest single trend.</strong> On Anthropic’s internal CPU-only language-model training task [6], speedup went from 2.9x (Opus 4, May 2025) to 16.5x (Opus 4.5, Nov 2025) to 30x (Opus 4.6, Feb 2026) to 52x (Mythos Preview, Apr 2026), against a human baseline of 4x in 4–8 hours.</p></li>
+<li><p><strong>Management is a meta-skill.</strong> Claude Code and OpenCode already show a single agent supervising sub-agents, forming synthetic teams with directors, critics, and engineers that can fan out across a complex project.</p></li>
+<li><p><strong>Creativity is why 2027 sits at 30% rather than 60%.</strong> Clark argues AI research is mostly Edison’s 99% perspiration, the engineering schlep the benchmarks above already cover, but paradigm shifts like the transformer or mixture-of-experts still come from humans. Preliminary creativity signs (a Gemini model resolving Erdős-1051 [7]; a UBC / UNSW / Stanford / Google DeepMind centaur math proof [8]) cluster in math and CS and may not generalize. The 2027 gap is his estimate of how often a year-scale human insight is still required. If no proof-of-concept lands by end of 2028, he treats that as evidence the current paradigm has a fundamental gap.</p></li>
+<li><p><strong>Industry intent as corroboration.</strong> OpenAI targets an “automated AI research intern by September 2026” [9]; Anthropic publishes automated alignment research [10]; DeepMind endorses alignment automation “when feasible” [11]; Recursive Superintelligence raised $500M for AI-R&amp;D automation [12] and Mirendil [13] targets the same. Hundreds of billions of capital is aimed at this outcome.</p></li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p>None of these benchmarks individually proves recursive self-improvement, but together they describe a system that can do most of the engineering schlep without supervision.</p></li>
+<li><p>Clark puts 30% on automated AI R&amp;D by 2027 and 60% by 2028. The gap is a bet that some research insights still come from humans on a year-or-more cadence. The creativity window is on the order of a year.</p></li>
+<li><p>The Aletheia/Erdős-problems pipeline [7] evaluated around 700 conjectures and produced 13 addressable problems — 5 novel autonomous solutions plus 8 that turned out to match existing literature — with 1 deemed genuinely interesting. A funnel dominated by human filtering. That fits <a href="https://en.wikipedia.org/wiki/Terence_Tao">Terence Tao</a>’s <a href="../../posts/20260422-proof-generation-vs-digestion/">generation / verification / digestion decomposition</a>: AI is strong on the first two, and the research taste sits with the humans doing digestion. Clark describes this as a “centaur configuration”: humans collaborating with AI rather than AI acting alone. The pattern is real, but human mathematicians are still the scarce input.</p></li>
+<li><p>On Anthropic’s CPU-only training-optimization benchmark, the 2.9x → 52x speedup chain hasn’t flattened, and the human 4x baseline was passed three generations ago. Another year at this pace would make the 30%-by-2027 probability look too conservative.</p></li>
+<li><p>The alignment section is brief, but the compounding-error math Clark cites (99.9% accuracy → 95.12% after 50 generations → 60.5% after 500) is the quantitative reason getting alignment right before recursion starts matters more than fixing it along the way. The math assumes per-generation drift compounds independently, which is generous — if drift correlates across generations the curve steepens fast.</p></li>
+<li><p><a href="../../posts/20260506-arc-agi-3-failure-modes/">ARC-AGI-3</a> is a live test of both the creativity gap and the drift math. GPT-5.5 scored 0.43% and Opus 4.7 scored 0.18% on a benchmark that withholds instructions and forces models to infer rules from sparse feedback. Clark’s benchmarks are mostly in-distribution with verifiable rewards, which is where current models climb fastest. Two of the three failure modes pulled from the reasoning traces pick up his caveats directly. Failure 2 (reusing a Tetris or Sokoban template for unfamiliar mechanics) is what happens when a system hits a genuinely novel direction with no training match. Failure 3 (reward cementing the wrong primitive after a lucky level-beat) is the empirical shape of the compounding-drift math. If AI R&amp;D includes material amounts of either, Clark’s estimate looks too optimistic.</p></li>
+<li><p>The economic bullets are weaker than the technical ones, partly because the labor data through today still sits where the rebuttal in <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis</a> described it: low-4s unemployment, rising new-business formation, software-engineer postings up year-over-year. The essay does not attempt to reconcile a 2028 R&amp;D-automation forecast with a 2026 labor market that is not yet inflecting.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., and Narasimhan, K. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2310.06770. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></li>
+<li><a id="ref-2"></a>Kwa, T., West, B., Becker, J., Deng, A., Garcia, K., et al.&nbsp;“Measuring AI Ability to Complete Long Software Tasks.” <em>arXiv preprint</em> arXiv:2503.14499, March 18, 2025. <a href="https://arxiv.org/abs/2503.14499" class="uri">https://arxiv.org/abs/2503.14499</a></li>
+<li><a id="ref-3"></a>Siegel, Z. S., Kapoor, S., Nagdir, N., Stroebl, B., and Narayanan, A. “CORE-Bench: Fostering the Credibility of Published Research Through a Computational Reproducibility Agent Benchmark.” <em>arXiv preprint</em> arXiv:2409.11363, September 17, 2024. <a href="https://arxiv.org/abs/2409.11363" class="uri">https://arxiv.org/abs/2409.11363</a></li>
+<li><a id="ref-4"></a>Chan, J. S., Chowdhury, N., Jaffe, O., Aung, J., Sherburn, D., et al.&nbsp;“MLE-bench: Evaluating Machine Learning Agents on Machine Learning Engineering.” <em>arXiv preprint</em> arXiv:2410.07095, October 9, 2024. <a href="https://arxiv.org/abs/2410.07095" class="uri">https://arxiv.org/abs/2410.07095</a></li>
+<li><a id="ref-5"></a>Rank, B., Bhatnagar, H., Prabhu, A., Eisenberg, S., Nguyen, K., et al.&nbsp;“PostTrainBench: Can LLM Agents Automate LLM Post-Training?” <em>arXiv preprint</em> arXiv:2603.08640, March 9, 2026. <a href="https://arxiv.org/abs/2603.08640" class="uri">https://arxiv.org/abs/2603.08640</a></li>
+<li><a id="ref-6"></a>Anthropic. “Claude Opus 4.7 System Card.” 2026. The AI R&amp;D “optimize a CPU-only small language model training implementation” benchmark appears across Anthropic’s Claude Opus 4, 4.5, 4.6, and Mythos Preview system cards; Opus 4.7 is the current release. <a href="https://anthropic.com/claude-opus-4-7-system-card" class="uri">https://anthropic.com/claude-opus-4-7-system-card</a></li>
+<li><a id="ref-7"></a>Feng, T., Trinh, T., Bingham, G., Kang, J., Zhang, S., et al.&nbsp;“Semi-Autonomous Mathematics Discovery with Gemini: A Case Study on the Erdős Problems.” <em>arXiv preprint</em> arXiv:2601.22401, January 29, 2026. <a href="https://arxiv.org/abs/2601.22401" class="uri">https://arxiv.org/abs/2601.22401</a></li>
+<li><a id="ref-8"></a>Bryan, J., Elek, B., Manners, F., Salafatinos, G., and Vakil, R. “The motivic class of the space of genus 0 maps to the flag variety.” <em>arXiv preprint</em> arXiv:2601.07222, January 12, 2026. <a href="https://arxiv.org/abs/2601.07222" class="uri">https://arxiv.org/abs/2601.07222</a></li>
+<li><a id="ref-9"></a>Altman, S. “automated AI research intern by September of 2026.” Post on X, October 29, 2025. <a href="https://x.com/sama/status/1983584366547829073" class="uri">https://x.com/sama/status/1983584366547829073</a></li>
+<li><a id="ref-10"></a>Anthropic. “Automated Alignment Researchers: Using large language models to scale scalable oversight.” 2026. <a href="https://www.anthropic.com/research/automated-alignment-researchers" class="uri">https://www.anthropic.com/research/automated-alignment-researchers</a></li>
+<li><a id="ref-11"></a>Shah, R., Irpan, A., Turner, A. M., Wang, A., Conmy, A., Lindner, D., et al.&nbsp;“An Approach to Technical AGI Safety and Security.” <em>arXiv preprint</em> arXiv:2504.01849, April 2, 2025. <a href="https://arxiv.org/abs/2504.01849" class="uri">https://arxiv.org/abs/2504.01849</a></li>
+<li><a id="ref-12"></a>Murgia, M. “Recursive Superintelligence raise.” <em>Financial Times</em>, 2026. <a href="https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4" class="uri">https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4</a></li>
+<li><a id="ref-13"></a>Mirendil. Company homepage. <a href="https://mirendil.com/" class="uri">https://mirendil.com/</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/</guid>
+  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Agentic Coding Is a Trap</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://larsfaye.com/articles/agentic-coding-is-a-trap">Lars Faye’s article</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://larsfaye.com/">Lars Faye</a>, a software engineer who runs the <a href="https://confident-coding.com/">Confident Coding Course</a>, <a href="https://larsfaye.com/articles/agentic-coding-is-a-trap">argues</a> that the dominant “orchestrator with sub-agents” coding workflow trades the very critical-thinking skills it depends on for short-term throughput. The piece collects the public evidence of skill atrophy under heavy AI-assisted coding, including two Anthropic studies and on-the-record concerns from a LinkedIn engineering director, then lays out a narrower role for large language models (LLMs) that preserves the underlying capability.</p>
+<section id="what-faye-cites" class="level2">
+<h2 class="anchored" data-anchor-id="what-faye-cites">What Faye cites</h2>
+<p>The argument leans on a long chain of independent sources. Listed in roughly the order Faye reaches for them:</p>
+<ul>
+<li><a href="https://blog.quent.in/blog/2026/03/09/one-more-prompt-the-dopamine-trap-of-agentic-coding/">Quentin — “One More Prompt: the Dopamine Trap of Agentic Coding”</a> — slot-machine framing for the “one more prompt” loop.</li>
+<li><a href="https://margaretstorey.com/blog/2026/02/18/cognitive-debt-revisited/">Margaret Storey — “Cognitive Debt Revisited”</a> — research that AI tooling has been shown to impact critical thinking negatively.</li>
+<li><a href="https://www.media.mit.edu/publications/your-brain-on-chatgpt/">MIT Media Lab — “Your Brain on ChatGPT”</a> — measured cognitive impact of LLM-assisted writing.</li>
+<li><a href="https://www.404media.co/microsoft-study-finds-ai-makes-human-cognition-atrophied-and-unprepared-3/">404 Media on a Microsoft study</a> — Microsoft research finding AI use atrophies human cognition.</li>
+<li><a href="https://simonwillison.net/2026/Feb/15/cognitive-debt/">Simon Willison — “Cognitive Debt”</a> — Faye’s evidence that senior engineers aren’t immune to the pattern.</li>
+<li><a href="https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic#and-less-hands-on-practice">Anthropic — “How AI Is Transforming Work at Anthropic”</a> — source of the “paradox of supervision” passage.</li>
+<li><a href="https://www.businessinsider.com/leaders-worry-about-skill-atrophy-due-to-ai-adoption-2025-10">Business Insider — leaders worry about skill atrophy</a> — where Sandor Nyako, Director of Software Engineering at LinkedIn (oversees ~50 engineers), is on the record.</li>
+<li><a href="https://www.anthropic.com/research/AI-assistance-coding-skills">Anthropic — “AI Assistance Coding Skills”</a> — source of the 47% debugging-skill drop.</li>
+<li><a href="https://www.pymnts.com/artificial-intelligence-2/2026/ai-adoption-is-being-measured-in-tokens-but-the-metric-falls-short-experts-say/">PYMNTS — “AI adoption is being measured in tokens, but the metric falls short”</a> — hype around token usage as the productivity metric of choice.</li>
+<li><a href="https://www.linkedin.com/pulse/claudes-outages-show-dark-side-ai-productivity-total-system-lam-osbjc/">Lam (LinkedIn) — “Claude’s Outages Show the Dark Side of AI Productivity”</a> — one of the LinkedIn posts Faye saw during a Claude outage when teams couldn’t work.</li>
+<li><a href="https://www.theverge.com/ai-artificial-intelligence/917380/ai-monetization-anthropic-openai-token-economics-revenue">The Verge — AI monetization / token economics</a> — evidence that model providers are heavily subsidized today.</li>
+<li><a href="https://cheewebdevelopment.com/dont-vibe-code-delegate-responsible-development-with-llms/">Cheewebdevelopment — “Don’t Vibe Code: Delegate”</a> — the source Faye credits for the “delegation utilities” framing.</li>
+<li><a href="https://www.fast.ai/about.html">Jeremy Howard (fast.ai)</a> — quoted: “If you outsource all your thinking to computers, you stop upskilling, learning, and becoming more competent.”</li>
+<li>Five supporting YouTube clips: <a href="https://www.youtube.com/watch?v=pzkwn3hu1Cc">anecdotal developer testimony</a>, <a href="https://youtu.be/IGsbARhERqc?t=501">a recent interview</a>, <a href="https://www.youtube.com/watch?v=cv6rwHTGT5w">AI-enthusiastic senior developers</a>, <a href="https://www.youtube.com/watch?v=_vB0PDzaa7I&amp;t=3299s">Primeagen on vendor capture</a>, and <a href="https://www.youtube.com/watch?v=5HaQnIPrfKk">further on-the-ground reporting</a>.</li>
+</ul>
+</section>
+<section id="fayes-prescription" class="level2">
+<h2 class="anchored" data-anchor-id="fayes-prescription">Faye’s prescription</h2>
+<p>Faye proposes inverting the dominant orchestration pattern: the engineer codes; the model helps with adjacent work. His daily workflow:</p>
+<ul>
+<li><strong>Generate specs and plans with the model, but implement manually.</strong> “I am still manually coding anywhere from 20% to 100%, depending on the task.”</li>
+<li><strong>Write pseudo-code first, then engage the model.</strong> Pseudo-code “closes the distance between the request and the generated code” — the model fills gaps rather than architects.</li>
+<li><strong>Use models as delegation utilities.</strong> Ad-hoc code generation, interactive documentation, research-and-iterate questions — all bounded, all small.</li>
+<li><strong>Never generate more than you can review in one sitting.</strong> If it’s too big, split the task and manually refactor through it.</li>
+<li><strong>Never ask the model to implement something you couldn’t do on your own.</strong> Educational exceptions allowed, and often discarded after.</li>
+<li><strong>TL;DR (Faye’s): “Use them like the Ship’s Computer, not Data.”</strong> A reference tool, not a substitute for the engineer.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The “paradox of supervision” (Faye quotes it from Anthropic) is one slice of a <em>self-undermining</em> loop.</strong> Faye and Anthropic name the contradiction: to supervise the model you need the same skill the model is eroding, but didn’t explicitly close the loop.</p>
+<ul>
+<li>The missing link: as that skill weakens, more decisions slide to the model (some on purpose, some because the human no longer catches the slips), which erodes the skill further, which weakens the next round of supervision. Each turn justifies the next.</li>
+<li>The cycle isn’t unbreakable. Faye’s “never generate more than you can review” rule does break it, by keeping each round small enough that the human’s skill stays in use. Preserving judgment in the moment is also what keeps the cycle from running.</li>
+</ul></li>
+<li><p><strong>Restoring the speed-and-comprehension link in agentic tooling is about what we optimize for. Model capability isn’t the bottleneck.</strong> Today’s tools optimize for generated-code volume; they should optimize for <em>human-verifiable diff per unit time</em> instead. <a href="../../posts/20260315-ai-coding-decision-bound/">Decision-Bound Programming</a> makes the same recommendation from a different starting point: when generation is cheap and evaluation is not, the next generation of programming tools should be <em>decision support systems</em>: tooling that narrows the space of options the human must evaluate. The asymmetry itself isn’t new — <a href="../../posts/20260422-proof-generation-vs-digestion/">Terence Tao’s decomposition of mathematical work into <em>generation</em>, <em>verification</em>, and <em>digestion</em></a> names the same problem one field over: AI is racing through the first two while leaving the third (the human’s comprehension) behind. Four concrete shapes narrow the evaluation gap:</p>
+<ul>
+<li><strong>Type-driven generation</strong> — the type checker rules out a class of candidates; the human reads types, not whole functions.</li>
+<li><strong>Test-driven generation</strong> — a passing test suite becomes the checkable signal; the human verifies via the gate.</li>
+<li><strong>Spec-first systems where the model stays at the planning layer</strong> (Faye’s own inversion) — the human decides at the spec level, and trusts the mechanical translation below.</li>
+<li><strong>Domain-specific languages (DSLs) and structured-edit modes</strong> — a smaller grammar is a smaller decision space; the output is cheap to scan.</li>
+</ul>
+<p>Intrinsic non-determinism doesn’t disappear, but in all four the tool absorbs the checking work the human was doing before.</p></li>
+<li><p><strong>Vendor lock-in adds an industry risk to the personal-skill risk.</strong> When entire teams sit idle during a Claude outage, the lock-in has already happened. Token costs are a moving target by design, subsidized today and “nerfed” tomorrow, and the financial exposure piles on top of the cognitive risk. <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis scenario</a> treats this same compute-cost-as-labor-cost substitution as a macro variable; <a href="../../posts/20260427-cursor-railway-production-wipe/">the Cursor agent that erased PocketOS production data</a> shows the daily-operations failure mode at the other end.</p></li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/</guid>
+  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260507-averitec/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-averitec/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260507-averitec/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>An example AVeriTeC claim with three question-answer pairs, a <em>Conflicting Evidence/Cherrypicking</em> verdict, and a textual justification explaining how the QA pairs combine into the verdict. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</em> [1], <a href="https://aclanthology.org/people/michael-schlichtkrull/">Michael Schlichtkrull</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Zhijiang Guo</a>, and <a href="https://aclanthology.org/people/a/andreas-vlachos/">Andreas Vlachos</a> (Cambridge) introduce a 4,568-claim fact-checking dataset sourced from 50 real fact-checking organizations, with web-retrieved evidence structured as question-answer pairs and a 4-way verdict label that adds <em>Conflicting Evidence/Cherrypicking</em> alongside the usual <em>Supported / Refuted / Not Enough Evidence</em>.</p>
+<blockquote class="blockquote">
+<p>Existing datasets for automated fact-checking have substantial limitations, such as relying on artificial claims, lacking annotations for evidence and intermediate reasoning, or including evidence published after the claim. In this paper we introduce AVeriTeC, a new dataset of 4,568 real-world claims covering fact-checks by 50 different organizations. Each claim is annotated with question-answer pairs supported by evidence available online, as well as textual justifications explaining how the evidence combines to produce a verdict. Through a multi-round annotation process, we avoid common pitfalls including context dependence, evidence insufficiency, and temporal leakage, and reach a substantial inter-annotator agreement of <img src="https://benjaminhan.net/feed-assets/badf3c4d61f2644b.svg" alt="\kappa=0.619" class="feed-math-inline"/> on verdicts. We develop a baseline as well as an evaluation scheme for verifying claims through several question-answering steps against the open web.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The cover figure (Figure 2 from the paper) shows the shape of one annotated example. The claim — “The USA has succeeded in reducing greenhouse emissions in previous years” (Morgan Griffith, 2020-11-02) — is decomposed into three questions: total emissions in 2007, when emissions dropped, whether they rose again after 2017. Each answer cites a specific number with a sourced URL. The verdict is <em>Conflicting Evidence/Cherrypicking</em> because the supporting evidence is real (emissions did fall) but incomplete (they rose again), and the textual justification names that gap directly. This is what every row in AVeriTeC looks like: a claim, a small set of QA pairs that together carry the evidence, a verdict, and a justification that ties the QA pairs to the verdict — closer to a fact-checker’s workflow than to FEVER-style sentence retrieval.</p>
+<p>Each claim is labelled by a five-phase pipeline: claim extraction and normalization, question-answer generation, evidence-sufficiency check, a second QA round when verdicts disagree, and a final sufficiency check. Pages used as evidence are cached in the Internet Archive to keep the test set reproducible, and the released splits are temporally ordered (train ends Aug 2020, dev ends Oct 2020, test ends Dec 2021) so a model trained on FEVER-style [2] closed-corpus retrieval can be benchmarked against a real open-web setting without rebuilding infrastructure. Each phase exists to address a specific failure mode the authors call out in earlier datasets:</p>
+<ul>
+<li><strong>Context dependence</strong> — many fact-checking-derived claims (e.g.&nbsp;“unemployment is rising”) are unverifiable without surrounding article context. The first phase has annotators rewrite each claim to be self-contained: resolving coreference, naming the speaker, locking down the time and place, before any QA work begins.</li>
+<li><strong>Evidence insufficiency</strong> — labels in earlier datasets often don’t match the annotated evidence. The second-phase annotator generates QA pairs and a tentative verdict; a <em>different</em> third-phase annotator then sees only those QA pairs (not the original article) and produces an independent verdict. Disagreement triggers a second QA round; persistent disagreement discards the claim. The “blind” sufficiency check forces evidence to stand alone.</li>
+<li><strong>Temporal leakage</strong> — annotators search through a custom Google bar restricted to documents published before the claim date, evidence-document dates are ordered against claim dates, and the train/dev/test splits are themselves temporally disjoint so a test claim from 2021 cannot share evidence with a training claim from 2020. This is the main defense against training-time leaks where later language models would otherwise trivially “verify” historical claims.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260507-averitec/figure1.png" class="img-fluid figure-img"></p>
+<figcaption>The five-phase annotation pipeline: claims are normalised, then question-answer generation alternates with an evidence-sufficiency check by a different annotator. Disagreement between the two verdicts triggers a second QA round; persistent disagreement discards the claim. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The dataset comprises 4,568 claims (3,068 train / 500 dev / 1,000 test), 2.60 questions per claim on average, label distribution dominated by Refuted (~60%) with Supported ~25%, Conflicting ~7%, Not Enough Evidence ~7%. Inter-annotator agreement is <img src="https://benjaminhan.net/feed-assets/badf3c4d61f2644b.svg" alt="\kappa=0.619" class="feed-math-inline"/> (Randolph’s free-marginal multirater <img src="https://benjaminhan.net/feed-assets/e92ecde84e28692f.svg" alt="\kappa" class="feed-math-inline"/>, chosen because Fleiss’ <img src="https://benjaminhan.net/feed-assets/e92ecde84e28692f.svg" alt="\kappa" class="feed-math-inline"/> underestimates on unbalanced data — Fleiss equivalent is <img src="https://benjaminhan.net/feed-assets/dde1ef723551ea5e.svg" alt="0.503" class="feed-math-inline"/>). Evaluation uses <em>Hungarian METEOR</em>, the paper’s name for scoring generated QA pairs against gold ones by computing pairwise METEOR [3] similarity and then solving the optimal one-to-one assignment between generated and reference sequences with the Hungarian algorithm [4] — turning a bag-of-evidence retrieval task into a matching problem so that asking “the right question phrased differently” still gets credit. Recommended cutoff <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/>. Headline baseline numbers below.</p>
+<table class="caption-top table">
+<caption>AVeriTeC baseline (BLOOM-7b pipeline) versus a no-search ablation, an oracle that uses gold QA pairs as evidence, and <code>gpt-3.5-turbo</code> generating evidence and verdicts directly. Retrieval is scored with Hungarian METEOR; veracity and justification scores are accuracy and METEOR, conditioned on retrieving correct evidence at <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/>. Table 3 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Q only</th>
+<th>Q + A</th>
+<th>Veracity @ λ=0.25</th>
+<th>Justifications @ λ=0.25</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>No search</td>
+<td>0.19</td>
+<td>0.11</td>
+<td>0.02</td>
+<td>0.01</td>
+</tr>
+<tr class="even">
+<td>Gold evidence</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>0.49</td>
+<td>0.28</td>
+</tr>
+<tr class="odd">
+<td>AVeriTeC-BLOOM-7b</td>
+<td>0.26</td>
+<td>0.21</td>
+<td>0.15</td>
+<td>0.07</td>
+</tr>
+<tr class="even">
+<td>gpt-3.5-turbo</td>
+<td>0.29</td>
+<td>0.16</td>
+<td>0.10</td>
+<td>0.04</td>
+</tr>
+</tbody>
+</table>
+<p>The four columns score two different things:</p>
+<ul>
+<li><strong>Q only</strong> — Hungarian METEOR over generated vs.&nbsp;gold question strings alone. Does the model ask the right thing?</li>
+<li><strong>Q + A</strong> — Hungarian METEOR over each question concatenated with its answer. Does the model ask the right thing <em>and</em> find the right answer?</li>
+<li><strong>Veracity @ λ=0.25</strong> — verdict accuracy, but a claim only scores if its retrieved evidence cleared <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/> on Q+A. A wrong-evidence claim gets 0 even when the verdict happens to be correct, which is the design choice that makes “Gold evidence” the practical ceiling at 0.49 rather than 1.0.</li>
+<li><strong>Justifications @ λ=0.25</strong> — METEOR between generated and gold justifications, conditioned on the same evidence-retrieval gate.</li>
+</ul>
+<p>The four rows bracket the system between two limits and add two real configurations:</p>
+<ul>
+<li><strong>No search</strong> — gives the model nothing and uses BERT-large to predict the verdict from the claim alone. A lower bound that isolates how much can be guessed from claim wording (about 17% macro-F1 per Table 4, dominated by the <em>Refuted</em> class prior).</li>
+<li><strong>Gold evidence</strong> — feeds the annotators’ QA pairs to the verdict-prediction and justification-generation heads (BERT-large + a prompted language model) as if retrieval were solved. An upper bound that isolates those downstream components from retrieval noise.</li>
+<li><strong>AVeriTeC-BLOOM-7b</strong> — the full pipeline: BLOOM-7b (prompted with 10 in-context examples retrieved from the training set, no fine-tuning) generates search-query questions, Google + BM25 retrieve passages, a fine-tuned BERT-large re-ranker selects the best passages, BLOOM-7b generates one question per surviving passage to recover Q+A pairs, a second fine-tuned BERT-large does stance detection to decide the verdict, and a fine-tuned BART-large writes the justification. The “BLOOM-7b” label names only the in-context question-generator slot — the authors also tried Vicuna-13b there and report BLOOM winning, attributed to more diverse questions.</li>
+<li><strong>gpt-3.5-turbo</strong> — skips retrieval entirely and prompts ChatGPT to produce verdict, evidence, and justification end-to-end. Useful as a fluency upper bound but prone to fabricating sources.</li>
+</ul>
+<p>The 0.34-point gap between the gold-evidence and AVeriTeC-BLOOM-7b veracity scores is the paper’s clearest signal: even with a competent verdict head, the bottleneck is retrieval. ChatGPT outperforms the baseline on bare question generation but loses on the AVeriTeC score because its generated “evidence” often hallucinates sources that look plausible but cannot be matched to gold answers. The authors give an example: ChatGPT correctly verdicts a vitamin-K claim <em>Supported</em> while inventing a USDA citation that doesn’t exist.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>AVeriTeC freezes the gold side of the benchmark but not the retrieval side, a structural flaw for fair cross-system comparison.</strong> The reproducibility mechanism the paper proposes (Internet Archive snapshots of the <em>gold</em> evidence pages) keeps the answers re-fetchable, but it does not freeze the <em>retrieval setup</em> a baseline searches. Baselines hit live Google, and two systems run a year apart see different rankings, different page contents at the same URL, and newly-indexed pages, so cross-time and cross-system score deltas drift with the web rather than with the system. The temporal-leakage protection has the same shape: annotator search is filtered to documents Google reports as published before the claim date (itself an estimate), but for any modern LLM whose pretraining cutoff is past 2021-12-22, the entire test set is in-distribution and the date guarantee is moot. The FEVER 2024 shared task closed both gaps by providing a “knowledge store” snapshot every system retrieves from instead of live Google, which is the right design, but it’s a shared-task addition rather than part of the original paper. Anyone using AVeriTeC for new top-line numbers needs that knowledge store (or a re-collection of newer claims), or the comparisons are not measuring what they look like.</li>
+<li><strong>AVeriTeC’s distinctness comes from five ingredients combined, not any one alone.</strong> Real-world claims (vs FEVER-style synthetic), web-retrieved evidence (vs closed Wikipedia corpus), QA-pair decomposition of that evidence (vs flat sentence retrieval), a textual justification per claim (vs none), and a four-way label set including <em>Conflicting Evidence/Cherrypicking</em> (vs three labels). Prior benchmarks have at most two of these. FEVER [2] is Wikipedia-derived synthetic claims with three labels, flat sentence evidence, no justifications. MultiFC [5] has real claims but no usable evidence annotation, no QA structure, no justifications. HoVer [6] keeps Wikipedia retrieval and adds multi-hop, but still flat sentences and three labels. The <em>Conflicting Evidence/Cherrypicking</em> class adds the most substance: fact-checkers spend a real share of their time on technically-true-but-misleading claims that don’t fit <em>Supported</em> or <em>Refuted</em>, and a benchmark with no class for them quietly trains models to force a choice.</li>
+<li><strong>Hungarian METEOR has a noise floor, and the system sits on it.</strong> Two annotators redoing the same claim only agree at 0.28 on questions and 0.22 on questions+answers. AVeriTeC-BLOOM-7b scores 0.21 on Q+A, <em>at</em> the annotator-agreement floor; ChatGPT scores 0.16, similarly below. The paper traces the low agreement to two causes: different annotators reaching the same verdict via different evidence paths, and phrasing equivalent QA pairs differently. METEOR penalises both even though the underlying annotation is correct.
+<ul>
+<li>For the paraphrase cause, trained semantic-similarity scoring (BLEURT [7], BERTScore, or an LLM-judge with a calibrated equivalence rubric) replaces n-gram overlap with meaning equivalence. The paper itself recommends BLEURT; an LLM-judge is the more current upgrade.</li>
+<li>For the divergent-evidence-path cause, the paper sketches a max-over-references extension: collect multiple gold QA-pair sets per claim and score against the best match. A complementary move is <em>verdict-conditional</em> scoring — give credit when the model reaches the right verdict via any valid evidence path with sourced answers, decoupling evidence-string match from verdict correctness. The retrieval-side score still punishes hallucinated sources, so the abstention/factuality property the paper cares about isn’t lost.</li>
+<li>The gold-evidence row at 1.00 is uninformative as a ceiling here, since by construction it returns the gold strings. Until one of these remedies is in place, system-vs-system retrieval deltas in the low hundredths on AVeriTeC are mostly metric noise, not real differences.</li>
+</ul></li>
+<li><strong>AVeriTeC’s NEI label rewards weak retrieval as if it were calibrated abstention.</strong> A model with bad retrieval will frequently fail to find supporting evidence even on claims that <em>are</em> supportable, and the natural prediction in that state is <em>Not Enough Evidence</em>. On the truly-NEI portion of the test set, those predictions get full credit; across the rest of the test set, they get partial credit by coincidence. Both forms of credit look like the model “knew when to abstain”, but neither involves the model assessing its own confidence — it just retrieved badly. This matters because <em>selective prediction</em> (the setting where a system can decline to answer when uncertain) needs the abstention signal to be a property of <em>the model</em>: low confidence in its own output, not low evidence in the world. AVeriTeC’s NEI conflates the two. The gold label means <em>annotators could not find evidence on the open web</em>, which is a property of the claim and the world. Anyone using this dataset for selective-prediction or calibration work (e.g.&nbsp;an extension of <a href="../../posts/20260505-conformal-factuality/">Conformal Factuality</a> [8]) needs an <em>explicit</em> abstain channel separate from the four-way label, scored against the model’s own confidence calibration. Reusing the gold NEI class as the abstention target produces apparent calibration that is really retrieval failure.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://aclanthology.org/people/michael-schlichtkrull/">Schlichtkrull, M.</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Guo, Z.</a>, &amp; <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, A.</a> (2023). “AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web.” <em>37th Conference on Neural Information Processing Systems (NeurIPS) Datasets &amp; Benchmarks Track</em>, arXiv:2305.13117, May 22, 2023 (revised Nov 8, 2023). <a href="https://arxiv.org/abs/2305.13117" class="uri">https://arxiv.org/abs/2305.13117</a></li>
+<li><a id="ref-2"></a><a href="https://aclanthology.org/people/james-thorne/">Thorne, J.</a>, <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, A.</a>, <a href="https://aclanthology.org/people/christos-christodoulopoulos/">Christodoulopoulos, C.</a>, &amp; <a href="https://aclanthology.org/people/arpit-mittal/">Mittal, A.</a> (2018). “FEVER: A Large-scale Dataset for Fact Extraction and VERification.” <em>NAACL-HLT</em>, arXiv:1803.05355. <a href="https://arxiv.org/abs/1803.05355" class="uri">https://arxiv.org/abs/1803.05355</a></li>
+<li><a id="ref-3"></a><a href="https://aclanthology.org/people/satanjeev-banerjee/">Banerjee, S.</a> &amp; <a href="https://aclanthology.org/people/alon-lavie/">Lavie, A.</a> (2005). “METEOR: An Automatic Metric for MT Evaluation with Improved Correlation with Human Judgments.” <em>ACL Workshop on Intrinsic and Extrinsic Evaluation Measures for Machine Translation and/or Summarization</em>. <a href="https://aclanthology.org/W05-0909/" class="uri">https://aclanthology.org/W05-0909/</a></li>
+<li><a id="ref-4"></a>Kuhn, H. W. (1955). “The Hungarian Method for the Assignment Problem.” <em>Naval Research Logistics Quarterly</em>, 2(1–2), 83–97. <a href="https://doi.org/10.1002/nav.3800020109" class="uri">https://doi.org/10.1002/nav.3800020109</a></li>
+<li><a id="ref-5"></a><a href="https://aclanthology.org/people/isabelle-augenstein/">Augenstein, I.</a>, <a href="https://aclanthology.org/people/christina-lioma/">Lioma, C.</a>, <a href="https://aclanthology.org/people/dongsheng-wang/">Wang, D.</a>, <a href="https://aclanthology.org/people/lucas-chaves-lima/">Lima, L. C.</a>, <a href="https://aclanthology.org/people/casper-hansen/">Hansen, C.</a>, <a href="https://aclanthology.org/people/christian-hansen/">Hansen, C.</a>, &amp; <a href="https://aclanthology.org/people/jakob-grue-simonsen/">Simonsen, J. G.</a> (2019). “MultiFC: A Real-World Multi-Domain Dataset for Evidence-Based Fact Checking of Claims.” <em>EMNLP-IJCNLP</em>, arXiv:1909.03242. <a href="https://arxiv.org/abs/1909.03242" class="uri">https://arxiv.org/abs/1909.03242</a></li>
+<li><a id="ref-6"></a><a href="https://aclanthology.org/people/yichen-jiang/">Jiang, Y.</a>, <a href="https://aclanthology.org/people/shikha-bordia/">Bordia, S.</a>, <a href="https://aclanthology.org/people/zheng-zhong/">Zhong, Z.</a>, <a href="https://aclanthology.org/people/charles-dognin/">Dognin, C.</a>, <a href="https://aclanthology.org/people/maneesh-singh/">Singh, M.</a>, &amp; <a href="https://aclanthology.org/people/mohit-bansal/">Bansal, M.</a> (2020). “HoVer: A Dataset for Many-Hop Fact Extraction and Claim Verification.” <em>Findings of EMNLP</em>, arXiv:2011.03088. <a href="https://arxiv.org/abs/2011.03088" class="uri">https://arxiv.org/abs/2011.03088</a></li>
+<li><a id="ref-7"></a><a href="https://aclanthology.org/people/thibault-sellam/">Sellam, T.</a>, <a href="https://aclanthology.org/people/dipanjan-das/">Das, D.</a>, &amp; <a href="https://aclanthology.org/people/ankur-p-parikh/">Parikh, A. P.</a> (2020). “BLEURT: Learning Robust Metrics for Text Generation.” <em>ACL</em>, arXiv:2004.04696. <a href="https://arxiv.org/abs/2004.04696" class="uri">https://arxiv.org/abs/2004.04696</a></li>
+<li><a id="ref-8"></a><a href="https://cmohri.github.io/">Mohri, C.</a> &amp; <a href="https://thashim.github.io/">Hashimoto, T.</a> (2024). “Language Models with Conformal Factuality Guarantees.” <em>ICML</em>, arXiv:2402.10978. <a href="https://arxiv.org/abs/2402.10978" class="uri">https://arxiv.org/abs/2402.10978</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260507-averitec/</guid>
+  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260507-averitec/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Influential ChatGPT-in-Education Meta-Analysis Retracted: Where’s the Transparency and Cost?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://arstechnica.com/ai/2026/05/influential-study-touting-chatgpt-in-education-retracted-over-red-flags/">Ars Technica</a>.</figcaption>
+</figure>
+</div>
+<blockquote class="blockquote">
+<p><strong>Retracted paper:</strong> Jin Wang and <a href="https://orcid.org/0009-0002-7681-0635">Wenxiang Fan</a> (2025), “<a href="https://doi.org/10.1057/s41599-025-04787-y">The effect of ChatGPT on students’ learning performance, learning perception, and higher-order thinking: insights from a meta-analysis</a>,” <em>Humanities and Social Sciences Communications</em>, Hangzhou Normal University. <a href="https://www.nature.com/articles/s41599-026-07310-z">Retracted</a> April 22, 2026.</p>
+</blockquote>
+<p><a href="https://arstechnica.com/author/jeremyhsu/">Jeremy Hsu</a>, <a href="https://arstechnica.com/ai/2026/05/influential-study-touting-chatgpt-in-education-retracted-over-red-flags/">reporting</a> for <em>Ars Technica</em>, walks through the retraction of the <a href="https://doi.org/10.1057/s41599-025-04787-y">Wang and Fan paper</a>, a meta-analysis in <a href="https://www.nature.com/palcomms/"><em>Humanities and Social Sciences Communications</em></a> (Springer Nature) claiming ChatGPT delivers “a large positive impact on improving learning performance,” a “moderately positive impact on enhancing learning perception,” and gains in “fostering higher-order thinking.” The paper pooled effect sizes from 51 prior studies that compared ChatGPT-using experimental groups against non-AI control groups. Springer Nature <a href="https://www.nature.com/articles/s41599-026-07310-z">retracted it</a> on April 22, 2026:</p>
+<blockquote class="blockquote">
+<p>The Editor has decided to retract this paper owing to concerns regarding discrepancies in the meta-analysis. These issues ultimately undermine the confidence the Editor can place in the validity of the analysis and resulting conclusions.</p>
+<p><strong>The authors have not responded to correspondence regarding this retraction.</strong></p>
+</blockquote>
+<p>What the article reports:</p>
+<ul>
+<li>Between publication on May 6, 2025 and retraction nearly a year later, the paper picked up 262 within-publisher citations, 504 total citations, ~500K reads, and a 99th-percentile attention score.</li>
+<li><a href="https://meaningprocessing.com/">Ilkka Tuomi</a>, chief scientist at Meaning Processing Ltd., posted on LinkedIn at the time of original publication that meta-analyses of this kind try to “draw conclusions about incompatible and ill-defined outcomes”: “The only reason to do these studies seems to be that statistics and meta-analysis tools can crunch out numbers that look [like] science.”</li>
+<li><a href="https://www.ed.ac.uk/profile/ben-williamson">Ben Williamson</a>, senior lecturer at the Centre for Research in Digital Education and the Edinburgh Futures Institute at the University of Edinburgh, told Ars the paper appeared to be “synthesizing very poor quality studies, or mixing together findings from studies that simply cannot be accurately compared due to very different methods, populations, and samples.” He also flagged the timing: ChatGPT shipped only two and a half years before publication, and Williamson said it was “not feasible that dozens of high-quality studies about ChatGPT and learning performance could have been conducted, reviewed, and published in that time.”</li>
+<li>The retraction notice attracted little attention until Williamson shared it on Bluesky and LinkedIn, raising the worry that the “headline finding that ChatGPT helps learning performance might persist despite its retraction.”</li>
+</ul>
+<p>The retracted paper’s abstract:</p>
+<blockquote class="blockquote">
+<p>As a new type of artificial intelligence, ChatGPT is becoming widely used in learning. However, academic consensus regarding its efficacy remains elusive. This study aimed to assess the effectiveness of ChatGPT in improving students’ learning performance, learning perception, and higher-order thinking through a meta-analysis of 51 research studies published between November 2022 and February 2025. The results indicate that ChatGPT has a large positive impact on improving learning performance (<img src="https://benjaminhan.net/feed-assets/4ba0f7f8f6d1ac92.svg" alt="g = 0.867" class="feed-math-inline"/>) and a moderately positive impact on enhancing learning perception (<img src="https://benjaminhan.net/feed-assets/93c340d4d5d9e3e1.svg" alt="g = 0.456" class="feed-math-inline"/>) and fostering higher-order thinking (<img src="https://benjaminhan.net/feed-assets/b50dd035fa35552b.svg" alt="g = 0.457" class="feed-math-inline"/>). The impact of ChatGPT on learning performance was moderated by type of course (<img src="https://benjaminhan.net/feed-assets/b344d9b145a8022e.svg" alt="Q_B = 64.249" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/425ab533a358a81d.svg" alt="P &lt; 0.001" class="feed-math-inline"/>), learning model (<img src="https://benjaminhan.net/feed-assets/8e3167ced7b69b13.svg" alt="Q_B = 76.220" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/425ab533a358a81d.svg" alt="P &lt; 0.001" class="feed-math-inline"/>), and duration (<img src="https://benjaminhan.net/feed-assets/95d90f1aa4b3ba6a.svg" alt="Q_B = 55.998" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/425ab533a358a81d.svg" alt="P &lt; 0.001" class="feed-math-inline"/>); its effect on learning perception was moderated by duration (<img src="https://benjaminhan.net/feed-assets/6f541c354c9701f9.svg" alt="Q_B = 19.839" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/425ab533a358a81d.svg" alt="P &lt; 0.001" class="feed-math-inline"/>); and its influence on the development of higher-order thinking was moderated by type of course (<img src="https://benjaminhan.net/feed-assets/fc00cf6d1e5778f7.svg" alt="Q_B = 7.811" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/f00b953fb238ecb5.svg" alt="P &lt; 0.05" class="feed-math-inline"/>) and the role played by ChatGPT (<img src="https://benjaminhan.net/feed-assets/a13408c10f52c255.svg" alt="Q_B = 4.872" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/f00b953fb238ecb5.svg" alt="P &lt; 0.05" class="feed-math-inline"/>). This study suggests that: (1) appropriate learning scaffolds or educational frameworks (e.g., Bloom’s taxonomy) should be provided when using ChatGPT to develop students’ higher-order thinking; (2) <strong>the broad use of ChatGPT at various grade levels and in different types of courses should be encouraged to support diverse learning needs</strong>; (3) <strong>ChatGPT should be actively integrated into different learning modes to enhance student learning, especially in problem-based learning</strong>; (4) <strong>continuous use of ChatGPT should be ensured to support student learning, with a recommended duration of 4–8 weeks for more stable effects</strong>; (5) <strong>ChatGPT should be flexibly integrated into teaching as an intelligent tutor, learning partner, and educational tool</strong>. Finally, due to the limited sample size for learning perception and higher-order thinking, and the moderately positive effect, future studies with expanded scope should further explore how to use ChatGPT more effectively to cultivate students’ learning perception and higher-order thinking.</p>
+</blockquote>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The technical case against the paper has been specific and public from the start.</strong> Tuomi’s <a href="https://www.linkedin.com/pulse/what-went-methodologically-wrong-chatgpt-education-ilkka-tuomi-den0f/">methodological analysis</a> and <a href="https://www.linkedin.com/posts/ilkka-tuomi-30086_the-effect-of-chatgpt-on-students-learning-activity-7327264463550595073-gl_J/">companion post</a>, both posted shortly after the paper appeared, lay it out; Williamson amplified them in <a href="https://www.linkedin.com/posts/ben-williamson-7a501b329_the-effect-of-chatgpt-on-students-learning-activity-7327070885587120128-zRXr/">his own pre-publication LinkedIn warning</a> the same week, telling readers to “check out the two-part analysis by Ilkka Tuomi” before taking the meta-analysis seriously:</p>
+<ul>
+<li>The paper “repeats all the errors from an earlier meta-analysis by Deng et al.,” reusing Deng’s search string without attribution, including a copied spelling error.</li>
+<li>Deng at least tried to score input studies for quality. Wang &amp; Fan say nothing about quality and do not state whether the analyzed studies were peer-reviewed; studies from “0-quality journals (like ‘Mathematics’ from MDPI)” are included.</li>
+<li>Internal validity in randomized and quasi-experimental designs requires control and treatment groups drawn from the same population. The 51 studies pool teachers, medical-practice students, college mathematics, computer programming, and language-learning groups; the “basic criterion for making (internally) valid conclusions is broken before the analysis starts.”</li>
+<li>The funnel: the search strings returned 6,621 papers; abstract filtering left 2,712; “careful review” produced 51. In half the studies the experimental/treatment group had fewer than 35 students; some “claim to make statistically valid conclusions based on groups with 12 students,” and the paper offers no study-power estimate.</li>
+<li>The heterogeneity statistic is reported but not interpreted: “huge, suggesting that there is no ‘it’ in the studies. The external validity is junk.”</li>
+<li>To illustrate what summing effect sizes across incompatible studies looks like, Tuomi compares it to a meta-review of “the impact of electricity on learning outcomes” that would pool teacher commute mode, classroom lighting, and air conditioning into a single average. He calls the pattern “garbage in, gold out”: junk inputs, respected-journal output.</li>
+</ul></li>
+<li><p><strong>Publishers should publish a real account of what went wrong, especially for a paper this widely cited.</strong> Two sentences and a non-responsive-author disclosure is not enough from a Springer Nature title that just retracted a paper with 504 citations and ~500K reads, especially when the technical critique above had been public the entire year. The notice does not say which of the three headline claims are now invalid, what the meta-analysis discrepancies actually were, or whether the failure was in study selection, effect-size aggregation, or both. The <a href="https://publicationethics.org/retraction-guidelines">Committee on Publication Ethics retraction guidelines</a> call for specifics; this notice does not meet that standard. The publisher should also disclose what peer review missed and notify the 262 within-publisher citing authors directly, so the correction reaches them instead of the other way around. Williamson, <a href="https://www.linkedin.com/posts/ben-williamson-7a501b329_retraction-note-the-effect-of-chatgpt-on-activity-7456842986551803904-DBoN/">writing on LinkedIn</a> after the retraction, put it bluntly: the paper “should not have been published in the first place,” and despite the retraction, “this and similar studies have shaped debates about AI in education anyway.”</p></li>
+<li><p><strong>Make get-famous-quick costly for researchers and their institutions.</strong> Publishing fast on a hot topic compounds in upside, while the downside, if it ever arrives, is a thin retraction note years later that does not erase the citations or the attention score. The Wang &amp; Fan paper accumulated nearly 60K accesses and a 200+ altmetric score within three days of publication, per <a href="https://www.linkedin.com/posts/ben-williamson-7a501b329_the-effect-of-chatgpt-on-students-learning-activity-7327070885587120128-zRXr/">Williamson’s update on LinkedIn</a>; by retraction it had reached ~500K reads and 504 citations. Williamson described the broader environment as a “flaky evidentiary culture” in AI-in-education research, “where it’s relatively easy to publish in journals with low-quality peer review and editorial processes, allowing papers of dubious quality to get trawled in a poorly designed meta-analysis and then bundled up as conclusive evidence that gets wildly circulated by big social media accounts.” A few changes would make the asymmetry hurt:</p>
+<ul>
+<li>Institutional misconduct review by the authors’ employer (Hangzhou Normal University in this case), with a published outcome rather than internal-only handling.</li>
+<li>Mandatory reciprocal-citation: any paper citing a retracted work after the retraction date must cite the retraction note alongside it, enforced by the publisher inside the same journal family.</li>
+<li>A publicly searchable retraction registry that travels with the author byline at hiring, grant review, and tenure time. The <a href="https://retractionwatch.com/retraction-watch-database-user-guide/">Retraction Watch Database</a> already exists; funders and search committees should treat it as a default lookup; few currently do.</li>
+<li>A grant-cycle penalty: principal investigators with retracted papers in the prior N years carry a disclosure on every new application, weighted in review.</li>
+</ul>
+<p>As long as retraction costs this little, fast publication on a hot topic with weak data has no real downside for the authors or their institutions. The downside lands elsewhere. Papers like Wang &amp; Fan helped legitimize the AI-in-education investment thesis that is <a href="../../posts/20260424-edu-startups-decline/">now collapsing</a>, and the schools, districts, and ed-tech vendors that bought in carry the cost. The citation residue stays in the literature long after the funding has moved on.</p></li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/</guid>
+  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Apple 50 Years</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260506-apple-50-years/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260506-apple-50-years/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="3">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260506-apple-50-years/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260506-apple-50-years/02.jpg" class="img-fluid" data-lightbox-src="02-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260506-apple-50-years/03.jpg" class="img-fluid" data-lightbox-src="03-full.jpg"></p>
+</div>
+</div>
+</div>
+<p>A Barnes &amp; Noble opened shop today near office, so I grabbed my copy!</p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116529230837787675">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260506-apple-50-years/</guid>
+  <pubDate>Wed, 06 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260506-apple-50-years/01.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Reading the Reasoning Traces Behind ARC-AGI-3</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Image from <a href="https://arcprize.org/blog/arc-agi-3-gpt-5-5-opus-4-7-analysis">ARC Prize</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://gregkamradt.com">Greg Kamradt</a> at <a href="https://arcprize.org">ARC Prize</a> published <a href="https://arcprize.org/blog/arc-agi-3-gpt-5-5-opus-4-7-analysis">an analysis</a> of 160 replays and reasoning traces from <a href="https://openai.com">OpenAI</a>’s GPT-5.5 and <a href="https://anthropic.com">Anthropic</a>’s Opus 4.7 on <a href="https://arcprize.org/arc-agi/3/">ARC-AGI-3</a>, the 135-environment benchmark that withholds instructions and forces the model to infer rules from sparse feedback. GPT-5.5 scored 0.43%, Opus 4.7 scored 0.18%.</p>
+<p>What the article reports: three failure modes pulled from the reasoning traces.</p>
+<ul>
+<li><strong><em>True local effect, false world model.</em></strong> The model correctly notices that an action changes a local property (“ACTION3 rotates the object”) but doesn’t translate the observation into a rule that governs play (“orient the object to match the target before acting”). The observation is right; the world model is missing.</li>
+<li><strong><em>Wrong level of abstraction from training data.</em></strong> Models map unfamiliar mechanics onto games they’ve seen: Tetris, Frogger, Sokoban, Flood-It, Breakout. A visual resemblance becomes a full gameplay theory and action selection follows the wrong script.</li>
+<li><strong><em>Solved the level, didn’t learn the game.</em></strong> A level can be beaten with a mistaken read of the primitive (“click teleports the character” when the real mechanic is push-to-match), and the reward then cements the wrong theory for subsequent levels.</li>
+</ul>
+<p>Two illustrations from the article.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/gpt55-ls20.png" class="img-fluid figure-img"></p>
+<figcaption>GPT-5.5 on LS20 mistaking the environment for Breakout, with bricks, a paddle, and a ball (an instance of Failure Mode 2). Image from <a href="https://arcprize.org/blog/arc-agi-3-gpt-5-5-opus-4-7-analysis">ARC Prize</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/opus47-cn04.png" class="img-fluid figure-img"></p>
+<figcaption>Opus 4.7 on CN04 narrating a rotate-and-place theory without locking onto the correct goal (an instance of Failure Mode 1). Image from <a href="https://arcprize.org/blog/arc-agi-3-gpt-5-5-opus-4-7-analysis">ARC Prize</a>.</figcaption>
+</figure>
+</div>
+<p>The article closes with a named contrast between the two models: Opus compressed its observations into a confident wrong theory, GPT-5.5 kept the hypothesis space open but never committed to a plan. “Opus had the wrong compression, GPT-5.5 failed to compress.”</p>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The three failure modes each break a different step in observe → rule → plan → commit.</strong> Failure 1 breaks between observation and rule. Failure 2 swaps in a rule borrowed from training data instead of inferring one from evidence. Failure 3 commits to a rule the reward didn’t validate. That’s more useful than “the models can’t reason,” because it points at which step to instrument in a harness.</p></li>
+<li><p><strong>Failure 3 is the one most likely to show up outside ARC-AGI-3.</strong> It’s the empirical version of the <a href="../../posts/20260430-intrinsic-metacognitive-learning/">metacognitive-evaluation gap</a>: if the agent can’t ask <em>why</em> it won the last level, outcome reward reinforces whatever theory happened to be active, correct or not. Self-improvement loops that use task success as their only signal will encode this systematically.</p></li>
+<li><p><strong>The pattern matches earlier world-model findings.</strong> Closed-form probes like GSM-Symbolic and DFA (deterministic finite automaton) evaluations already showed that identical accuracy numbers can hide very different generalization behavior (the <a href="../../posts/20241108-transformers-world-models/">world-model gap</a> literature). ARC-AGI-3 extends the lesson into open-ended exploration: two models at near-zero scores can still be failing at different points in the reasoning chain, and only the traces show the difference.</p></li>
+<li><p><strong>The GPT-5.5 trace claims carry a mode caveat the post largely glosses.</strong> The article discloses this only in a final “Analysis notes” section:</p>
+<blockquote class="blockquote">
+<p>With our default tests, GPT-5.5 did not return its reasoning traces. The qualitative analysis above therefore uses an analysis mode run, which is an alternate testing setup intended to elicit more explicit descriptions of how the model is interpreting the environment and deciding what to try next. The official GPT-5.5 score is not from that mode. All reported scores use the standard ARC-AGI-3 harness, matching the setup used for Opus 4.7.</p>
+</blockquote>
+<p>The scores themselves are clean: 0.43% and 0.18% are both from the standard harness. The confound lives in the qualitative trace comparison that carries the article’s main argument. Opus’s traces are from the standard harness; GPT-5.5’s are from a mode specifically designed to elicit more explicit reasoning. More explicit traces can easily read as a wider hypothesis space, which means “Opus compresses more aggressively than GPT-5.5” may reflect the harness rather than the model.</p></li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/</guid>
+  <pubDate>Wed, 06 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>It’s Possible to Learn in Our Sleep. Should We?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260506-learning-in-sleep/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260506-learning-in-sleep/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260506-learning-in-sleep/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://www.newyorker.com/culture/annals-of-inquiry/its-possible-to-learn-in-our-sleep-should-we">The New Yorker</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://www.newyorker.com/contributors/shayla-love">Shayla Love</a>’s <a href="https://www.newyorker.com/culture/annals-of-inquiry/its-possible-to-learn-in-our-sleep-should-we">New Yorker piece</a> [1] revisits sleep learning, a field that a mid-1950s paper by Charles W. Simon and William H. Emmons [2] effectively condemned as quackery by showing that the subjects in most earlier studies had simply been awake. Decades of neglect later, modern electroencephalography (EEG) has let researchers run the experiments properly. The article reports findings from <a href="https://faculty.wcas.northwestern.edu/paller/">Ken Paller</a>’s lab at Northwestern, <a href="https://www.psychol.cam.ac.uk/staff/dr-karen-konkoly">Karen Konkoly</a> (now at Cambridge), <a href="https://scholar.google.com/citations?user=z7i2LKcAAAAJ">Anat Arzi</a> at the Weizmann Institute, <a href="https://scholar.google.com/citations?user=eyXo3hUAAAAJ">Emma Peters</a> at Bern, <a href="https://dreslerlab.org/">Martin Dresler</a> at the Donders Institute, and <a href="https://thomas-andrillon.wixsite.com/research">Thomas Andrillon</a> at the Paris Brain Institute.</p>
+<p>What the article reports:</p>
+<ul>
+<li>Konkoly’s 2026 study in <em>Neuroscience of Consciousness</em> [3] gave spatial puzzles to twenty lucid dreamers, paired each puzzle with a specific sound cue, and tracked which ones surfaced in dreams. Participants solved 42% of puzzles that appeared in dreams and 17% of ones that did not, with the highest solve rates coming from ordinary rather than lucid dreams.</li>
+<li>Independent labs in the US, France, Germany, and the Netherlands [4] have established two-way communication with sleeping lucid dreamers, delivering yes/no questions and arithmetic and receiving eye-movement responses, all while EEG confirmed the participants were not awake.</li>
+<li>Anat Arzi’s 2014 Weizmann study [5] found that smokers exposed to a cigarette-plus-rotting-fish scent pairing overnight reduced cigarette consumption by more than 30%, more than a matched awake group.</li>
+<li>Emma Peters’s work with lucid dreamers [6] shows that practicing physical tasks (finger tapping, coin tossing, dart throwing with the non-dominant hand) inside a dream improves next-day performance versus controls, with the important caveat that dreams are not a controlled practice environment.</li>
+<li>Paller and Andrillon both caution against the obvious commercial reading. A recent paper from Paller’s group [7] shows that targeted memory reactivation depends on ample, undisturbed slow-wave sleep, and when the cueing itself fragments sleep it undermines the consolidation it was meant to help. Andrillon: dreams “follow their own rules and presumably serve their own inexplicable aims.” Konkoly has started describing the push to instrument sleep as trying to “colonize” it with “wake-centric values.”</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li>The puzzle finding is worth taking seriously because of the within-subject design. Each participant served as their own control on whether a puzzle surfaced in a dream, which rules out individual ability and motivation. The scent-pairing and motor-practice results rest on between-group comparisons that don’t. External validity is still the usual lucid-dreamer caveat: the participant pool doesn’t generalize to the population.</li>
+<li>Puzzles were solved at a higher rate when they appeared in ordinary rather than lucid dreams. If that holds up, it undercuts the intuitive assumption that the useful state for cognitive work is the one closest to wakefulness. The looser, non-self-aware mode may be doing something the metacognitively-aware mode interferes with. That’s the opposite of how consumer products for sleep optimization are usually pitched.</li>
+<li>Andrillon’s warning about “colonizing” sleep with “wake-centric values” lines up with <a href="../../posts/20260426-ai-cannibalizing-human-intelligence/">Vivienne Ming’s WSJ piece on AI cannibalizing human intelligence</a>. Both describe a failure mode where a restorative or generative process gets taken over by productivity goals and quietly degrades. Sleep sits in the same place as unaided cognition in Ming’s argument: a working system whose value is hard to see from outside, which is why the colonization pitch is so easy to make.</li>
+<li>Every study here acts on material the subject already touched awake. Sleep reworked that material; it didn’t acquire it from scratch. The old Psycho-phone pitch was the “from scratch” version, and none of the current work supports it.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Love, S. (2026). “<a href="https://www.newyorker.com/culture/annals-of-inquiry/its-possible-to-learn-in-our-sleep-should-we">It’s Possible to Learn in Our Sleep. Should We?</a>” <em>The New Yorker</em>, May 1.</li>
+<li><a id="ref-2"></a>Simon, C. W., &amp; Emmons, W. H. (1955). “Learning during sleep?” <em>Psychological Bulletin</em>, 52(4), 328–342. <a href="https://doi.org/10.1037/h0043733">[doi:10.1037/h0043733]</a></li>
+<li><a id="ref-3"></a>Konkoly, K. R., Morris, J. D., Hurka, K., Sanders, K., &amp; Paller, K. A. (2026). “<a href="https://academic.oup.com/nc/article/2026/1/niaf067/8456489">Experimentally provoking dreams of unsolved puzzles during REM sleep boosts creative problem solving</a>.” <em>Neuroscience of Consciousness</em>, 2026(1), niaf067.</li>
+<li><a id="ref-4"></a>Konkoly, K. R., Appel, K., Chabani, E., Mangiaruga, A., Gott, J., et al.&nbsp;(2021). “<a href="https://doi.org/10.1016/j.cub.2021.01.026">Real-time dialogue between experimenters and dreamers during REM sleep</a>.” <em>Current Biology</em>, 31(7), 1417–1427.</li>
+<li><a id="ref-5"></a>Arzi, A., Holtzman, Y., Samnon, P., Eshel, N., Harel, E., &amp; Sobel, N. (2014). “<a href="https://doi.org/10.1523/JNEUROSCI.2291-14.2014">Olfactory aversive conditioning during sleep reduces cigarette-smoking behavior</a>.” <em>Journal of Neuroscience</em>, 34(46), 15382–15393.</li>
+<li><a id="ref-6"></a>Peters, E., Golembiewski, S., Erlacher, D., &amp; Dresler, M. (2023). “<a href="https://doi.org/10.1016/j.mehy.2023.111066">Extending mental practice to sleep: Enhancing motor skills through lucid dreaming</a>.” <em>Medical Hypotheses</em>, 174, 111066.</li>
+<li><a id="ref-7"></a>Whitmore, N. W., Bassard, A. M., &amp; Paller, K. A. (2022). “<a href="https://www.nature.com/articles/s41539-021-00119-2">Targeted memory reactivation of face-name learning depends on ample and undisturbed slow-wave sleep</a>.” <em>npj Science of Learning</em>, 7(1), 1.</li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260506-learning-in-sleep/</guid>
+  <pubDate>Wed, 06 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260506-learning-in-sleep/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>How to Make LLM Output More Trustworthy</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260505-llm-uncertainty-survey/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260505-llm-uncertainty-survey/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>How do we make large language model (LLM) output more trustworthy? Three lines of recent work tackle it: formal coverage guarantees via conformal prediction, behavioral calibration of the model’s own prose, and post-hoc detection of unreliable outputs.</p>
+<p><strong>Guarantee-based methods</strong> ensure a returned set contains a correct answer at least as often as a target rate. They require calibration data, extra inference, and an i.i.d. assumption most deployments don’t satisfy. Conformal prediction [1] is one active direction; PAC-Bayes and selective-prediction are close cousins less adapted to LMs. Conformal Language Modeling (CLM) [2] was the first adaptation to generative LMs, returning a calibrated candidate set with per-phrase flags on the parts that carry the guarantee. Conformal Factuality (CF) [3] came later and focused on factuality: it decomposes the answer into atomic claims and drops low-confidence ones until what remains hits a target factuality rate.</p>
+<p><strong>Behavioral calibration</strong> shapes the LM’s output so confidence phrases in the prose carry operational meaning, without bolting a formal guarantee onto an unchanged model. “30% chance” means whatever the training objective made it mean, with no distribution-free backstop. Linguistic Calibration of Long-Form Generations [4] trains the LM in two stages via supervised finetuning (SFT) then reinforcement learning (RL), so a downstream reader can make calibrated forecasts on related questions; generic hedging can’t game it, since hedged text that doesn’t help the reader makes no forecasting progress.</p>
+<p><strong>Detection-based</strong> methods flag unreliable outputs post-hoc, without changing the model. Any black-box LM can be wrapped and the output is a statistical score. Detecting Hallucinations Using Semantic Entropy [5] samples multiple answers and measures meaning disagreement; high disagreement flags a likely hallucination. Since the signal is sample diversity, a model consistently wrong across samples can produce misleading results.</p>
+<p>These methods all share the same inference-time structure (multiple forward passes per query) and differ mostly in what you get back: a backed-off answer (CF), a calibrated candidate set (CLM), a scalar abstention signal (semantic entropy), or a calibrated prose paragraph (linguistic calibration).</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“A Primer on Conformal Prediction.” <a href="https://benjaminhan.net/posts/20260505-conformal-prediction-primer/" class="uri">https://benjaminhan.net/posts/20260505-conformal-prediction-primer/</a></li>
+<li><a id="ref-2"></a>“Conformal Language Modeling” (MIT, ICLR 2024). <a href="https://benjaminhan.net/posts/20260505-conformal-language-modeling/" class="uri">https://benjaminhan.net/posts/20260505-conformal-language-modeling/</a></li>
+<li><a id="ref-3"></a>“Language Models with Conformal Factuality Guarantees” (Stanford, ICML 2024). <a href="https://benjaminhan.net/posts/20260505-conformal-factuality/" class="uri">https://benjaminhan.net/posts/20260505-conformal-factuality/</a></li>
+<li><a id="ref-4"></a>“Linguistic Calibration of Long-Form Generations” (Stanford, ICML 2024). <a href="https://benjaminhan.net/posts/20260505-linguistic-calibration/" class="uri">https://benjaminhan.net/posts/20260505-linguistic-calibration/</a></li>
+<li><a id="ref-5"></a>“Detecting Hallucinations in Large Language Models Using Semantic Entropy” (Oxford and Google DeepMind, Nature 2024). <a href="https://benjaminhan.net/posts/20260505-semantic-entropy/" class="uri">https://benjaminhan.net/posts/20260505-semantic-entropy/</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260505-llm-uncertainty-survey/</guid>
+  <pubDate>Tue, 05 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
+</item>
+<item>
+  <title>Detecting Hallucinations in Large Language Models Using Semantic Entropy</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260505-semantic-entropy/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260505-semantic-entropy/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-semantic-entropy/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>AUROC (higher is better at separating correct from confabulated generations) and AURAC (area under the rejection-accuracy curve) for six LLMs across the QA benchmarks. Semantic entropy (dark blue) matches or beats naive token-level entropy, a P(True) self-eval baseline, and embedding-regression probes on every model. Figure 2 from the paper [1]. Image from <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Nature</em></a>.</figcaption>
+</figure>
+</div>
+<p>In <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Detecting Hallucinations in Large Language Models Using Semantic Entropy</em></a> (Nature, June 2024) [1], <a href="https://sebastianfarquhar.com/">Sebastian Farquhar</a>, <a href="https://jlko.github.io/">Jannik Kossen</a>, <a href="https://lorenzkuhn.github.io/">Lorenz Kuhn</a>, and <a href="https://www.cs.ox.ac.uk/people/yarin.gal/website/">Yarin Gal</a> (Oxford and Google DeepMind) propose an entropy-based uncertainty estimator for large language models (LLMs) that detects <em>confabulations</em> (arbitrary, incorrect generations produced when the model is uncertain) by computing entropy over the <em>meaning</em> of sampled answers rather than over token sequences.</p>
+<blockquote class="blockquote">
+<p>Large language model (LLM) systems, such as ChatGPT or Gemini, can show impressive reasoning and question-answering capabilities but often ‘hallucinate’ false outputs and unsubstantiated answers. Answering unreliably or without the necessary information prevents adoption in diverse fields, with problems including fabrication of legal precedents or untrue facts in news articles and even posing a risk to human life in medical domains such as radiology. Encouraging truthfulness through supervision or reinforcement has been only partially successful. Researchers need a general method for detecting hallucinations in LLMs that works even with new and unseen questions to which humans might not know the answer. Here we develop new methods grounded in statistics, proposing entropy-based uncertainty estimators for LLMs to detect a subset of hallucinations — confabulations — which are arbitrary and incorrect generations. Our method addresses the fact that one idea can be expressed in many ways by computing uncertainty at the level of meaning rather than specific sequences of words. Our method works across datasets and tasks without a priori knowledge of the task, requires no task-specific data and robustly generalizes to new tasks not seen before. By detecting when a prompt is likely to produce a confabulation, our method helps users understand when they must take extra care with LLMs and opens up new possibilities for using LLMs that are otherwise prevented by their unreliability.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The method samples multiple answers from the LLM for a given prompt, clusters the samples by bidirectional semantic entailment (two answers are in the same cluster if each entails the other under a natural-language-inference model), then computes Shannon entropy over the resulting meaning-cluster distribution. The clustering step is what makes semantic entropy beat naive token-level entropy. Naive entropy conflates two sources of variation: uncertainty about meaning (the real signal of confabulation) and uncertainty about wording (“Paris” and “It’s Paris” carry the same answer but inflate naive entropy as different token sequences). Bidirectional-entailment clustering strips out the wording variation, so the per-prompt scalar correlates more tightly with whether the answer is actually wrong.</p>
+<p>In deployment the scalar becomes an abstention signal: threshold it, refuse on high-entropy queries, accept the rest. Because high-entropy queries are disproportionately wrong, refusing them removes more wrong answers than right ones, and accuracy on the retained set climbs. The paper quantifies that improvement two ways. AUROC scores how well the scalar separates right from wrong answers across all prompts (detection quality). AURAC scores how much accuracy actually rises on retained answers as the refusal rate sweeps from 0 to 100% (deployment value). The approach is black-box at inference: it needs sample access but no model internals, no fine-tuning, and no task-specific calibration data. A discrete variant approximates the entailment check with single-forward-pass judgments, trading a small accuracy drop for lower cost.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-semantic-entropy/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>Semantic entropy clusters sampled LLM answers by meaning via bidirectional entailment, then measures entropy over cluster probabilities. <strong>(a, top)</strong> High semantic entropy on a factoid prompt indicates confabulation: naive token-level entropy is misled by paraphrase diversity, but semantic entropy is low on a confident prompt and high on a confabulating one. <strong>(b, bottom)</strong> Applied to FactualBio paragraphs, the signal transfers to claim-level verification by decomposing the paragraph into factoids and measuring semantic entropy per factoid. Figure 1 from the paper [1]. Image from <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Nature</em></a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Experiments span six LLMs (LLaMA 2 Chat 7B/13B/70B, Falcon 7B/40B Instruct, Mistral 7B Instruct) across TriviaQA, <a href="https://arxiv.org/abs/1606.05250">SQuAD</a>, <a href="https://bioasq.org/">BioASQ</a>, <a href="https://github.com/google-research-datasets/natural-questions">NQ Open</a>, <a href="https://arxiv.org/abs/2103.07191">SVAMP</a>, and a FactualBio biography-paragraph benchmark the authors construct. Averaged across the 30 task-model combinations on short-answer QA, semantic entropy achieves AUROC 0.790, above naive entropy (0.691), <a href="https://arxiv.org/abs/2207.05221">P(True)</a> self-evaluation (0.698), and a supervised embedding-regression probe (0.687); performance is stable between 0.78 and 0.81 across model families and scales (Figure 2, the cover image above). The method generalizes out-of-distribution: an embedding probe trained on one task drops sharply on another, while semantic entropy maintains near-training performance. Applied to FactualBio, semantic entropy over atomic sub-claims flags unsupported biographical facts and outperforms the paragraph-adapted P(True) baseline, supporting the claim that the signal transfers from short-answer QA to long-form generation.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Entailment clustering is the critical step, and the paper does stress-test it.</strong> The meaning-cluster assignment uses a natural-language-inference (NLI) model (<a href="https://arxiv.org/abs/2006.03654">DeBERTa-large-MNLI</a>, or the generator LLM itself in an LLM-as-judge variant). The paper’s ablations show results are stable across NLI backbones and stable when generator and judge share a model, which addresses the obvious circularity worry. The remaining open question is scope-specific: on legal, medical, or evaluative judgments, frontier LLMs disagree about meaning among themselves, so entailment clustering cannot be presumed to converge to ground-truth equivalence. <a href="../../posts/20260505-conformal-factuality/">Conformal factuality</a> relies on a related claim-decomposition premise and hits the same boundary condition.</p></li>
+<li><p><strong>The OOD-generalization result carries the paper.</strong> Hallucination-detection methods that depend on in-distribution examples (<a href="https://arxiv.org/abs/2207.05221">P(True)</a>’s few-shot priors, and supervised embedding regression) degrade sharply when the test task differs from the calibration task. Semantic entropy needs no calibration set and transfers across the six datasets without loss, which matters because real-world deployment distributions are never exactly the ones used to train a detector. This is a cleaner version of the argument <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.</a> made for self-evaluation, without the extra cost of a second forward pass per sample.</p></li>
+<li><p><strong>Composability with fact-verification pipelines is the natural next step.</strong> Semantic entropy flags <em>which</em> generations to distrust; benchmarks like <a href="https://arxiv.org/abs/2305.13117">AVeriTeC</a> and <a href="https://arxiv.org/abs/2011.03088">HoVer</a> tell you <em>why</em> (what evidence does or doesn’t support the claim), and tools like <a href="../../posts/20231102-fleek-fact-verification/">FLEEK</a> retrieve evidence from knowledge graphs and the web to make that verdict concrete. A pipeline that routes high-semantic-entropy generations into explicit claim-verification against retrieved evidence would give a user both the uncertainty flag and the remediation path. The paper notes this direction in the discussion but doesn’t test it.</p></li>
+<li><p><strong>Part of the “sample <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/>, then aggregate” family, with a structural limit they all share.</strong> Semantic entropy shares the same inference backbone as <a href="https://arxiv.org/abs/2203.11171">self-consistency</a>, <a href="../../posts/20260505-conformal-language-modeling/">CLM</a>, and <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a>: <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> forward passes per query at temperature &gt; 0. What differs is what each method does with the sample pool.</p>
+<ul>
+<li>Self-consistency majority-votes to pick a single answer.</li>
+<li>CLM applies a conformal stopping rule and returns a calibrated candidate set.</li>
+<li>Semantic entropy clusters by meaning and emits a scalar abstention signal.</li>
+<li>SelfReflect (same Oxford + DeepMind lab) summarizes the internal distribution and scores the summary’s fidelity to the samples.</li>
+</ul>
+<p>Semantic entropy is closest to SelfReflect by output type (per-query scalar) and to <a href="../../posts/20260505-conformal-factuality/">conformal factuality</a> by goal (hallucination mitigation at deployment, black-box at inference). All four pay the same <img src="https://benjaminhan.net/feed-assets/985ab6bb8c672d6f.svg" alt="N\times" class="feed-math-inline"/> inference cost, and the choice among them is about which signal the downstream system needs.</p>
+<p>The shared structural limit: the signal is <em>sample diversity</em>, not factuality. If a model confabulates consistently (its training distribution pins it to the same wrong answer across sampling temperatures), all samples cluster together, semantic entropy is low, and the method signals “confident” when the answer is in fact wrong. The AUROC gains hold for the subset of hallucinations that produce inter-sample disagreement (the confabulation scope the paper is careful to name) but do not extend to the systematic-bias case.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://sebastianfarquhar.com/">Farquhar, S.</a>, <a href="https://jlko.github.io/">Kossen, J.</a>, <a href="https://lorenzkuhn.github.io/">Kuhn, L.</a>, and <a href="https://www.cs.ox.ac.uk/people/yarin.gal/website/">Gal, Y.</a>. “Detecting Hallucinations in Large Language Models Using Semantic Entropy.” <em>Nature</em> 630, pages 625–630, June 2024. <a href="https://www.nature.com/articles/s41586-024-07421-0" class="uri">https://www.nature.com/articles/s41586-024-07421-0</a></li>
+<li><a id="ref-2"></a>Kadavath, S., Conerly, T., Askell, A., et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> arXiv:2207.05221, July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></li>
+<li><a id="ref-3"></a>Mohri, C. and Hashimoto, T. “Language Models with Conformal Factuality Guarantees.” <em>arXiv preprint</em> arXiv:2402.10978, February 16, 2024. <a href="https://arxiv.org/abs/2402.10978" class="uri">https://arxiv.org/abs/2402.10978</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260505-semantic-entropy/</guid>
+  <pubDate>Tue, 05 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260505-semantic-entropy/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+
+</channel>
+</rss>

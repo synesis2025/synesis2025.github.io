@@ -1,0 +1,87 @@
+---
+title: "Making *synesis* Agent-Friendly"
+description: "The surfaces this site exposes so an LLM agent can read, list, and search the corpus without parsing HTML."
+author: synesis
+date: "2026-05-08"
+image: cover.jpg
+---
+
+![Cloudflare's [Agent Readiness](https://blog.cloudflare.com/agent-readiness/) scan for benjaminhan.net, 2026-05-08: 67 / Level 4 "Agent-Integrated."](cover.jpg){fig-align="center"}
+
+The reader-facing tour of this site is in [A User Manual for *synesis*](/posts/20260508-site-user-manual/). This is the other half. Most of the traffic hitting a modern blog is not a human in a browser. It is a crawler building a training corpus, a retrieval fetch firing from inside a chat, or a feed reader polling every hour. Each of those deserves a different answer, and the site is wired to give one.
+
+The posture is three-way:
+
+- Training crawlers blocked — `GPTBot`, `ClaudeBot`, `CCBot`, `Bytespider`, `meta-externalagent`, and the rest of the ingest fleet are disallowed.
+- Live-fetch agents allowed — `ChatGPT-User`, `Claude-User`, `OAI-SearchBot`, `Perplexity-User`, `Applebot`, `Googlebot` are explicitly allowed.
+- Search engines allowed.
+
+The IETF [Content-Signal](https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/#content-signals) header in `robots.txt` says the same thing in a single line: `ai-train=no, ai-input=yes, search=yes`. Don't scrape me to train a model. Do fetch me live for RAG. Do index me for search.
+
+## A single linkset, by convention
+
+Everything an agent would want to find is linked from one file at a known path: [`/.well-known/api-catalog`](https://benjaminhan.net/.well-known/api-catalog). The format is [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727), a plain JSON linkset. One HTTP GET to a convention-named URL, no HTML parsing, and the agent has pointers to:
+
+- `sitemap.xml` — Quarto-generated, every page.
+- `index.xml` — the full-content Atom feed.
+- `llms.txt` — the [plain-text index of every post](https://llmstxt.org/), rebuilt each deploy.
+- `.well-known/agent-skills/index.json` — the skills manifest (below).
+- `search.json` — Quarto's client-side search index.
+
+Two more agent-readable surfaces exist but are kept out of the catalog because their shape is internal and may evolve: `/post-index.json` (a compact `{slug, date, title, categories}` array powering client-side pagination) and `/tag-counts.json` (a flat `{tag: count}` map over the published corpus). The catalog gets the stable contracts.
+
+## Skills the agent can invoke
+
+The [agent-skills manifest](https://benjaminhan.net/.well-known/agent-skills/index.json) declares three things an agent can do with the site:
+
+- `list-posts` — points at the Atom feed and `llms.txt`.
+- `fetch-post-as-markdown` — pattern `/posts/{slug}/index.qmd`, the contract for source-serving.
+- `search` — points at `search.json`.
+
+This is a static manifest, not a running MCP server. An agent that understands the shape can treat the site like an API without the site actually having an API.
+
+## Discoverability for agents that only read headers
+
+The homepage response carries an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) `Link:` header with the same three machine-readable surfaces:
+
+```
+link: </.well-known/api-catalog>; rel="api-catalog",
+      </sitemap.xml>; rel="sitemap",
+      </index.xml>; rel="alternate"; type="application/atom+xml",
+      </llms.txt>; rel="https://llmstxt.org/"
+```
+
+`rel="api-catalog"` is the RFC 9727-registered entry point. The other three mirror the catalog's headline resources for agents that inspect headers but not HTML. GitHub Pages doesn't support custom response headers, so this is injected at the Cloudflare edge by a small Worker in `_workers/agent-discovery/`.
+
+Every page also carries the same three rels as sitewide `<link>` tags in `<head>`. HTML tags are zero-cost, so they apply everywhere. Agents that parse HTML but not headers still get discovery on every URL, not just the homepage. Belt and braces.
+
+## Markdown content negotiation
+
+Every URL on the site responds to `Accept: text/markdown` with a markdown representation and `Content-Type: text/markdown; charset=utf-8`. HTML stays the default when the header is absent. The mapping, also implemented in the agent-discovery Worker:
+
+- `/posts/<slug>/` returns the adjacent `.qmd` source.
+- Everything else returns `llms.txt`, the canonical machine-readable site index.
+
+Serving the authored `.qmd` rather than a live HTML-to-markdown conversion is a deliberate trade. Agents get LaTeX source instead of rendered MathJax HTML, Mermaid DSL instead of pre-rendered SVG, and first-class fidelity on everything the author actually wrote. The cost is some Quarto-specific markup (callout divs, shortcodes, cross-refs) that a plain CommonMark parser will render as literal text. For the vast majority of posts the source is roughly 95% CommonMark, so the markup is a smaller tax than a conversion step would be.
+
+For HTML-parsing agents that never inspect `Accept`, every post page also carries `<link rel="alternate" type="text/markdown" href="index.qmd">` in `<head>`. Three different paths, same destination.
+
+## The `.qmd` source is a live URL
+
+`/posts/<slug>/index.qmd` is not a build input that stays on disk. It is a live URL, served alongside the rendered HTML. Agents that want the authored Markdown do one HTTP GET and skip the parsing problem entirely. One line in `_quarto.yml` makes it work (`resources: posts/**/index.qmd`), which tells Quarto to copy the source into the deploy output.
+
+## Where this lands on the Cloudflare ruler
+
+Cloudflare runs an [Agent Readiness](https://blog.cloudflare.com/agent-readiness/) check that scores a domain across five dimensions — Discoverability, Content, Bot Access Control, API / Auth / MCP / Skill Discovery, and Commerce. This site scores **67 / Level 4 "Agent-Integrated"** as of this writing. 100% on Discoverability, Content, and Bot Access Control. 2 of 6 on API / Auth / MCP / Skill Discovery. Commerce is N/A.
+
+67 is the practical ceiling for now, not a halfway point. The unearned points are genuinely deferred. OAuth and OAuth Protected Resource metadata require real auth infrastructure the site does not have and does not need. The MCP Server Card check requires a deployed MCP server endpoint, which is waiting on a concrete use-case beyond "it would be neat." WebMCP is a draft spec with a narrow audience. Shipping a remote MCP server would close both of the open gaps at once, since it would cover the MCP Server Card dimension directly and back the skill-discovery dimension with a real callable surface instead of the static manifest. Until a real need appears, the static manifest does the job and the hosted server waits.
+
+## What the providers do with it
+
+Direct `curl` probes against the site from `Claude-User`, `ChatGPT-User`, `Perplexity-User`, `ClaudeBot`, and bare UA strings all return 200. Cloudflare's Security Analytics shows zero blocks and zero challenges. The site is reachable.
+
+Via the Ask AI popover on any post, ChatGPT, Claude.ai, and Perplexity all fetch the cited page and answer against its real content. Gemini's web UI does not accept a pre-filled question, so that path is clipboard-and-paste rather than a direct fetch, as covered in the [user manual](/posts/20260508-site-user-manual/).
+
+The wire being open is only half the story. The other half is what happens inside the provider's fetcher, which is opaque and changes without notice. If a future chat client reports "site blocked" without a real 4xx in Cloudflare's logs, that is almost certainly a fetcher-side confabulation, not a configuration change here.
+
+Everything an agent would want from the site is already on the wire. Whether the wire gets used depends on the provider's fetcher, not the site.

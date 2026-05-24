@@ -1,0 +1,82 @@
+---
+title: "Reflexion: Language Agents with Verbal Reinforcement Learning"
+description: "An LLM agent that converts environment feedback into natural-language reflections stored in episodic memory beats strong baselines on AlfWorld, HotPotQA, and HumanEval without updating any weights."
+author: synesis
+date: "2026-05-16"
+source-url: https://arxiv.org/abs/2303.11366
+source-platform: arxiv
+source-mine: false
+image: cover.jpg
+---
+
+![Reflexion across three task types: decision-making (AlfWorld), programming (HumanEval), and reasoning (HotPotQA). For each task, the agent takes a trajectory, receives an evaluation signal (rule-based heuristic, self-generated unit tests, or exact-match grading on the final answer), reflects on what went wrong in natural language, and stores that reflection in memory for the next attempt. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In *Reflexion: Language Agents with Verbal Reinforcement Learning* [[1]](#ref-1) ([NeurIPS 2023](https://neurips.cc/Conferences/2023)), [Noah Shinn](https://noahshinn.com/) et al. (Northeastern, MIT, Princeton) introduce an agent architecture that "learns" across episodes purely by writing natural-language reflections to an episodic memory, without gradient updates or weight changes.
+
+> Large language models (LLMs) have been increasingly used to interact with external environments (e.g., games, compilers, APIs) as goal-driven agents. However, it remains challenging for these language agents to quickly and efficiently learn from trial-and-error as traditional reinforcement learning methods require extensive training samples and expensive model fine-tuning. We propose **Reflexion**, a novel framework to **reinforce language agents not by updating weights, but instead through linguistic feedback**. Concretely, Reflexion agents verbally reflect on task feedback signals, then maintain their own reflective text in an episodic memory buffer to induce better decision-making in subsequent trials. Reflexion is flexible enough to incorporate various types (scalar values or free-form language) and sources (external or internally simulated) of feedback signals, and obtains significant improvements over a baseline agent across diverse tasks (sequential decision-making, coding, language reasoning). For example, **Reflexion achieves a 91% pass@1 accuracy on the HumanEval coding benchmark**, surpassing the previous state-of-the-art GPT-4 that achieves 80%.
+
+## Method
+
+![(a) Diagram of Reflexion. (b) Reflexion reinforcement algorithm. Figure 2 from the paper [[1]](#ref-1).](figure2.webp){fig-align="center" data-lightbox-src="figure2-full.png"}
+
+The agent operates by interaction: at each step it emits an *action* — a tool call, environment command, or free-form answer — and the environment returns an observation. A single attempt at the task is an *episode* (also called a *trial*), and the action-observation sequence within one episode is the *trajectory* ($\tau$) — the agent's short-term memory.
+
+The Reflexion framework factors the agent into three roles. The Self-Reflection model is always an LLM. The Actor is always an LLM, and in most setups *the same* LLM as the Self-Reflection model, with different prompts. The Evaluator can be an LLM but is often a non-LLM signal: a hand-written heuristic, exact-match grading, or the pass/fail of a generated test suite.
+
+- **Actor** ($M_a$) — an LLM whose weights, together with the current experience buffer, jointly parameterize the policy $\pi_\theta(a_i \mid s_i)$ from which each next action is sampled ($\theta = \{M_a,\ \text{experience}\}$).
+- **Evaluator** ($M_e$) — scores the resulting trajectory: a hand-written heuristic (or an LLM-as-judge variant) on AlfWorld, the pass/fail of self-generated unit tests on HumanEval, exact-match grading on HotPotQA's final answer.
+- **Self-Reflection** ($M_{sr}$) — takes the trajectory plus the evaluator's signal and produces a short natural-language reflection (e.g. "I failed because I assumed they both had the same professions"), appended to the *experience* buffer — the agent's long-term memory that persists across episodes.
+
+On the next episode, the Actor is conditioned on the accumulated experience and attempts the task again. The LLM weights stay fixed; the only thing that updates between episodes is the experience text. The "reinforcement signal" is literally the reflection text the Self-Reflection model writes after each failure.
+
+## Results
+
+The paper evaluates Reflexion on three task families:
+
+- **[AlfWorld](https://arxiv.org/abs/2010.03768) [[2]](#ref-2)** (sequential decision-making, 134 task instances) — Reflexion adds 22 percentage points absolute over a [ReAct](https://arxiv.org/abs/2210.03629) [[3]](#ref-3) baseline within 12 iterative learning steps, and the best variant solves 130 of 134 tasks. Figure 3(a) tracks cumulative tasks solved by trial number under both self-evaluation modes (a hand-written heuristic and a GPT-as-judge classifier); 3(b) decomposes the residual failures into hallucination and inefficient planning — both decay steadily under Reflexion, while the ReAct-only baseline plateaus.
+
+![AlfWorld learning curves and failure-mode decomposition (Figure 3 [[1]](#ref-1)).](figure3.webp){fig-align="center" data-lightbox-src="figure3-full.png"}
+
+- **[HotPotQA](https://arxiv.org/abs/1809.09600) [[4]](#ref-4)** <!-- crosslink-todo: /posts/20260503-hotpotqa/ --> (multi-hop reasoning) — Reflexion improves accuracy by 20 points on a 100-question subset. Figure 4 separates the contribution: (a) Reflexion benefits both ReAct and Chain-of-Thought actors; (b) the gain holds even when the actor is given the ground-truth context, so it isn't just better retrieval; (c) decomposes the lift between including past trajectories (episodic memory) and the verbal Self-Reflection step. Episodic memory carries most of the gain, and Self-Reflection adds an 8-point boost on top.
+
+![HotPotQA results across actor variants and the episodic-memory ablation (Figure 4 [[1]](#ref-1)).](figure4.png){fig-align="center"}
+
+- **[HumanEval](https://arxiv.org/abs/2107.03374) [[5]](#ref-5)** (Python coding, GPT-4 as Actor) — Reflexion reaches 91% pass@1 versus the reported 80% GPT-4 baseline (11-point gain). Table 1 shows the gain is consistent across languages and benchmarks: HumanEval Rust 60 → 68, [MBPP](https://arxiv.org/abs/2108.07732) [[6]](#ref-6) (Mostly Basic Programming Problems) Rust 71 → 75. The paper also introduces **LeetcodeHardGym**, a benchmark of 40 hard-rated Leetcode problems with scaffolding across 19 programming languages, but only reports results on the Python subset (7.5 → 15); the multi-language scope is released as an artifact, not used in any reported experiment. The exception to the across-the-board gains is MBPP Python, where Reflexion (77.1) underperforms the GPT-4 baseline (80.1) — see the test-generation table below.
+
+![Pass@1 across code-generation benchmarks and languages (Table 1 [[1]](#ref-1)).](table1.png){fig-align="center"}
+
+The paper's ablations compare self-generated unit tests vs ground-truth tests as the evaluation signal, examine memory-length effects, and separate the contribution of the Evaluator from the Self-Reflection step. Two things to flag about Table 2 before reading. First, the test suites used as the Evaluator's signal are all LLM-generated: Reflexion's procedure is the same on every code benchmark — the Actor writes tests from the problem description (with chain-of-thought prompting), filters for syntactic validity, and uses those tests' pass/fail as the signal. MBPP ships with its own curated tests, but Reflexion doesn't use them; the model generates fresh tests from the prompt. Second, the four diagnostic columns are conditional probabilities: TP and FP are conditional on tests passing (TP + FP = 1), FN and TN on tests failing (FN + TN = 1).
+
+The **Base** and **Reflexion** columns are pass@1 — the approach's headline accuracy with and without the Reflexion loop. The **TP / FN / FP / TN** columns rate the LLM-generated tests as a classifier of solution correctness, and they predict approach performance directly. HumanEval Python's tests are clean — TP=0.99, FP=0.01 — and Reflexion lifts 0.80 → 0.91. MBPP Python's tests are noisy on both sides: FP=0.16 lets buggy code through, FN=0.59 means most "test failures" were actually correct solutions the loop then rewrites, and Reflexion drops to 0.77.
+
+The paper doesn't diagnose *why* MBPP's LLM-generated tests are noisier, but the prompt structure of the two benchmarks is a plausible explanation: HumanEval prompts are docstrings that often include doctest-style I/O examples (the LLM can crib from those when writing tests), while MBPP prompts are bare natural-language sentences ("Write a function to remove duplicates…") with no I/O examples, so the LLM has to invent both inputs and expected outputs from scratch.
+
+![Self-generated test accuracy on HumanEval and MBPP, broken into TP/FN/FP/TN. Rust columns use the hardest 50 HumanEval problems translated via MultiPL-E (Table 2 [[1]](#ref-1)).](table2.png){fig-align="center"}
+
+## My Notes
+
+- **Verbal feedback as policy state.** Reflexion is the paper that established natural-language reflection as a first-class component of agent design, and the lineage is visible across 2024 agentic frameworks — from [AutoGen](https://arxiv.org/abs/2308.08155) [[7]](#ref-7) to [LangGraph](https://langchain-ai.github.io/langgraph/) to the critic-refiner loops in Anthropic's computer-use agents. What's distinctive here is keeping the reflections as long-term memory across trials rather than compressing them into the immediate context the way [Self-Refine](/posts/20260516-self-refine/) [[8]](#ref-8) does.
+- **The 91% HumanEval caveat.** Later reproductions found Reflexion's gain is bottlenecked by test-generation quality rather than by the repair step itself: [Olausson et al. (2024)](https://arxiv.org/abs/2306.09896) [[9]](#ref-9) studied iterative self-repair on HumanEval and APPS and argued that "self-repair is bottlenecked by the model's ability to provide feedback on its own code" — substituting a stronger feedback model lifts the gains substantially. Reflexion's own ablation (Table 3 on HumanEval Rust) tells the same story: removing test generation drops Reflexion from 0.68 to 0.52, while removing the self-reflection step alone barely moves the number (0.68 → 0.60). [CodeT](https://arxiv.org/abs/2207.10397) [[10]](#ref-10) makes the self-generated-test mechanism explicit; Reflexion adds a reflection step on top but inherits CodeT's dependence on test-generation quality.
+- **Reflexion vs Cannot-Self-Correct.** Reflexion's headline claim — that verbal reinforcement lifts an LLM agent — sits next to a result by [Huang et al.](/posts/20260516-cannot-self-correct/) [[11]](#ref-11) that LLMs *cannot* reliably self-correct. The two don't contradict.
+    - Huang et al. define *intrinsic* self-correction as a model revising its own answer with no external signal, and show it degrades reasoning. Reflexion always supplies an external signal via the Evaluator — a heuristic on AlfWorld, exact-match on HotPotQA, test execution on HumanEval.
+    - The structural overlap is Reflexion's Self-Reflection step. Diagnosing what went wrong over the model's own trajectory is exactly what Huang et al. studied. The Evaluator is upstream: it gates whether Self-Reflection fires at all.
+    - Table 2 backs this up with the FN column: MBPP Python's FN is 0.59 vs HumanEval Python's 0.40, meaning MBPP's tests fail on already-correct solutions much more often. Reflexion then "corrects" those correct solutions and ends up below the GPT-4 baseline on MBPP Python — 80.1 (baseline) vs 77.1 (Reflexion).
+    - So Reflexion is best read as a positive existence result for *self-correction with reliable external signal*, not a refutation of the intrinsic-failure result.
+- **Memory-as-parameters has a context budget.** The paper writes the policy as $\pi_\theta$ with $\theta = \{M_a, \text{mem}\}$ — the memory is part of the parameter set. The interesting question is what learning in token space gives up. First, the experience is task-specific and doesn't transfer: every new task starts with an empty buffer. Second, as the buffer grows across trials, the Actor's context budget becomes the bottleneck, so the effective "learning rate" is bounded by how much context the system can spend per inference. Later work on extending effective context ([MemGPT](https://arxiv.org/abs/2310.08560) [[12]](#ref-12)) and agent-specific long-context finetuning is partly a response to this limit.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Shinn, N.](https://noahshinn.com/), [Cassano, F.](https://federico.codes/), Berman, E., [Gopinath, A.](https://meche.mit.edu/people/faculty/AGOPI@MIT.EDU), [Narasimhan, K.](https://www.cs.princeton.edu/~karthikn/), [Yao, S.](https://ysymyth.github.io/) "Reflexion: Language Agents with Verbal Reinforcement Learning." *NeurIPS 2023* (arXiv:2303.11366), March 20, 2023. <https://arxiv.org/abs/2303.11366>
+2. <a id="ref-2"></a>Shridhar, M., Yuan, X., Côté, M.-A., Bisk, Y., Trischler, A., Hausknecht, M. "ALFWorld: Aligning Text and Embodied Environments for Interactive Learning." *ICLR 2021* (arXiv:2010.03768), October 8, 2020. <https://arxiv.org/abs/2010.03768>
+3. <a id="ref-3"></a>Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., Cao, Y. "ReAct: Synergizing Reasoning and Acting in Language Models." *ICLR 2023* (arXiv:2210.03629), October 6, 2022. <https://arxiv.org/abs/2210.03629>
+4. <a id="ref-4"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W., Salakhutdinov, R., Manning, C. D. "HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering." *EMNLP 2018* (arXiv:1809.09600), September 25, 2018. <https://arxiv.org/abs/1809.09600>
+5. <a id="ref-5"></a>Chen, M., Tworek, J., Jun, H., Yuan, Q., Pinto, H. P. d. O., Kaplan, J., et al. "Evaluating Large Language Models Trained on Code." *arXiv preprint* (arXiv:2107.03374), July 7, 2021. <https://arxiv.org/abs/2107.03374>
+6. <a id="ref-6"></a>Austin, J., Odena, A., Nye, M., Bosma, M., Michalewski, H., Dohan, D., Jiang, E., Cai, C., Terry, M., Le, Q., Sutton, C. "Program Synthesis with Large Language Models." *arXiv preprint* (arXiv:2108.07732), August 16, 2021. <https://arxiv.org/abs/2108.07732>
+7. <a id="ref-7"></a>Wu, Q., Bansal, G., Zhang, J., Wu, Y., Li, B., Zhu, E., Jiang, L., Zhang, X., Zhang, S., Liu, J., Awadallah, A. H., White, R. W., Burger, D., Wang, C. "AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation." *arXiv preprint* (arXiv:2308.08155), August 16, 2023. <https://arxiv.org/abs/2308.08155>
+8. <a id="ref-8"></a>Madaan, A., Tandon, N., Gupta, P., Hallinan, S., Gao, L., Wiegreffe, S., Alon, U., Dziri, N., Prabhumoye, S., Yang, Y., Gupta, S., Majumder, B. P., Hermann, K., Welleck, S., Yazdanbakhsh, A., Clark, P. "Self-Refine: Iterative Refinement with Self-Feedback." *NeurIPS 2023* (arXiv:2303.17651), March 30, 2023. <https://arxiv.org/abs/2303.17651>
+9. <a id="ref-9"></a>Olausson, T. X., Inala, J. P., Wang, C., Gao, J., Solar-Lezama, A. "Is Self-Repair a Silver Bullet for Code Generation?" *ICLR 2024* (arXiv:2306.09896), June 16, 2023. <https://arxiv.org/abs/2306.09896>
+10. <a id="ref-10"></a>Chen, B., Zhang, F., Nguyen, A., Zan, D., Lin, Z., Lou, J.-G., Chen, W. "CodeT: Code Generation with Generated Tests." *ICLR 2023* (arXiv:2207.10397), July 21, 2022. <https://arxiv.org/abs/2207.10397>
+11. <a id="ref-11"></a>Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X., Zhou, D. "Large Language Models Cannot Self-Correct Reasoning Yet." *ICLR 2024* (arXiv:2310.01798), October 3, 2023. <https://arxiv.org/abs/2310.01798>
+12. <a id="ref-12"></a>Packer, C., Wooders, S., Lin, K., Fang, V., Patil, S. G., Stoica, I., Gonzalez, J. E. "MemGPT: Towards LLMs as Operating Systems." *arXiv preprint* (arXiv:2310.08560), October 12, 2023. <https://arxiv.org/abs/2310.08560>
