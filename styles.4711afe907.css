@@ -717,16 +717,20 @@ h6, .h6 {
   }
 }
 
-/* Home listing: breathing room between the three in-card blocks.
-   Quarto sets the title flush against the category pills (h3 has 0
-   margin-bottom) and the pills flush against the description (only
-   5px padding-bottom on the pill row). Space each element so the
-   title-to-categories-to-description hierarchy reads clearly. */
-.quarto-listing-default .quarto-post .listing-title {
+/* Home listing: breathing room between the in-card blocks. Layout is
+   title → description → categories (tags are injected after the
+   description by hydrate-tags.html, where they read as end-matter
+   metadata alongside the date). Quarto's bundled Bootstrap has a
+   higher-specificity reset (`div.quarto-post .body h3.listing-title
+   { margin-bottom: 0 }`) that silently wins against a 3-class
+   selector here, so we either match its specificity or use
+   !important — picking the explicit selector for clarity. */
+.quarto-listing-default div.quarto-post .body h3.listing-title {
   margin-bottom: 0.6em;
 }
 .quarto-listing-default .quarto-post .listing-categories {
-  margin-bottom: 0.6em;
+  margin-top: 0.6em;
+  margin-bottom: 0;
   padding-bottom: 0;
 }
 /* Tag chips on listing cards — rewritten by category-links.html from
