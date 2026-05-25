@@ -21,7 +21,47 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 24 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 25 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Proof Generation vs Digestion</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Screenshot of the first toot in Terence Tao’s three-part thread. Image from <a href="https://mathstodon.xyz/@tao/116450581967483825">Mastodon</a>.</figcaption>
+</figure>
+</div>
+<p>Terence Tao on Mastodon:</p>
+<blockquote class="blockquote">
+<p>As a crude first approximation, the problem-solving component of mathematical research (which, one should stress, is not the <em>only</em> aspect of such research) can be decomposed into three subcomponents:</p>
+<ol type="1">
+<li>Proof generation (finding a solution to a given problem);</li>
+<li>Proof verification (checking that a proposed solution actually works); and</li>
+<li>Proof digestion (understanding the essence of a solution, placing it in context with previous literature, summarizing and explaining it effectively, and gaining insights on other related problems and topics).</li>
+</ol>
+<p>Until recently, all three of these subtasks were rather difficult and time-intensive to perform; but a human mathematician (or a collaboration between several mathematicians) who had invested the effort to both generate a proof and verify it usually gained enough understanding into the structure of that proof that they could also digest it effectively. Because of this, our community has been generally content to emphasize the proof generation and verification aspect of problem solving, as the proof digestion tended to be created naturally as an organic byproduct of these first two aspects. This was also convenient for assessing proof efforts, as the generation and verification tasks had well-defined objectives, whilst proof digestion was a more subjective and open-ended process. [Though “the ability to present the result at a research conference and take questions” is a rough first approximation of a metric for whether a proof has been digested,]</p>
+<p>However, recent advances in both AI and proof formalization have begun to vastly accelerate and automate the first two components of this process. This is leading to a new type of “impedance mismatch”: problems for which solutions can be rapidly generated and verified in a mostly automated process, but for which no human author has understood the arguments well enough to initiate the (much slower) digestion process. <strong>In fact, with the current cultural incentives that reward the first authors to “solve” the problem, rather than the later authors who “digest” the solution</strong>, one may end up with the perverse situation in which an AI-generated (and formally verified) solution to an problem that is presented to the community without any significant digestion may actually <em>inhibit</em> the progress of the field that the problem lies in, by discouraging any further attempts to work on the problem, simplify and explain the proof, and extract broader insights.</p>
+<p>Perhaps having more refined terminology to describe solutions would help. For instance, a proof that is proposed but unverified should be viewed as 1/3 of a solution at best, while a proof that is both proposed and verified remains only 2/3 of a solution until a proper, well-digested presentation of the results has been made. As a concrete example: I would currently rate the recent progress on Erdos problem #1169 which has created some buzz on social media as currently constituting 2/3 of a solution in this framework: a proof has been generated and verified, but the broader impacts of the argument on the rest of the field are still being assessed. Eventually, I espect a fully satisfactory solution to this problem to be obtained, but this may take more time that one is now accustomed to in this era of rapid proof generation and proof verification.</p>
+</blockquote>
+<p>This post from Terence on math, as always, strikes me as generally applicable to many rigorous intellectual endeavors: research in other fields, software engineering, and even writing and other creative work. Again, this is the consequence of <em>abundance</em>, which will elevate (whether we are ready or not) the importance of understanding, reviewing, discerning, and taste. The question is how we reverse the incentive structure to start appreciating these aspects much more, rather than just focusing on “the first”.</p>
+<hr>
+<p><em>Originally posted on <a href="https://mathstodon.xyz/@tao/116450581967483825">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/</guid>
+  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Overzealous Coding Models</title>
   <dc:creator>synesis </dc:creator>
@@ -84,7 +124,7 @@
 </div>
 <p>The paper argues that per-vector KV cache compression (TurboQuant et al.) optimises the wrong objective. KV vectors are samples from the language the model already predicts, so the right unit of compression is the <em>sequence</em>, not the vector [1]:</p>
 <blockquote class="blockquote">
-<p>Recent work on KV cache quantization, culminating in TurboQuant, has approached the Shannon entropy limit for per-vector compression of transformer key-value caches. We observe that this limit applies to a strictly weaker problem than the one that actually matters: <strong>compressing the KV cache as a sequence</strong>. The tokens stored in a KV cache are not arbitrary floating-point data — they are samples from the exact formal language the model was trained on, and the model is by construction a near-optimal predictor of that language. We introduce <strong>sequential KV compression</strong>, a two-layer architecture that exploits this structure. The first layer, <strong>probabilistic prefix deduplication</strong>, identifies semantically equivalent shared prefixes across sessions using the trie metric <img src="https://benjaminhan.net/feed-assets/2ca4121b35f43fac.svg" alt="d_T(s, s&#x27;) = -\log_2 P_M(s \wedge s&#x27;)" class="feed-math-inline"/> from Probabilistic Language Tries (PLTs). The second layer, <strong>predictive delta coding</strong>, stores only the residual of each new KV vector from the model’s own prediction of it, achieving a per-token entropy bound of <img src="https://benjaminhan.net/feed-assets/c5a6986396e83e08.svg" alt="H(KV_{i+1} \mid KV_{\le i}) \le H(\text{token}_{i+1} \mid \text{token}_{\le i})" class="feed-math-inline"/>. We prove that at typical language model perplexity — approximately 10–20 for fluent English text — this bound is 3.3–4.3 bits on average per token position, compared to TurboQuant’s 3 bits per vector component (with typical attention heads having 64–128 components). <strong>The theoretical compression ratio over TurboQuant is approximately 914,000× at the Shannon limit.</strong> Even at 1000× above the entropy floor — a deliberately pessimistic worst-case overhead, two orders of magnitude above the 2–5× typical of practical source coders — <strong>the ratio remains approximately 914× over TurboQuant, with compression improving rather than degrading as context length grows</strong>. The two layers are orthogonal and compose with existing per-vector quantization methods including TurboQuant.</p>
+<p>Recent work on KV cache quantization, culminating in TurboQuant, has approached the Shannon entropy limit for per-vector compression of transformer key-value caches. We observe that this limit applies to a strictly weaker problem than the one that actually matters: <em>compressing the KV cache as a sequence</em>. The tokens stored in a KV cache are not arbitrary floating-point data — they are samples from the exact formal language the model was trained on, and the model is by construction a near-optimal predictor of that language. We introduce <em>sequential KV compression</em>, a two-layer architecture that exploits this structure. The first layer, <em>probabilistic prefix deduplication</em>, identifies semantically equivalent shared prefixes across sessions using the trie metric <img src="https://benjaminhan.net/feed-assets/2ca4121b35f43fac.svg" alt="d_T(s, s&#x27;) = -\log_2 P_M(s \wedge s&#x27;)" class="feed-math-inline"/> from Probabilistic Language Tries (PLTs). The second layer, <em>predictive delta coding</em>, stores only the residual of each new KV vector from the model’s own prediction of it, achieving a per-token entropy bound of <img src="https://benjaminhan.net/feed-assets/c5a6986396e83e08.svg" alt="H(KV_{i+1} \mid KV_{\le i}) \le H(\text{token}_{i+1} \mid \text{token}_{\le i})" class="feed-math-inline"/>. We prove that at typical language model perplexity — approximately 10–20 for fluent English text — this bound is 3.3–4.3 bits on average per token position, compared to TurboQuant’s 3 bits per vector component (with typical attention heads having 64–128 components). <em>The theoretical compression ratio over TurboQuant is approximately 914,000× at the Shannon limit.</em> Even at 1000× above the entropy floor — a deliberately pessimistic worst-case overhead, two orders of magnitude above the 2–5× typical of practical source coders — the ratio remains approximately 914× over TurboQuant, with compression improving rather than degrading as context length grows. The two layers are orthogonal and compose with existing per-vector quantization methods including TurboQuant.</p>
 </blockquote>
 <section id="method" class="level2">
 <h2 class="anchored" data-anchor-id="method">Method</h2>
@@ -174,7 +214,7 @@
 </div>
 <p>Another inference-time trick for getting more out of an LLM without touching its weights [1].</p>
 <blockquote class="blockquote">
-<p>When not using reasoning, repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek) without increasing the number of generated tokens or latency.</p>
+<p><em>When not using reasoning</em>, <em>repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek)</em> <em>without increasing the number of generated tokens or latency</em>.</p>
 </blockquote>
 <section id="method" class="level2">
 <h2 class="anchored" data-anchor-id="method">Method</h2>
@@ -1020,42 +1060,6 @@
   <guid>https://benjaminhan.net/posts/20260331-tinylora/</guid>
   <pubDate>Tue, 31 Mar 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260331-tinylora/figure1.png" medium="image" type="image/png" height="113" width="144"/>
-</item>
-<item>
-  <title>How Apple Became Apple</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260330-apple-oral-history/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260330-apple-oral-history/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260330-apple-oral-history/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Apple I, on display. Photo: Wikimedia Commons. (<a href="https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak">Source</a>)</figcaption>
-</figure>
-</div>
-<blockquote class="blockquote">
-<p>“Today, as Apple turns 50, its presence in our lives is so pervasive—2.5 billion of the company’s devices are in active use—that its unlikely origin story is more resonant than ever. To tell it, I turned to the people who lived it…” [1]</p>
-</blockquote>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“How Apple became Apple: The definitive oral history of the company’s earliest days.” <em>Fast Company</em>. <a href="https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak" class="uri">https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_how-apple-became-apple-the-definitive-oral-activity-7444423672158851072-bLk-">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260330-apple-oral-history/</guid>
-  <pubDate>Mon, 30 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260330-apple-oral-history/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
