@@ -1132,13 +1132,21 @@ body.quarto-dark .post-timeline .timeline-year {
 .post-timeline .timeline-post .timeline-label {
   font-size: 0.7rem;
   opacity: 0.7;
-  white-space: nowrap;
+  /* Two-line clamp: long titles wrap to a second line and ellipsize at
+     the end of line 2 instead of mid-title on line 1. The timeline's
+     uneven row spacing (timeline-row carries inline padding-top encoding
+     the time gap to the previous post) absorbs the variable row height
+     without disrupting the strip rhythm. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
   /* don't grow past the text; can shrink so long titles ellipsize when
      the parent inline-flex container hits its max-width */
   flex: 0 1 auto;
   min-width: 0;
+  line-height: 1.25;
   transition: opacity 0.1s, transform 0.1s;
   transform-origin: left center;
 }
