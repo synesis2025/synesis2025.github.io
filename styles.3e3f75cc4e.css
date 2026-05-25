@@ -1058,9 +1058,14 @@ body.quarto-dark [data-tip-text]:hover::after {
      faded 0.65-opacity muted tone it had originally. */
   color: var(--bs-emphasis-color);
   margin-bottom: 0.4rem;
-  /* Push down so the title baseline aligns with the page h1 "synesis"
-     when scrolled to the top of the page. */
-  padding-top: 1.5rem;
+  /* No padding-top — sidebar column shares its top edge with the
+     listing column, so flush-top puts the timeline title level with
+     the first post's date row. (Previously had padding-top: 1.5rem
+     to align with a "synesis" h1; that h1 is now stripped on listing
+     pages by _scripts/strip-listing-titles.py, so the padding only
+     produced an unwanted gap.) The mobile-aside-sheet-header version
+     of this rule resets padding to 0 explicitly, so this only affects
+     the desktop sidebar. */
 }
 .post-timeline .timeline-strip {
   position: relative;
@@ -1147,6 +1152,12 @@ body.quarto-dark .post-timeline .timeline-year {
   flex: 0 1 auto;
   min-width: 0;
   line-height: 1.25;
+  /* Right-edge breathing room. Without it, sub-pixel width calculation
+     places the last word of line 1 with its right edge a hair past the
+     visible area, and `overflow: hidden` clips the trailing character
+     ("and" → "anc"). 0.5em buffer is enough to force the browser to
+     wrap that last word to line 2 instead of straddling the edge. */
+  padding-right: 0.5em;
   transition: opacity 0.1s, transform 0.1s;
   transform-origin: left center;
 }
