@@ -647,10 +647,10 @@ body.quarto-dark hr {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Remove the Bootswatch default underline on h2 — distracting under our
-   editorial palette. Bootswatch sets `h2 { border-bottom:1px solid
-   #dee2e6; padding-bottom:.5rem }` site-wide; no other heading level
-   carries an underline. */
+/* Remove the Bootswatch default underline on h2 — distracting under
+   our serif heading palettes. Bootswatch sets `h2 { border-bottom:1px
+   solid #dee2e6; padding-bottom:.5rem }` site-wide; no other heading
+   level carries an underline. */
 h2, .h2 {
   border-bottom: 0;
   padding-bottom: 0;
@@ -3124,117 +3124,37 @@ html.mobile-aside-locked body {
    sources only when a matching CSS rule paints — so palette-scoped
    rules below guarantee that readers who stay on `default` fetch zero
    webfont bytes. Per-palette woff2 files live at /vendor/fonts/<slug>/.
+   Where two palettes share a family, the woff2 lives in the directory
+   of the palette that owns it (currently: IBM Plex Mono lives under
+   reader/ and is referenced by reader's @font-face only).
    Families are OFL-1.1 except Ubuntu Sans (Ubuntu Font Licence 1.0,
-   used by the almanac palette); license copies live beside each .woff2.
+   used by the almanac palette) and Special Elite (Apache 2.0, used by
+   the manuscript palette); license copies live beside each .woff2.
    ==================================================================== */
-
-/* ---- editorial palette (Fraunces / Source Serif 4 / IBM Plex Mono) --- */
-@font-face {
-  font-family: 'Fraunces';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('vendor/fonts/editorial/fraunces-wght-normal.woff2') format('woff2-variations');
-}
-@font-face {
-  font-family: 'Fraunces';
-  font-style: italic;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('vendor/fonts/editorial/fraunces-wght-italic.woff2') format('woff2-variations');
-}
-@font-face {
-  font-family: 'Source Serif 4';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('vendor/fonts/editorial/source-serif-4-400-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Source Serif 4';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('vendor/fonts/editorial/source-serif-4-400-italic.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Source Serif 4';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('vendor/fonts/editorial/source-serif-4-700-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'IBM Plex Mono';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('vendor/fonts/editorial/ibm-plex-mono-400-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'IBM Plex Mono';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('vendor/fonts/editorial/ibm-plex-mono-400-italic.woff2') format('woff2');
-}
-
-/* ---- modern palette (Inter / Literata / JetBrains Mono) ------------- */
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('vendor/fonts/modern/inter-wght-normal.woff2') format('woff2-variations');
-}
-@font-face {
-  font-family: 'Inter';
-  font-style: italic;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('vendor/fonts/modern/inter-wght-italic.woff2') format('woff2-variations');
-}
-@font-face {
-  font-family: 'Literata';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('vendor/fonts/modern/literata-400-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Literata';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('vendor/fonts/modern/literata-400-italic.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Literata';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('vendor/fonts/modern/literata-700-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('vendor/fonts/modern/jetbrains-mono-400-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('vendor/fonts/modern/jetbrains-mono-400-italic.woff2') format('woff2');
-}
 
 /* ---- reader palette (Newsreader / IBM Plex Sans / IBM Plex Mono) ---
    Inspired by Yale E360's feature-article palette: warm old-style serif
    body (Newsreader ≈ Ashbury) with a neo-grotesque sans for UI and
    alternating subheads (IBM Plex Sans ≈ Moderat). IBM Plex Mono for
-   code is reused from the editorial palette's @font-face. */
+   code. Slightly larger body size for unhurried leading. Line-height
+   is owned by the independent line-spacing axis. Palette-scoped
+   fallback stacks below are picked for x-height similarity so the
+   FOUT swap (fallback → webfont once the woff2 lands) shifts layout
+   as little as possible. */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/reader/ibm-plex-mono-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/reader/ibm-plex-mono-400-italic.woff2') format('woff2');
+}
 @font-face {
   font-family: 'Newsreader';
   font-style: normal;
@@ -3271,68 +3191,6 @@ html.mobile-aside-locked body {
   src: url('vendor/fonts/reader/ibm-plex-sans-700-normal.woff2') format('woff2');
 }
 
-/* Palette-scoped font-family rules. Fallback stacks are picked for
-   x-height similarity so the FOUT swap (fallback → webfont once the
-   woff2 lands) shifts layout as little as possible. */
-html[data-font-palette="editorial"] body,
-html[data-font-palette="editorial"] p,
-html[data-font-palette="editorial"] li,
-html[data-font-palette="editorial"] figcaption,
-html[data-font-palette="editorial"] blockquote {
-  font-family: 'Source Serif 4', Charter, 'Iowan Old Style', Georgia, serif;
-}
-html[data-font-palette="editorial"] h1,
-html[data-font-palette="editorial"] h2,
-html[data-font-palette="editorial"] h3,
-html[data-font-palette="editorial"] h4,
-html[data-font-palette="editorial"] h5,
-html[data-font-palette="editorial"] h6,
-html[data-font-palette="editorial"] .navbar,
-html[data-font-palette="editorial"] .navbar-brand,
-html[data-font-palette="editorial"] .nav-link {
-  font-family: 'Fraunces', 'Source Serif 4', Charter, Georgia, serif;
-}
-html[data-font-palette="editorial"] code,
-html[data-font-palette="editorial"] pre,
-html[data-font-palette="editorial"] kbd,
-html[data-font-palette="editorial"] samp {
-  font-family: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
-}
-
-html[data-font-palette="modern"] body,
-html[data-font-palette="modern"] p,
-html[data-font-palette="modern"] li,
-html[data-font-palette="modern"] figcaption,
-html[data-font-palette="modern"] blockquote {
-  font-family: 'Literata', Charter, 'Iowan Old Style', Georgia, serif;
-}
-html[data-font-palette="modern"] h1,
-html[data-font-palette="modern"] h2,
-html[data-font-palette="modern"] h3,
-html[data-font-palette="modern"] h4,
-html[data-font-palette="modern"] h5,
-html[data-font-palette="modern"] h6,
-html[data-font-palette="modern"] .navbar,
-html[data-font-palette="modern"] .navbar-brand,
-html[data-font-palette="modern"] .nav-link {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-html[data-font-palette="modern"] code,
-html[data-font-palette="modern"] pre,
-html[data-font-palette="modern"] kbd,
-html[data-font-palette="modern"] samp {
-  font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
-}
-
-/* ---- reader palette: long-form magazine feel ---------------------
-   Inspired by Yale E360's feature-article typography. Newsreader
-   (warm old-style serif) carries body text and odd-level subheads;
-   IBM Plex Sans (neo-grotesque) carries even-level subheads and the
-   navbar — the alternating subhead pattern is the e360 signature.
-   Slightly larger body size for unhurried leading. Line-height is
-   owned by the independent line-spacing axis. @font-face blocks live
-   under /vendor/fonts/reader/; IBM Plex Mono is reused from the
-   editorial palette. */
 html[data-font-palette="reader"] body,
 html[data-font-palette="reader"] p,
 html[data-font-palette="reader"] li,
@@ -3469,6 +3327,93 @@ html[data-font-palette="almanac"] pre,
 html[data-font-palette="almanac"] kbd,
 html[data-font-palette="almanac"] samp {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* ---- manuscript palette (Courier Prime body+code / Special Elite headings)
+   Screenplay-typewriter aesthetic: body and code share a single mono
+   serif (Courier Prime, the modern Courier successor designed for
+   screenwriters — even-impression, very legible at length); headings
+   use Special Elite, a worn-typewriter display face with irregular
+   inking that gives the page a manuscript feel. Special Elite is
+   Apache 2.0 (Astigmatic, 2011-era Google Fonts vintage) — the lone
+   non-OFL family in this palette; see header comment above. Heading
+   weight is pinned to 400 because Special Elite is single-weight and
+   the site-wide h1..h6 { font-weight: 800 } would otherwise synthesize
+   bold and produce uneven inking on the already-uneven impressions. */
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/manuscript/courier-prime-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/manuscript/courier-prime-400-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('vendor/fonts/manuscript/courier-prime-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Courier Prime';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('vendor/fonts/manuscript/courier-prime-700-italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Special Elite';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('vendor/fonts/manuscript/special-elite-400-normal.woff2') format('woff2');
+}
+html[data-font-palette="manuscript"] body,
+html[data-font-palette="manuscript"] p,
+html[data-font-palette="manuscript"] li,
+html[data-font-palette="manuscript"] figcaption,
+html[data-font-palette="manuscript"] blockquote {
+  font-family: 'Courier Prime', 'Courier New', Courier, ui-monospace, monospace;
+}
+html[data-font-palette="manuscript"] h1,
+html[data-font-palette="manuscript"] h2,
+html[data-font-palette="manuscript"] h3,
+html[data-font-palette="manuscript"] h4,
+html[data-font-palette="manuscript"] h5,
+html[data-font-palette="manuscript"] h6,
+html[data-font-palette="manuscript"] .navbar,
+html[data-font-palette="manuscript"] .navbar-brand,
+html[data-font-palette="manuscript"] .nav-link {
+  font-family: 'Special Elite', 'Courier Prime', 'Courier New', Courier, monospace;
+}
+/* Pin headings + navbar elements to weight 400 (Special Elite is single-
+   weight). The font-family above carries through to this rule via the
+   cascade — same selector specificity, source order picks weight here. */
+html[data-font-palette="manuscript"] h1,
+html[data-font-palette="manuscript"] h2,
+html[data-font-palette="manuscript"] h3,
+html[data-font-palette="manuscript"] h4,
+html[data-font-palette="manuscript"] h5,
+html[data-font-palette="manuscript"] h6 {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+html[data-font-palette="manuscript"] .navbar-brand,
+html[data-font-palette="manuscript"] .nav-link {
+  font-weight: 400;
+}
+html[data-font-palette="manuscript"] code,
+html[data-font-palette="manuscript"] pre,
+html[data-font-palette="manuscript"] kbd,
+html[data-font-palette="manuscript"] samp {
+  font-family: 'Courier Prime', 'Courier New', Courier, ui-monospace, monospace;
 }
 
 /* =====================================================================
