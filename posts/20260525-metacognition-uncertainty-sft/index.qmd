@@ -1,0 +1,89 @@
+---
+title: "Improving Metacognition and Uncertainty Communication in Language Models"
+description: "Supervised fine-tuning on confidence-labeled data improves both calibration and discrimination of verbalized LLM confidence, but only multitask training transfers across single-question and pairwise tasks."
+author: synesis
+date: "2026-05-25"
+image: cover.jpg
+---
+
+![Figure 3 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In *[Improving Metacognition and Uncertainty Communication in Language Models](https://arxiv.org/abs/2510.05126)* [[1]](#ref-1) (arXiv preprint, September 2025), [Mark Steyvers](https://scholar.google.com/citations?user=szUb_isAAAAJ), [Catarina Belem](https://scholar.google.com/citations?user=nMwgV2UAAAAJ), and [Padhraic Smyth](https://scholar.google.com/citations?user=OsoQ-dcAAAAJ) (UC Irvine) show that supervised fine-tuning (SFT) on consistency-derived confidence targets raises both calibration and discrimination of verbalized LLM confidence (within domain, across new domains, and across two different metacognitive task formats), but only when the training data covers both formats jointly.
+
+> Large language models (LLMs) are increasingly used in decision-making contexts, but when they present answers without signaling low confidence, users may unknowingly act on erroneous outputs. Prior work shows that LLMs maintain internal uncertainty signals, yet their expressed confidence is often miscalibrated and poorly discriminates between correct and incorrect answers. We investigate whether supervised fine-tuning can improve models' ability to communicate uncertainty and whether such improvements generalize across tasks and domains. We fine-tune LLMs on datasets spanning general knowledge, mathematics, and open-ended trivia, and evaluate two metacognitive tasks: (1) single-question confidence estimation, where the model assigns a numeric certainty to its answer, and (2) pairwise confidence comparison, where the model selects which of two answers it is more likely to answer correctly. We assess generalization to unseen domains, including medical and legal reasoning. Results show that *fine-tuning improves calibration (alignment between stated confidence and accuracy) and discrimination (higher confidence for correct vs. incorrect responses) within and across domains*. However, *gains are task-specific: training on single-question calibration does not transfer to pairwise comparison, and vice versa*. *Multitask fine-tuning yields broader gains*, lowering calibration error and strengthening discrimination in out-of-domain evaluations. This suggests that *uncertainty communication in LLMs is trainable but requires multitask training to generalize effectively*.
+
+## Method
+
+The authors define two metacognitive tasks that probe the same underlying ability — verbalizing internal uncertainty — through different output formats:
+
+- **Single-question confidence (S)** — the model emits an answer plus a numeric confidence (e.g. "my confidence is 0.75"). Scored with two metrics: Expected Calibration Error (ECE), the bin-weighted average gap between predicted confidence and empirical accuracy (11 bins of width 0.1), and Area Under the Curve (AUC), the probability that the model assigns higher confidence to a correct answer than to an incorrect one.
+- **Pairwise confidence comparison (C)** — given two questions, the model picks which one it is more likely to answer correctly. Scored with two AUC variants: AUC$_c$ (does the selection match the question with the higher consistency-derived reference confidence?) and AUC$_a$ (does the selection match which question the model actually answers correctly?).
+
+Both formats are illustrated side-by-side in Figure 1.
+
+![Figure 1 from the paper [[1]](#ref-1).](figure1.webp){fig-align="center" data-lightbox-src="figure1-full.png"}
+
+Training labels are derived from the model's own behavior, not human annotations. For each training question the authors sample the model multiple times, compute a consistency score across samples and the modal answer, then build two parallel training sets:
+
+- **Single-question targets** — each training question gets two targets: an *answer target* and a *confidence target*. The answer target is the *modal answer* — the answer that appears most often across the multiple samples drawn from the model. The confidence target comes from a calibration mapping that *does* use ground-truth correctness:
+    - Across the labeled training-set questions, the authors compute consistency scores, bin questions by score, and record the empirical accuracy (fraction actually correct, using ground truth) in each bin — yielding a curve $a(s)$ that maps consistency $s \to$ accuracy.
+    - For each training question with consistency $s$, the confidence target is $a(s) + \varepsilon$ (small noise added to prevent the model from memorizing the discrete bin boundaries) — i.e., "questions whose samples agree this much come out right this often, on average."
+- **Pairwise targets** — each training example is a *pair* of questions and gets a single *selection target*: which of the two the model should claim higher confidence on. The supervision label is whichever question has the higher consistency score (the ranking is what matters here, so the raw consistency score is enough — no calibration-curve lookup needed).
+
+The full pipeline — sample, score, look up calibrated target, build training set — is laid out in Figure 2.
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.webp){fig-align="center" data-lightbox-src="figure2-full.png"}
+
+They fine-tune two base models (GPT-4.1-mini via OpenAI's SFT API and Llama-3.1-70B locally) under three training conditions — **S** (single-question targets only), **C** (pairwise targets only), or **C+S** (both jointly, the multitask condition) — on three within-domain corpora: [MMLU-PRO](https://arxiv.org/abs/2406.01574) (M), [GSM8K](https://arxiv.org/abs/2110.14168) (G), and [TriviaQA](https://arxiv.org/abs/1705.03551) (T), plus the M+G+T mixture. Held-out evaluation uses both within-domain test splits and three out-of-domain corpora: [TruthfulQA](https://arxiv.org/abs/2109.07958), [MetaMedQA](https://www.nature.com/articles/s41467-024-55628-6), and [LegalBench](https://arxiv.org/abs/2308.11462). Significance is assessed with a paired bootstrap over 1,000 resamples.
+
+## Results
+
+Evaluation covers six datasets across two base models, two task formats (single-question S, pairwise C), three training conditions (S, C, C+S as defined above), and three generalization tiers (within-domain, across-domain, across-task). ECE measures calibration error (lower is better); AUC measures discrimination (higher is better). One thing to keep in mind for interpreting the deltas: the SFT loss never sees ground-truth answer labels directly — training tuples pair each question with the model's own modal answer and a confidence scalar. Ground truth enters the pipeline only offline to fit the consistency-to-accuracy curve that produces those scalars. The recipe is therefore not aimed at improving factual accuracy, and Appendix Table A3 reports that accuracy is in fact similar before vs. after fine-tuning across all conditions. Pre/post deltas in ECE and AUC can therefore be read primarily as changes in confidence behavior, not in answer quality.
+
+The cover figure (Figure 3) shows the within-domain calibration curves at a glance: baselines (cyan) sit below the diagonal, with confidence values clustered in [0.85, 0.95] but actual accuracy much lower at those points — overconfidence; the fine-tuned curves (pink) hug the diagonal across the full [0, 1] range. Table 1 quantifies the effect across all three generalization tiers.
+
+![Table 1 from the paper [[1]](#ref-1).](table1.jpg){fig-align="center"}
+
+The findings:
+
+- **Within-domain SFT works on the trained format** (Table 1 rows 1–6, Table 2 rows 1–6). On the format the model is trained on, ECE collapses and AUC lifts substantially across all three corpora. Multi-domain training (M+G+T) does not interfere with per-domain gains.
+- **Cross-domain transfer holds for the trained format** (rows 7–9). Single-task SFT trained on M+G+T improves both metrics on TruthfulQA, MetaMedQA, and LegalBench — except on TruthfulQA, where ECE actually *rises* because the baseline was already well-calibrated there.
+- **Across-task transfer fails — and can backfire** (rows 10–12). Pairwise-only SFT *worsens* single-question calibration on the already-calibrated domain and yields no AUC gain. Single-task SFT tested on the pairwise format shows the symmetric failure. Format isn't a free transfer.
+- **Multitask SFT (C+S) recovers and adds** (rows 13–15). Joint training lifts AUC and drops ECE on the out-of-domain evaluations, beating single-task SFT alone — except again on TruthfulQA, where the already-calibrated-domain regression persists.
+- **Llama-3.1-70B partially diverges**. Single-question gains mirror GPT-4.1-mini, but multitask fine-tuning *fails* to lift Llama's out-of-domain pairwise discrimination relative to comparison-only training. The "multitask helps both formats" headline is GPT-specific.
+
+![Figure 4 from the paper [[1]](#ref-1).](figure4.webp){fig-align="center" data-lightbox-src="figure4-full.png"}
+
+Figure 4 plots the OOD calibration curves under multitask SFT — the diagonal-hugging gain is largest on LegalBench, where the baseline was most overconfident.
+
+## My Notes
+
+- **The "self-consistency only" framing is overstated**: the paper says "the model is not trained using ground-truth correctness signals" (§2.1). True at the loss level: the SFT loss doesn't reference per-question GT labels. But the confidence target $\hat c = a(s) + \varepsilon$ depends on $a(s)$, the empirical accuracy at consistency $s$, computed by comparing modal answers to ground truth (§4.3.2). The recipe inherits the label dependency of any supervised calibration method.
+
+- **What this paper actually adds**: consistency-based SFT is prior art (the authors cite three earlier works). The contribution is the 3×3×3 grid (training condition × generalization tier × test domain), which documents three failure modes: across-task transfer fails, well-calibrated domains regress under joint training, and Llama doesn't inherit the multitask benefit on the comparison task. Does [semantic entropy](/posts/20260505-semantic-entropy/) [[2]](#ref-2) or the verbal-confidence work in [Kadavath et al.](/posts/20260504-kadavath-mostly-know/) [[3]](#ref-3) have similar transfer failures? Their evaluations don't run this grid.
+
+- **S and C may be separable abilities**: the paper concludes single-question (S) and pairwise (C) tasks are "distinct metacognitive routines, not interchangeable manifestations of a single uncertainty signal" (§2.3). The evidence: training only on S doesn't improve C performance, and training only on C doesn't improve S (Table 1 rows 10–12, Table 2 rows 10–12). Open question: is the underlying uncertainty signal also format-specific, or does the split only emerge at verbalization? [AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) [[4]](#ref-4), [metacognition atlas](/posts/20260522-metacognition-atlas/) [[5]](#ref-5), and [compliance-trap](/posts/20260522-compliance-trap/) [[6]](#ref-6) each catalog one uncertainty failure mode (abstention, monitorability, prompt-regime collapse); this paper adds format-specific transfer. None has measured them together.
+
+- **Calibration cost on already-calibrated domains**: on TruthfulQA the baseline ECE is already 0.10; multitask SFT raises it to 0.13. A training intervention that helps most domains can hurt a well-behaved one. The [Cacioli atlas](/posts/20260522-metacognition-atlas/) [[5]](#ref-5) showed monitorability varies by 0.3+ AUC across MMLU subjects from the same base model; this paper adds that an SFT intervention's *sign* can flip with domain. Evaluate the target domain's pre-SFT calibration before deploying.
+
+- **Compare to the test-time SVM harness**: a recent [metacognitive harness for Sonnet-4.6](/posts/20260522-metacognitive-harness/) [[7]](#ref-7) solves the same problem at the inference layer instead of via SFT. The harness leaves the model untouched and fits a small external SVM mapping $(\text{FOK}, \text{JOL}) \to P(\text{correct})$, where FOK is the model's pre-solve confidence rating and JOL is the post-solve rating. Inference flow: model emits FOK; if low, allocate more reasoning budget; model solves and emits JOL; SVM gives $P(\text{correct})$; if $\geq 0.7$, accept, else draw more attempts and aggregate. Both methods need GT correctness offline (this paper to fit $a(s)$, the harness to fit the SVM on a 100-question anchor set). Trade-off: the harness needs only ~100 labeled questions per base model and produces a tiny artifact but refits per model; this paper needs a larger labeled set and full SFT but produces a self-contained model that emits a calibrated confidence number from one sample at inference.
+
+- **Practical alternative to abstention-from-prompting**: the [compliance-trap result](/posts/20260522-compliance-trap/) [[6]](#ref-6) showed structural prompt constraints degrade frontier abstention by up to 30 accuracy points. This paper offers a weight-level analogue: train calibration into the model directly, so the prompt has less to override at inference. Follow-up: rerun compliance-trap on a model fine-tuned with this recipe; does the 8–30 point drop shrink?
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Steyvers, M.](https://scholar.google.com/citations?user=szUb_isAAAAJ), [Belem, C.](https://scholar.google.com/citations?user=nMwgV2UAAAAJ), and [Smyth, P.](https://scholar.google.com/citations?user=OsoQ-dcAAAAJ) "Improving Metacognition and Uncertainty Communication in Language Models." *arXiv preprint* (arXiv:2510.05126), September 30, 2025. <https://arxiv.org/abs/2510.05126>
+
+2. <a id="ref-2"></a>[Farquhar, S.](https://sebastianfarquhar.com/), [Kossen, J.](https://jlko.github.io/), [Kuhn, L.](https://lorenzkuhn.github.io/), and [Gal, Y.](https://www.cs.ox.ac.uk/people/yarin.gal/website/) "Detecting Hallucinations in Large Language Models Using Semantic Entropy." *Nature* 630, pages 625–630 (arXiv:2406.15927), June 2024. <https://arxiv.org/abs/2406.15927>
+
+3. <a id="ref-3"></a>[Kadavath, S.](https://www.linkedin.com/in/saurav-kadavath/), Conerly, T., [Askell, A.](https://www.amandaaskell.com/), Henighan, T., Drain, D., [Perez, E.](https://ethanperez.net/), Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., et al. "Language Models (Mostly) Know What They Know." *arXiv preprint* (arXiv:2207.05221), July 11, 2022. <https://arxiv.org/abs/2207.05221>
+
+4. <a id="ref-4"></a>[Kirichenko, P.](https://polkirichenko.github.io/), [Ibrahim, M.](https://www.semanticscholar.org/author/2297128866), [Chaudhuri, K.](https://www.semanticscholar.org/author/2256991985), and [Bell, S. J.](https://www.semanticscholar.org/author/2366163635) "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions." *NeurIPS 2025 Datasets and Benchmarks Track* (arXiv:2506.09038). <https://arxiv.org/abs/2506.09038>
+
+5. <a id="ref-5"></a>[Cacioli, J.-P.](https://scholar.google.com/citations?user=L3xQLp0AAAAJ) "Domain-level metacognitive monitoring in frontier LLMs: A 33-model atlas." *arXiv preprint* (arXiv:2605.06673), April 21, 2026. <https://arxiv.org/abs/2605.06673>
+
+6. <a id="ref-6"></a>[Kumar, R.](https://scholar.google.com/citations?user=iNctquYAAAAJ) "The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure." *arXiv preprint* (arXiv:2605.02398), May 14, 2026. <https://arxiv.org/abs/2605.02398>
+
+7. <a id="ref-7"></a>[Cao, Q.](https://scholar.google.com/citations?user=46U_bhgAAAAJ), [Wang, Y.](https://www.semanticscholar.org/author/2108111686), [Qin, P.](https://scholar.google.com/citations?user=BnkNS80AAAAJ), [Zhang, S.](https://scholar.google.com/citations?user=Rj13ryoAAAAJ), and [Xie, P.](https://pengtaoxie.github.io/) "LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling." *arXiv preprint* (arXiv:2605.14186), May 13, 2026. <https://arxiv.org/abs/2605.14186>
