@@ -21,7 +21,162 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 25 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 26 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Convergent Evolution: How Different Language Models Learn Similar Number Representations</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>First page of the paper. Image from <a href="https://arxiv.org/abs/2604.20817">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p><em>Convergent Evolution: How Different Language Models Learn Similar Number Representations</em> [1] Deqing Fu, Tianyi Zhou, Mikhail Belkin, Vatsal Sharan, Robin Jia</p>
+<p>Fu et al.&nbsp;[1] show that periodic number features emerge in nearly every architecture they test, from Transformers to long short-term memory networks (LSTMs) to GloVe, but only some of those models go on to develop linearly separable mod-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> classes.</p>
+<blockquote class="blockquote">
+<p><em>Abstract:</em> Language models trained on natural text learn to represent numbers using periodic features with dominant periods at <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/>. In this paper, we identify a two-tiered hierarchy of these features: while Transformers, Linear RNNs, LSTMs, and classical word embeddings trained in different ways all learn features that have period-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> spikes in the Fourier domain, only some learn geometrically separable features that can be used to linearly classify a number mod-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/>. To explain this incongruity, we prove that Fourier domain sparsity is necessary but not sufficient for mod-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> geometric separability. Empirically, we investigate when model training yields geometrically separable features, finding that the data, architecture, optimizer, and tokenizer all play key roles. In particular, we identify two different routes through which models can acquire geometrically separable features: they can learn them from complementary co-occurrence signals in general language data, including text-number co-occurrence and cross-number interaction, or from multi-token (but not single-token) addition problems. Overall, our results highlight the phenomenon of convergent evolution in feature learning: A diverse range of models learn similar features from different training signals.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The analytical tool throughout is the discrete Fourier transform. Stack the model’s number embeddings into a matrix, one row per input integer and one column per embedding dimension, and run the DFT down each column. Spikes in the magnitude spectrum reveal which periods the model has internalized, without the experimenter having to specify them in advance.</p>
+<p>The specific values <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/> are a fingerprint of base-10 text. They are exactly the non-trivial divisors of 10, with concrete corpus statistics behind each:</p>
+<ul>
+<li><strong><img src="https://benjaminhan.net/feed-assets/3552371d84d2908e.svg" alt="T=10" class="feed-math-inline"/></strong> captures last-digit structure: round numbers ending in 0 are massively over-represented in text [6], as are decimal-column patterns.</li>
+<li><strong><img src="https://benjaminhan.net/feed-assets/5a8036510b72b274.svg" alt="T=5" class="feed-math-inline"/></strong> captures the next-most-common rounding regime: numbers ending in 5 are next-roundest after 0 [6], and price endings reflect this. One analysis of advertised prices found roughly 60% ending in 9, 30% in 5, and 7% in 0 [7].</li>
+<li><strong><img src="https://benjaminhan.net/feed-assets/492279cbaf759e6b.svg" alt="T=2" class="feed-math-inline"/></strong> captures parity: even-odd distinctions in pluralization, dates, scoring patterns.</li>
+</ul>
+<p>Engels et al.&nbsp;(2025) found analogous <img src="https://benjaminhan.net/feed-assets/5799350068a4e1a0.svg" alt="T=7" class="feed-math-inline"/> spikes for days of the week and <img src="https://benjaminhan.net/feed-assets/142c54be7454fc06.svg" alt="T=12" class="feed-math-inline"/> for months [3]; same mechanism, different modulus. A clean falsification the paper does not run: train on hexadecimal-only text and check whether the spikes shift to <img src="https://benjaminhan.net/feed-assets/b8ccfa81765a644a.svg" alt="\{2, 4, 8, 16\}" class="feed-math-inline"/>.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Across Transformers, Linear RNNs, LSTMs, and classical word embeddings, the Fourier spikes at <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/> appear universally — but only Transformers and Gated DeltaNet go on to encode mod-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> classes as linearly separable structure:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/figure1.png" class="img-fluid figure-img"></p>
+<figcaption>Universality of Fourier features and convergent evolution. Left: Fourier spectrum of number embeddings across Transformer LLMs, non-Transformer LLMs, and classical word embeddings, all showing consistent spikes at periods <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/>. Right: the spectral-vs-geometric convergence diagram. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>A spiky Fourier spectrum does not imply good feature learning. Token embeddings of Transformer, Gated DeltaNet, LSTM, and even the raw number-token frequency distribution all exhibit Fourier spikes at <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/>, but linear probes reveal that only the Transformer and Gated DeltaNet learn functional modular arithmetic with high Cohen’s <img src="https://benjaminhan.net/feed-assets/e92ecde84e28692f.svg" alt="\kappa" class="feed-math-inline"/>. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>The paper’s main finding: every architecture in the study picks up the periodic <em>signal</em> of how numbers appear in text, but only Transformers and Gated DeltaNet (a linear recurrent neural network, RNN) organize those signals so a linear classifier can read them off. The implication for building a math-capable model: pick an architecture in the geometrically-convergent group, and reach the geometric features by either of the paper’s two identified routes, training on natural text rich in number co-occurrences, or on multi-token (but not single-token) addition problems.</p>
+<ul>
+<li><strong>Spectral convergence is broader than the founding work assumed.</strong> Zhou et al.&nbsp;(2024) established that pretrained LLMs add via Fourier features, and that models trained from scratch on addition fail to recover them, suggesting the structure was earned during language pretraining [2]. This paper pushes the universality further: even the raw token-frequency distribution of the training corpus shows the same <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/> spikes [1]. The Fourier structure was apparently sitting in the data all along, not earned by any particular learning objective.</li>
+<li><strong>Can the sparse-autoencoder (SAE) result corroborate?</strong> Engels et al.&nbsp;(2025) used SAEs to find circular features for days of the week and months in Mistral 7B and Llama 3, and verified with causal interventions that the circles actually compute modular arithmetic [3]. Both are Transformers, exactly the family Fu et al.&nbsp;show consistently achieves geometric convergence. The two results are consistent. The follow-up worth running: train SAEs on a linear RNN (which Fu et al.&nbsp;find geometrically convergent) and on an LSTM (which they don’t), and see what appears. Three outcomes are informative: SAEs find functional circles in both, meaning SAE-discovered circles aren’t a reliable signature of geometric usability; SAEs find circles only where Fu et al.’s linear probes do, meaning the two methods agree and SAE circles really do mark functional structure; SAEs find circles in the LSTM that don’t survive causal intervention, meaning SAE features can be spectral artifacts, not all of them functional.</li>
+<li><strong>The “Clock” algorithm becomes testable across architectures.</strong> Kantamneni and Tegmark (2025) reverse-engineered addition in three mid-sized Transformers as manipulation of a generalized “Clock”, a helical embedding that stacks multiple circular features over a linear magnitude axis [4]. The Clock relies on exactly the geometric usability that Fu et al.&nbsp;find in Transformers and linear RNNs but absent in LSTMs, making linear RNNs a plausible candidate for the same algorithm and LSTMs an unlikely one. Convergence at the feature level doesn’t guarantee convergence at the algorithm level. The same features can in principle support different circuits. A successful reverse-engineering of the Clock in a linear RNN would extend the convergence story from features to algorithms; failure would show that even matched features can yield divergent mechanisms.</li>
+<li><strong>Engineered Fourier embeddings give a clean lever for separating architecture from data.</strong> The FoNE work (Zhou et al., 2025) directly maps numbers into Fourier features and reports <img src="https://benjaminhan.net/feed-assets/af948ae55d39e291.svg" alt="64\times" class="feed-math-inline"/> data efficiency on 6-digit addition [5]. Fu et al.&nbsp;find that geometrically separable number features arise from a combination of data, architecture, optimizer, and tokenizer. Text-number co-occurrence is one of two identified data routes; multi-token addition training is the other [1]. FoNE’s contribution is that it pre-supplies the Fourier features as input embeddings, removing the model’s need to acquire them from training data. That separation enables two clean tests, holding feature-supply constant in each: train an LSTM with FoNE embeddings on rich natural text (does the LSTM still fail at arithmetic? if so, the architecture itself blocks geometric use of period features); train a Transformer with FoNE embeddings on text scrubbed of number co-occurrences (does the Transformer fail? if so, data conditions matter even when features are pre-supplied). Today neither test has been run.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Fu, Deqing, Tianyi Zhou, Mikhail Belkin, Vatsal Sharan, and Robin Jia. “Convergent Evolution: How Different Language Models Learn Similar Number Representations.” <em>arXiv preprint</em> (arXiv:2604.20817), April 22, 2026. <a href="https://arxiv.org/abs/2604.20817" class="uri">https://arxiv.org/abs/2604.20817</a></li>
+<li><a id="ref-2"></a>Zhou, Tianyi, Deqing Fu, Vatsal Sharan, and Robin Jia. “Pre-trained Large Language Models Use Fourier Features to Compute Addition.” <em>arXiv preprint</em> (arXiv:2406.03445), June 5, 2024. <a href="https://arxiv.org/abs/2406.03445" class="uri">https://arxiv.org/abs/2406.03445</a></li>
+<li><a id="ref-3"></a>Engels, Joshua, Isaac Liao, Eric J. Michaud, Wes Gurnee, and Max Tegmark. “Not All Language Model Features Are One-Dimensionally Linear.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2405.14860. <a href="https://arxiv.org/abs/2405.14860" class="uri">https://arxiv.org/abs/2405.14860</a></li>
+<li><a id="ref-4"></a>Kantamneni, Subhash, and Max Tegmark. “Language Models Use Trigonometry to Do Math.” <em>arXiv preprint</em> (arXiv:2502.00873), February 2, 2025. <a href="https://arxiv.org/abs/2502.00873" class="uri">https://arxiv.org/abs/2502.00873</a></li>
+<li><a id="ref-5"></a>Zhou, Tianyi, Deqing Fu, Mahdi Soltanolkotabi, Robin Jia, and Vatsal Sharan. “FoNE: Precise Single-Token Number Embeddings via Fourier Features.” <em>arXiv preprint</em> (arXiv:2502.09741), February 13, 2025. <a href="https://arxiv.org/abs/2502.09741" class="uri">https://arxiv.org/abs/2502.09741</a></li>
+<li><a id="ref-6"></a>Wikipedia contributors. “Round Number.” <em>Wikipedia</em>. Accessed April 24, 2026. <a href="https://en.wikipedia.org/wiki/Round_number" class="uri">https://en.wikipedia.org/wiki/Round_number</a></li>
+<li><a id="ref-7"></a>Wikipedia contributors. “Psychological Pricing.” <em>Wikipedia</em>. Accessed April 24, 2026. <a href="https://en.wikipedia.org/wiki/Psychological_pricing" class="uri">https://en.wikipedia.org/wiki/Psychological_pricing</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/</guid>
+  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>How LLMs Actually Work: A Visual Deep Dive</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Screenshot from <a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a> by Y. Narwal is an interactive, scroll-driven walkthrough of the LLM training pipeline, from Common Crawl through pre-training, post-training, RAG, and inference, with live diagrams and inline annotations at every stage. It is based on Andrej Karpathy’s technical deep dive.</p>
+<p>The nine sections mirror the canonical build pipeline:</p>
+<ul>
+<li><strong>Downloading the Internet</strong> — Common Crawl plus the filters that turn web sludge into a training corpus.</li>
+<li><strong>Tokenization</strong> — subword units, with a live BPE demo.</li>
+<li><strong>Training the Neural Network</strong> — the Transformer architecture and what each step updates.</li>
+<li><strong>Inference &amp; Token Sampling</strong> — temperature and top-p, with a sampling demo.</li>
+<li><strong>The Internet Simulator</strong> — what the base model is, before any post-training.</li>
+<li><strong>Building the Assistant</strong> — SFT on conversations, the turn token format, RLHF on top.</li>
+<li><strong>Cognitive Quirks of Language Models</strong> — counting letters, arithmetic, hallucination — and where in the pipeline they originate.</li>
+<li><strong>Retrieval-Augmented Generation</strong> — how retrieved context shifts the prediction distribution.</li>
+<li><strong>From Text to Assistant</strong> — closing recap.</li>
+</ul>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260424-llm-illustration/</guid>
+  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>How to Be Anti-Social</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260424-anti-social/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://nate.leaflet.pub/3mk4xkaxobc2p">Leaflet</a>.</figcaption>
+</figure>
+</div>
+<p>Learn how to sabotage yourself in <a href="https://nate.leaflet.pub/3mk4xkaxobc2p">how to be anti-social</a>:</p>
+<ul>
+<li><strong>Assume bad faith.</strong> When someone confuses or upsets you, assume they have no sane reason for it; when ambiguous, default to malicious, ignorant, or amoral.</li>
+<li><strong>Read intent through your fears.</strong> Trust intuition and feeling, never challenge or even acknowledge the assumptions doing the interpreting.</li>
+<li><strong>Pivot when challenged.</strong> Steer away from questions outside your wheelhouse; treat any display of not-knowing as weakness.</li>
+<li><strong>Word questions to imply you are right.</strong> If you must ask, lead the witness.</li>
+<li><strong>Dig in.</strong> When dissent piles up, hold firm.</li>
+<li><strong>Curate the audience.</strong> Reframe interactions for like-minded supporters so they can rally to crush lingering threats to the narrative.</li>
+<li><strong>Ignore credentials.</strong> Do not research the people you speak with, unless you already agree with them.</li>
+<li><strong>Withhold grace.</strong> Especially from strangers who make mistakes.</li>
+<li><strong>Retreat into self.</strong> When conversation breaks down, do not seek to understand those you do not already understand.</li>
+</ul>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260424-anti-social/</guid>
+  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260424-anti-social/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>The Global Edtech Boom Is Fading as Investors Look Elsewhere</title>
   <dc:creator>synesis </dc:creator>
@@ -960,137 +1115,6 @@
   <guid>https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/</guid>
   <pubDate>Sat, 11 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/evolvebench-illustration.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>iPhone, Artemis II, Moon</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260406-iphone-on-artemis/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260406-iphone-on-artemis/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260406-iphone-on-artemis/earth-from-orion.jpg" class="img-fluid figure-img"></p>
-<figcaption>Artemis II Commander Reid Wiseman peering out of one of the Orion spacecraft’s main cabin windows, looking back at Earth as the crew travels toward the Moon. Photo taken April 4, 2026. Credit: NASA. (<a href="https://www.flickr.com/photos/nasa2explore/55187189317/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Astronauts onboard Artemis II took pictures with iPhone 17 Pro Max [1].</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>NASA. “Home, Seen from Orion.” <em>Flickr (NASA2Explore)</em>, April 4, 2026. <a href="https://www.flickr.com/photos/nasa2explore/55187189317/" class="uri">https://www.flickr.com/photos/nasa2explore/55187189317/</a></li>
-</ol>
-<hr>
-<p><img src="https://benjaminhan.net/posts/20260406-iphone-on-artemis/screenshot1.jpg" class="img-fluid"></p>
-<p><img src="https://benjaminhan.net/posts/20260406-iphone-on-artemis/screenshot2.jpg" class="img-fluid"></p>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_iphone-artemisii-moon-activity-7446990804394590208-06EG">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260406-iphone-on-artemis/</guid>
-  <pubDate>Mon, 06 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260406-iphone-on-artemis/earth-from-orion.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Filesystems vs. RAG</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260404-filesystem-vs-rag/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/chromafs-architecture.png" class="img-fluid figure-img" data-lightbox-src="chromafs-architecture-full.png"></p>
-<figcaption>ChromaFs architecture diagram from the Mintlify post. (<a href="https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Can we replace RAG with filesystems? This article shares a neat engineering write-up on doing exactly that: replacing a standard docs RAG flow with a virtual filesystem for an assistant [1].</p>
-<p>Instead of only retrieving top-K chunks, they let the model interact with documentation through familiar file operations like&nbsp;ls,&nbsp;cat,&nbsp;find, and&nbsp;grep. Under the hood, they built a virtual layer over their existing docs index, avoiding the latency and cost of spinning up full sandboxes while giving the assistant a more natural way to explore the corpus.</p>
-<p>Optimization details aside, the article hints at two bigger ideas.</p>
-<p>First, the filesystem vs.&nbsp;RAG distinction is really about structured navigation vs.&nbsp;relevance retrieval. A filesystem presents the corpus as a pre-built navigable structure for exploration. Plain RAG presents it as a retrieval space.</p>
-<p>Second, system interfaces work better when they align with the interaction patterns the base LLM already knows. For coding-oriented models especially, files, paths, directories, and shell-style operations are much closer to the environments they were trained on than a one-shot retrieve-and-insert workflow. The article explicitly framed the goal as letting the assistant explore docs the way a developer explores a codebase.</p>
-<p>A few contrasts between the filesystem and RAG approaches:</p>
-<ol type="1">
-<li><p>Filesystems preserve and expose author-created structure that chunk RAG often weakens.</p></li>
-<li><p>Filesystem agents are natively iterative and exploratory; plain RAG is often, but not always, more one-shot.</p></li>
-<li><p>Filesystems provide a richer tool surface than retrieval alone.</p></li>
-<li><p>Filesystems are better for exact search, full-page reading, and multi-page investigation.</p></li>
-<li><p>Filesystems support hypothesis-driven exploration across documents: inspect one page, discover a term, search for it elsewhere, and refine understanding.</p></li>
-<li><p>Filesystems preserve document integrity better by making whole pages or files accessible, rather than only isolated retrieved chunks.</p></li>
-<li><p>Filesystem-based interfaces can align access control more naturally with paths, files, and directories, so the assistant’s visible world is scoped up front.</p></li>
-</ol>
-<p>But RAG still shines when the main problem is semantic recall: messy corpora, weak or ambiguous structure, heterogeneous sources or modalities, or cases where a few relevant passages are enough and full exploration would be overkill.</p>
-<p>The interesting part is that these approaches are not incompatible. RAG can be one tool inside a filesystem-style agent: useful for candidate recall, while the filesystem layer handles navigation, inspection, and verification. The implementation described effectively does this by using existing indexing infrastructure to narrow search before exact filtering.</p>
-<p>Takeaway: RAG retrieves likely evidence. A filesystem lets the model investigate the source material. We can combine both.</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Mintlify. “How we built a virtual filesystem for our Assistant.” <em>Mintlify Blog</em>, March 24, 2026. <a href="https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant" class="uri">https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_how-we-built-a-virtual-filesystem-for-our-activity-7446351506905415680-l9ES">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260404-filesystem-vs-rag/</guid>
-  <pubDate>Sat, 04 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/chromafs-architecture.png" medium="image" type="image/png" height="86" width="144"/>
-</item>
-<item>
-  <title>The Revenge of the Data Scientist</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/abl.jpeg" class="img-fluid figure-img" data-lightbox-src="abl-full.jpeg"></p>
-<figcaption>Illustration from Hamel Husain’s post. (<a href="https://hamel.dev/blog/posts/revenge/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Agentic systems need more than prompts and model calls. They need a surrounding machinery that helps the system observe itself and improve, including logs, metrics, traces, tests, and specifications.</p>
-<p>This article by Hamel Husain [1] gives a good rundown of the key considerations:</p>
-<ol type="1">
-<li><p>Generic quality scores like helpfulness or hallucination are often not very useful because they do not explain what actually failed. Define narrow metrics tied to specific failure modes.</p></li>
-<li><p>Inspection has to be easy and frequent so hands-on review can happen regularly and reveal patterns, not just numbers. This only works when tools are built to support that kind of inspection.</p></li>
-<li><p>LLM judges are part of the system and must be validated. They should be treated like classifiers: checked against human labels, tuned carefully, and evaluated with metrics like precision and recall rather than trusted at face value.</p></li>
-<li><p>Good experiments start from real behavior, not abstract test generation. Start from real logs or traces, then create synthetic examples grounded in those actual patterns and edge cases.</p></li>
-<li><p>Labeling is part of product thinking, not just annotation. Keeping domain experts close to labeling helps teams refine what they truly care about, because criteria often become clearer only after reviewing real outputs.</p></li>
-<li><p>Too much automation can hide the signal needed for improvement. LLMs can help with boilerplate and plumbing, but they cannot replace the human work of looking directly at failures and deciding what matters.</p></li>
-</ol>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Husain, Hamel. “The Revenge of the Data Scientist.” <em>Hamel’s Blog</em>. <a href="https://hamel.dev/blog/posts/revenge/" class="uri">https://hamel.dev/blog/posts/revenge/</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_the-revenge-of-the-data-scientist-hamel-activity-7445487039216508928-tBsd">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/</guid>
-  <pubDate>Thu, 02 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260402-hamel-revenge-data-scientist/abl.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

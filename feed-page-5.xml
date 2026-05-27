@@ -21,7 +21,266 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 25 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 26 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Design-step trajectories and final designs in the latent design space (PC1/PC2 of six design features), explored by each of the three agentic design systems. Each system covers a distinguishable region, with CRDAL converging toward the area of highest design capacity. Figure 8 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</em> [1], <a href="https://www.linkedin.com/in/zedaxu/">Zeda Xu</a>, <a href="https://nikmart.com/">Nikolas Martelaro</a>, and <a href="https://cmccomb.com/">Christopher McComb</a> at Carnegie Mellon test whether adding a second LLM agent that watches the first agent’s reasoning beats a self-monitoring single agent on a constrained engineering design task.</p>
+<blockquote class="blockquote">
+<p>The engineering design research community has studied agentic AI systems that use Large Language Model (LLM) agents to automate the engineering design process. However, these systems are prone to some of the same pathologies that plague humans. Just as human designers, LLM design agents can fixate on existing paradigms and fail to explore alternatives when solving design challenges, potentially leading to suboptimal solutions. In this work, we propose (1) a novel <em>Self-Regulation Loop (SRL)</em>, in which the Design Agent self-regulates and explicitly monitors its own metacognition, and (2) a novel <em>Co-Regulation Design Agentic Loop (CRDAL)</em>, in which a <em>Metacognitive Co-Regulation Agent assists the Design Agent in metacognition to mitigate design fixation</em>, thereby improving system performance for engineering design tasks. In the battery pack design problem examined here, we found that <em>the novel CRDAL system generates designs with better performance, without significantly increasing the computational cost</em>, compared to a plain Ralph Wiggum Loop (RWL) and the metacognitively self-assessing Self-Regulation Loop (SRL). Also, we found that the CRDAL system navigated through the latent design space more effectively than both SRL and RWL. However, <em>the SRL did not generate designs with significantly better performance than RWL</em>, even though it explored a different region of the design space. The proposed system architectures and findings of this work provide practical implications for future development of agentic AI systems for engineering design.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>System flowchart of the Co-Regulation Design Agentic Loop (CRDAL): a Design Agent runs the iterative design loop while a separate Metacognitive Co-Regulation Agent inspects each step’s progress trace and feeds back strategic suggestions. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>How the three loops differ:</p>
+<ul>
+<li><strong>RWL.</strong> Design Agent generates a candidate design, a numerical evaluator/validator scores it, raw feedback (“failed thermal constraint, current capacity is X”) goes back to the Design Agent, which reflects implicitly and tries again.</li>
+<li><strong>SRL.</strong> RWL plus two additions: a non-LLM Progress Analyzer summarizes the design history (capacity trend, which past attempts were valid), and the Design Agent is explicitly prompted to set goals, identify the bottleneck constraint, and plan strategy. Still one agent doing both designing and metacognizing.</li>
+<li><strong>CRDAL.</strong> SRL but the metacognition is moved to a separate LLM agent. The same Progress Analyzer summary now feeds a Metacognitive Co-Regulation Agent, which writes strategic notes about the Design Agent’s progress (assessment of “improving / stalling / regressing”, bottleneck identification, suggestion for the next iteration) and passes them to the Design Agent alongside the raw numerical feedback. Same kind of metacognitive content as SRL’s self-prompts; the difference is that another agent produces it.</li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The design task is to lay out 18650 lithium-ion cells (the cylindrical batteries inside laptops, vapes, and Tesla packs, at 3.7 V and 2.5 Ah each) into a 400 V pack of at least 25 Ah, while keeping the pack under 60 °C and able to deliver 48 A continuously. Higher Ah means longer runtime at a given current. Across 30 runs per system on this task using Gemini 3.1 Pro, the CRDAL design agent reached a mean capacity of 70.92 Ah, versus 54.14 Ah for the self-monitoring SRL and 49.31 Ah for the plain Ralph Wiggum Loop (RWL). All three were well above the 25 Ah floor in every case. The gap between SRL and RWL was not statistically significant. CRDAL did not use more design steps than the other two systems.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/figure6.png" class="img-fluid figure-img"></p>
+<figcaption>Battery pack capacity by agentic design system, <img src="https://benjaminhan.net/feed-assets/9eddde4a54d1a28f.svg" alt="n=30" class="feed-math-inline"/> runs each. CRDAL beats both RWL (<img src="https://benjaminhan.net/feed-assets/39409d16f287b9c2.svg" alt="p &lt; 0.001" class="feed-math-inline"/>, Cohen’s <img src="https://benjaminhan.net/feed-assets/31e11d681406501e.svg" alt="d = 1.375" class="feed-math-inline"/>) and SRL (<img src="https://benjaminhan.net/feed-assets/ad60d6c904d2d3ec.svg" alt="p = 0.001" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/9cf40b1300e41c5b.svg" alt="d = 0.955" class="feed-math-inline"/>); SRL is statistically indistinguishable from RWL. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>A note on the name: Ralph Wiggum is a recurring child character in <em>The Simpsons</em>, known for being cheerfully oblivious and confidently wrong without self-correcting. The “Ralph Wiggum Loop” is a software-engineering term of art for an agent that retries until external validation passes, with no self-assessment of its own attempts.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The SRL ≈ RWL result is the headline finding.</strong> A growing body of work argues that LLMs cannot reliably correct their own reasoning without an external signal. Huang et al.&nbsp;find self-correction either flat or actively harmful on reasoning benchmarks once the answer-verification crutch is removed [2]. Apple’s <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [5] extends the pattern to uncertainty self-reports: 20 modern LLMs cannot faithfully summarize their own internal answer distributions without sample-augmented context. This paper supplies a clean engineering-design data point in the same direction: telling an agent to “monitor your metacognition” gave it a different exploration trajectory but no better outcomes than just retrying. The reflective loop has to be closed by something the agent isn’t.</p></li>
+<li><p><strong>The SRL-vs-CRDAL comparison narrows what matters.</strong> SRL already gives the Design Agent explicit metacognitive prompts (assess progress, identify the bottleneck, plan strategy) plus a history summary. CRDAL keeps that same metacognitive content but moves it to a different LLM agent that writes the strategic notes about the Design Agent’s progress instead of asking the Design Agent to write them about itself. The CRDAL ≫ SRL gap (Cohen’s d = 0.955) therefore isolates the agent split as what mattered, not the explicitness of the metacognitive prompts, which SRL already had. This converges with Wan et al.’s <a href="../../posts/20260430-rema-meta-think/">ReMA</a>, which decouples reasoning into a meta-thinker and an executor and trains them jointly with multi-agent RL, beating single-agent reasoning baselines on math [3]. The same direction of result holds in competitive math and in engineering design, which makes the underlying claim harder to dismiss as task-specific: metacognition needs to come from a different head than the one doing the work.</p></li>
+<li><p><strong>One task, one model, n=30. Generalization is the open question.</strong> The authors own this in §4.3: a single battery-pack optimization with one frontier model is a thin base for a system-architecture claim. Adding a Co-Regulation Agent introduces a new agent-to-agent communication channel that this benchmark, by design, does not stress, and that channel is exactly where multi-agent systems tend to break in their own characteristic ways, as the <a href="../../posts/20250802-mast-multi-agent-failures/">MAST taxonomy</a> catalogs across 200+ failure traces. The interesting follow-up is not “does CRDAL beat RWL on more tasks” but “where does CRDAL break in ways that RWL doesn’t.”</p></li>
+<li><p><strong>From the intrinsic-metacognitive-learning side, CRDAL is a ceiling.</strong> <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar argue in their position paper</a> that today’s “self-improving” agents almost all rely on extrinsic metacognition: fixed, human-designed loops where the metacognitive structure is wired in by the system designer rather than learned by the agent [4]. They contend genuinely scalable self-improvement needs intrinsic metacognitive learning: the agent itself deciding what to evaluate, what to reflect on, what to learn next. CRDAL is a clean example of the extrinsic kind: a hand-designed second agent in a hand-designed role, with the loop topology fixed by the authors. The Ralph Wiggum result is real, but read alongside the position paper it is evidence that extrinsic scaffolding helps right now, not that this is the architecture self-improving agents will eventually settle on.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.linkedin.com/in/zedaxu/">Xu</a>, Zeda, Nikolas <a href="https://nikmart.com/">Martelaro</a>, and Christopher <a href="https://cmccomb.com/">McComb</a>. “Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design.” <em>arXiv preprint</em> (arXiv:2603.24768), March 25, 2026. <a href="https://arxiv.org/abs/2603.24768" class="uri">https://arxiv.org/abs/2603.24768</a></li>
+<li><a id="ref-2"></a><a href="https://jeffhj.github.io/">Huang</a>, Jie, Xinyun <a href="https://jungyhuk.github.io/">Chen</a>, Swaroop <a href="https://swarooprm.github.io/">Mishra</a>, Huaixiu Steven Zheng, Adams Wei Yu, Xinying Song, and Denny <a href="https://dennyzhou.github.io/">Zhou</a>. “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>arXiv preprint</em> (arXiv:2310.01798), October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
+<li><a id="ref-3"></a><a href="https://ziyuwan.github.io/">Wan</a>, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi <a href="https://leeeeoliu.github.io/">Yang</a>, Mark <a href="https://www.cs.ubc.ca/~schmidtm/">Schmidt</a>, Jun <a href="http://www0.cs.ucl.ac.uk/staff/Jun.Wang/">Wang</a>, Weinan <a href="http://wnzhang.net/">Zhang</a>, Shuyue Hu, and Ying <a href="https://yingwen.io/">Wen</a>. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
+<li><a id="ref-4"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+<li><a id="ref-5"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/cover.png" class="img-fluid figure-img"></p>
+<figcaption>Spectrum of shared metacognition, from intrinsic (agent runs its own metacognitive loop) through shared (agent and designer split the metacognitive work) to extrinsic (metacognitive loop is fully externally defined). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</em> (ICML 2025) [1], <a href="https://tennisonliu.github.io/">Tennison Liu</a> and <a href="https://www.vanderschaar-lab.com/prof-mihaela-van-der-schaar/">Mihaela van der Schaar</a> at Cambridge argue that almost every current “self-improving” LLM agent leans on hand-designed metacognitive loops, and that genuine, sustained self-improvement requires agents that can themselves evaluate, plan, and adapt their own learning processes.</p>
+<blockquote class="blockquote">
+<p>Self-improving agents aim to continuously acquire new capabilities with minimal supervision. However, current approaches face two key limitations: their self-improvement processes are often rigid, <em>fail to generalize across tasks domains, and struggle to scale with increasing agent capabilities</em>. We argue that effective self-improvement requires intrinsic metacognitive learning, defined as an agent’s intrinsic ability to actively evaluate, reflect on, and adapt its own learning processes. Drawing inspiration from human metacognition, we introduce a formal framework comprising three components: <em>metacognitive knowledge</em> (self-assessment of capabilities, tasks, and learning strategies), <em>metacognitive planning</em> (deciding what and how to learn), and <em>metacognitive evaluation</em> (reflecting on learning experiences to improve future learning). Analyzing existing self-improving agents, we find they <em>rely predominantly on extrinsic metacognitive mechanisms, which are fixed, human-designed loops that limit scalability and adaptability</em>. Examining each component, we contend that many ingredients for intrinsic metacognition are already present. Finally, we explore how to optimally distribute metacognitive responsibilities between humans and agents, and robustly evaluate and improve intrinsic metacognitive learning, key challenges that must be addressed to enable truly sustained, generalized, and aligned self-improvement.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The paper formalizes metacognitive learning as a bi-level process. A metacognitive layer sits above the cognitive layer where task-level learning actually happens, monitoring and regulating it. The metacognitive layer has three components that close a loop: knowledge informs planning, planning produces learning activity, and evaluation feeds back into both.</p>
+<ul>
+<li><strong>Metacognitive knowledge</strong> is the agent’s self-model.
+<ul>
+<li>It comes in three flavors: <em>knowledge of self</em> (what the agent can already do, where its limits lie, what skills it has), <em>knowledge of task</em> (what the current task demands and what would help), and <em>knowledge of strategies</em> (which learning approaches are available and where each tends to apply).</li>
+<li>The biggest threat to this component is hallucination: LLMs can confidently misrepresent their own internal state, including basic facts about which tools they have access to.</li>
+<li>The paper cites recent work showing agents can classify math problems by required solution procedure [2] and identify which training tasks would help them, so the ingredient is at least partially present.</li>
+</ul></li>
+<li><strong>Metacognitive planning</strong> turns that self-model into action through two questions.
+<ul>
+<li><em>What to learn</em> is a task-allocation question, traditionally answered by curriculum learning over a curated task pool [3]. Intrinsic variants replace the human-designed curriculum with internal drivers like curiosity, learnability, and regret, and let agents generate their own tasks rather than draw from a fixed pool [4].</li>
+<li><em>How to learn</em> is a strategy-selection question with two phases:
+<ul>
+<li><em>Exploration</em> (temperature scaling, upper-confidence-bound tree search [5], uncertainty-guided sampling, prompt-based novelty seeking) chooses what experiences the agent gathers.</li>
+<li><em>Learning</em> extracts capabilities from those experiences via in-weight updates (finetuning on self-generated traces, à la STaR [6]), long-term memory writes (episodic experiences, abstract rules, reusable skills as tool functions), or both.</li>
+</ul></li>
+<li>The paper flags this whole component as the most under-developed in current systems: nearly every shipped agent picks one fixed mechanism and applies it uniformly across tasks and over time.</li>
+</ul></li>
+<li><strong>Metacognitive evaluation</strong> closes the loop and has two aspects.
+<ul>
+<li><em>Tracking progress</em> is the ongoing assessment of how learning is going. Held-out benchmarks like MMLU [7] work for well-defined capabilities. LLM-as-judge [8] fills in for fuzzier targets like emotional intelligence, creativity, or interestingness, where no quantifiable metric exists.</li>
+<li><em>Metacognitive reflection</em> is the post-hoc analysis of learning plans, distinct from task-level reflection (Reflexion-style [9]) by operating one level up: it evaluates long-term learning trajectories rather than per-task performance.</li>
+<li>Because it operates over representations of the cognitive process rather than the task itself, metacognitive reflection can in principle be domain-agnostic, given enough domain-specific signal to extract progress from.</li>
+</ul></li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper walks three well-known systems through this framework as case studies, ordered by increasing intrinsic-ness:</p>
+<ul>
+<li><strong>STaR</strong> [6] (Zelikman et al., 2022): a reasoning bootstrapping method. Given a small set of problems with reasoning traces plus a larger set with answers only, the agent attempts problems and gets finetuned on any trace that led to a correct answer, then the cycle repeats on harder problems. Almost entirely extrinsic: the agent doesn’t assess its own capabilities, doesn’t choose which tasks to attempt (externally curated), and doesn’t adapt its learning strategy (rationalization with answer hints is fixed). The metacognitive loop sits with the system designer.</li>
+<li><strong>Voyager</strong> [10] (Wang et al., 2023): an LLM-based embodied agent for lifelong learning in Minecraft. It maintains a growing library of executable Python skills and autonomously discovers increasingly complex actions to perform. Partially intrinsic: the agent tracks what it can do (knowledge) and balances exploration against task learnability when picking next goals (planning). The learning strategy stays fixed though: the same exploration-learning loop runs across all tasks. Voyager beats expert-designed curriculum baselines, which the paper takes as evidence the intrinsic components matter.</li>
+<li><strong>Generative Agents</strong> [11] (Park et al., 2023): agents in a Sims-style sandbox that accumulate experiences, form relationships, and develop distinct personas through lived interaction. Most intrinsic of the three. Agents form evolving identities and motivations (knowledge), autonomously plan daily activities (planning), and periodically trigger an abstract reflection, such as recognizing a newfound interest or reinterpreting recent events, that updates their semantic memory and shapes future plans (evaluation). The paper flags the contrast with Reflexion-style [9] techniques: Reflexion reflects at the cognitive level to improve performance on specific tasks; Generative Agents reflect at the metacognitive level, drawing inferences about their own trajectory.</li>
+</ul>
+<p>The arc across the three case studies is how the paper builds its argument: each system is intrinsic on more components than the last, and the paper argues the more-intrinsic systems show more sustained progress in the diversity and novelty of their evolving capabilities. The paper acknowledges these are preliminary observations that still require rigorous, systematic studies to substantiate.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Both limitation claims rest on one example each.</strong> The “lose efficacy” claim cites Song et al.’s 2024 generation-verification-gap finding [12]. The “fail to generalize” claim points at STaR and bootstrapped self-training, which worked in their original domain but didn’t transfer. No new experiments.</p></li>
+<li><p><strong>Every shipped agent is extrinsic in this taxonomy.</strong> The system designer decides what to monitor, what counts as progress, and when to switch strategies. <a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum</a> [13] hand-designs a Co-Regulation Agent with a fixed role and loop position. <a href="../../posts/20260430-rema-meta-think/">ReMA</a> [14] hand-designs the high-low decomposition. The prompt-optimization line (<a href="../../posts/20260430-multi-agent-system-search/">MASS</a>, <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO</a>, <a href="../../posts/20260430-evoprompt/">EvoPrompt</a>) uses LLMs as inner-loop optimizers but humans fix the search-space structure.</p></li>
+<li><p><strong>“Sustained progress” lacks a cross-system metric.</strong> STaR runs in math/reasoning, Voyager in Minecraft, Generative Agents in a Sims sandbox. A residual learning rate (slope late in training over slope early) gets the y-axis unit-free, but the x-axis stays domain-specific: a STaR training step isn’t a Voyager training step, and Sims days don’t align with Minecraft exploration. The cross-system ordering needs either a shared benchmark or a principled x-axis alignment, neither of which the paper provides.</p></li>
+<li><p><strong>SelfReflect bounds the optimism about LLM metacognitive ingredients.</strong> The paper argues frontier LLMs already exhibit pieces of metacognitive knowledge, planning, and evaluation. Apple’s <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [15] finds, across 20 modern models, that LLM self-reports of their own answer distributions don’t match what those models actually sample. So the metacognitive-knowledge ingredient is thinner than the paper’s optimism implies, at least without help from techniques like sample-then-summarize.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+<li><a id="ref-2"></a>Didolkar, Aniket, Anirudh Goyal, Nan Rosemary Ke, Siyuan Guo, Michal Valko, Timothy Lillicrap, Danilo Rezende, Yoshua Bengio, Michael Mozer, and Sanjeev Arora. “Metacognitive Capabilities of LLMs: An Exploration in Mathematical Problem Solving.” <em>arXiv preprint</em> (arXiv:2405.12205), May 20, 2024. <a href="https://arxiv.org/abs/2405.12205" class="uri">https://arxiv.org/abs/2405.12205</a></li>
+<li><a id="ref-3"></a>Bengio, Yoshua, Jérôme Louradour, Ronan Collobert, and Jason Weston. “Curriculum Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2009. <a href="https://dl.acm.org/doi/10.1145/1553374.1553380" class="uri">https://dl.acm.org/doi/10.1145/1553374.1553380</a></li>
+<li><a id="ref-4"></a>Faldor, Maxence, Jenny Zhang, Antoine Cully, and Jeff Clune. “OMNI-EPIC: Open-endedness via Models of human Notions of Interestingness with Environments Programmed in Code.” <em>arXiv preprint</em> (arXiv:2405.15568), May 24, 2024. <a href="https://arxiv.org/abs/2405.15568" class="uri">https://arxiv.org/abs/2405.15568</a></li>
+<li><a id="ref-5"></a>Hao, Shibo, Yi Gu, Haodi Ma, Joshua Jiahua Hong, Zhen Wang, Daisy Zhe Wang, and Zhiting Hu. “Reasoning with Language Model is Planning with World Model.” <em>Conference on Empirical Methods in Natural Language Processing (EMNLP)</em>, 2023. arXiv:2305.14992, May 24, 2023. <a href="https://arxiv.org/abs/2305.14992" class="uri">https://arxiv.org/abs/2305.14992</a></li>
+<li><a id="ref-6"></a><a href="https://ezelikman.com/">Zelikman</a>, Eric, Yuhuai <a href="http://www.cs.toronto.edu/~ywu/">Wu</a>, Jesse <a href="https://cs.stanford.edu/~muj/">Mu</a>, and Noah D. <a href="https://cocolab.stanford.edu/ndg.html">Goodman</a>. “STaR: Bootstrapping Reasoning With Reasoning.” <em>arXiv preprint</em> (arXiv:2203.14465), March 28, 2022. <a href="https://arxiv.org/abs/2203.14465" class="uri">https://arxiv.org/abs/2203.14465</a></li>
+<li><a id="ref-7"></a><a href="https://people.eecs.berkeley.edu/~hendrycks/">Hendrycks, D.</a>, Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D., and Steinhardt, J. “Measuring Massive Multitask Language Understanding.” <em>ICLR 2021</em> (arXiv:2009.03300). <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></li>
+<li><a id="ref-8"></a>Zheng, Lianmin, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric P. Xing, Hao Zhang, Joseph E. Gonzalez, and Ion Stoica. “Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2023. arXiv:2306.05685, June 9, 2023. <a href="https://arxiv.org/abs/2306.05685" class="uri">https://arxiv.org/abs/2306.05685</a></li>
+<li><a id="ref-9"></a><a href="https://noahshinn.com/">Shinn, N.</a>, <a href="https://federico.codes/">Cassano, F.</a>, Berman, E., <a href="https://meche.mit.edu/people/faculty/AGOPI@MIT.EDU">Gopinath, A.</a>, <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a>. “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS 2023</em> (arXiv:2303.11366), March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
+<li><a id="ref-10"></a>Wang, Guanzhi, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar. “Voyager: An Open-Ended Embodied Agent with Large Language Models.” <em>arXiv preprint</em> (arXiv:2305.16291), May 25, 2023. <a href="https://arxiv.org/abs/2305.16291" class="uri">https://arxiv.org/abs/2305.16291</a></li>
+<li><a id="ref-11"></a>Park, Joon Sung, Joseph C. O’Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. “Generative Agents: Interactive Simulacra of Human Behavior.” <em>arXiv preprint</em> (arXiv:2304.03442), April 7, 2023. <a href="https://arxiv.org/abs/2304.03442" class="uri">https://arxiv.org/abs/2304.03442</a></li>
+<li><a id="ref-12"></a><a href="https://yudasong.github.io/">Song</a>, Yuda, Hanlin <a href="https://hanlin-zhang.com/">Zhang</a>, Carson Eisenach, Sham <a href="https://en.wikipedia.org/wiki/Sham_Kakade">Kakade</a>, Dean <a href="https://deanfoster.net/">Foster</a>, and Udaya <a href="https://udaya.github.io/">Ghai</a>. “Mind the Gap: Examining the Self-Improvement Capabilities of Large Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2412.02674, December 3, 2024. <a href="https://arxiv.org/abs/2412.02674" class="uri">https://arxiv.org/abs/2412.02674</a></li>
+<li><a id="ref-13"></a><a href="https://www.linkedin.com/in/zedaxu/">Xu</a>, Zeda, Nikolas <a href="https://nikmart.com/">Martelaro</a>, and Christopher <a href="https://cmccomb.com/">McComb</a>. “Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design.” <em>arXiv preprint</em> (arXiv:2603.24768), March 25, 2026. <a href="https://arxiv.org/abs/2603.24768" class="uri">https://arxiv.org/abs/2603.24768</a></li>
+<li><a id="ref-14"></a><a href="https://ziyuwan.github.io/">Wan</a>, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi <a href="https://leeeeoliu.github.io/">Yang</a>, Mark <a href="https://www.cs.ubc.ca/~schmidtm/">Schmidt</a>, Jun <a href="http://www0.cs.ucl.ac.uk/staff/Jun.Wang/">Wang</a>, Weinan <a href="http://wnzhang.net/">Zhang</a>, Shuyue Hu, and Ying <a href="https://yingwen.io/">Wen</a>. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
+<li><a id="ref-15"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/cover.png" medium="image" type="image/png" height="38" width="144"/>
+</item>
+<item>
+  <title>System Prompt Optimization with Meta-Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Generalization across different domains. Left: MetaSPO’s performance on domains not used for prompt optimization, plotted against their similarity to the training domains. Right: Effect of the number of training domains, with more domains yielding stronger generalization. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>System Prompt Optimization with Meta-Learning</em> (NeurIPS 2025) [1], <a href="https://www.mlai-kaist.com/">Yumin Choi</a>, <a href="https://jinheonbaek.github.io/">Jinheon Baek</a>, and <a href="https://www.mlai-kaist.com/">Sung Ju Hwang</a> (KAIST, DeepAuto.ai) introduce MetaSPO, a bilevel optimization framework that meta-learns a task-agnostic system prompt while simultaneously updating task-specific user prompts in an iterative inner loop.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) have shown remarkable capabilities, with optimizing their input prompts playing a pivotal role in maximizing their performance. However, while LLM prompts consist of both the task-agnostic system prompts and task-specific user prompts, existing work on prompt optimization has focused on user prompts specific to individual queries or tasks, and largely overlooked the system prompt that is, once optimized, applicable across different tasks and domains. Motivated by this, we introduce the novel problem of <em>bilevel system prompt optimization</em>, whose objective is to <em>design system prompts that are robust to diverse user prompts and transferable to unseen tasks</em>. To tackle this problem, we then propose <em>a meta-learning framework, which meta-learns the system prompt by optimizing it over various user prompts across multiple datasets, while simultaneously updating the user prompts in an iterative manner to ensure synergy between them</em>. We conduct experiments on <em>14 unseen datasets spanning 5 different domains</em>, on which we show that our approach produces system prompts that generalize effectively to diverse user prompts. Also, our findings reveal that the optimized system prompt enables <em>rapid adaptation even to unseen tasks, requiring fewer optimization steps for test-time user prompts while achieving improved performance</em>.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>Concept figure. (A) An LLM input has three parts: task-agnostic system prompt, task-specific user prompt, target example. (B) Conventional task-specific optimization tunes the user prompt for one task and generalizes poorly. (C) MetaSPO meta-learns a system prompt that transfers to unseen target tasks. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Against this three-part structure, MetaSPO’s bilevel algorithm runs two nested optimization loops. The outer loop optimizes the task-agnostic system prompt, and the inner loop iteratively refines task-specific user prompts. At each outer step, the current system prompt is paired with candidate user prompts across multiple source tasks. The model’s failures on held-out examples feed an LLM optimizer that proposes refined candidates (user prompts inside the inner loop, system prompts at the outer loop). The meta-learned system prompt transfers to unseen target tasks with no further system-prompt tuning; at test time, only the user prompt is adapted per target task.</p>
+<p>The system prompt starts as “You are a helpful assistant.” (the Default baseline) and is iteratively refined through the outer loop. At each step of either loop, a separate optimizer LLM (GPT-4o mini in the main experiments, distinct from the Llama-3.2 3B base LLM that generates task responses) is prompted with the current prompt and its incorrectly-predicted examples, asked to analyze the failure modes, and then asked for multiple candidate refinements. Candidates are evaluated against held-out task data, and the top-k by performance survive to the next iteration. Both loops follow this same textual-gradient pattern (after Pryzant et al.&nbsp;[4]), applied at different scopes: user prompt per task in the inner loop, system prompt aggregated across source tasks in the outer loop.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>MetaSPO overview. The inner loop refines candidate user prompts via failure analysis on a target task; the outer loop refines the system prompt by aggregating failures across multiple source tasks. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper evaluates on 14 unseen target tasks across 5 domains (Medical, Review Analysis, Reasoning, Safety, Grounding), with each score the average performance of a system prompt paired with ten different user prompts. Within-domain Domain MetaSPO averages 44.5 over the 14 tasks, beating the next-best baseline SPRIG at 37.0 and the no-system-prompt Default at 32.2. The cross-domain Global MetaSPO setting (one system prompt meta-learned across all 5 domains) averages 41.4, still ahead of all baselines but ~3 points behind the within-domain Domain setting. Separately, on test-time efficiency: a MetaSPO-pretrained system prompt reaches Default’s converged performance with 80% fewer optimization iterations and 75% less data during test-time user-prompt adaptation.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/table1.png" class="img-fluid figure-img"></p>
+<figcaption>Main results on 14 unseen target tasks, grouped by 5 domains. Global methods use a single system prompt across all domains; Domain methods use a system prompt meta-learned on the target’s domain. Each cell is the average score across 10 different user prompts on that target task. Domain MetaSPO (bottom row) tops the overall average at 44.5. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 4 tests whether MetaSPO’s lift transfers uniformly across target tasks or depends on source-target task similarity. The paper measures similarity via Bag-of-Words overlap between the source-task training distribution and the target task, then plots per-task improvement against it.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>MetaSPO’s gain over the Default baseline as a function of source-target task similarity (measured by Bag-of-Words overlap). Points above the y=0 line indicate a positive lift over Default; Pearson correlation 0.56 between similarity and improvement. High-similarity target tasks see larger gains; low-similarity tasks see near-neutral gains. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The decomposition is the contribution, more than the method.</strong> Before this paper, “prompt optimization” treated the prompt as one optimization target for one task. DSPy [2], MIPRO [3], Pryzant et al.’s textual gradients [4], and <a href="../../posts/20260430-evoprompt/">EvoPrompt</a> [6] each target a different piece of that setup, but all produce task-specific prompts. The bilevel split (task-agnostic system prompt above, task-specific user prompt below) is the key move; once you make it, the meta-learning structure follows naturally because the outer loop has a natural “across tasks” loss to optimize. The MetaSPO algorithm itself is a structurally familiar inner/outer LLM-as-optimizer loop. What matters here is the decision about what to put in each level.</li>
+<li><strong>The system prompt does most of the transfer work.</strong>
+<ul>
+<li>MetaSPO’s headline wins on unseen tasks come from the system prompt. In Table 1’s Unseen Generalization scenario, user prompts are LLM-sampled per task and held fixed; only the system prompt varies across the methods compared. Domain MetaSPO averages 44.5 over 14 unseen target tasks vs.&nbsp;Default’s 32.2, a +12.3-point lift attributable to the system prompt alone.</li>
+<li>Appendix B.7 tests system-prompt vs user-prompt optimization head-to-head: MetaSPO (system-prompt optimized on source tasks) vs.&nbsp;ProTeGi (user-prompt optimized on source tasks), evaluated on the unseen Reasoning domain. MetaSPO wins across every source-domain starting point; ProTeGi drops below the Default system prompt, indicating user-prompt optimizations don’t transfer past the specific tasks they were tuned on.</li>
+</ul></li>
+<li><strong>Test-time efficiency is the practically relevant finding.</strong> The headline number is the unseen-generalization performance, but the deployment-relevant result is in §4: a MetaSPO-pretrained system prompt reaches the Default baseline’s converged performance with 80% fewer optimization iterations and 75% less data during test-time user-prompt adaptation. That’s a recipe for shipping prompt-optimized agents when each new task gets a small calibration budget rather than full re-optimization.</li>
+<li><strong>Generalization is asymmetric along source-target similarity.</strong> Figure 4 shows MetaSPO’s gain over Default scales with source-target task similarity measured by Bag-of-Words. High similarity, big gain; low similarity, the meta-learned system prompt is closer to neutral. That’s the expected meta-learning failure mode on out-of-distribution tasks, but it also bounds the deployment story: a system prompt meta-learned on Medical+Review+Reasoning will help most on tasks that look like those at the BoW level, and the cross-domain Global setting underperforms the within-domain Domain setting (41.4 vs.&nbsp;44.5 avg). The follow-up question: at what point does the meta-learned prior become a <em>liability</em> on a sufficiently distant task?</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.mlai-kaist.com/">Choi, Y.</a>, <a href="https://jinheonbaek.github.io/">Baek, J.</a>, <a href="https://www.mlai-kaist.com/">Hwang, S. J.</a> “System Prompt Optimization with Meta-Learning.” <em>Conference on Neural Information Processing Systems (NeurIPS)</em>, 2025. arXiv:2505.09666, May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
+<li><a id="ref-2"></a>Khattab, O., Singhvi, A., Maheshwari, P., Zhang, Z., Santhanam, K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., Miller, H., Zaharia, M., Potts, C. “DSPy: Compiling Declarative Language Model Calls into State-of-the-Art Pipelines.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://arxiv.org/abs/2310.03714" class="uri">https://arxiv.org/abs/2310.03714</a></li>
+<li><a id="ref-3"></a>Opsahl-Ong, K., Ryan, M. J., Purtell, J., Broman, D., Potts, C., Zaharia, M., Khattab, O. “Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs.” <em>Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing</em>, 2024. <a href="https://arxiv.org/abs/2406.11695" class="uri">https://arxiv.org/abs/2406.11695</a></li>
+<li><a id="ref-4"></a>Pryzant, R., Iter, D., Li, J., Lee, Y., Zhu, C., Zeng, M. “Automatic Prompt Optimization with ‘Gradient Descent’ and Beam Search.” <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing</em>, 2023. <a href="https://arxiv.org/abs/2305.03495" class="uri">https://arxiv.org/abs/2305.03495</a></li>
+<li><a id="ref-6"></a>Guo, Q., Wang, R., Guo, J., Li, B., Song, K., Tan, X., Liu, G., Bian, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</title>
   <dc:creator>synesis </dc:creator>
@@ -1298,161 +1557,6 @@
   <guid>https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/</guid>
   <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/01.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Convergent Evolution: How Different Language Models Learn Similar Number Representations</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>First page of the paper. Image from <a href="https://arxiv.org/abs/2604.20817">arXiv</a>.</figcaption>
-</figure>
-</div>
-<p><em>Convergent Evolution: How Different Language Models Learn Similar Number Representations</em> [1] Deqing Fu, Tianyi Zhou, Mikhail Belkin, Vatsal Sharan, Robin Jia</p>
-<p>Fu et al.&nbsp;[1] show that periodic number features emerge in nearly every architecture they test, from Transformers to long short-term memory networks (LSTMs) to GloVe, but only some of those models go on to develop linearly separable mod-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> classes.</p>
-<blockquote class="blockquote">
-<p><em>Abstract:</em> Language models trained on natural text learn to represent numbers using periodic features with dominant periods at <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/>. In this paper, we identify a two-tiered hierarchy of these features: while Transformers, Linear RNNs, LSTMs, and classical word embeddings trained in different ways all learn features that have period-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> spikes in the Fourier domain, only some learn geometrically separable features that can be used to linearly classify a number mod-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/>. To explain this incongruity, we prove that Fourier domain sparsity is necessary but not sufficient for mod-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> geometric separability. Empirically, we investigate when model training yields geometrically separable features, finding that the data, architecture, optimizer, and tokenizer all play key roles. In particular, we identify two different routes through which models can acquire geometrically separable features: they can learn them from complementary co-occurrence signals in general language data, including text-number co-occurrence and cross-number interaction, or from multi-token (but not single-token) addition problems. Overall, our results highlight the phenomenon of convergent evolution in feature learning: A diverse range of models learn similar features from different training signals.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>The analytical tool throughout is the discrete Fourier transform. Stack the model’s number embeddings into a matrix, one row per input integer and one column per embedding dimension, and run the DFT down each column. Spikes in the magnitude spectrum reveal which periods the model has internalized, without the experimenter having to specify them in advance.</p>
-<p>The specific values <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/> are a fingerprint of base-10 text. They are exactly the non-trivial divisors of 10, with concrete corpus statistics behind each:</p>
-<ul>
-<li><strong><img src="https://benjaminhan.net/feed-assets/3552371d84d2908e.svg" alt="T=10" class="feed-math-inline"/></strong> captures last-digit structure: round numbers ending in 0 are massively over-represented in text [6], as are decimal-column patterns.</li>
-<li><strong><img src="https://benjaminhan.net/feed-assets/5a8036510b72b274.svg" alt="T=5" class="feed-math-inline"/></strong> captures the next-most-common rounding regime: numbers ending in 5 are next-roundest after 0 [6], and price endings reflect this. One analysis of advertised prices found roughly 60% ending in 9, 30% in 5, and 7% in 0 [7].</li>
-<li><strong><img src="https://benjaminhan.net/feed-assets/492279cbaf759e6b.svg" alt="T=2" class="feed-math-inline"/></strong> captures parity: even-odd distinctions in pluralization, dates, scoring patterns.</li>
-</ul>
-<p>Engels et al.&nbsp;(2025) found analogous <img src="https://benjaminhan.net/feed-assets/5799350068a4e1a0.svg" alt="T=7" class="feed-math-inline"/> spikes for days of the week and <img src="https://benjaminhan.net/feed-assets/142c54be7454fc06.svg" alt="T=12" class="feed-math-inline"/> for months [3]; same mechanism, different modulus. A clean falsification the paper does not run: train on hexadecimal-only text and check whether the spikes shift to <img src="https://benjaminhan.net/feed-assets/b8ccfa81765a644a.svg" alt="\{2, 4, 8, 16\}" class="feed-math-inline"/>.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>Across Transformers, Linear RNNs, LSTMs, and classical word embeddings, the Fourier spikes at <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/> appear universally — but only Transformers and Gated DeltaNet go on to encode mod-<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> classes as linearly separable structure:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/figure1.png" class="img-fluid figure-img"></p>
-<figcaption>Universality of Fourier features and convergent evolution. Left: Fourier spectrum of number embeddings across Transformer LLMs, non-Transformer LLMs, and classical word embeddings, all showing consistent spikes at periods <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/>. Right: the spectral-vs-geometric convergence diagram. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
-<figcaption>A spiky Fourier spectrum does not imply good feature learning. Token embeddings of Transformer, Gated DeltaNet, LSTM, and even the raw number-token frequency distribution all exhibit Fourier spikes at <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/>, but linear probes reveal that only the Transformer and Gated DeltaNet learn functional modular arithmetic with high Cohen’s <img src="https://benjaminhan.net/feed-assets/e92ecde84e28692f.svg" alt="\kappa" class="feed-math-inline"/>. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<p>The paper’s main finding: every architecture in the study picks up the periodic <em>signal</em> of how numbers appear in text, but only Transformers and Gated DeltaNet (a linear recurrent neural network, RNN) organize those signals so a linear classifier can read them off. The implication for building a math-capable model: pick an architecture in the geometrically-convergent group, and reach the geometric features by either of the paper’s two identified routes, training on natural text rich in number co-occurrences, or on multi-token (but not single-token) addition problems.</p>
-<ul>
-<li><strong>Spectral convergence is broader than the founding work assumed.</strong> Zhou et al.&nbsp;(2024) established that pretrained LLMs add via Fourier features, and that models trained from scratch on addition fail to recover them, suggesting the structure was earned during language pretraining [2]. This paper pushes the universality further: even the raw token-frequency distribution of the training corpus shows the same <img src="https://benjaminhan.net/feed-assets/6bf16a52c3a2936f.svg" alt="T=2, 5, 10" class="feed-math-inline"/> spikes [1]. The Fourier structure was apparently sitting in the data all along, not earned by any particular learning objective.</li>
-<li><strong>Can the sparse-autoencoder (SAE) result corroborate?</strong> Engels et al.&nbsp;(2025) used SAEs to find circular features for days of the week and months in Mistral 7B and Llama 3, and verified with causal interventions that the circles actually compute modular arithmetic [3]. Both are Transformers, exactly the family Fu et al.&nbsp;show consistently achieves geometric convergence. The two results are consistent. The follow-up worth running: train SAEs on a linear RNN (which Fu et al.&nbsp;find geometrically convergent) and on an LSTM (which they don’t), and see what appears. Three outcomes are informative: SAEs find functional circles in both, meaning SAE-discovered circles aren’t a reliable signature of geometric usability; SAEs find circles only where Fu et al.’s linear probes do, meaning the two methods agree and SAE circles really do mark functional structure; SAEs find circles in the LSTM that don’t survive causal intervention, meaning SAE features can be spectral artifacts, not all of them functional.</li>
-<li><strong>The “Clock” algorithm becomes testable across architectures.</strong> Kantamneni and Tegmark (2025) reverse-engineered addition in three mid-sized Transformers as manipulation of a generalized “Clock”, a helical embedding that stacks multiple circular features over a linear magnitude axis [4]. The Clock relies on exactly the geometric usability that Fu et al.&nbsp;find in Transformers and linear RNNs but absent in LSTMs, making linear RNNs a plausible candidate for the same algorithm and LSTMs an unlikely one. Convergence at the feature level doesn’t guarantee convergence at the algorithm level. The same features can in principle support different circuits. A successful reverse-engineering of the Clock in a linear RNN would extend the convergence story from features to algorithms; failure would show that even matched features can yield divergent mechanisms.</li>
-<li><strong>Engineered Fourier embeddings give a clean lever for separating architecture from data.</strong> The FoNE work (Zhou et al., 2025) directly maps numbers into Fourier features and reports <img src="https://benjaminhan.net/feed-assets/af948ae55d39e291.svg" alt="64\times" class="feed-math-inline"/> data efficiency on 6-digit addition [5]. Fu et al.&nbsp;find that geometrically separable number features arise from a combination of data, architecture, optimizer, and tokenizer. Text-number co-occurrence is one of two identified data routes; multi-token addition training is the other [1]. FoNE’s contribution is that it pre-supplies the Fourier features as input embeddings, removing the model’s need to acquire them from training data. That separation enables two clean tests, holding feature-supply constant in each: train an LSTM with FoNE embeddings on rich natural text (does the LSTM still fail at arithmetic? if so, the architecture itself blocks geometric use of period features); train a Transformer with FoNE embeddings on text scrubbed of number co-occurrences (does the Transformer fail? if so, data conditions matter even when features are pre-supplied). Today neither test has been run.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Fu, Deqing, Tianyi Zhou, Mikhail Belkin, Vatsal Sharan, and Robin Jia. “Convergent Evolution: How Different Language Models Learn Similar Number Representations.” <em>arXiv preprint</em> (arXiv:2604.20817), April 22, 2026. <a href="https://arxiv.org/abs/2604.20817" class="uri">https://arxiv.org/abs/2604.20817</a></li>
-<li><a id="ref-2"></a>Zhou, Tianyi, Deqing Fu, Vatsal Sharan, and Robin Jia. “Pre-trained Large Language Models Use Fourier Features to Compute Addition.” <em>arXiv preprint</em> (arXiv:2406.03445), June 5, 2024. <a href="https://arxiv.org/abs/2406.03445" class="uri">https://arxiv.org/abs/2406.03445</a></li>
-<li><a id="ref-3"></a>Engels, Joshua, Isaac Liao, Eric J. Michaud, Wes Gurnee, and Max Tegmark. “Not All Language Model Features Are One-Dimensionally Linear.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2405.14860. <a href="https://arxiv.org/abs/2405.14860" class="uri">https://arxiv.org/abs/2405.14860</a></li>
-<li><a id="ref-4"></a>Kantamneni, Subhash, and Max Tegmark. “Language Models Use Trigonometry to Do Math.” <em>arXiv preprint</em> (arXiv:2502.00873), February 2, 2025. <a href="https://arxiv.org/abs/2502.00873" class="uri">https://arxiv.org/abs/2502.00873</a></li>
-<li><a id="ref-5"></a>Zhou, Tianyi, Deqing Fu, Mahdi Soltanolkotabi, Robin Jia, and Vatsal Sharan. “FoNE: Precise Single-Token Number Embeddings via Fourier Features.” <em>arXiv preprint</em> (arXiv:2502.09741), February 13, 2025. <a href="https://arxiv.org/abs/2502.09741" class="uri">https://arxiv.org/abs/2502.09741</a></li>
-<li><a id="ref-6"></a>Wikipedia contributors. “Round Number.” <em>Wikipedia</em>. Accessed April 24, 2026. <a href="https://en.wikipedia.org/wiki/Round_number" class="uri">https://en.wikipedia.org/wiki/Round_number</a></li>
-<li><a id="ref-7"></a>Wikipedia contributors. “Psychological Pricing.” <em>Wikipedia</em>. Accessed April 24, 2026. <a href="https://en.wikipedia.org/wiki/Psychological_pricing" class="uri">https://en.wikipedia.org/wiki/Psychological_pricing</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How LLMs Actually Work: A Visual Deep Dive</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Screenshot from <a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a> by Y. Narwal is an interactive, scroll-driven walkthrough of the LLM training pipeline, from Common Crawl through pre-training, post-training, RAG, and inference, with live diagrams and inline annotations at every stage. It is based on Andrej Karpathy’s technical deep dive.</p>
-<p>The nine sections mirror the canonical build pipeline:</p>
-<ul>
-<li><strong>Downloading the Internet</strong> — Common Crawl plus the filters that turn web sludge into a training corpus.</li>
-<li><strong>Tokenization</strong> — subword units, with a live BPE demo.</li>
-<li><strong>Training the Neural Network</strong> — the Transformer architecture and what each step updates.</li>
-<li><strong>Inference &amp; Token Sampling</strong> — temperature and top-p, with a sampling demo.</li>
-<li><strong>The Internet Simulator</strong> — what the base model is, before any post-training.</li>
-<li><strong>Building the Assistant</strong> — SFT on conversations, the turn token format, RLHF on top.</li>
-<li><strong>Cognitive Quirks of Language Models</strong> — counting letters, arithmetic, hallucination — and where in the pipeline they originate.</li>
-<li><strong>Retrieval-Augmented Generation</strong> — how retrieved context shifts the prediction distribution.</li>
-<li><strong>From Text to Assistant</strong> — closing recap.</li>
-</ul>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-llm-illustration/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How to Be Anti-Social</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-anti-social/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://nate.leaflet.pub/3mk4xkaxobc2p">Leaflet</a>.</figcaption>
-</figure>
-</div>
-<p>Learn how to sabotage yourself in <a href="https://nate.leaflet.pub/3mk4xkaxobc2p">how to be anti-social</a>:</p>
-<ul>
-<li><strong>Assume bad faith.</strong> When someone confuses or upsets you, assume they have no sane reason for it; when ambiguous, default to malicious, ignorant, or amoral.</li>
-<li><strong>Read intent through your fears.</strong> Trust intuition and feeling, never challenge or even acknowledge the assumptions doing the interpreting.</li>
-<li><strong>Pivot when challenged.</strong> Steer away from questions outside your wheelhouse; treat any display of not-knowing as weakness.</li>
-<li><strong>Word questions to imply you are right.</strong> If you must ask, lead the witness.</li>
-<li><strong>Dig in.</strong> When dissent piles up, hold firm.</li>
-<li><strong>Curate the audience.</strong> Reframe interactions for like-minded supporters so they can rally to crush lingering threats to the narrative.</li>
-<li><strong>Ignore credentials.</strong> Do not research the people you speak with, unless you already agree with them.</li>
-<li><strong>Withhold grace.</strong> Especially from strangers who make mistakes.</li>
-<li><strong>Retreat into self.</strong> When conversation breaks down, do not seek to understand those you do not already understand.</li>
-</ul>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-anti-social/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-anti-social/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

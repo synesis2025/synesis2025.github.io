@@ -1,0 +1,48 @@
+---
+title: "ProgramBench: Can Language Models Rebuild Programs From Scratch?"
+description: "A 200-task benchmark asks language model agents to rebuild full programs from scratch given only the executable and docs; no model fully solves any task."
+author: synesis
+date: "2026-05-26"
+image: cover.jpg
+---
+
+![ProgramBench evaluates models on their ability to write software projects from scratch. Given a program (e.g. an executable) and its documentation, a software engineering agent must produce source code and a build script that reconstructs the original program's behavior. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *ProgramBench: Can Language Models Rebuild Programs From Scratch?* [[1]](#ref-1), [John Yang](https://scholar.google.com/citations?user=71G11ksAAAAJ), Kilian Lieret, [Ofir Press](https://scholar.google.com/citations?user=LeHa8psAAAAJ), and nine co-authors from Meta, Stanford, and Harvard introduce a 200-task benchmark that asks coding agents to reconstruct an open-source program from its compiled executable and documentation alone.
+
+Each task starts from a real GitHub repository written in a compiled language. The authors compile the project, generate a behavioral test suite by running a software engineering agent ([SWE-agent](https://swe-agent.com/)) against the reference executable, then strip the source and tests, leaving only the binary and the docs. The model under test then receives the same starting point and must write source code and a build script whose compiled output passes the hidden tests. The 200 tasks span CLI utilities to large systems including FFmpeg, SQLite, and the PHP interpreter, with no constraint on language, file structure, or build system; every architectural decision is the model's.
+
+![ProgramBench task collection pipeline. To turn a GitHub repository into a task, the authors use a SWE-agent to compile an executable, generate behavioral tests, and strip away implementation details, leaving the binary and documentation as the starting point. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+> Turning ideas into full software projects from scratch has become a popular use case for language models. Agents are being deployed to seed, maintain, and grow codebases over extended periods with minimal human oversight. Such settings require models to make high-level software architecture decisions. However, existing benchmarks measure focused, limited tasks such as fixing a single bug or developing a single, specified feature. We therefore introduce *ProgramBench to measure the ability of software engineering agents to develop software holisitically* [sic]. In ProgramBench, *given only a program and its documentation, agents must architect and implement a codebase that matches the reference executable's behavior*. End-to-end behavioral tests are generated via agent-driven fuzzing, enabling evaluation without prescribing implementation structure. Our 200 tasks range from compact CLI tools to widely used software such as FFmpeg, SQLite, and the PHP interpreter. We evaluate 9 LMs and find that *none fully resolve any task, with the best model passing 95% of tests on only 3% of tasks*. Models favor monolithic, single-file implementations that diverge sharply from human-written code.
+
+What the paper reports: across nine frontier models from Anthropic, Google, and OpenAI, no task is fully resolved by any model. Claude Opus 4.7 leads on the relaxed "% Almost" metric (≥95% of tests passing) at 3.0% of tasks. Claude Opus 4.6 follows at 2.5% and Claude Sonnet 4.6 at 1.6%. Every other model registers 0% on both metrics. The median test pass rate across all 1,800 leaderboard runs is 32%, but the gap from "partial credit" to "fully resolved" is wide and uniform across models.
+
+![Table 2 from the paper [[1]](#ref-1).](table2.png){fig-align="center"}
+
+Per-task pass rates for the 40 most-starred repositories show difficulty is largely model-agnostic: simpler CLI utilities sit on the left of every model's row, while complex systems like FFmpeg and the PHP interpreter remain unsolved across the board.
+
+![Figure 5 from the paper [[1]](#ref-1).](figure5.png){fig-align="center"}
+
+In a separate ablation, the authors gave one model per provider unrestricted internet access and used a 9-judge LM-as-a-judge pipeline to flag trajectories that looked up source code or wrapped the reference executable. Cheating was widespread: 20–36% of tasks flagged for the three stronger models, with source-code lookup accounting for 79–95% of violations. Detection was unreliable too: judges disagreed on 40–57% of tasks. The authors take this as grounds for keeping internet access disabled by default.
+
+![Table 3 from the paper [[1]](#ref-1).](table3.png){fig-align="center"}
+
+The most-quoted analytical finding sits in §5.2: the codebases models produce do not look like the human-written originals. Across trajectories, a single edit accounts for the majority of the final solution, with GPT 5.4 committing a median 96% of its code in one turn.
+
+![Figure 12 from the paper [[1]](#ref-1).](figure12.png){fig-align="center"}
+
+## My Notes
+
+- **Distance to recursive self-improvement.** [Recursive Superintelligence's $4B bet](/posts/20260526-recursive-superintelligence-launch/) assumes agents that can rebuild and improve their own systems. ProgramBench is a direct test of that capability one rung down: reconstruct one specified program from its executable and documentation, with full architectural latitude. Nine frontier models score 0% fully resolved on 200 mostly small open-source projects, and the cheating ablation suggests part of what looks like reasoning capability in deployed coding agents is source-code retrieval.
+- **From-scratch vs localized repair.** Yang and Press were also on the [SWE-bench](https://www.swebench.com/) [[2]](#ref-2) author list in 2024, the bug-fix benchmark where frontier agents now resolve a majority of issues against an existing scaffold. On ProgramBench they resolve zero. Bug-fix benchmarks reward pattern-matching against existing structure, but ProgramBench requires inventing the structure. Headline agent-progress numbers from bug-fix benchmarks don't extrapolate to from-scratch coding.
+- **Architectural numbers for Faye's case.** [Lars Faye](/posts/20260507-agentic-coding-is-a-trap/) argued last week that the orchestrator-with-sub-agents workflow puts growing distance between the engineer and the code, and that catching issues at the architectural level is what a skilled developer is for. ProgramBench supplies numbers from the architectural-quality side: across 1,800 trajectories, models favor monolithic, single-file implementations, and GPT 5.4 commits a median 96% of its lines in one turn (Figure 12).
+- **Agent-fuzzed test suites couple evaluator and evaluated.** Each task's behavioral tests are generated by running a SWE-agent against the reference executable, the same class of system being scored. The paper audits over-specification (§8.3.4) and reports test line coverage comparable to native suites (§5). Neither check isolates the systematic blindspots a fuzzing agent shares with the agent it scores. Whatever a fuzzing agent fails to imagine, such as malformed encodings or unusual flag combinations, is invisible in the score.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Yang](https://scholar.google.com/citations?user=71G11ksAAAAJ), J., Lieret, K., Ma, J., Thakkar, P., Pedchenko, D., Sootla, S., McMilin, E., Yin, P., Hou, R., Synnaeve, G., [Yang](https://scholar.google.com/citations?user=j9jhYqQAAAAJ), D., and [Press](https://scholar.google.com/citations?user=LeHa8psAAAAJ), O. "ProgramBench: Can Language Models Rebuild Programs From Scratch?" *arXiv preprint* (arXiv:2605.03546), May 5, 2026. <https://arxiv.org/abs/2605.03546>
+
+2. <a id="ref-2"></a>Jimenez, C. E., [Yang](https://scholar.google.com/citations?user=71G11ksAAAAJ), J., Wettig, A., Yao, S., Pei, K., [Press](https://scholar.google.com/citations?user=LeHa8psAAAAJ), O., and Narasimhan, K. "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?" *International Conference on Learning Representations (ICLR)* (arXiv:2310.06770), 2024. <https://arxiv.org/abs/2310.06770>

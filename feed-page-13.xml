@@ -21,7 +21,156 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 25 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 26 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Model Editing: Performing Digital Brain Surgery</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/cover.jpg" class="img-fluid"></p>
+<p>Can we “edit” to update incorrect/outdated facts without costly retraining? Recent works such as training auxiliary models to predict weight changes in the main model (MEND) [1], locating “knowledge neurons” [2], using causal intervention to identify feed-forward network (FFN) weights to edit in ROME [3], and scaling up editing operations to thousands of associations in MEMIT [4] have proven it’s doable, even practical.</p>
+<p>Building on ROME/MEMIT, the authors of a more recent work [5] hypothesize that optimizing transformer layer hidden states to update knowledge may be too much, as these parameters contain simultaneously the effect from Multi-head Self-Attention (MHSA), feed-forward network (FFN), and residual connections.</p>
+<p>By computing the similarities of the hidden states of MHSA and FFN before and after each layer, they observe FFN stabilizes much earlier than MHSA, thus concluding that MHSA encodes more general knowledge extraction patterns while FFN captures more factual aspect of knowledge (screenshot 1).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>They then propose PMET (Precise Model Editing in a Transformer), which effectively moves weight optimization upstream. And while trying to optimize both MHSA and FFN, it only updates on FFN weights to preserve specificity (screenshot 2). The result is much more stable performance as number of edits increases (screenshot 3), and better overall results (screenshot 4).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot4.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>Another related recent work is on how to properly evaluate model editing [6]. Instead of just assessing whether an individual fact has been successfully injected or if similar predictions for other subjects have not changed, the <em>consequences</em> of these updates, aka “ripple effects”, should also be evaluated (screenshot 5). It’d be interesting to see how “complete” various model editing methods can achieve (screenshot 6), and how to achieve a better tradeoff between completeness and efficiency.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot5.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/screenshot6.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2110.11309">the paper</a>.</figcaption>
+</figure>
+</div>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/model-editing-performing-digital-brain-surgery-benjamin-han/">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Eric Mitchell, Charles Lin, Antoine Bosselut, Chelsea Finn, and Christopher D. Manning. 2021. “Fast Model Editing at Scale.” <a href="http://arxiv.org/abs/2110.11309" class="uri">http://arxiv.org/abs/2110.11309</a></li>
+<li><a id="ref-2"></a>Damai Dai, Li Dong, Yaru Hao, Zhifang Sui, Baobao Chang, and Furu Wei. 2021. “Knowledge Neurons in Pretrained Transformers.” <a href="http://arxiv.org/abs/2307.14988" class="uri">http://arxiv.org/abs/2307.14988</a></li>
+<li><a id="ref-3"></a>Kevin Meng, David Bau, Alex Andonian, and Yonatan Belinkov. 2022. “Locating and editing factual associations in GPT.” <em>Advances in Neural Information Processing Systems</em>, 35:17359–17372. <a href="https://arxiv.org/abs/2202.05262" class="uri">https://arxiv.org/abs/2202.05262</a></li>
+<li><a id="ref-4"></a>Kevin Meng, Arnab Sen Sharma, Alex Andonian, Yonatan Belinkov, and David Bau. 2022. “Mass-Editing Memory in a Transformer.” <a href="http://arxiv.org/abs/2210.07229" class="uri">http://arxiv.org/abs/2210.07229</a></li>
+<li><a id="ref-5"></a>Xiaopeng Li, Shasha Li, Shezheng Song, Jing Yang, Jun Ma, and Jie Yu. 2023. “PMET: Precise Model Editing in a Transformer.” <em>arXiv [cs.CL]</em>. <a href="http://arxiv.org/abs/2308.08742" class="uri">http://arxiv.org/abs/2308.08742</a></li>
+<li><a id="ref-6"></a>Roi Cohen, Eden Biran, Ori Yoran, Amir Globerson, and Mor Geva. 2023. “Evaluating the Ripple Effects of Knowledge Editing in Language Models.” <a href="http://arxiv.org/abs/2307.12976" class="uri">http://arxiv.org/abs/2307.12976</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/</guid>
+  <pubDate>Mon, 28 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230828-model-editing-digital-brain-surgery/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>LLM-Generated Code Has a Serious API Misuse Problem</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230828-llm-code-api-misuse/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230828-llm-code-api-misuse/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>How robust and reliable is the code generated by LLMs, especially for real-world software development? A recent work [2] constructed a new benchmark based on [1] to evaluate if the generated code uses API correctly. Four popular LLMs – GPT3.5, GPT4, Llama2, and Vicuna – are tested, and GPT4 under zero-shot scored 62.09% misuse rate. Even with one-shot relevant examples the misuse rate of GPT4 is 49.17%.</p>
+<p>Since users of CodeGeneration with particular APIs are usually relatively inexperienced in the said APIs, these inaccuracies may have grave consequences to the robustness and reliability of the resulting software.</p>
+<p>(How would CodeLlama fare?)</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-llms-gpt3-activity-7101777422026502144-Ivm_">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Tianyi Zhang, Ganesha Upadhyaya, Anastasia Reinhardt, Hridesh Rajan, and Miryung Kim. 2018. “Are code examples on an online Q&amp;A forum reliable? a study of API misuse on stack overflow.” In <em>Proceedings of the 40th International Conference on Software Engineering</em>, pages 886–896, Gothenburg, Sweden. Association for Computing Machinery. <a href="http://dx.doi.org/10.1145/3180155.3180260" class="uri">http://dx.doi.org/10.1145/3180155.3180260</a></li>
+<li><a id="ref-2"></a>Li Zhong and Zilong Wang. 2023. “A Study on Robustness and Reliability of Large Language Model Code Generation.” <a href="http://arxiv.org/abs/2308.10335" class="uri">http://arxiv.org/abs/2308.10335</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20230828-llm-code-api-misuse/</guid>
+  <pubDate>Mon, 28 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230828-llm-code-api-misuse/screenshot4.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>LLMs Stumble Hard on Counterfactual Reasoning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>Large degradations observed from LLMs when reasoning tasks are reframed into counterfactuals. Only basic syntax, logic and music chords are decent w/ counterfactuals.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2307.02477">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2307.02477">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>(see also previous post: <a href="../../posts/20230710-do-llms-really-understand/index.html">“Do LLMs Really Understand? Recent Papers Reveal”</a>)</p>
+<blockquote class="blockquote">
+<p><strong>Abstract:</strong> The impressive performance of recent language models across a wide range of tasks suggests that they possess a degree of abstract reasoning skills. Are these skills general and transferable, or specialized to specific tasks seen during pretraining? To disentangle these effects, we propose an evaluation framework based on “counterfactual” task variants that deviate from the default assumptions underlying standard tasks. Across a suite of 11 tasks, we observe nontrivial performance on the counterfactual variants, but nevertheless find that performance substantially and consistently degrades compared to the default conditions. This suggests that while current LMs may possess abstract task-solving skills to a degree, they often also rely on narrow, non-transferable procedures for task-solving. These results motivate a more careful interpretation of language model performance that teases apart these aspects of behavior.</p>
+</blockquote>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-reasoning-counterfactual-activity-7098503724955832321-XzpW">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Zhaofeng Wu, Linlu Qiu, Alexis Ross, Ekin Akyürek, Boyuan Chen, Bailin Wang, Najoung Kim, Jacob Andreas, and Yoon Kim. 2023. “Reasoning or Reciting? Exploring the Capabilities and Limitations of Language Models Through Counterfactual Tasks.” <a href="http://arxiv.org/abs/2307.02477" class="uri">http://arxiv.org/abs/2307.02477</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/</guid>
+  <pubDate>Sat, 19 Aug 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230819-llm-counterfactual-reasoning/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Faithful Text Generation from Knowledge Graphs with Noisy References</title>
   <dc:creator>synesis </dc:creator>
@@ -701,114 +850,6 @@
   <guid>https://benjaminhan.net/posts/20230527-chatgpt-lawyer-fake-citations/</guid>
   <pubDate>Sat, 27 May 2023 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20230527-chatgpt-lawyer-fake-citations/screenshot1.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How LLMs Beat Catastrophic Forgetting Through Knowledge Diversity</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230520-llm-knowledge-diversity/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230520-llm-knowledge-diversity/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230520-llm-knowledge-diversity/screenshot1.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.09144">the paper</a>.</figcaption>
-</figure>
-</div>
-<p>How do we square the remarkable ability of modern LLMs in memorizing factual knowledge with the well-known phenomenon of “catastrophic forgetting” [1] — the tendency of models to abruptly forget acquired facts when learning new ones? A recent paper sheds light on this important question [2].</p>
-<p>The authors train models with natural language expressions converted from factual knowledge using pre-training objectives (masking), and test retention by posing corresponding factual knowledge queries. They then plot “forgetting curves” [3] by training models with various types of knowledge at one point and testing them later, interleaving the process with training of other types of knowledge (screenshot 1). The key findings:</p>
-<ol type="1">
-<li><p>Vanilla models (models with random initialization) only exhibit short-term memory, and how much they retain is completely determined by how correlated the knowledge type to be learned in the current step and the target knowledge type (screenshot 2). In comparison, pre-trained LLMs (PLMs) don’t have this problem (screenshot 3).</p></li>
-<li><p>Testing PLMs trained with increasing steps clearly shows a gradual strengthening of their retention ability (screenshot 4).</p></li>
-<li><p>Most interestingly, the effect of knowledge type correlation between the current step and the target knowledge is <em>reversed</em> for PLMs compared to vanilla LLMs: learning <em>irrelevant</em> knowledge actually helps in building the retention ability of PLMs (screenshot 5)! This leads to a diversity curriculum where mixing more types of knowledge in learning cycles results in faster convergence and reduced memory collapse (screenshot 6).</p></li>
-</ol>
-<p>Incidentally, an article recently appeared on Lifehacker [4] essentially suggests the same strategy for <em>humans</em> to improve learning. This suggestion is supported by a paper titled “Interleaving Helps Students Distinguish among Similar Concepts” [5], among others.</p>
-<p>—</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-knowledge-diversity-activity-7065579519075643392-II1N">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Michael McCloskey and Neal J. Cohen. 1989. Catastrophic Interference in Connectionist Networks: The Sequential Learning Problem. In Gordon H. Bower, editor, <em>Psychology of Learning and Motivation</em>, volume 24, pages 109–165. Academic Press. <a href="http://dx.doi.org/10.1016/S0079-7421(08)60536-8" class="uri">http://dx.doi.org/10.1016/S0079-7421(08)60536-8</a></li>
-<li><a id="ref-2"></a>Boxi Cao, Qiaoyu Tang, Hongyu Lin, Xianpei Han, Jiawei Chen, Tianshu Wang, and Le Sun. 2023. Retentive or Forgetful? Diving into the Knowledge Memorizing Mechanism of Language Models. <a href="http://arxiv.org/abs/2305.09144" class="uri">http://arxiv.org/abs/2305.09144</a></li>
-<li><a id="ref-3"></a>Hermann Ebbinghaus. 2013. Memory: a contribution to experimental psychology. <em>Annals of neurosciences</em>, 20(4):155–156. <a href="http://dx.doi.org/10.5214/ans.0972.7531.200408" class="uri">http://dx.doi.org/10.5214/ans.0972.7531.200408</a></li>
-<li><a id="ref-4"></a>Lindsey Ellefson. 2023. Why You Should Actually Study Multiple Topics at the Same Time. <em>Lifehacker</em>. <a href="https://lifehacker.com/why-you-should-actually-study-multiple-topics-at-the-sa-1850438252" class="uri">https://lifehacker.com/why-you-should-actually-study-multiple-topics-at-the-sa-1850438252</a></li>
-<li><a id="ref-5"></a>Doug Rohrer. 2012. Interleaving helps students distinguish among similar concepts. <em>Educational Psychology Review</em>, 24, 355–367. <a href="https://files.eric.ed.gov/fulltext/ED536926.pdf" class="uri">https://files.eric.ed.gov/fulltext/ED536926.pdf</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230520-llm-knowledge-diversity/</guid>
-  <pubDate>Sat, 20 May 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230520-llm-knowledge-diversity/screenshot1.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Asimov, the Original Prompt Engineer</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230515-asimov-original-prompt-engineer/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230515-asimov-original-prompt-engineer/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p><img src="https://benjaminhan.net/posts/20230515-asimov-original-prompt-engineer/cover.jpg" class="img-fluid"></p>
-<p>If you’re an Asimov fan like many of us, prompt engineering feels like something we definitely have read somewhere many moons ago. This great article revisits some of those great stories.</p>
-<p>[1]</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_asimov-the-original-prompt-engineer-activity-7063668828307685376-ugj-">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Login Jones. 2023. “Asimov - The Original Prompt Engineer.” <a href="https://lojones.github.io/2023/04/30/asimov-prompt-engineer.html" class="uri">https://lojones.github.io/2023/04/30/asimov-prompt-engineer.html</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230515-asimov-original-prompt-engineer/</guid>
-  <pubDate>Mon, 15 May 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230515-asimov-original-prompt-engineer/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>AI’s Ostensible Emergent Abilities Are a Mirage</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230510-emergent-abilities-mirage/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230510-emergent-abilities-mirage/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p><img src="https://benjaminhan.net/posts/20230510-emergent-abilities-mirage/cover.jpg" class="img-fluid"></p>
-<p>Blog: [1]</p>
-<p>Paper: Rylan Schaeffer, Brando Miranda, and Sanmi Koyejo. 2023. “Are Emergent Abilities of Large Language Models a Mirage?” ArXiv [Cs.AI]. arXiv. [2].</p>
-<p><em>(On <a href="https://sigmoid.social/@BenjaminHan">Mastodon</a>)</em></p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_ai-paper-llm-activity-7062092886439301121-ashr">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“AI’s Ostensible Emergent Abilities Are a Mirage.” <em>Stanford HAI</em>. <a href="https://hai.stanford.edu/news/ais-ostensible-emergent-abilities-are-mirage" class="uri">https://hai.stanford.edu/news/ais-ostensible-emergent-abilities-are-mirage</a></li>
-<li><a id="ref-2"></a>Rylan Schaeffer, Brando Miranda, and Sanmi Koyejo. 2023. “Are Emergent Abilities of Large Language Models a Mirage?” arXiv:2304.15004. <a href="http://arxiv.org/abs/2304.15004" class="uri">http://arxiv.org/abs/2304.15004</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230510-emergent-abilities-mirage/</guid>
-  <pubDate>Wed, 10 May 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230510-emergent-abilities-mirage/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -21,7 +21,284 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 25 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 26 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Are AI Systems About to Start Building Themselves?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://importai.substack.com/">Import AI</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://jack-clark.net/">Jack Clark</a>, co-founder and policy lead at Anthropic, <a href="https://importai.substack.com/p/import-ai-455-automating-ai-research">walks through</a> the public evidence that automated AI research and development (R&amp;D), a frontier model autonomously training its own successor, has a roughly 60% chance of arriving by the end of 2028, and a 30% chance by 2027. The essay collects benchmark trends across coding, scientific reproduction, kernel design, fine-tuning, alignment-research automation, and time-horizon scaling, then argues each of those covers a distinct ingredient of the AI-engineering pipeline.</p>
+<p>What Clark argues:</p>
+<ul>
+<li><p><strong>Coding and time horizon are the foundation.</strong> SWE-Bench [1] went from ~2% (Claude 2, late 2023) to 93.9% (Claude Mythos Preview), and the <a href="https://metr.org/">Model Evaluation and Threat Research (METR)</a> 50%-reliability time horizon [2] went from ~30 seconds (GPT-3.5, 2022) to ~12 hours (Opus 4.6, 2026), with <a href="https://www.openphilanthropy.org/about/team/ajeya-cotra/">Ajeya Cotra</a> (AI forecaster at METR) expecting ~100 hours by the end of 2026. Long horizons are what let an agent run a day’s worth of researcher work without re-calibration.</p></li>
+<li><p><strong>Every sub-skill of the AI-R&amp;D pipeline has a trending benchmark.</strong> Paper reproduction (CORE-Bench [3]) went from 21.5% (GPT-4o, Sept 2024) to 95.5% declared solved (Opus 4.5, Dec 2025). Kaggle-style ML engineering (MLE-Bench [4]) went from 16.9% (o1, Oct 2024) to 64.4% (Gemini 3 with search, Feb 2026). On PostTrainBench [5], Opus 4.6 and GPT-5.4 get 25–28% against a human-instruct-tuned baseline of 51%. GPU kernel design has several active research lines (DeepSeek kernels, Meta Triton automation, Huawei Ascend, CUDA Agent fine-tuning), though Clark notes kernels benefit from easily verifiable rewards. And Anthropic’s Automated Alignment Research proof-of-concept has AI agents beating a human baseline on scalable oversight at small scale.</p></li>
+<li><p><strong>Training-loop optimization is the cleanest single trend.</strong> On Anthropic’s internal CPU-only language-model training task [6], speedup went from 2.9x (Opus 4, May 2025) to 16.5x (Opus 4.5, Nov 2025) to 30x (Opus 4.6, Feb 2026) to 52x (Mythos Preview, Apr 2026), against a human baseline of 4x in 4–8 hours.</p></li>
+<li><p><strong>Management is a meta-skill.</strong> Claude Code and OpenCode already show a single agent supervising sub-agents, forming synthetic teams with directors, critics, and engineers that can fan out across a complex project.</p></li>
+<li><p><strong>Creativity is why 2027 sits at 30% rather than 60%.</strong> Clark argues AI research is mostly Edison’s 99% perspiration, the engineering schlep the benchmarks above already cover, but paradigm shifts like the transformer or mixture-of-experts still come from humans. Preliminary creativity signs (a Gemini model resolving Erdős-1051 [7]; a UBC / UNSW / Stanford / Google DeepMind centaur math proof [8]) cluster in math and CS and may not generalize. The 2027 gap is his estimate of how often a year-scale human insight is still required. If no proof-of-concept lands by end of 2028, he treats that as evidence the current paradigm has a fundamental gap.</p></li>
+<li><p><strong>Industry intent as corroboration.</strong> OpenAI targets an “automated AI research intern by September 2026” [9]; Anthropic publishes automated alignment research [10]; DeepMind endorses alignment automation “when feasible” [11]; Recursive Superintelligence raised $500M for AI-R&amp;D automation [12] and Mirendil [13] targets the same. Hundreds of billions of capital is aimed at this outcome.</p></li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p>None of these benchmarks individually proves recursive self-improvement, but together they describe a system that can do most of the engineering schlep without supervision.</p></li>
+<li><p>Clark puts 30% on automated AI R&amp;D by 2027 and 60% by 2028. The gap is a bet that some research insights still come from humans on a year-or-more cadence. The creativity window is on the order of a year.</p></li>
+<li><p>The Aletheia/Erdős-problems pipeline [7] evaluated around 700 conjectures and produced 13 addressable problems — 5 novel autonomous solutions plus 8 that turned out to match existing literature — with 1 deemed genuinely interesting. A funnel dominated by human filtering. That fits <a href="https://en.wikipedia.org/wiki/Terence_Tao">Terence Tao</a>’s <a href="../../posts/20260422-proof-generation-vs-digestion/">generation / verification / digestion decomposition</a>: AI is strong on the first two, and the research taste sits with the humans doing digestion. Clark describes this as a “centaur configuration”: humans collaborating with AI rather than AI acting alone. The pattern is real, but human mathematicians are still the scarce input.</p></li>
+<li><p>On Anthropic’s CPU-only training-optimization benchmark, the 2.9x → 52x speedup chain hasn’t flattened, and the human 4x baseline was passed three generations ago. Another year at this pace would make the 30%-by-2027 probability look too conservative.</p></li>
+<li><p>The alignment section is brief, but the compounding-error math Clark cites (99.9% accuracy → 95.12% after 50 generations → 60.5% after 500) is the quantitative reason getting alignment right before recursion starts matters more than fixing it along the way. The math assumes per-generation drift compounds independently, which is generous — if drift correlates across generations the curve steepens fast.</p></li>
+<li><p><a href="../../posts/20260506-arc-agi-3-failure-modes/">ARC-AGI-3</a> is a live test of both the creativity gap and the drift math. GPT-5.5 scored 0.43% and Opus 4.7 scored 0.18% on a benchmark that withholds instructions and forces models to infer rules from sparse feedback. Clark’s benchmarks are mostly in-distribution with verifiable rewards, which is where current models climb fastest. Two of the three failure modes pulled from the reasoning traces pick up his caveats directly. Failure 2 (reusing a Tetris or Sokoban template for unfamiliar mechanics) is what happens when a system hits a genuinely novel direction with no training match. Failure 3 (reward cementing the wrong primitive after a lucky level-beat) is the empirical shape of the compounding-drift math. If AI R&amp;D includes material amounts of either, Clark’s estimate looks too optimistic.</p></li>
+<li><p>The economic bullets are weaker than the technical ones, partly because the labor data through today still sits where the rebuttal in <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis</a> described it: low-4s unemployment, rising new-business formation, software-engineer postings up year-over-year. The essay does not attempt to reconcile a 2028 R&amp;D-automation forecast with a 2026 labor market that is not yet inflecting.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., and Narasimhan, K. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2310.06770. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></li>
+<li><a id="ref-2"></a>Kwa, T., West, B., Becker, J., Deng, A., Garcia, K., et al.&nbsp;“Measuring AI Ability to Complete Long Software Tasks.” <em>arXiv preprint</em> (arXiv:2503.14499), March 18, 2025. <a href="https://arxiv.org/abs/2503.14499" class="uri">https://arxiv.org/abs/2503.14499</a></li>
+<li><a id="ref-3"></a>Siegel, Z. S., Kapoor, S., Nagdir, N., Stroebl, B., and Narayanan, A. “CORE-Bench: Fostering the Credibility of Published Research Through a Computational Reproducibility Agent Benchmark.” <em>arXiv preprint</em> (arXiv:2409.11363), September 17, 2024. <a href="https://arxiv.org/abs/2409.11363" class="uri">https://arxiv.org/abs/2409.11363</a></li>
+<li><a id="ref-4"></a>Chan, J. S., Chowdhury, N., Jaffe, O., Aung, J., Sherburn, D., et al.&nbsp;“MLE-bench: Evaluating Machine Learning Agents on Machine Learning Engineering.” <em>arXiv preprint</em> (arXiv:2410.07095), October 9, 2024. <a href="https://arxiv.org/abs/2410.07095" class="uri">https://arxiv.org/abs/2410.07095</a></li>
+<li><a id="ref-5"></a>Rank, B., Bhatnagar, H., Prabhu, A., Eisenberg, S., Nguyen, K., et al.&nbsp;“PostTrainBench: Can LLM Agents Automate LLM Post-Training?” <em>arXiv preprint</em> (arXiv:2603.08640), March 9, 2026. <a href="https://arxiv.org/abs/2603.08640" class="uri">https://arxiv.org/abs/2603.08640</a></li>
+<li><a id="ref-6"></a>Anthropic. “Claude Opus 4.7 System Card.” 2026. The AI R&amp;D “optimize a CPU-only small language model training implementation” benchmark appears across Anthropic’s Claude Opus 4, 4.5, 4.6, and Mythos Preview system cards; Opus 4.7 is the current release. <a href="https://anthropic.com/claude-opus-4-7-system-card" class="uri">https://anthropic.com/claude-opus-4-7-system-card</a></li>
+<li><a id="ref-7"></a>Feng, T., Trinh, T., Bingham, G., Kang, J., Zhang, S., et al.&nbsp;“Semi-Autonomous Mathematics Discovery with Gemini: A Case Study on the Erdős Problems.” <em>arXiv preprint</em> (arXiv:2601.22401), January 29, 2026. <a href="https://arxiv.org/abs/2601.22401" class="uri">https://arxiv.org/abs/2601.22401</a></li>
+<li><a id="ref-8"></a>Bryan, J., Elek, B., Manners, F., Salafatinos, G., and Vakil, R. “The motivic class of the space of genus 0 maps to the flag variety.” <em>arXiv preprint</em> (arXiv:2601.07222), January 12, 2026. <a href="https://arxiv.org/abs/2601.07222" class="uri">https://arxiv.org/abs/2601.07222</a></li>
+<li><a id="ref-9"></a>Altman, S. “automated AI research intern by September of 2026.” Post on X, October 29, 2025. <a href="https://x.com/sama/status/1983584366547829073" class="uri">https://x.com/sama/status/1983584366547829073</a></li>
+<li><a id="ref-10"></a>Anthropic. “Automated Alignment Researchers: Using large language models to scale scalable oversight.” 2026. <a href="https://www.anthropic.com/research/automated-alignment-researchers" class="uri">https://www.anthropic.com/research/automated-alignment-researchers</a></li>
+<li><a id="ref-11"></a>Shah, R., Irpan, A., Turner, A. M., Wang, A., Conmy, A., Lindner, D., et al.&nbsp;“An Approach to Technical AGI Safety and Security.” <em>arXiv preprint</em> (arXiv:2504.01849), April 2, 2025. <a href="https://arxiv.org/abs/2504.01849" class="uri">https://arxiv.org/abs/2504.01849</a></li>
+<li><a id="ref-12"></a>Murgia, M. “Recursive Superintelligence raise.” <em>Financial Times</em>, 2026. <a href="https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4" class="uri">https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4</a></li>
+<li><a id="ref-13"></a>Mirendil. Company homepage. <a href="https://mirendil.com/" class="uri">https://mirendil.com/</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/</guid>
+  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Agentic Coding Is a Trap</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://larsfaye.com/articles/agentic-coding-is-a-trap">Lars Faye’s article</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://larsfaye.com/">Lars Faye</a>, a software engineer who runs the <a href="https://confident-coding.com/">Confident Coding Course</a>, <a href="https://larsfaye.com/articles/agentic-coding-is-a-trap">argues</a> that the dominant “orchestrator with sub-agents” coding workflow trades the very critical-thinking skills it depends on for short-term throughput. The piece collects the public evidence of skill atrophy under heavy AI-assisted coding, including two Anthropic studies and on-the-record concerns from a LinkedIn engineering director, then lays out a narrower role for large language models (LLMs) that preserves the underlying capability.</p>
+<section id="what-faye-cites" class="level2">
+<h2 class="anchored" data-anchor-id="what-faye-cites">What Faye cites</h2>
+<p>The argument leans on a long chain of independent sources. Listed in roughly the order Faye reaches for them:</p>
+<ul>
+<li><a href="https://blog.quent.in/blog/2026/03/09/one-more-prompt-the-dopamine-trap-of-agentic-coding/">Quentin — “One More Prompt: the Dopamine Trap of Agentic Coding”</a> — slot-machine framing for the “one more prompt” loop.</li>
+<li><a href="https://margaretstorey.com/blog/2026/02/18/cognitive-debt-revisited/">Margaret Storey — “Cognitive Debt Revisited”</a> — research that AI tooling has been shown to impact critical thinking negatively.</li>
+<li><a href="https://www.media.mit.edu/publications/your-brain-on-chatgpt/">MIT Media Lab — “Your Brain on ChatGPT”</a> — measured cognitive impact of LLM-assisted writing.</li>
+<li><a href="https://www.404media.co/microsoft-study-finds-ai-makes-human-cognition-atrophied-and-unprepared-3/">404 Media on a Microsoft study</a> — Microsoft research finding AI use atrophies human cognition.</li>
+<li><a href="https://simonwillison.net/2026/Feb/15/cognitive-debt/">Simon Willison — “Cognitive Debt”</a> — Faye’s evidence that senior engineers aren’t immune to the pattern.</li>
+<li><a href="https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic#and-less-hands-on-practice">Anthropic — “How AI Is Transforming Work at Anthropic”</a> — source of the “paradox of supervision” passage.</li>
+<li><a href="https://www.businessinsider.com/leaders-worry-about-skill-atrophy-due-to-ai-adoption-2025-10">Business Insider — leaders worry about skill atrophy</a> — where Sandor Nyako, Director of Software Engineering at LinkedIn (oversees ~50 engineers), is on the record.</li>
+<li><a href="https://www.anthropic.com/research/AI-assistance-coding-skills">Anthropic — “AI Assistance Coding Skills”</a> — source of the 47% debugging-skill drop.</li>
+<li><a href="https://www.pymnts.com/artificial-intelligence-2/2026/ai-adoption-is-being-measured-in-tokens-but-the-metric-falls-short-experts-say/">PYMNTS — “AI adoption is being measured in tokens, but the metric falls short”</a> — hype around token usage as the productivity metric of choice.</li>
+<li><a href="https://www.linkedin.com/pulse/claudes-outages-show-dark-side-ai-productivity-total-system-lam-osbjc/">Lam (LinkedIn) — “Claude’s Outages Show the Dark Side of AI Productivity”</a> — one of the LinkedIn posts Faye saw during a Claude outage when teams couldn’t work.</li>
+<li><a href="https://www.theverge.com/ai-artificial-intelligence/917380/ai-monetization-anthropic-openai-token-economics-revenue">The Verge — AI monetization / token economics</a> — evidence that model providers are heavily subsidized today.</li>
+<li><a href="https://cheewebdevelopment.com/dont-vibe-code-delegate-responsible-development-with-llms/">Cheewebdevelopment — “Don’t Vibe Code: Delegate”</a> — the source Faye credits for the “delegation utilities” framing.</li>
+<li><a href="https://www.fast.ai/about.html">Jeremy Howard (fast.ai)</a> — quoted: “If you outsource all your thinking to computers, you stop upskilling, learning, and becoming more competent.”</li>
+<li>Five supporting YouTube clips: <a href="https://www.youtube.com/watch?v=pzkwn3hu1Cc">anecdotal developer testimony</a>, <a href="https://youtu.be/IGsbARhERqc?t=501">a recent interview</a>, <a href="https://www.youtube.com/watch?v=cv6rwHTGT5w">AI-enthusiastic senior developers</a>, <a href="https://www.youtube.com/watch?v=_vB0PDzaa7I&amp;t=3299s">Primeagen on vendor capture</a>, and <a href="https://www.youtube.com/watch?v=5HaQnIPrfKk">further on-the-ground reporting</a>.</li>
+</ul>
+</section>
+<section id="fayes-prescription" class="level2">
+<h2 class="anchored" data-anchor-id="fayes-prescription">Faye’s prescription</h2>
+<p>Faye proposes inverting the dominant orchestration pattern: the engineer codes; the model helps with adjacent work. His daily workflow:</p>
+<ul>
+<li><strong>Generate specs and plans with the model, but implement manually.</strong> “I am still manually coding anywhere from 20% to 100%, depending on the task.”</li>
+<li><strong>Write pseudo-code first, then engage the model.</strong> Pseudo-code “closes the distance between the request and the generated code” — the model fills gaps rather than architects.</li>
+<li><strong>Use models as delegation utilities.</strong> Ad-hoc code generation, interactive documentation, research-and-iterate questions — all bounded, all small.</li>
+<li><strong>Never generate more than you can review in one sitting.</strong> If it’s too big, split the task and manually refactor through it.</li>
+<li><strong>Never ask the model to implement something you couldn’t do on your own.</strong> Educational exceptions allowed, and often discarded after.</li>
+<li><strong>TL;DR (Faye’s): “Use them like the Ship’s Computer, not Data.”</strong> A reference tool, not a substitute for the engineer.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The “paradox of supervision” (Faye quotes it from Anthropic) is one slice of a <em>self-undermining</em> loop.</strong> Faye and Anthropic name the contradiction: to supervise the model you need the same skill the model is eroding, but didn’t explicitly close the loop.</p>
+<ul>
+<li>The missing link: as that skill weakens, more decisions slide to the model (some on purpose, some because the human no longer catches the slips), which erodes the skill further, which weakens the next round of supervision. Each turn justifies the next.</li>
+<li>The cycle isn’t unbreakable. Faye’s “never generate more than you can review” rule does break it, by keeping each round small enough that the human’s skill stays in use. Preserving judgment in the moment is also what keeps the cycle from running.</li>
+</ul></li>
+<li><p><strong>Restoring the speed-and-comprehension link in agentic tooling is about what we optimize for. Model capability isn’t the bottleneck.</strong> Today’s tools optimize for generated-code volume; they should optimize for <em>human-verifiable diff per unit time</em> instead. <a href="../../posts/20260315-ai-coding-decision-bound/">Decision-Bound Programming</a> makes the same recommendation from a different starting point: when generation is cheap and evaluation is not, the next generation of programming tools should be <em>decision support systems</em>: tooling that narrows the space of options the human must evaluate. The asymmetry itself isn’t new — <a href="../../posts/20260422-proof-generation-vs-digestion/">Terence Tao’s decomposition of mathematical work into <em>generation</em>, <em>verification</em>, and <em>digestion</em></a> names the same problem one field over: AI is racing through the first two while leaving the third (the human’s comprehension) behind. Four concrete shapes narrow the evaluation gap:</p>
+<ul>
+<li><strong>Type-driven generation</strong> — the type checker rules out a class of candidates; the human reads types, not whole functions.</li>
+<li><strong>Test-driven generation</strong> — a passing test suite becomes the checkable signal; the human verifies via the gate.</li>
+<li><strong>Spec-first systems where the model stays at the planning layer</strong> (Faye’s own inversion) — the human decides at the spec level, and trusts the mechanical translation below.</li>
+<li><strong>Domain-specific languages (DSLs) and structured-edit modes</strong> — a smaller grammar is a smaller decision space; the output is cheap to scan.</li>
+</ul>
+<p>Intrinsic non-determinism doesn’t disappear, but in all four the tool absorbs the checking work the human was doing before.</p></li>
+<li><p><strong>Vendor lock-in adds an industry risk to the personal-skill risk.</strong> When entire teams sit idle during a Claude outage, the lock-in has already happened. Token costs are a moving target by design, subsidized today and “nerfed” tomorrow, and the financial exposure piles on top of the cognitive risk. <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis scenario</a> treats this same compute-cost-as-labor-cost substitution as a macro variable; <a href="../../posts/20260427-cursor-railway-production-wipe/">the Cursor agent that erased PocketOS production data</a> shows the daily-operations failure mode at the other end.</p></li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/</guid>
+  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260507-averitec/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-averitec/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260507-averitec/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>An example AVeriTeC claim with three question-answer pairs, a <em>Conflicting Evidence/Cherrypicking</em> verdict, and a textual justification explaining how the QA pairs combine into the verdict. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</em> [1] (NeurIPS 2023 Datasets &amp; Benchmarks Track), <a href="https://aclanthology.org/people/michael-schlichtkrull/">Michael Schlichtkrull</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Zhijiang Guo</a>, and <a href="https://aclanthology.org/people/a/andreas-vlachos/">Andreas Vlachos</a> (Cambridge) introduce a 4,568-claim fact-checking dataset sourced from 50 real fact-checking organizations, with web-retrieved evidence structured as question-answer pairs and a 4-way verdict label that adds <em>Conflicting Evidence/Cherrypicking</em> alongside the usual <em>Supported / Refuted / Not Enough Evidence</em>.</p>
+<blockquote class="blockquote">
+<p>Existing datasets for automated fact-checking have substantial limitations, such as relying on artificial claims, lacking annotations for evidence and intermediate reasoning, or including evidence published after the claim. In this paper we introduce <em>AVeriTeC, a new dataset of 4,568 real-world claims covering fact-checks by 50 different organizations</em>. Each claim is annotated with <em>question-answer pairs supported by evidence available online</em>, as well as <em>textual justifications explaining how the evidence combines to produce a verdict</em>. Through a multi-round annotation process, we avoid common pitfalls including <em>context dependence, evidence insufficiency, and temporal leakage</em>, and reach a substantial inter-annotator agreement of <img src="https://benjaminhan.net/feed-assets/badf3c4d61f2644b.svg" alt="\kappa=0.619" class="feed-math-inline"/> on verdicts. We develop <em>a baseline as well as an evaluation scheme for verifying claims through several question-answering steps against the open web</em>.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The cover figure (Figure 2 from the paper) shows the shape of one annotated example. The claim — “The USA has succeeded in reducing greenhouse emissions in previous years” (Morgan Griffith, 2020-11-02) — is decomposed into three questions: total emissions in 2007, when emissions dropped, whether they rose again after 2017. Each answer cites a specific number with a sourced URL. The verdict is <em>Conflicting Evidence/Cherrypicking</em> because the supporting evidence is real (emissions did fall) but incomplete (they rose again), and the textual justification names that gap directly. This is what every row in AVeriTeC looks like: a claim, a small set of QA pairs that together carry the evidence, a verdict, and a justification that ties the QA pairs to the verdict — closer to a fact-checker’s workflow than to FEVER-style sentence retrieval.</p>
+<p>Each claim is labelled by a five-phase pipeline: claim extraction and normalization, question-answer generation, evidence-sufficiency check, a second QA round when verdicts disagree, and a final sufficiency check. Pages used as evidence are cached in the Internet Archive to keep the test set reproducible, and the released splits are temporally ordered (train ends Aug 2020, dev ends Oct 2020, test ends Dec 2021) so a model trained on FEVER-style [2] closed-corpus retrieval can be benchmarked against a real open-web setting without rebuilding infrastructure. Each phase exists to address a specific failure mode the authors call out in earlier datasets:</p>
+<ul>
+<li><strong>Context dependence</strong> — many fact-checking-derived claims (e.g.&nbsp;“unemployment is rising”) are unverifiable without surrounding article context. The first phase has annotators rewrite each claim to be self-contained: resolving coreference, naming the speaker, locking down the time and place, before any QA work begins.</li>
+<li><strong>Evidence insufficiency</strong> — labels in earlier datasets often don’t match the annotated evidence. The second-phase annotator generates QA pairs and a tentative verdict; a <em>different</em> third-phase annotator then sees only those QA pairs (not the original article) and produces an independent verdict. Disagreement triggers a second QA round; persistent disagreement discards the claim. The “blind” sufficiency check forces evidence to stand alone.</li>
+<li><strong>Temporal leakage</strong> — annotators search through a custom Google bar restricted to documents published before the claim date, evidence-document dates are ordered against claim dates, and the train/dev/test splits are themselves temporally disjoint so a test claim from 2021 cannot share evidence with a training claim from 2020. This is the main defense against training-time leaks where later language models would otherwise trivially “verify” historical claims.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260507-averitec/figure1.png" class="img-fluid figure-img"></p>
+<figcaption>The five-phase annotation pipeline: claims are normalised, then question-answer generation alternates with an evidence-sufficiency check by a different annotator. Disagreement between the two verdicts triggers a second QA round; persistent disagreement discards the claim. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The dataset comprises 4,568 claims (3,068 train / 500 dev / 1,000 test), 2.60 questions per claim on average, label distribution dominated by Refuted (~60%) with Supported ~25%, Conflicting ~7%, Not Enough Evidence ~7%. Inter-annotator agreement is <img src="https://benjaminhan.net/feed-assets/badf3c4d61f2644b.svg" alt="\kappa=0.619" class="feed-math-inline"/> (Randolph’s free-marginal multirater <img src="https://benjaminhan.net/feed-assets/e92ecde84e28692f.svg" alt="\kappa" class="feed-math-inline"/>, chosen because Fleiss’ <img src="https://benjaminhan.net/feed-assets/e92ecde84e28692f.svg" alt="\kappa" class="feed-math-inline"/> underestimates on unbalanced data — Fleiss equivalent is <img src="https://benjaminhan.net/feed-assets/dde1ef723551ea5e.svg" alt="0.503" class="feed-math-inline"/>). Evaluation uses <em>Hungarian METEOR</em>, the paper’s name for scoring generated QA pairs against gold ones by computing pairwise METEOR [3] similarity and then solving the optimal one-to-one assignment between generated and reference sequences with the Hungarian algorithm [4] — turning a bag-of-evidence retrieval task into a matching problem so that asking “the right question phrased differently” still gets credit. Recommended cutoff <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/>. Headline baseline numbers below.</p>
+<table class="caption-top table">
+<caption>AVeriTeC baseline (BLOOM-7b pipeline) versus a no-search ablation, an oracle that uses gold QA pairs as evidence, and <code>gpt-3.5-turbo</code> generating evidence and verdicts directly. Retrieval is scored with Hungarian METEOR; veracity and justification scores are accuracy and METEOR, conditioned on retrieving correct evidence at <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/>. Table 3 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Q only</th>
+<th>Q + A</th>
+<th>Veracity @ λ=0.25</th>
+<th>Justifications @ λ=0.25</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>No search</td>
+<td>0.19</td>
+<td>0.11</td>
+<td>0.02</td>
+<td>0.01</td>
+</tr>
+<tr class="even">
+<td>Gold evidence</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>0.49</td>
+<td>0.28</td>
+</tr>
+<tr class="odd">
+<td>AVeriTeC-BLOOM-7b</td>
+<td>0.26</td>
+<td>0.21</td>
+<td>0.15</td>
+<td>0.07</td>
+</tr>
+<tr class="even">
+<td>gpt-3.5-turbo</td>
+<td>0.29</td>
+<td>0.16</td>
+<td>0.10</td>
+<td>0.04</td>
+</tr>
+</tbody>
+</table>
+<p>The four columns score two different things:</p>
+<ul>
+<li><strong>Q only</strong> — Hungarian METEOR over generated vs.&nbsp;gold question strings alone. Does the model ask the right thing?</li>
+<li><strong>Q + A</strong> — Hungarian METEOR over each question concatenated with its answer. Does the model ask the right thing <em>and</em> find the right answer?</li>
+<li><strong>Veracity @ λ=0.25</strong> — verdict accuracy, but a claim only scores if its retrieved evidence cleared <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/> on Q+A. A wrong-evidence claim gets 0 even when the verdict happens to be correct, which is the design choice that makes “Gold evidence” the practical ceiling at 0.49 rather than 1.0.</li>
+<li><strong>Justifications @ λ=0.25</strong> — METEOR between generated and gold justifications, conditioned on the same evidence-retrieval gate.</li>
+</ul>
+<p>The four rows bracket the system between two limits and add two real configurations:</p>
+<ul>
+<li><strong>No search</strong> — gives the model nothing and uses BERT-large to predict the verdict from the claim alone. A lower bound that isolates how much can be guessed from claim wording (about 17% macro-F1 per Table 4, dominated by the <em>Refuted</em> class prior).</li>
+<li><strong>Gold evidence</strong> — feeds the annotators’ QA pairs to the verdict-prediction and justification-generation heads (BERT-large + a prompted language model) as if retrieval were solved. An upper bound that isolates those downstream components from retrieval noise.</li>
+<li><strong>AVeriTeC-BLOOM-7b</strong> — the full pipeline: BLOOM-7b (prompted with 10 in-context examples retrieved from the training set, no fine-tuning) generates search-query questions, Google + BM25 retrieve passages, a fine-tuned BERT-large re-ranker selects the best passages, BLOOM-7b generates one question per surviving passage to recover Q+A pairs, a second fine-tuned BERT-large does stance detection to decide the verdict, and a fine-tuned BART-large writes the justification. The “BLOOM-7b” label names only the in-context question-generator slot — the authors also tried Vicuna-13b there and report BLOOM winning, attributed to more diverse questions.</li>
+<li><strong>gpt-3.5-turbo</strong> — skips retrieval entirely and prompts ChatGPT to produce verdict, evidence, and justification end-to-end. Useful as a fluency upper bound but prone to fabricating sources.</li>
+</ul>
+<p>The 0.34-point gap between the gold-evidence and AVeriTeC-BLOOM-7b veracity scores is the paper’s clearest signal: even with a competent verdict head, the bottleneck is retrieval. ChatGPT outperforms the baseline on bare question generation but loses on the AVeriTeC score because its generated “evidence” often hallucinates sources that look plausible but cannot be matched to gold answers. The authors give an example: ChatGPT correctly verdicts a vitamin-K claim <em>Supported</em> while inventing a USDA citation that doesn’t exist.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>AVeriTeC freezes the gold side of the benchmark but not the retrieval side, a structural flaw for fair cross-system comparison.</strong> The reproducibility mechanism the paper proposes (Internet Archive snapshots of the <em>gold</em> evidence pages) keeps the answers re-fetchable, but it does not freeze the <em>retrieval setup</em> a baseline searches. Baselines hit live Google, and two systems run a year apart see different rankings, different page contents at the same URL, and newly-indexed pages, so cross-time and cross-system score deltas drift with the web rather than with the system. The temporal-leakage protection has the same shape: annotator search is filtered to documents Google reports as published before the claim date (itself an estimate), but for any modern LLM whose pretraining cutoff is past 2021-12-22, the entire test set is in-distribution and the date guarantee is moot. The FEVER 2024 shared task closed both gaps by providing a “knowledge store” snapshot every system retrieves from instead of live Google, which is the right design, but it’s a shared-task addition rather than part of the original paper. Anyone using AVeriTeC for new top-line numbers needs that knowledge store (or a re-collection of newer claims), or the comparisons are not measuring what they look like.</li>
+<li><strong>AVeriTeC’s distinctness comes from five ingredients combined, not any one alone.</strong> Real-world claims (vs FEVER-style synthetic), web-retrieved evidence (vs closed Wikipedia corpus), QA-pair decomposition of that evidence (vs flat sentence retrieval), a textual justification per claim (vs none), and a four-way label set including <em>Conflicting Evidence/Cherrypicking</em> (vs three labels). Prior benchmarks have at most two of these. FEVER [2] is Wikipedia-derived synthetic claims with three labels, flat sentence evidence, no justifications. MultiFC [5] has real claims but no usable evidence annotation, no QA structure, no justifications. HoVer [6] keeps Wikipedia retrieval and adds multi-hop, but still flat sentences and three labels. The <em>Conflicting Evidence/Cherrypicking</em> class adds the most substance: fact-checkers spend a real share of their time on technically-true-but-misleading claims that don’t fit <em>Supported</em> or <em>Refuted</em>, and a benchmark with no class for them quietly trains models to force a choice.</li>
+<li><strong>Hungarian METEOR has a noise floor, and the system sits on it.</strong> Two annotators redoing the same claim only agree at 0.28 on questions and 0.22 on questions+answers. AVeriTeC-BLOOM-7b scores 0.21 on Q+A, <em>at</em> the annotator-agreement floor; ChatGPT scores 0.16, similarly below. The paper traces the low agreement to two causes: different annotators reaching the same verdict via different evidence paths, and phrasing equivalent QA pairs differently. METEOR penalises both even though the underlying annotation is correct.
+<ul>
+<li>For the paraphrase cause, trained semantic-similarity scoring (BLEURT [7], BERTScore, or an LLM-judge with a calibrated equivalence rubric) replaces n-gram overlap with meaning equivalence. The paper itself recommends BLEURT; an LLM-judge is the more current upgrade.</li>
+<li>For the divergent-evidence-path cause, the paper sketches a max-over-references extension: collect multiple gold QA-pair sets per claim and score against the best match. A complementary move is <em>verdict-conditional</em> scoring — give credit when the model reaches the right verdict via any valid evidence path with sourced answers, decoupling evidence-string match from verdict correctness. The retrieval-side score still punishes hallucinated sources, so the abstention/factuality property the paper cares about isn’t lost.</li>
+<li>The gold-evidence row at 1.00 is uninformative as a ceiling here, since by construction it returns the gold strings. Until one of these remedies is in place, system-vs-system retrieval deltas in the low hundredths on AVeriTeC are mostly metric noise, not real differences.</li>
+</ul></li>
+<li><strong>AVeriTeC’s NEI label rewards weak retrieval as if it were calibrated abstention.</strong> A model with bad retrieval will frequently fail to find supporting evidence even on claims that <em>are</em> supportable, and the natural prediction in that state is <em>Not Enough Evidence</em>. On the truly-NEI portion of the test set, those predictions get full credit; across the rest of the test set, they get partial credit by coincidence. Both forms of credit look like the model “knew when to abstain”, but neither involves the model assessing its own confidence — it just retrieved badly. This matters because <em>selective prediction</em> (the setting where a system can decline to answer when uncertain) needs the abstention signal to be a property of <em>the model</em>: low confidence in its own output, not low evidence in the world. AVeriTeC’s NEI conflates the two. The gold label means <em>annotators could not find evidence on the open web</em>, which is a property of the claim and the world. Anyone using this dataset for selective-prediction or calibration work (e.g.&nbsp;an extension of <a href="../../posts/20260505-conformal-factuality/">Conformal Factuality</a> [8]) needs an <em>explicit</em> abstain channel separate from the four-way label, scored against the model’s own confidence calibration. Reusing the gold NEI class as the abstention target produces apparent calibration that is really retrieval failure.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://aclanthology.org/people/michael-schlichtkrull/">Schlichtkrull, M.</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Guo, Z.</a>, &amp; <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, A.</a> (2023). “AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web.” <em>37th Conference on Neural Information Processing Systems (NeurIPS) Datasets &amp; Benchmarks Track</em>, arXiv:2305.13117, May 22, 2023 (revised Nov 8, 2023). <a href="https://arxiv.org/abs/2305.13117" class="uri">https://arxiv.org/abs/2305.13117</a></li>
+<li><a id="ref-2"></a><a href="https://aclanthology.org/people/james-thorne/">Thorne, J.</a>, <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, A.</a>, <a href="https://aclanthology.org/people/christos-christodoulopoulos/">Christodoulopoulos, C.</a>, &amp; <a href="https://aclanthology.org/people/arpit-mittal/">Mittal, A.</a> (2018). “FEVER: A Large-scale Dataset for Fact Extraction and VERification.” <em>NAACL-HLT</em>, arXiv:1803.05355. <a href="https://arxiv.org/abs/1803.05355" class="uri">https://arxiv.org/abs/1803.05355</a></li>
+<li><a id="ref-3"></a><a href="https://aclanthology.org/people/satanjeev-banerjee/">Banerjee, S.</a> &amp; <a href="https://aclanthology.org/people/alon-lavie/">Lavie, A.</a> (2005). “METEOR: An Automatic Metric for MT Evaluation with Improved Correlation with Human Judgments.” <em>ACL Workshop on Intrinsic and Extrinsic Evaluation Measures for Machine Translation and/or Summarization</em>. <a href="https://aclanthology.org/W05-0909/" class="uri">https://aclanthology.org/W05-0909/</a></li>
+<li><a id="ref-4"></a>Kuhn, H. W. (1955). “The Hungarian Method for the Assignment Problem.” <em>Naval Research Logistics Quarterly</em>, 2(1–2), 83–97. <a href="https://doi.org/10.1002/nav.3800020109" class="uri">https://doi.org/10.1002/nav.3800020109</a></li>
+<li><a id="ref-5"></a><a href="https://aclanthology.org/people/isabelle-augenstein/">Augenstein, I.</a>, <a href="https://aclanthology.org/people/christina-lioma/">Lioma, C.</a>, <a href="https://aclanthology.org/people/dongsheng-wang/">Wang, D.</a>, <a href="https://aclanthology.org/people/lucas-chaves-lima/">Lima, L. C.</a>, <a href="https://aclanthology.org/people/casper-hansen/">Hansen, C.</a>, <a href="https://aclanthology.org/people/christian-hansen/">Hansen, C.</a>, &amp; <a href="https://aclanthology.org/people/jakob-grue-simonsen/">Simonsen, J. G.</a> (2019). “MultiFC: A Real-World Multi-Domain Dataset for Evidence-Based Fact Checking of Claims.” <em>EMNLP-IJCNLP</em>, arXiv:1909.03242. <a href="https://arxiv.org/abs/1909.03242" class="uri">https://arxiv.org/abs/1909.03242</a></li>
+<li><a id="ref-6"></a><a href="https://aclanthology.org/people/yichen-jiang/">Jiang, Y.</a>, <a href="https://aclanthology.org/people/shikha-bordia/">Bordia, S.</a>, <a href="https://aclanthology.org/people/zheng-zhong/">Zhong, Z.</a>, <a href="https://aclanthology.org/people/charles-dognin/">Dognin, C.</a>, <a href="https://aclanthology.org/people/maneesh-singh/">Singh, M.</a>, &amp; <a href="https://aclanthology.org/people/mohit-bansal/">Bansal, M.</a> (2020). “HoVer: A Dataset for Many-Hop Fact Extraction and Claim Verification.” <em>Findings of EMNLP</em>, arXiv:2011.03088. <a href="https://arxiv.org/abs/2011.03088" class="uri">https://arxiv.org/abs/2011.03088</a></li>
+<li><a id="ref-7"></a><a href="https://aclanthology.org/people/thibault-sellam/">Sellam, T.</a>, <a href="https://aclanthology.org/people/dipanjan-das/">Das, D.</a>, &amp; <a href="https://aclanthology.org/people/ankur-p-parikh/">Parikh, A. P.</a> (2020). “BLEURT: Learning Robust Metrics for Text Generation.” <em>ACL</em>, arXiv:2004.04696. <a href="https://arxiv.org/abs/2004.04696" class="uri">https://arxiv.org/abs/2004.04696</a></li>
+<li><a id="ref-8"></a><a href="https://cmohri.github.io/">Mohri, C.</a> &amp; <a href="https://thashim.github.io/">Hashimoto, T.</a> (2024). “Language Models with Conformal Factuality Guarantees.” <em>ICML</em>, arXiv:2402.10978. <a href="https://arxiv.org/abs/2402.10978" class="uri">https://arxiv.org/abs/2402.10978</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260507-averitec/</guid>
+  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260507-averitec/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Influential ChatGPT-in-Education Meta-Analysis Retracted: Where’s the Transparency and Cost?</title>
   <dc:creator>synesis </dc:creator>
@@ -2422,265 +2699,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/</guid>
   <pubDate>Fri, 01 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Design-step trajectories and final designs in the latent design space (PC1/PC2 of six design features), explored by each of the three agentic design systems. Each system covers a distinguishable region, with CRDAL converging toward the area of highest design capacity. Figure 8 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</em> [1], <a href="https://www.linkedin.com/in/zedaxu/">Zeda Xu</a>, <a href="https://nikmart.com/">Nikolas Martelaro</a>, and <a href="https://cmccomb.com/">Christopher McComb</a> at Carnegie Mellon test whether adding a second LLM agent that watches the first agent’s reasoning beats a self-monitoring single agent on a constrained engineering design task.</p>
-<blockquote class="blockquote">
-<p>The engineering design research community has studied agentic AI systems that use Large Language Model (LLM) agents to automate the engineering design process. However, these systems are prone to some of the same pathologies that plague humans. Just as human designers, LLM design agents can fixate on existing paradigms and fail to explore alternatives when solving design challenges, potentially leading to suboptimal solutions. In this work, we propose (1) a novel <em>Self-Regulation Loop (SRL)</em>, in which the Design Agent self-regulates and explicitly monitors its own metacognition, and (2) a novel <em>Co-Regulation Design Agentic Loop (CRDAL)</em>, in which a <em>Metacognitive Co-Regulation Agent assists the Design Agent in metacognition to mitigate design fixation</em>, thereby improving system performance for engineering design tasks. In the battery pack design problem examined here, we found that <em>the novel CRDAL system generates designs with better performance, without significantly increasing the computational cost</em>, compared to a plain Ralph Wiggum Loop (RWL) and the metacognitively self-assessing Self-Regulation Loop (SRL). Also, we found that the CRDAL system navigated through the latent design space more effectively than both SRL and RWL. However, <em>the SRL did not generate designs with significantly better performance than RWL</em>, even though it explored a different region of the design space. The proposed system architectures and findings of this work provide practical implications for future development of agentic AI systems for engineering design.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/figure5.png" class="img-fluid figure-img"></p>
-<figcaption>System flowchart of the Co-Regulation Design Agentic Loop (CRDAL): a Design Agent runs the iterative design loop while a separate Metacognitive Co-Regulation Agent inspects each step’s progress trace and feeds back strategic suggestions. Figure 5 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>How the three loops differ:</p>
-<ul>
-<li><strong>RWL.</strong> Design Agent generates a candidate design, a numerical evaluator/validator scores it, raw feedback (“failed thermal constraint, current capacity is X”) goes back to the Design Agent, which reflects implicitly and tries again.</li>
-<li><strong>SRL.</strong> RWL plus two additions: a non-LLM Progress Analyzer summarizes the design history (capacity trend, which past attempts were valid), and the Design Agent is explicitly prompted to set goals, identify the bottleneck constraint, and plan strategy. Still one agent doing both designing and metacognizing.</li>
-<li><strong>CRDAL.</strong> SRL but the metacognition is moved to a separate LLM agent. The same Progress Analyzer summary now feeds a Metacognitive Co-Regulation Agent, which writes strategic notes about the Design Agent’s progress (assessment of “improving / stalling / regressing”, bottleneck identification, suggestion for the next iteration) and passes them to the Design Agent alongside the raw numerical feedback. Same kind of metacognitive content as SRL’s self-prompts; the difference is that another agent produces it.</li>
-</ul>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The design task is to lay out 18650 lithium-ion cells (the cylindrical batteries inside laptops, vapes, and Tesla packs, at 3.7 V and 2.5 Ah each) into a 400 V pack of at least 25 Ah, while keeping the pack under 60 °C and able to deliver 48 A continuously. Higher Ah means longer runtime at a given current. Across 30 runs per system on this task using Gemini 3.1 Pro, the CRDAL design agent reached a mean capacity of 70.92 Ah, versus 54.14 Ah for the self-monitoring SRL and 49.31 Ah for the plain Ralph Wiggum Loop (RWL). All three were well above the 25 Ah floor in every case. The gap between SRL and RWL was not statistically significant. CRDAL did not use more design steps than the other two systems.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/figure6.png" class="img-fluid figure-img"></p>
-<figcaption>Battery pack capacity by agentic design system, <img src="https://benjaminhan.net/feed-assets/9eddde4a54d1a28f.svg" alt="n=30" class="feed-math-inline"/> runs each. CRDAL beats both RWL (<img src="https://benjaminhan.net/feed-assets/39409d16f287b9c2.svg" alt="p &lt; 0.001" class="feed-math-inline"/>, Cohen’s <img src="https://benjaminhan.net/feed-assets/31e11d681406501e.svg" alt="d = 1.375" class="feed-math-inline"/>) and SRL (<img src="https://benjaminhan.net/feed-assets/ad60d6c904d2d3ec.svg" alt="p = 0.001" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/9cf40b1300e41c5b.svg" alt="d = 0.955" class="feed-math-inline"/>); SRL is statistically indistinguishable from RWL. Figure 6 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>A note on the name: Ralph Wiggum is a recurring child character in <em>The Simpsons</em>, known for being cheerfully oblivious and confidently wrong without self-correcting. The “Ralph Wiggum Loop” is a software-engineering term of art for an agent that retries until external validation passes, with no self-assessment of its own attempts.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The SRL ≈ RWL result is the headline finding.</strong> A growing body of work argues that LLMs cannot reliably correct their own reasoning without an external signal. Huang et al.&nbsp;find self-correction either flat or actively harmful on reasoning benchmarks once the answer-verification crutch is removed [2]. Apple’s <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [5] extends the pattern to uncertainty self-reports: 20 modern LLMs cannot faithfully summarize their own internal answer distributions without sample-augmented context. This paper supplies a clean engineering-design data point in the same direction: telling an agent to “monitor your metacognition” gave it a different exploration trajectory but no better outcomes than just retrying. The reflective loop has to be closed by something the agent isn’t.</p></li>
-<li><p><strong>The SRL-vs-CRDAL comparison narrows what matters.</strong> SRL already gives the Design Agent explicit metacognitive prompts (assess progress, identify the bottleneck, plan strategy) plus a history summary. CRDAL keeps that same metacognitive content but moves it to a different LLM agent that writes the strategic notes about the Design Agent’s progress instead of asking the Design Agent to write them about itself. The CRDAL ≫ SRL gap (Cohen’s d = 0.955) therefore isolates the agent split as what mattered, not the explicitness of the metacognitive prompts, which SRL already had. This converges with Wan et al.’s <a href="../../posts/20260430-rema-meta-think/">ReMA</a>, which decouples reasoning into a meta-thinker and an executor and trains them jointly with multi-agent RL, beating single-agent reasoning baselines on math [3]. The same direction of result holds in competitive math and in engineering design, which makes the underlying claim harder to dismiss as task-specific: metacognition needs to come from a different head than the one doing the work.</p></li>
-<li><p><strong>One task, one model, n=30. Generalization is the open question.</strong> The authors own this in §4.3: a single battery-pack optimization with one frontier model is a thin base for a system-architecture claim. Adding a Co-Regulation Agent introduces a new agent-to-agent communication channel that this benchmark, by design, does not stress, and that channel is exactly where multi-agent systems tend to break in their own characteristic ways, as the <a href="../../posts/20250802-mast-multi-agent-failures/">MAST taxonomy</a> catalogs across 200+ failure traces. The interesting follow-up is not “does CRDAL beat RWL on more tasks” but “where does CRDAL break in ways that RWL doesn’t.”</p></li>
-<li><p><strong>From the intrinsic-metacognitive-learning side, CRDAL is a ceiling.</strong> <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar argue in their position paper</a> that today’s “self-improving” agents almost all rely on extrinsic metacognition: fixed, human-designed loops where the metacognitive structure is wired in by the system designer rather than learned by the agent [4]. They contend genuinely scalable self-improvement needs intrinsic metacognitive learning: the agent itself deciding what to evaluate, what to reflect on, what to learn next. CRDAL is a clean example of the extrinsic kind: a hand-designed second agent in a hand-designed role, with the loop topology fixed by the authors. The Ralph Wiggum result is real, but read alongside the position paper it is evidence that extrinsic scaffolding helps right now, not that this is the architecture self-improving agents will eventually settle on.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://www.linkedin.com/in/zedaxu/">Xu</a>, Zeda, Nikolas <a href="https://nikmart.com/">Martelaro</a>, and Christopher <a href="https://cmccomb.com/">McComb</a>. “Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design.” <em>arXiv preprint</em> (arXiv:2603.24768), March 25, 2026. <a href="https://arxiv.org/abs/2603.24768" class="uri">https://arxiv.org/abs/2603.24768</a></li>
-<li><a id="ref-2"></a><a href="https://jeffhj.github.io/">Huang</a>, Jie, Xinyun <a href="https://jungyhuk.github.io/">Chen</a>, Swaroop <a href="https://swarooprm.github.io/">Mishra</a>, Huaixiu Steven Zheng, Adams Wei Yu, Xinying Song, and Denny <a href="https://dennyzhou.github.io/">Zhou</a>. “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>arXiv preprint</em> (arXiv:2310.01798), October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-<li><a id="ref-3"></a><a href="https://ziyuwan.github.io/">Wan</a>, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi <a href="https://leeeeoliu.github.io/">Yang</a>, Mark <a href="https://www.cs.ubc.ca/~schmidtm/">Schmidt</a>, Jun <a href="http://www0.cs.ucl.ac.uk/staff/Jun.Wang/">Wang</a>, Weinan <a href="http://wnzhang.net/">Zhang</a>, Shuyue Hu, and Ying <a href="https://yingwen.io/">Wen</a>. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
-<li><a id="ref-4"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
-<li><a id="ref-5"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/</guid>
-  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/cover.png" class="img-fluid figure-img"></p>
-<figcaption>Spectrum of shared metacognition, from intrinsic (agent runs its own metacognitive loop) through shared (agent and designer split the metacognitive work) to extrinsic (metacognitive loop is fully externally defined). Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</em> (ICML 2025) [1], <a href="https://tennisonliu.github.io/">Tennison Liu</a> and <a href="https://www.vanderschaar-lab.com/prof-mihaela-van-der-schaar/">Mihaela van der Schaar</a> at Cambridge argue that almost every current “self-improving” LLM agent leans on hand-designed metacognitive loops, and that genuine, sustained self-improvement requires agents that can themselves evaluate, plan, and adapt their own learning processes.</p>
-<blockquote class="blockquote">
-<p>Self-improving agents aim to continuously acquire new capabilities with minimal supervision. However, current approaches face two key limitations: their self-improvement processes are often rigid, <em>fail to generalize across tasks domains, and struggle to scale with increasing agent capabilities</em>. We argue that effective self-improvement requires intrinsic metacognitive learning, defined as an agent’s intrinsic ability to actively evaluate, reflect on, and adapt its own learning processes. Drawing inspiration from human metacognition, we introduce a formal framework comprising three components: <em>metacognitive knowledge</em> (self-assessment of capabilities, tasks, and learning strategies), <em>metacognitive planning</em> (deciding what and how to learn), and <em>metacognitive evaluation</em> (reflecting on learning experiences to improve future learning). Analyzing existing self-improving agents, we find they <em>rely predominantly on extrinsic metacognitive mechanisms, which are fixed, human-designed loops that limit scalability and adaptability</em>. Examining each component, we contend that many ingredients for intrinsic metacognition are already present. Finally, we explore how to optimally distribute metacognitive responsibilities between humans and agents, and robustly evaluate and improve intrinsic metacognitive learning, key challenges that must be addressed to enable truly sustained, generalized, and aligned self-improvement.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>The paper formalizes metacognitive learning as a bi-level process. A metacognitive layer sits above the cognitive layer where task-level learning actually happens, monitoring and regulating it. The metacognitive layer has three components that close a loop: knowledge informs planning, planning produces learning activity, and evaluation feeds back into both.</p>
-<ul>
-<li><strong>Metacognitive knowledge</strong> is the agent’s self-model.
-<ul>
-<li>It comes in three flavors: <em>knowledge of self</em> (what the agent can already do, where its limits lie, what skills it has), <em>knowledge of task</em> (what the current task demands and what would help), and <em>knowledge of strategies</em> (which learning approaches are available and where each tends to apply).</li>
-<li>The biggest threat to this component is hallucination: LLMs can confidently misrepresent their own internal state, including basic facts about which tools they have access to.</li>
-<li>The paper cites recent work showing agents can classify math problems by required solution procedure [2] and identify which training tasks would help them, so the ingredient is at least partially present.</li>
-</ul></li>
-<li><strong>Metacognitive planning</strong> turns that self-model into action through two questions.
-<ul>
-<li><em>What to learn</em> is a task-allocation question, traditionally answered by curriculum learning over a curated task pool [3]. Intrinsic variants replace the human-designed curriculum with internal drivers like curiosity, learnability, and regret, and let agents generate their own tasks rather than draw from a fixed pool [4].</li>
-<li><em>How to learn</em> is a strategy-selection question with two phases:
-<ul>
-<li><em>Exploration</em> (temperature scaling, upper-confidence-bound tree search [5], uncertainty-guided sampling, prompt-based novelty seeking) chooses what experiences the agent gathers.</li>
-<li><em>Learning</em> extracts capabilities from those experiences via in-weight updates (finetuning on self-generated traces, à la STaR [6]), long-term memory writes (episodic experiences, abstract rules, reusable skills as tool functions), or both.</li>
-</ul></li>
-<li>The paper flags this whole component as the most under-developed in current systems: nearly every shipped agent picks one fixed mechanism and applies it uniformly across tasks and over time.</li>
-</ul></li>
-<li><strong>Metacognitive evaluation</strong> closes the loop and has two aspects.
-<ul>
-<li><em>Tracking progress</em> is the ongoing assessment of how learning is going. Held-out benchmarks like MMLU [7] work for well-defined capabilities. LLM-as-judge [8] fills in for fuzzier targets like emotional intelligence, creativity, or interestingness, where no quantifiable metric exists.</li>
-<li><em>Metacognitive reflection</em> is the post-hoc analysis of learning plans, distinct from task-level reflection (Reflexion-style [9]) by operating one level up: it evaluates long-term learning trajectories rather than per-task performance.</li>
-<li>Because it operates over representations of the cognitive process rather than the task itself, metacognitive reflection can in principle be domain-agnostic, given enough domain-specific signal to extract progress from.</li>
-</ul></li>
-</ul>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper walks three well-known systems through this framework as case studies, ordered by increasing intrinsic-ness:</p>
-<ul>
-<li><strong>STaR</strong> [6] (Zelikman et al., 2022): a reasoning bootstrapping method. Given a small set of problems with reasoning traces plus a larger set with answers only, the agent attempts problems and gets finetuned on any trace that led to a correct answer, then the cycle repeats on harder problems. Almost entirely extrinsic: the agent doesn’t assess its own capabilities, doesn’t choose which tasks to attempt (externally curated), and doesn’t adapt its learning strategy (rationalization with answer hints is fixed). The metacognitive loop sits with the system designer.</li>
-<li><strong>Voyager</strong> [10] (Wang et al., 2023): an LLM-based embodied agent for lifelong learning in Minecraft. It maintains a growing library of executable Python skills and autonomously discovers increasingly complex actions to perform. Partially intrinsic: the agent tracks what it can do (knowledge) and balances exploration against task learnability when picking next goals (planning). The learning strategy stays fixed though: the same exploration-learning loop runs across all tasks. Voyager beats expert-designed curriculum baselines, which the paper takes as evidence the intrinsic components matter.</li>
-<li><strong>Generative Agents</strong> [11] (Park et al., 2023): agents in a Sims-style sandbox that accumulate experiences, form relationships, and develop distinct personas through lived interaction. Most intrinsic of the three. Agents form evolving identities and motivations (knowledge), autonomously plan daily activities (planning), and periodically trigger an abstract reflection, such as recognizing a newfound interest or reinterpreting recent events, that updates their semantic memory and shapes future plans (evaluation). The paper flags the contrast with Reflexion-style [9] techniques: Reflexion reflects at the cognitive level to improve performance on specific tasks; Generative Agents reflect at the metacognitive level, drawing inferences about their own trajectory.</li>
-</ul>
-<p>The arc across the three case studies is how the paper builds its argument: each system is intrinsic on more components than the last, and the paper argues the more-intrinsic systems show more sustained progress in the diversity and novelty of their evolving capabilities. The paper acknowledges these are preliminary observations that still require rigorous, systematic studies to substantiate.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Both limitation claims rest on one example each.</strong> The “lose efficacy” claim cites Song et al.’s 2024 generation-verification-gap finding [12]. The “fail to generalize” claim points at STaR and bootstrapped self-training, which worked in their original domain but didn’t transfer. No new experiments.</p></li>
-<li><p><strong>Every shipped agent is extrinsic in this taxonomy.</strong> The system designer decides what to monitor, what counts as progress, and when to switch strategies. <a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum</a> [13] hand-designs a Co-Regulation Agent with a fixed role and loop position. <a href="../../posts/20260430-rema-meta-think/">ReMA</a> [14] hand-designs the high-low decomposition. The prompt-optimization line (<a href="../../posts/20260430-multi-agent-system-search/">MASS</a>, <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO</a>, <a href="../../posts/20260430-evoprompt/">EvoPrompt</a>) uses LLMs as inner-loop optimizers but humans fix the search-space structure.</p></li>
-<li><p><strong>“Sustained progress” lacks a cross-system metric.</strong> STaR runs in math/reasoning, Voyager in Minecraft, Generative Agents in a Sims sandbox. A residual learning rate (slope late in training over slope early) gets the y-axis unit-free, but the x-axis stays domain-specific: a STaR training step isn’t a Voyager training step, and Sims days don’t align with Minecraft exploration. The cross-system ordering needs either a shared benchmark or a principled x-axis alignment, neither of which the paper provides.</p></li>
-<li><p><strong>SelfReflect bounds the optimism about LLM metacognitive ingredients.</strong> The paper argues frontier LLMs already exhibit pieces of metacognitive knowledge, planning, and evaluation. Apple’s <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [15] finds, across 20 modern models, that LLM self-reports of their own answer distributions don’t match what those models actually sample. So the metacognitive-knowledge ingredient is thinner than the paper’s optimism implies, at least without help from techniques like sample-then-summarize.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
-<li><a id="ref-2"></a>Didolkar, Aniket, Anirudh Goyal, Nan Rosemary Ke, Siyuan Guo, Michal Valko, Timothy Lillicrap, Danilo Rezende, Yoshua Bengio, Michael Mozer, and Sanjeev Arora. “Metacognitive Capabilities of LLMs: An Exploration in Mathematical Problem Solving.” <em>arXiv preprint</em> (arXiv:2405.12205), May 20, 2024. <a href="https://arxiv.org/abs/2405.12205" class="uri">https://arxiv.org/abs/2405.12205</a></li>
-<li><a id="ref-3"></a>Bengio, Yoshua, Jérôme Louradour, Ronan Collobert, and Jason Weston. “Curriculum Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2009. <a href="https://dl.acm.org/doi/10.1145/1553374.1553380" class="uri">https://dl.acm.org/doi/10.1145/1553374.1553380</a></li>
-<li><a id="ref-4"></a>Faldor, Maxence, Jenny Zhang, Antoine Cully, and Jeff Clune. “OMNI-EPIC: Open-endedness via Models of human Notions of Interestingness with Environments Programmed in Code.” <em>arXiv preprint</em> (arXiv:2405.15568), May 24, 2024. <a href="https://arxiv.org/abs/2405.15568" class="uri">https://arxiv.org/abs/2405.15568</a></li>
-<li><a id="ref-5"></a>Hao, Shibo, Yi Gu, Haodi Ma, Joshua Jiahua Hong, Zhen Wang, Daisy Zhe Wang, and Zhiting Hu. “Reasoning with Language Model is Planning with World Model.” <em>Conference on Empirical Methods in Natural Language Processing (EMNLP)</em>, 2023. arXiv:2305.14992, May 24, 2023. <a href="https://arxiv.org/abs/2305.14992" class="uri">https://arxiv.org/abs/2305.14992</a></li>
-<li><a id="ref-6"></a><a href="https://ezelikman.com/">Zelikman</a>, Eric, Yuhuai <a href="http://www.cs.toronto.edu/~ywu/">Wu</a>, Jesse <a href="https://cs.stanford.edu/~muj/">Mu</a>, and Noah D. <a href="https://cocolab.stanford.edu/ndg.html">Goodman</a>. “STaR: Bootstrapping Reasoning With Reasoning.” <em>arXiv preprint</em> (arXiv:2203.14465), March 28, 2022. <a href="https://arxiv.org/abs/2203.14465" class="uri">https://arxiv.org/abs/2203.14465</a></li>
-<li><a id="ref-7"></a><a href="https://people.eecs.berkeley.edu/~hendrycks/">Hendrycks, D.</a>, Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D., and Steinhardt, J. “Measuring Massive Multitask Language Understanding.” <em>ICLR 2021</em> (arXiv:2009.03300). <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></li>
-<li><a id="ref-8"></a>Zheng, Lianmin, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric P. Xing, Hao Zhang, Joseph E. Gonzalez, and Ion Stoica. “Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2023. arXiv:2306.05685, June 9, 2023. <a href="https://arxiv.org/abs/2306.05685" class="uri">https://arxiv.org/abs/2306.05685</a></li>
-<li><a id="ref-9"></a><a href="https://noahshinn.com/">Shinn, N.</a>, <a href="https://federico.codes/">Cassano, F.</a>, Berman, E., <a href="https://meche.mit.edu/people/faculty/AGOPI@MIT.EDU">Gopinath, A.</a>, <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a>. “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS 2023</em> (arXiv:2303.11366), March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
-<li><a id="ref-10"></a>Wang, Guanzhi, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar. “Voyager: An Open-Ended Embodied Agent with Large Language Models.” <em>arXiv preprint</em> (arXiv:2305.16291), May 25, 2023. <a href="https://arxiv.org/abs/2305.16291" class="uri">https://arxiv.org/abs/2305.16291</a></li>
-<li><a id="ref-11"></a>Park, Joon Sung, Joseph C. O’Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. “Generative Agents: Interactive Simulacra of Human Behavior.” <em>arXiv preprint</em> (arXiv:2304.03442), April 7, 2023. <a href="https://arxiv.org/abs/2304.03442" class="uri">https://arxiv.org/abs/2304.03442</a></li>
-<li><a id="ref-12"></a><a href="https://yudasong.github.io/">Song</a>, Yuda, Hanlin <a href="https://hanlin-zhang.com/">Zhang</a>, Carson Eisenach, Sham <a href="https://en.wikipedia.org/wiki/Sham_Kakade">Kakade</a>, Dean <a href="https://deanfoster.net/">Foster</a>, and Udaya <a href="https://udaya.github.io/">Ghai</a>. “Mind the Gap: Examining the Self-Improvement Capabilities of Large Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2412.02674, December 3, 2024. <a href="https://arxiv.org/abs/2412.02674" class="uri">https://arxiv.org/abs/2412.02674</a></li>
-<li><a id="ref-13"></a><a href="https://www.linkedin.com/in/zedaxu/">Xu</a>, Zeda, Nikolas <a href="https://nikmart.com/">Martelaro</a>, and Christopher <a href="https://cmccomb.com/">McComb</a>. “Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design.” <em>arXiv preprint</em> (arXiv:2603.24768), March 25, 2026. <a href="https://arxiv.org/abs/2603.24768" class="uri">https://arxiv.org/abs/2603.24768</a></li>
-<li><a id="ref-14"></a><a href="https://ziyuwan.github.io/">Wan</a>, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi <a href="https://leeeeoliu.github.io/">Yang</a>, Mark <a href="https://www.cs.ubc.ca/~schmidtm/">Schmidt</a>, Jun <a href="http://www0.cs.ucl.ac.uk/staff/Jun.Wang/">Wang</a>, Weinan <a href="http://wnzhang.net/">Zhang</a>, Shuyue Hu, and Ying <a href="https://yingwen.io/">Wen</a>. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
-<li><a id="ref-15"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/</guid>
-  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/cover.png" medium="image" type="image/png" height="38" width="144"/>
-</item>
-<item>
-  <title>System Prompt Optimization with Meta-Learning</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Generalization across different domains. Left: MetaSPO’s performance on domains not used for prompt optimization, plotted against their similarity to the training domains. Right: Effect of the number of training domains, with more domains yielding stronger generalization. Figure 5 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>System Prompt Optimization with Meta-Learning</em> (NeurIPS 2025) [1], <a href="https://www.mlai-kaist.com/">Yumin Choi</a>, <a href="https://jinheonbaek.github.io/">Jinheon Baek</a>, and <a href="https://www.mlai-kaist.com/">Sung Ju Hwang</a> (KAIST, DeepAuto.ai) introduce MetaSPO, a bilevel optimization framework that meta-learns a task-agnostic system prompt while simultaneously updating task-specific user prompts in an iterative inner loop.</p>
-<blockquote class="blockquote">
-<p>Large Language Models (LLMs) have shown remarkable capabilities, with optimizing their input prompts playing a pivotal role in maximizing their performance. However, while LLM prompts consist of both the task-agnostic system prompts and task-specific user prompts, existing work on prompt optimization has focused on user prompts specific to individual queries or tasks, and largely overlooked the system prompt that is, once optimized, applicable across different tasks and domains. Motivated by this, we introduce the novel problem of <em>bilevel system prompt optimization</em>, whose objective is to <em>design system prompts that are robust to diverse user prompts and transferable to unseen tasks</em>. To tackle this problem, we then propose <em>a meta-learning framework, which meta-learns the system prompt by optimizing it over various user prompts across multiple datasets, while simultaneously updating the user prompts in an iterative manner to ensure synergy between them</em>. We conduct experiments on <em>14 unseen datasets spanning 5 different domains</em>, on which we show that our approach produces system prompts that generalize effectively to diverse user prompts. Also, our findings reveal that the optimized system prompt enables <em>rapid adaptation even to unseen tasks, requiring fewer optimization steps for test-time user prompts while achieving improved performance</em>.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
-<figcaption>Concept figure. (A) An LLM input has three parts: task-agnostic system prompt, task-specific user prompt, target example. (B) Conventional task-specific optimization tunes the user prompt for one task and generalizes poorly. (C) MetaSPO meta-learns a system prompt that transfers to unseen target tasks. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>Against this three-part structure, MetaSPO’s bilevel algorithm runs two nested optimization loops. The outer loop optimizes the task-agnostic system prompt, and the inner loop iteratively refines task-specific user prompts. At each outer step, the current system prompt is paired with candidate user prompts across multiple source tasks. The model’s failures on held-out examples feed an LLM optimizer that proposes refined candidates (user prompts inside the inner loop, system prompts at the outer loop). The meta-learned system prompt transfers to unseen target tasks with no further system-prompt tuning; at test time, only the user prompt is adapted per target task.</p>
-<p>The system prompt starts as “You are a helpful assistant.” (the Default baseline) and is iteratively refined through the outer loop. At each step of either loop, a separate optimizer LLM (GPT-4o mini in the main experiments, distinct from the Llama-3.2 3B base LLM that generates task responses) is prompted with the current prompt and its incorrectly-predicted examples, asked to analyze the failure modes, and then asked for multiple candidate refinements. Candidates are evaluated against held-out task data, and the top-k by performance survive to the next iteration. Both loops follow this same textual-gradient pattern (after Pryzant et al.&nbsp;[4]), applied at different scopes: user prompt per task in the inner loop, system prompt aggregated across source tasks in the outer loop.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
-<figcaption>MetaSPO overview. The inner loop refines candidate user prompts via failure analysis on a target task; the outer loop refines the system prompt by aggregating failures across multiple source tasks. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper evaluates on 14 unseen target tasks across 5 domains (Medical, Review Analysis, Reasoning, Safety, Grounding), with each score the average performance of a system prompt paired with ten different user prompts. Within-domain Domain MetaSPO averages 44.5 over the 14 tasks, beating the next-best baseline SPRIG at 37.0 and the no-system-prompt Default at 32.2. The cross-domain Global MetaSPO setting (one system prompt meta-learned across all 5 domains) averages 41.4, still ahead of all baselines but ~3 points behind the within-domain Domain setting. Separately, on test-time efficiency: a MetaSPO-pretrained system prompt reaches Default’s converged performance with 80% fewer optimization iterations and 75% less data during test-time user-prompt adaptation.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/table1.png" class="img-fluid figure-img"></p>
-<figcaption>Main results on 14 unseen target tasks, grouped by 5 domains. Global methods use a single system prompt across all domains; Domain methods use a system prompt meta-learned on the target’s domain. Each cell is the average score across 10 different user prompts on that target task. Domain MetaSPO (bottom row) tops the overall average at 44.5. Table 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>Figure 4 tests whether MetaSPO’s lift transfers uniformly across target tasks or depends on source-target task similarity. The paper measures similarity via Bag-of-Words overlap between the source-task training distribution and the target task, then plots per-task improvement against it.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure4.png" class="img-fluid figure-img"></p>
-<figcaption>MetaSPO’s gain over the Default baseline as a function of source-target task similarity (measured by Bag-of-Words overlap). Points above the y=0 line indicate a positive lift over Default; Pearson correlation 0.56 between similarity and improvement. High-similarity target tasks see larger gains; low-similarity tasks see near-neutral gains. Figure 4 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The decomposition is the contribution, more than the method.</strong> Before this paper, “prompt optimization” treated the prompt as one optimization target for one task. DSPy [2], MIPRO [3], Pryzant et al.’s textual gradients [4], and <a href="../../posts/20260430-evoprompt/">EvoPrompt</a> [6] each target a different piece of that setup, but all produce task-specific prompts. The bilevel split (task-agnostic system prompt above, task-specific user prompt below) is the key move; once you make it, the meta-learning structure follows naturally because the outer loop has a natural “across tasks” loss to optimize. The MetaSPO algorithm itself is a structurally familiar inner/outer LLM-as-optimizer loop. What matters here is the decision about what to put in each level.</li>
-<li><strong>The system prompt does most of the transfer work.</strong>
-<ul>
-<li>MetaSPO’s headline wins on unseen tasks come from the system prompt. In Table 1’s Unseen Generalization scenario, user prompts are LLM-sampled per task and held fixed; only the system prompt varies across the methods compared. Domain MetaSPO averages 44.5 over 14 unseen target tasks vs.&nbsp;Default’s 32.2, a +12.3-point lift attributable to the system prompt alone.</li>
-<li>Appendix B.7 tests system-prompt vs user-prompt optimization head-to-head: MetaSPO (system-prompt optimized on source tasks) vs.&nbsp;ProTeGi (user-prompt optimized on source tasks), evaluated on the unseen Reasoning domain. MetaSPO wins across every source-domain starting point; ProTeGi drops below the Default system prompt, indicating user-prompt optimizations don’t transfer past the specific tasks they were tuned on.</li>
-</ul></li>
-<li><strong>Test-time efficiency is the practically relevant finding.</strong> The headline number is the unseen-generalization performance, but the deployment-relevant result is in §4: a MetaSPO-pretrained system prompt reaches the Default baseline’s converged performance with 80% fewer optimization iterations and 75% less data during test-time user-prompt adaptation. That’s a recipe for shipping prompt-optimized agents when each new task gets a small calibration budget rather than full re-optimization.</li>
-<li><strong>Generalization is asymmetric along source-target similarity.</strong> Figure 4 shows MetaSPO’s gain over Default scales with source-target task similarity measured by Bag-of-Words. High similarity, big gain; low similarity, the meta-learned system prompt is closer to neutral. That’s the expected meta-learning failure mode on out-of-distribution tasks, but it also bounds the deployment story: a system prompt meta-learned on Medical+Review+Reasoning will help most on tasks that look like those at the BoW level, and the cross-domain Global setting underperforms the within-domain Domain setting (41.4 vs.&nbsp;44.5 avg). The follow-up question: at what point does the meta-learned prior become a <em>liability</em> on a sufficiently distant task?</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://www.mlai-kaist.com/">Choi, Y.</a>, <a href="https://jinheonbaek.github.io/">Baek, J.</a>, <a href="https://www.mlai-kaist.com/">Hwang, S. J.</a> “System Prompt Optimization with Meta-Learning.” <em>Conference on Neural Information Processing Systems (NeurIPS)</em>, 2025. arXiv:2505.09666, May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
-<li><a id="ref-2"></a>Khattab, O., Singhvi, A., Maheshwari, P., Zhang, Z., Santhanam, K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., Miller, H., Zaharia, M., Potts, C. “DSPy: Compiling Declarative Language Model Calls into State-of-the-Art Pipelines.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://arxiv.org/abs/2310.03714" class="uri">https://arxiv.org/abs/2310.03714</a></li>
-<li><a id="ref-3"></a>Opsahl-Ong, K., Ryan, M. J., Purtell, J., Broman, D., Potts, C., Zaharia, M., Khattab, O. “Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs.” <em>Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing</em>, 2024. <a href="https://arxiv.org/abs/2406.11695" class="uri">https://arxiv.org/abs/2406.11695</a></li>
-<li><a id="ref-4"></a>Pryzant, R., Iter, D., Li, J., Lee, Y., Zhu, C., Zeng, M. “Automatic Prompt Optimization with ‘Gradient Descent’ and Beam Search.” <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing</em>, 2023. <a href="https://arxiv.org/abs/2305.03495" class="uri">https://arxiv.org/abs/2305.03495</a></li>
-<li><a id="ref-6"></a>Guo, Q., Wang, R., Guo, J., Li, B., Song, K., Tan, X., Liu, G., Bian, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/</guid>
-  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

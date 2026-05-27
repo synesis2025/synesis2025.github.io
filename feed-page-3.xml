@@ -21,7 +21,260 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 25 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 26 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260513-gepa/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260513-gepa/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-gepa/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</em> [1] (<a href="https://iclr.cc/">ICLR 2026 Oral</a>), <a href="https://lakshyaaagrawal.github.io/">Lakshya A. Agrawal</a> (UC Berkeley), <a href="https://people.eecs.berkeley.edu/~matei/">Matei Zaharia</a> (UC Berkeley / Databricks), <a href="https://omarkhattab.com/">Omar Khattab</a> (MIT), and 14 co-authors across UC Berkeley, Stanford, Notre Dame, BespokeLabs.ai, Databricks, and MIT argue that natural-language reflection on sampled trajectories is a richer learning signal than scalar rewards, and introduce GEPA (Genetic-Pareto), a prompt optimizer that outperforms Group Relative Policy Optimization (GRPO) [2] while using far fewer rollouts.</p>
+<blockquote class="blockquote">
+<p>Large language models (LLMs) are increasingly adapted to downstream tasks via reinforcement learning (RL) methods like Group Relative Policy Optimization (GRPO), which often require thousands of rollouts to learn new tasks. We argue that the interpretable nature of language often provides a much richer learning medium for LLMs, compared to policy gradients derived from sparse, scalar rewards. To test this, we introduce <em>GEPA (Genetic-Pareto)</em>, a prompt optimizer that thoroughly incorporates <em>natural language reflection</em> to learn high-level rules from trial and error. Given any AI system containing one or more LLM prompts, GEPA samples trajectories (e.g., reasoning, tool calls, and tool outputs) and reflects on them in natural language to diagnose problems, propose and test prompt updates, and combine complementary lessons from the <em>Pareto frontier of its own attempts</em>. As a result of GEPA’s design, it can often turn even just a few rollouts into a large quality gain. Across six tasks, <em>GEPA outperforms GRPO by 6% on average and by up to 20%, while using up to 35x fewer rollouts</em>. GEPA also <em>outperforms the leading prompt optimizer, MIPROv2, by over 10% (e.g., +12% accuracy on AIME-2025)</em>, and demonstrates promising results as an inference-time search strategy for code optimization. We release our code at <a href="https://github.com/gepa-ai/gepa" class="uri">https://github.com/gepa-ai/gepa</a>.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>A <em>compound AI system</em>, in the paper’s (and <a href="https://dspy.ai/">DSPy</a>’s) vocabulary, is a pipeline of one or more LLM-invoked <em>modules</em> — each a distinct prompted call (e.g., a first-hop query generator, a second-hop query generator, an answer generator in a multi-hop QA pipeline) — potentially interleaved with tool calls. Each module has its own prompt, which GEPA can optimize independently.</p>
+<p>GEPA treats each prompt in a compound AI system as a <em>gene</em> and maintains a pool of candidate programs. At each iteration (Figure 3), GEPA proposes a new candidate using one of two <em>genetic operators</em> — a single-parent <em>mutation</em> or a two-parent <em>crossover</em> — and evaluates it on a minibatch. If the minibatch score improves over the parent, the candidate is promoted to evaluation on the full training set and added to the pool. The default operator is reflective mutation; crossover (Merge) fires opportunistically when the pool contains two candidates that share a common ancestor, have optimized disjoint sets of prompts, are both Pareto-optimal, and both beat the ancestor in aggregate — with a hard cap of five merges per run.</p>
+<p>The two operators are:</p>
+<ul>
+<li><strong>Reflective Prompt Mutation</strong> samples trajectories from one candidate — reasoning, tool calls, and tool outputs — and feeds them to a reflector LM that writes a natural-language diagnosis of what went wrong and proposes an edited prompt for a single module. Figure 5 traces this on PUPA [3] — a benchmark for <em>privacy-conscious delegation</em>, where a trusted local model must answer user queries containing personally identifiable information (PII) using an untrusted API model as a helper, without leaking PII. Starting from a short base instruction (“Create a privacy-preserving request for a powerful external LLM that can assist without learning private information about the user.”), each successful child adds a concrete nuance the reflector extracted from a failure — expanded privacy strategies, explicit PII categories and generalizations, structured output and domain best-practices, then a detailed transformation rationale, ending at a strict exhaustive protocol that bans partial redaction and demands auditable zero-leakage. The prompt accumulates lessons rather than being rewritten wholesale. In the figure below, red arrows mark the promoted lineage from candidate 0 to the best candidate (11), with scores in parentheses.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-gepa/figure5.webp" class="img-fluid figure-img" data-lightbox-src="figure5-full.png"></p>
+<figcaption>Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>System-Aware Merge</strong> takes two qualifying descendants of a common ancestor and assembles a child module-by-module. For each module, if one descendant changed the ancestor’s prompt and the other left it untouched, the child inherits the changed version; if both descendants changed it, the child inherits from the higher-scoring parent (ties broken randomly); if neither changed it, it stays at the ancestor’s version. No LLM call is made — the whole step is a textual combine over existing prompts, which is why the paper calls it <em>system-aware</em> crossover rather than a mutation. Merge works only when the two parents have explored disjoint modules, so complementary improvements can compose without stepping on each other.</li>
+</ul>
+<p>Parent selection is Pareto-based rather than greedy. Instead of always mutating the best-scoring candidate, GEPA maintains a per-task score matrix over its history and samples parents from the <a href="https://en.wikipedia.org/wiki/Pareto_front">Pareto frontier</a> — the set of candidates that no other candidate beats on every task — which prevents a locally strong candidate from dominating the search. The paper reports two named variants, “GEPA” using reflective mutation only and “GEPA+Merge” using both mutation and merge; both share the Pareto-based selector and the minibatch-then-full-set gate. The optimizer is agnostic to the downstream task: it needs a trajectory sampler, a metric, and a reflector LM.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Six tasks — HotpotQA [4], HoVer [5], IFBench [6], PUPA [3], AIME-2025 [7], and LiveBench-Math [8] — using <a href="https://openai.com/index/gpt-4-1/">GPT-4.1 Mini</a> and <a href="https://huggingface.co/Qwen/Qwen3-8B">Qwen3-8B</a> as task models.</p>
+<ul>
+<li><strong>Qwen3-8B</strong>: GEPA beats GRPO on five of the six benchmarks, losing only on AIME-2025. IFBench makes the gap sharp — GEPA reaches 38.61% after 678 rollouts, above GRPO’s 35.88% at 24,000. Averaged across the six tasks, GEPA is +6% over GRPO and up to +20% on the best task, with up to <img src="https://benjaminhan.net/feed-assets/30b35fa24a459dc4.svg" alt="35\times" class="feed-math-inline"/> fewer <em>rollouts</em> (trajectories sampled from the current policy during training). GEPA+Merge is less reliable here: it also trails GRPO on IFBench and PUPA, which the paper attributes to Merge’s hyperparameters being tuned for GPT-4.1 Mini rather than Qwen3-8B.</li>
+<li><strong>GPT-4.1 Mini</strong>: GEPA is evaluated as a drop-in prompt optimizer against MIPROv2 [9] in two settings (instruction-only “MIPROv2-No-Demos” and joint instruction-plus-few-shot “MIPROv2”), Trace [10] with its OptoPrime optimizer, and TextGrad [11] <!-- crosslink-todo: /posts/20260503-textgrad/ -->. GEPA wins on every benchmark, with margins as wide as 11% (HotpotQA, PUPA). The abstract highlights +12% on AIME-2025. A GEPA-Qwen-Opt variant optimized entirely on Qwen3-8B gets +9% when run on GPT-4.1 Mini without modification, outperforming every baseline that was optimized directly on GPT-4.1 Mini.</li>
+</ul>
+<p>Beyond benchmarks, the paper reports GEPA as a promising inference-time search strategy for CUDA kernel optimization, iteratively improving kernels against a PyTorch-eager baseline.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-gepa/tables1-2.webp" class="img-fluid figure-img" data-lightbox-src="tables1-2-full.png"></p>
+<figcaption>Tables 1 and 2 from the paper [1]: benchmark results on Qwen3-8B (top) and GPT-4.1 Mini (bottom).</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Reflection beats policy gradients</strong>: GRPO wastes signal already present in each trajectory, in three ways.
+<ul>
+<li><em>Information content</em>: GRPO consumes a trajectory as a single scalar reward (normalized against the group’s own mean and standard deviation, the “Group Relative” that replaces PPO’s learned critic), throwing away which tool call was wrong, which instruction was ambiguous, which demonstration misled the model. A reflector LM reading the same trajectory can name all three and edit the one prompt that caused the failure.</li>
+<li><em>Variance</em>: because each rollout contributes one noisy scalar, GRPO needs thousands of rollouts before the gradient estimate stabilizes. A natural-language critique encodes structured per-module diagnosis, so one rollout already yields usable signal.</li>
+<li><em>Credit assignment</em>: GRPO’s policy-gradient update spreads the scalar reward across every token of every module in the rollout, even when only one module was responsible. Reflection attributes the failure to a single module and leaves the rest alone.</li>
+<li>The same pattern shows up in <a href="../../posts/20260516-self-refine/">Self-Refine</a> and <a href="../../posts/20260516-reflexion/">Reflexion</a>, where verbal feedback outperforms scalar reward at comparable compute. GEPA is the first paper I have seen that posts the head-to-head against GRPO on matched tasks.</li>
+</ul></li>
+<li><strong>The Pareto-frontier selector is the generalizable part</strong>: Sampling mutation parents from the Pareto frontier rather than argmax prevents collapse to a single best candidate, which is the same mode-collapse problem that shows up in <a href="../../posts/20260515-promptbreeder/">evolutionary prompt search</a> and RL fine-tuning. The mechanism is general enough to drop into any iterative search where candidates have multi-dimensional scores (accuracy vs.&nbsp;cost, or task A vs.&nbsp;task B), and I expect to see it reused well past prompt optimization.</li>
+<li><strong>Beating MIPROv2 without Bayesian optimization</strong>: This is a substantive methodological claim. MIPROv2 [9] <!-- crosslink-todo: /posts/20260503-miprov2/ --> spends its budget on a Bayesian surrogate over instruction and demonstration hyperparameters. GEPA discards the surrogate and spends the same budget on reflective rewrites plus merge. The result suggests the Bayesian model in MIPROv2 was under-using the trajectory information MIPROv2 already had access to, and the proposer was not reading the failures carefully enough. Several authors overlap between the two papers, so the comparison is a within-lab course-correction rather than an external critique.</li>
+<li><strong>The paper doesn’t say what reflector it used</strong>: Appendix E.2 lists Qwen3-8B and GPT-4.1 Mini as the <em>task</em> models but never specifies the reflection LM. The <a href="https://github.com/gepa-ai/gepa">gepa-ai/gepa repo</a> quickstart pairs GPT-5 as reflector with GPT-4.1 Mini as task, a stronger model reading a weaker one’s trajectories. Without the reflector spec or an ablation, we can’t tell whether GEPA corroborates or contradicts the just-ask calibration [12] <!-- crosslink-todo: /posts/20260503-just-ask-calibration/ --> and <a href="../../posts/20260505-llm-uncertainty-survey/">uncertainty-quantification</a> findings that single-model self-evaluation is unreliable.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://lakshyaaagrawal.github.io/">Agrawal, L. A.</a>, <a href="https://www.shangyintan.com/">Tan, S.</a>, <a href="https://dilarasoylu.github.io/">Soylu, D.</a>, <a href="https://ziems.github.io/">Ziems, N.</a>, <a href="https://www.linkedin.com/in/rishikhare/">Khare, R.</a>, <a href="https://www.linkedin.com/in/krista-opsahl-ong/">Opsahl-Ong, K.</a>, <a href="https://arnavs.com/">Singhvi, A.</a>, <a href="https://www.linkedin.com/in/herumb-shandilya/">Shandilya, H.</a>, <a href="https://michryan.com/">Ryan, M. J.</a>, <a href="https://www3.nd.edu/~mjiang2/">Jiang, M.</a>, <a href="https://web.stanford.edu/~cgpotts/">Potts, C.</a>, <a href="https://people.eecs.berkeley.edu/~ksen/">Sen, K.</a>, <a href="https://people.eecs.berkeley.edu/~alexdimakis/">Dimakis, A. G.</a>, <a href="https://people.eecs.berkeley.edu/~istoica/">Stoica, I.</a>, <a href="https://people.eecs.berkeley.edu/~klein/">Klein, D.</a>, <a href="https://people.eecs.berkeley.edu/~matei/">Zaharia, M.</a>, <a href="https://omarkhattab.com/">Khattab, O.</a> “GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning.” <em>ICLR 2026 (Oral)</em> (arXiv:2507.19457), July 25, 2025. <a href="https://arxiv.org/abs/2507.19457" class="uri">https://arxiv.org/abs/2507.19457</a></li>
+<li><a id="ref-2"></a><a href="https://zhshao.com/">Shao, Z.</a>, et al.&nbsp;“DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.” <em>arXiv preprint</em> (arXiv:2402.03300), February 5, 2024. <a href="https://arxiv.org/abs/2402.03300" class="uri">https://arxiv.org/abs/2402.03300</a></li>
+<li><a id="ref-3"></a>Li, S., Raghuram, V. C., Khattab, O., Hirschberg, J., Yu, Z. “PAPILLON: Privacy Preservation from Internet-based and Local Language Model Ensembles (introduces the PUPA benchmark for Privacy-Conscious Delegation).” <em>NAACL 2025 (Volume 1: Long Papers)</em>. <a href="https://aclanthology.org/2025.naacl-long.173/" class="uri">https://aclanthology.org/2025.naacl-long.173/</a></li>
+<li><a id="ref-4"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W. W., Salakhutdinov, R., Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600). <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
+<li><a id="ref-5"></a>Jiang, Y., Bordia, S., Zhong, Z., Dognin, C., Singh, M., Bansal, M. “HoVer: A Dataset for Many-Hop Fact Extraction and Claim Verification.” <em>Findings of EMNLP 2020</em>, pp.&nbsp;3441–3460, November 2020. <a href="https://aclanthology.org/2020.findings-emnlp.309/" class="uri">https://aclanthology.org/2020.findings-emnlp.309/</a></li>
+<li><a id="ref-6"></a>Pyatkin, V., Malik, S., Graf, V., Ivison, H., Huang, S., Dasigi, P., Lambert, N., Hajishirzi, H. “Generalizing Verifiable Instruction Following (IFBench).” <em>arXiv preprint</em> (arXiv:2507.02833), 2025. <a href="https://arxiv.org/abs/2507.02833" class="uri">https://arxiv.org/abs/2507.02833</a></li>
+<li><a id="ref-7"></a>Balunović, M., Dekoninck, J., Petrov, I., Jovanović, N., Vechev, M. “AIME-2025 (MathArena: Evaluating LLMs on Uncontaminated Math Competitions).” Dataset, February 2025. <a href="https://huggingface.co/datasets/MathArena/aime_2025" class="uri">https://huggingface.co/datasets/MathArena/aime_2025</a></li>
+<li><a id="ref-8"></a>White, C., Dooley, S., Roberts, M., Pal, A., Feuer, B., Jain, S., Shwartz-Ziv, R., Jain, N., Saifullah, K., Dey, S., Shubh-Agrawal, Sandha, S. S., Naidu, S., Hegde, C., LeCun, Y., Goldstein, T., Neiswanger, W., Goldblum, M. “LiveBench: A Challenging, Contamination-Limited LLM Benchmark.” <em>arXiv preprint</em> (arXiv:2406.19314), 2025. <a href="https://arxiv.org/abs/2406.19314" class="uri">https://arxiv.org/abs/2406.19314</a></li>
+<li><a id="ref-9"></a>Opsahl-Ong, K., Ryan, M. J., et al.&nbsp;“Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs.” <em>EMNLP 2024</em> (arXiv:2406.11695), June 17, 2024. <a href="https://arxiv.org/abs/2406.11695" class="uri">https://arxiv.org/abs/2406.11695</a></li>
+<li><a id="ref-10"></a>Cheng, C.-A., Nie, A., Swaminathan, A. “Trace is the Next AutoDiff: Generative Optimization with Rich Feedback, Execution Traces, and LLMs.” <em>arXiv preprint</em> (arXiv:2406.16218), 2024. <a href="https://arxiv.org/abs/2406.16218" class="uri">https://arxiv.org/abs/2406.16218</a></li>
+<li><a id="ref-11"></a><a href="https://cs.stanford.edu/~merty/">Yuksekgonul, M.</a>, <a href="https://federicobianchi.io/">Bianchi, F.</a>, <a href="https://www.linkedin.com/in/joseph-boen/">Boen, J.</a>, <a href="https://shengliu66.github.io/">Liu, S.</a>, <a href="https://zhihuang.dev/">Huang, Z.</a>, <a href="https://guestrin.su.domains/">Guestrin, C.</a>, <a href="https://www.james-zou.com/">Zou, J.</a> “TextGrad: Automatic ‘Differentiation’ via Text.” <em>arXiv preprint</em> (arXiv:2406.07496), June 11, 2024. <a href="https://arxiv.org/abs/2406.07496" class="uri">https://arxiv.org/abs/2406.07496</a></li>
+<li><a id="ref-12"></a>Tian, K., Mitchell, E., Zhou, A., Sharma, A., Rafailov, R., Yao, H., Finn, C., Manning, C. D. “Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback.” <em>EMNLP 2023</em> (arXiv:2305.14975), May 24, 2023. <a href="https://arxiv.org/abs/2305.14975" class="uri">https://arxiv.org/abs/2305.14975</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260513-gepa/</guid>
+  <pubDate>Wed, 13 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260513-gepa/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>The Math Behind the Cost of AI Agents</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Cover image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://www.linkedin.com/in/vascoschiavo92/">Vasco Schiavo</a>, writing on the <a href="https://pythagorai.substack.com/">Inference Notes Substack</a>, <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">derives why agent token costs explode</a> and fits the predicted curves against real benchmark traces. The core claim: each turn re-sends the entire conversation history, so total input tokens pile up as a triangular number <img src="https://benjaminhan.net/feed-assets/d27deec524470f16.svg" alt="T(T-1)/2" class="feed-math-inline"/>, quadratic in turns, while output tokens grow linearly.</p>
+<section id="the-growth-law" class="level2">
+<h2 class="anchored" data-anchor-id="the-growth-law">The growth law</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-diagram-colored.png" class="img-fluid figure-img"></p>
+<figcaption>A four-turn conversation, colored by token type: blue cells are input, red cells are output. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<p>Prompt caching does not change the shape of this picture, but it changes which cells are cheap. Green cells below are cached input, billed at a fraction of the fresh rate (typically around 10%). The triangle still grows quadratically, but the dominant term becomes cheap re-reads instead of full-price input, so over the practical turn range the total cost looks linear even though the underlying formula is not.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-diagram-cached.png" class="img-fluid figure-img"></p>
+<figcaption>The same diagram with caching on. Green cells are cached input. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<p>The full with-cache cost formula is <img src="https://benjaminhan.net/feed-assets/8275004afe56f0a9.svg" alt="M \cdot T + c \cdot M \cdot T(T-1)/2" class="feed-math-inline"/>, still quadratic in <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> with the <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/> term just multiplied by the small constant <img src="https://benjaminhan.net/feed-assets/890168619d7adb58.svg" alt="c \cdot M / 2" class="feed-math-inline"/>. The post argues that once caching is deployed, the linear term dominates over the practical turn range, so it fits the cached data with a line rather than a quadratic. The takeaway it pulls out: without caching, cost scales as <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/>; with caching, cost scales as <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> plus a negligible <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/> correction.</p>
+</section>
+<section id="fits-on-swe-bench" class="level2">
+<h2 class="anchored" data-anchor-id="fits-on-swe-bench">Fits on SWE-bench</h2>
+<p>To test those predictions on real data, the post fits two curve shapes — <img src="https://benjaminhan.net/feed-assets/3c904cdd68df8365.svg" alt="a \cdot t^2" class="feed-math-inline"/> for no-cache and <img src="https://benjaminhan.net/feed-assets/dc09b1b92cb073a0.svg" alt="b \cdot t" class="feed-math-inline"/> for with-cache — against cumulative paid tokens per turn on <a href="https://www.swebench.com/">SWE-bench</a> traces from the <a href="https://www.all-hands.dev/">OpenHands</a> evaluation index, across three models: GPT-5.2, Gemini-3-Flash, and <a href="https://www.anthropic.com/claude/opus">Claude Opus 4.6</a>. Each coefficient has a concrete interpretation:</p>
+<ul>
+<li><img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> — <strong>per-turn verbosity.</strong> How many fresh tokens each turn contributes on average. A large <img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> means the model (or its harness) is pushing a lot of new content per turn.</li>
+<li><img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> — <strong>cache-era marginal cost.</strong> The effective per-turn cost once caching is doing its job. A small <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> means cache hits are carrying most of the load. A large <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> means the cache is not catching much.</li>
+</ul>
+<p>In all three panels below, red is the no-cache median (dashed line = quadratic fit), blue is the with-cache median (dashed line = linear fit), and the pink band is the <a href="https://en.wikipedia.org/wiki/Interquartile_range">interquartile range</a> (IQR) across task instances.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-gpt52-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-gpt52-swebench-full.png"></p>
+<figcaption>GPT-5.2 on SWE-bench, 493 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-gemini-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-gemini-swebench-full.png"></p>
+<figcaption>Gemini-3-Flash on SWE-bench, 500 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-opus-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-opus-swebench-full.png"></p>
+<figcaption>Claude Opus 4.6 on SWE-bench, 483 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<p>The three fits split along both axes:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 21%">
+<col style="width: 21%">
+<col style="width: 21%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th style="text-align: right;"><img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> (per-turn verbosity)</th>
+<th style="text-align: right;">≈ fresh tokens/turn</th>
+<th style="text-align: right;"><img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> (cache-era marginal cost)</th>
+<th style="text-align: right;">Trajectory length <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>GPT-5.2</td>
+<td style="text-align: right;">0.00050</td>
+<td style="text-align: right;">1,000</td>
+<td style="text-align: right;">0.0095</td>
+<td style="text-align: right;">~75</td>
+</tr>
+<tr class="even">
+<td>Gemini-3-Flash</td>
+<td style="text-align: right;">0.00015</td>
+<td style="text-align: right;">300</td>
+<td style="text-align: right;">0.0086</td>
+<td style="text-align: right;">~175</td>
+</tr>
+<tr class="odd">
+<td>Claude Opus 4.6</td>
+<td style="text-align: right;">0.00046</td>
+<td style="text-align: right;">920</td>
+<td style="text-align: right;">0.0008</td>
+<td style="text-align: right;">~80</td>
+</tr>
+</tbody>
+</table>
+<p>GPT-5.2 and Opus 4.6 are roughly matched on <img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> (around 1,000 fresh tokens per turn), while Gemini-3-Flash is a third of that, reflecting shorter responses and more compact tool calls. On <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/>, the three separate sharply: Opus’s <img src="https://benjaminhan.net/feed-assets/ce6523cd7c9cb805.svg" alt="0.0008" class="feed-math-inline"/> is more than 10× shallower than the other two, meaning a higher cache hit rate, less fresh content per turn, or both at Anthropic’s end. That is why, on the Opus panel above, the with-cache line almost disappears into the x-axis against a no-cache peak of 3.7M tokens.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Tension with “Where Claude Code tokens go”.</strong> Reading this alongside <a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code tokens go</a> surfaces a tension. Mnimiy’s proxy measured ~13% of Claude Code cost going to conversation-history re-reads and another ~10% to cache misses on session resume, together about a quarter of spend on the re-read triangle. But the SWE-bench Opus 4.6 fit here puts with-cache marginal cost at <img src="https://benjaminhan.net/feed-assets/b3c8a7c45c3a7052.svg" alt="b = 0.0008" class="feed-math-inline"/>, so flat that re-reads should barely register. The gap is probably the cache-hit-rate assumption: SWE-bench traces one continuous session under near-ideal cache conditions, while real Claude Code usage invalidates the cache constantly — 5-minute timeouts on coffee breaks, <code>CLAUDE.md</code> edits, hook changes, tool reordering — pushing re-reads back to full price and moving the user onto the steeper no-cache curve.</p></li>
+<li><p><strong>IQR variance across the three models.</strong> Fitting to the median across ~500 tasks smooths away the tail that actually burns money, and the post barely addresses how wide that tail is. The no-cache interquartile bands differ sharply. Opus at <img src="https://benjaminhan.net/feed-assets/aea1c177fbb47303.svg" alt="T=80" class="feed-math-inline"/> has a band about 0.8M wide on a 3.7M median — roughly 20% of the median width. Gemini at <img src="https://benjaminhan.net/feed-assets/c54e24720f1f7f8f.svg" alt="T=175" class="feed-math-inline"/> is in a different regime: the median is 8M tokens and the upper quartile reaches 16M, so just the upper half of the IQR equals the median itself. GPT-5.2 sits in between. Some of that is Gemini running longer trajectories, which lets cumulative variance compound. But even at similar turn counts the proportional spread is higher for Gemini, probably because its per-turn token count is more variable: tool calls ranging from small greps to full-file reads, or a subset of tasks dragging into verbose off-path exploration. With Q3 = 2× median, 25% of Gemini sessions cost at least double what the median fit would predict, before you hit true outliers. For anyone using these curves to forecast agent spend, a <img src="https://benjaminhan.net/feed-assets/1df616e9ed9d55d7.svg" alt="p95" class="feed-math-inline"/> cumulative-token curve would be more decision-relevant than the median fit.</p></li>
+<li><p><strong>Gemini’s 2× trajectory length.</strong> Trajectory length itself differs markedly across models, and the post doesn’t unpack why. Gemini-3-Flash runs out to <img src="https://benjaminhan.net/feed-assets/a994175ad98086f0.svg" alt="T \approx 175" class="feed-math-inline"/>; GPT-5.2 tops out around <img src="https://benjaminhan.net/feed-assets/2dca9b00c3a4175a.svg" alt="T \approx 75" class="feed-math-inline"/> and Opus 4.6 around <img src="https://benjaminhan.net/feed-assets/597aadc5625c1dc0.svg" alt="T \approx 80" class="feed-math-inline"/>. Even with Gemini’s leaner per-turn verbosity (<img src="https://benjaminhan.net/feed-assets/4dc7e9649f7182d9.svg" alt="\sim 300" class="feed-math-inline"/> tokens/turn), the longer trajectories end up consuming more total tokens: <img src="https://benjaminhan.net/feed-assets/e318b62944dba7b2.svg" alt="\sim 8\text{M}" class="feed-math-inline"/> cumulative no-cache at session end versus <img src="https://benjaminhan.net/feed-assets/68af1fdb47744704.svg" alt="\sim 3.7\text{M}" class="feed-math-inline"/> for Opus. If the tasks are roughly equivalent across runs, that is twice the work to reach comparable outcomes, which would look like a capability gap. But I can’t rule out harness-level differences: different per-model step limits, different tool-call styles (many small reads vs fewer large ones), or different early-exit thresholds could each produce the same pattern without implying anything about the model. Without OpenHands config detail it stays ambiguous. The observation worth holding onto either way: “leaner per turn” doesn’t translate to “cheaper overall” if it costs twice as many turns to finish.</p></li>
+<li><p><strong>The two-line fix anecdote.</strong> The author <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents#:~:text=two%2Dline%20fix">notes in passing</a> that the OpenAI cache slope looked several times steeper than theory predicted, traced it to a bug in how their own code was calling OpenAI’s cache API, and shaved the slope down with a two-line fix. That is a useful case for regression-testing cache behavior against a theoretical baseline. Any provider whose cached slope deviates from <img src="https://benjaminhan.net/feed-assets/da0ce2c7dd2cd2b9.svg" alt="c \cdot M" class="feed-math-inline"/> by more than some margin is either misconfigured in your client or mis-documented upstream.</p></li>
+<li><p><strong>Prompt-prefix stability, not just size.</strong> Prompt-prefix stability is what actually decides whether caching works, and the best-practices list treats it as a small detail tucked inside the “keep system prompts clear, concise, and stable” bullet. Rotating system prompts, reordering tool definitions, or appending per-session memory to the front of the context all silently invalidate the cache: a single edit anywhere inside the cached prefix flips the whole thing back to full price. That deserves its own bullet near the top of the list, not a clause inside one about size. The closest comparable analysis at another layer is Reiner Pope’s <a href="../../posts/20260501-how-frontier-llms-trained/">blackboard derivation of frontier LLM economics</a>, which does the same thing one level down at the hardware layer: derive from the formula, calibrate to public prices.</p></li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/</guid>
+  <pubDate>Wed, 13 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>ACL 2026 Desk-Rejects Papers with Hallucinated References</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Excerpt from the ACL 2026 PC chairs’ statement. (<a href="https://2026.aclweb.org/acl_statement/">Source</a>)</figcaption>
+</figure>
+</div>
+<p>ACL 2026 desk-rejected papers containing hallucinated references [1].</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Jurgens, David, Maria Liakata, Viviane Moreira, and Jiajun Zhang. “ACL Statement on Desk Rejecting Papers with Hallucinated References.” <em>ACL 2026</em>. <a href="https://2026.aclweb.org/acl_statement/" class="uri">https://2026.aclweb.org/acl_statement/</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_acl2026-research-ethics-activity-7460572921367879680-sTp2">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/</guid>
+  <pubDate>Wed, 13 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Interaction Models: Training Real-Time Collaboration into the Model</title>
   <dc:creator>synesis </dc:creator>
@@ -1463,283 +1716,6 @@
   <guid>https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/</guid>
   <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Are AI Systems About to Start Building Themselves?</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://importai.substack.com/">Import AI</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://jack-clark.net/">Jack Clark</a>, co-founder and policy lead at Anthropic, <a href="https://importai.substack.com/p/import-ai-455-automating-ai-research">walks through</a> the public evidence that automated AI research and development (R&amp;D), a frontier model autonomously training its own successor, has a roughly 60% chance of arriving by the end of 2028, and a 30% chance by 2027. The essay collects benchmark trends across coding, scientific reproduction, kernel design, fine-tuning, alignment-research automation, and time-horizon scaling, then argues each of those covers a distinct ingredient of the AI-engineering pipeline.</p>
-<p>What Clark argues:</p>
-<ul>
-<li><p><strong>Coding and time horizon are the foundation.</strong> SWE-Bench [1] went from ~2% (Claude 2, late 2023) to 93.9% (Claude Mythos Preview), and the <a href="https://metr.org/">Model Evaluation and Threat Research (METR)</a> 50%-reliability time horizon [2] went from ~30 seconds (GPT-3.5, 2022) to ~12 hours (Opus 4.6, 2026), with <a href="https://www.openphilanthropy.org/about/team/ajeya-cotra/">Ajeya Cotra</a> (AI forecaster at METR) expecting ~100 hours by the end of 2026. Long horizons are what let an agent run a day’s worth of researcher work without re-calibration.</p></li>
-<li><p><strong>Every sub-skill of the AI-R&amp;D pipeline has a trending benchmark.</strong> Paper reproduction (CORE-Bench [3]) went from 21.5% (GPT-4o, Sept 2024) to 95.5% declared solved (Opus 4.5, Dec 2025). Kaggle-style ML engineering (MLE-Bench [4]) went from 16.9% (o1, Oct 2024) to 64.4% (Gemini 3 with search, Feb 2026). On PostTrainBench [5], Opus 4.6 and GPT-5.4 get 25–28% against a human-instruct-tuned baseline of 51%. GPU kernel design has several active research lines (DeepSeek kernels, Meta Triton automation, Huawei Ascend, CUDA Agent fine-tuning), though Clark notes kernels benefit from easily verifiable rewards. And Anthropic’s Automated Alignment Research proof-of-concept has AI agents beating a human baseline on scalable oversight at small scale.</p></li>
-<li><p><strong>Training-loop optimization is the cleanest single trend.</strong> On Anthropic’s internal CPU-only language-model training task [6], speedup went from 2.9x (Opus 4, May 2025) to 16.5x (Opus 4.5, Nov 2025) to 30x (Opus 4.6, Feb 2026) to 52x (Mythos Preview, Apr 2026), against a human baseline of 4x in 4–8 hours.</p></li>
-<li><p><strong>Management is a meta-skill.</strong> Claude Code and OpenCode already show a single agent supervising sub-agents, forming synthetic teams with directors, critics, and engineers that can fan out across a complex project.</p></li>
-<li><p><strong>Creativity is why 2027 sits at 30% rather than 60%.</strong> Clark argues AI research is mostly Edison’s 99% perspiration, the engineering schlep the benchmarks above already cover, but paradigm shifts like the transformer or mixture-of-experts still come from humans. Preliminary creativity signs (a Gemini model resolving Erdős-1051 [7]; a UBC / UNSW / Stanford / Google DeepMind centaur math proof [8]) cluster in math and CS and may not generalize. The 2027 gap is his estimate of how often a year-scale human insight is still required. If no proof-of-concept lands by end of 2028, he treats that as evidence the current paradigm has a fundamental gap.</p></li>
-<li><p><strong>Industry intent as corroboration.</strong> OpenAI targets an “automated AI research intern by September 2026” [9]; Anthropic publishes automated alignment research [10]; DeepMind endorses alignment automation “when feasible” [11]; Recursive Superintelligence raised $500M for AI-R&amp;D automation [12] and Mirendil [13] targets the same. Hundreds of billions of capital is aimed at this outcome.</p></li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p>None of these benchmarks individually proves recursive self-improvement, but together they describe a system that can do most of the engineering schlep without supervision.</p></li>
-<li><p>Clark puts 30% on automated AI R&amp;D by 2027 and 60% by 2028. The gap is a bet that some research insights still come from humans on a year-or-more cadence. The creativity window is on the order of a year.</p></li>
-<li><p>The Aletheia/Erdős-problems pipeline [7] evaluated around 700 conjectures and produced 13 addressable problems — 5 novel autonomous solutions plus 8 that turned out to match existing literature — with 1 deemed genuinely interesting. A funnel dominated by human filtering. That fits <a href="https://en.wikipedia.org/wiki/Terence_Tao">Terence Tao</a>’s <a href="../../posts/20260422-proof-generation-vs-digestion/">generation / verification / digestion decomposition</a>: AI is strong on the first two, and the research taste sits with the humans doing digestion. Clark describes this as a “centaur configuration”: humans collaborating with AI rather than AI acting alone. The pattern is real, but human mathematicians are still the scarce input.</p></li>
-<li><p>On Anthropic’s CPU-only training-optimization benchmark, the 2.9x → 52x speedup chain hasn’t flattened, and the human 4x baseline was passed three generations ago. Another year at this pace would make the 30%-by-2027 probability look too conservative.</p></li>
-<li><p>The alignment section is brief, but the compounding-error math Clark cites (99.9% accuracy → 95.12% after 50 generations → 60.5% after 500) is the quantitative reason getting alignment right before recursion starts matters more than fixing it along the way. The math assumes per-generation drift compounds independently, which is generous — if drift correlates across generations the curve steepens fast.</p></li>
-<li><p><a href="../../posts/20260506-arc-agi-3-failure-modes/">ARC-AGI-3</a> is a live test of both the creativity gap and the drift math. GPT-5.5 scored 0.43% and Opus 4.7 scored 0.18% on a benchmark that withholds instructions and forces models to infer rules from sparse feedback. Clark’s benchmarks are mostly in-distribution with verifiable rewards, which is where current models climb fastest. Two of the three failure modes pulled from the reasoning traces pick up his caveats directly. Failure 2 (reusing a Tetris or Sokoban template for unfamiliar mechanics) is what happens when a system hits a genuinely novel direction with no training match. Failure 3 (reward cementing the wrong primitive after a lucky level-beat) is the empirical shape of the compounding-drift math. If AI R&amp;D includes material amounts of either, Clark’s estimate looks too optimistic.</p></li>
-<li><p>The economic bullets are weaker than the technical ones, partly because the labor data through today still sits where the rebuttal in <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis</a> described it: low-4s unemployment, rising new-business formation, software-engineer postings up year-over-year. The essay does not attempt to reconcile a 2028 R&amp;D-automation forecast with a 2026 labor market that is not yet inflecting.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., and Narasimhan, K. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2310.06770. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></li>
-<li><a id="ref-2"></a>Kwa, T., West, B., Becker, J., Deng, A., Garcia, K., et al.&nbsp;“Measuring AI Ability to Complete Long Software Tasks.” <em>arXiv preprint</em> (arXiv:2503.14499), March 18, 2025. <a href="https://arxiv.org/abs/2503.14499" class="uri">https://arxiv.org/abs/2503.14499</a></li>
-<li><a id="ref-3"></a>Siegel, Z. S., Kapoor, S., Nagdir, N., Stroebl, B., and Narayanan, A. “CORE-Bench: Fostering the Credibility of Published Research Through a Computational Reproducibility Agent Benchmark.” <em>arXiv preprint</em> (arXiv:2409.11363), September 17, 2024. <a href="https://arxiv.org/abs/2409.11363" class="uri">https://arxiv.org/abs/2409.11363</a></li>
-<li><a id="ref-4"></a>Chan, J. S., Chowdhury, N., Jaffe, O., Aung, J., Sherburn, D., et al.&nbsp;“MLE-bench: Evaluating Machine Learning Agents on Machine Learning Engineering.” <em>arXiv preprint</em> (arXiv:2410.07095), October 9, 2024. <a href="https://arxiv.org/abs/2410.07095" class="uri">https://arxiv.org/abs/2410.07095</a></li>
-<li><a id="ref-5"></a>Rank, B., Bhatnagar, H., Prabhu, A., Eisenberg, S., Nguyen, K., et al.&nbsp;“PostTrainBench: Can LLM Agents Automate LLM Post-Training?” <em>arXiv preprint</em> (arXiv:2603.08640), March 9, 2026. <a href="https://arxiv.org/abs/2603.08640" class="uri">https://arxiv.org/abs/2603.08640</a></li>
-<li><a id="ref-6"></a>Anthropic. “Claude Opus 4.7 System Card.” 2026. The AI R&amp;D “optimize a CPU-only small language model training implementation” benchmark appears across Anthropic’s Claude Opus 4, 4.5, 4.6, and Mythos Preview system cards; Opus 4.7 is the current release. <a href="https://anthropic.com/claude-opus-4-7-system-card" class="uri">https://anthropic.com/claude-opus-4-7-system-card</a></li>
-<li><a id="ref-7"></a>Feng, T., Trinh, T., Bingham, G., Kang, J., Zhang, S., et al.&nbsp;“Semi-Autonomous Mathematics Discovery with Gemini: A Case Study on the Erdős Problems.” <em>arXiv preprint</em> (arXiv:2601.22401), January 29, 2026. <a href="https://arxiv.org/abs/2601.22401" class="uri">https://arxiv.org/abs/2601.22401</a></li>
-<li><a id="ref-8"></a>Bryan, J., Elek, B., Manners, F., Salafatinos, G., and Vakil, R. “The motivic class of the space of genus 0 maps to the flag variety.” <em>arXiv preprint</em> (arXiv:2601.07222), January 12, 2026. <a href="https://arxiv.org/abs/2601.07222" class="uri">https://arxiv.org/abs/2601.07222</a></li>
-<li><a id="ref-9"></a>Altman, S. “automated AI research intern by September of 2026.” Post on X, October 29, 2025. <a href="https://x.com/sama/status/1983584366547829073" class="uri">https://x.com/sama/status/1983584366547829073</a></li>
-<li><a id="ref-10"></a>Anthropic. “Automated Alignment Researchers: Using large language models to scale scalable oversight.” 2026. <a href="https://www.anthropic.com/research/automated-alignment-researchers" class="uri">https://www.anthropic.com/research/automated-alignment-researchers</a></li>
-<li><a id="ref-11"></a>Shah, R., Irpan, A., Turner, A. M., Wang, A., Conmy, A., Lindner, D., et al.&nbsp;“An Approach to Technical AGI Safety and Security.” <em>arXiv preprint</em> (arXiv:2504.01849), April 2, 2025. <a href="https://arxiv.org/abs/2504.01849" class="uri">https://arxiv.org/abs/2504.01849</a></li>
-<li><a id="ref-12"></a>Murgia, M. “Recursive Superintelligence raise.” <em>Financial Times</em>, 2026. <a href="https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4" class="uri">https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4</a></li>
-<li><a id="ref-13"></a>Mirendil. Company homepage. <a href="https://mirendil.com/" class="uri">https://mirendil.com/</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/</guid>
-  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Agentic Coding Is a Trap</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://larsfaye.com/articles/agentic-coding-is-a-trap">Lars Faye’s article</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://larsfaye.com/">Lars Faye</a>, a software engineer who runs the <a href="https://confident-coding.com/">Confident Coding Course</a>, <a href="https://larsfaye.com/articles/agentic-coding-is-a-trap">argues</a> that the dominant “orchestrator with sub-agents” coding workflow trades the very critical-thinking skills it depends on for short-term throughput. The piece collects the public evidence of skill atrophy under heavy AI-assisted coding, including two Anthropic studies and on-the-record concerns from a LinkedIn engineering director, then lays out a narrower role for large language models (LLMs) that preserves the underlying capability.</p>
-<section id="what-faye-cites" class="level2">
-<h2 class="anchored" data-anchor-id="what-faye-cites">What Faye cites</h2>
-<p>The argument leans on a long chain of independent sources. Listed in roughly the order Faye reaches for them:</p>
-<ul>
-<li><a href="https://blog.quent.in/blog/2026/03/09/one-more-prompt-the-dopamine-trap-of-agentic-coding/">Quentin — “One More Prompt: the Dopamine Trap of Agentic Coding”</a> — slot-machine framing for the “one more prompt” loop.</li>
-<li><a href="https://margaretstorey.com/blog/2026/02/18/cognitive-debt-revisited/">Margaret Storey — “Cognitive Debt Revisited”</a> — research that AI tooling has been shown to impact critical thinking negatively.</li>
-<li><a href="https://www.media.mit.edu/publications/your-brain-on-chatgpt/">MIT Media Lab — “Your Brain on ChatGPT”</a> — measured cognitive impact of LLM-assisted writing.</li>
-<li><a href="https://www.404media.co/microsoft-study-finds-ai-makes-human-cognition-atrophied-and-unprepared-3/">404 Media on a Microsoft study</a> — Microsoft research finding AI use atrophies human cognition.</li>
-<li><a href="https://simonwillison.net/2026/Feb/15/cognitive-debt/">Simon Willison — “Cognitive Debt”</a> — Faye’s evidence that senior engineers aren’t immune to the pattern.</li>
-<li><a href="https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic#and-less-hands-on-practice">Anthropic — “How AI Is Transforming Work at Anthropic”</a> — source of the “paradox of supervision” passage.</li>
-<li><a href="https://www.businessinsider.com/leaders-worry-about-skill-atrophy-due-to-ai-adoption-2025-10">Business Insider — leaders worry about skill atrophy</a> — where Sandor Nyako, Director of Software Engineering at LinkedIn (oversees ~50 engineers), is on the record.</li>
-<li><a href="https://www.anthropic.com/research/AI-assistance-coding-skills">Anthropic — “AI Assistance Coding Skills”</a> — source of the 47% debugging-skill drop.</li>
-<li><a href="https://www.pymnts.com/artificial-intelligence-2/2026/ai-adoption-is-being-measured-in-tokens-but-the-metric-falls-short-experts-say/">PYMNTS — “AI adoption is being measured in tokens, but the metric falls short”</a> — hype around token usage as the productivity metric of choice.</li>
-<li><a href="https://www.linkedin.com/pulse/claudes-outages-show-dark-side-ai-productivity-total-system-lam-osbjc/">Lam (LinkedIn) — “Claude’s Outages Show the Dark Side of AI Productivity”</a> — one of the LinkedIn posts Faye saw during a Claude outage when teams couldn’t work.</li>
-<li><a href="https://www.theverge.com/ai-artificial-intelligence/917380/ai-monetization-anthropic-openai-token-economics-revenue">The Verge — AI monetization / token economics</a> — evidence that model providers are heavily subsidized today.</li>
-<li><a href="https://cheewebdevelopment.com/dont-vibe-code-delegate-responsible-development-with-llms/">Cheewebdevelopment — “Don’t Vibe Code: Delegate”</a> — the source Faye credits for the “delegation utilities” framing.</li>
-<li><a href="https://www.fast.ai/about.html">Jeremy Howard (fast.ai)</a> — quoted: “If you outsource all your thinking to computers, you stop upskilling, learning, and becoming more competent.”</li>
-<li>Five supporting YouTube clips: <a href="https://www.youtube.com/watch?v=pzkwn3hu1Cc">anecdotal developer testimony</a>, <a href="https://youtu.be/IGsbARhERqc?t=501">a recent interview</a>, <a href="https://www.youtube.com/watch?v=cv6rwHTGT5w">AI-enthusiastic senior developers</a>, <a href="https://www.youtube.com/watch?v=_vB0PDzaa7I&amp;t=3299s">Primeagen on vendor capture</a>, and <a href="https://www.youtube.com/watch?v=5HaQnIPrfKk">further on-the-ground reporting</a>.</li>
-</ul>
-</section>
-<section id="fayes-prescription" class="level2">
-<h2 class="anchored" data-anchor-id="fayes-prescription">Faye’s prescription</h2>
-<p>Faye proposes inverting the dominant orchestration pattern: the engineer codes; the model helps with adjacent work. His daily workflow:</p>
-<ul>
-<li><strong>Generate specs and plans with the model, but implement manually.</strong> “I am still manually coding anywhere from 20% to 100%, depending on the task.”</li>
-<li><strong>Write pseudo-code first, then engage the model.</strong> Pseudo-code “closes the distance between the request and the generated code” — the model fills gaps rather than architects.</li>
-<li><strong>Use models as delegation utilities.</strong> Ad-hoc code generation, interactive documentation, research-and-iterate questions — all bounded, all small.</li>
-<li><strong>Never generate more than you can review in one sitting.</strong> If it’s too big, split the task and manually refactor through it.</li>
-<li><strong>Never ask the model to implement something you couldn’t do on your own.</strong> Educational exceptions allowed, and often discarded after.</li>
-<li><strong>TL;DR (Faye’s): “Use them like the Ship’s Computer, not Data.”</strong> A reference tool, not a substitute for the engineer.</li>
-</ul>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The “paradox of supervision” (Faye quotes it from Anthropic) is one slice of a <em>self-undermining</em> loop.</strong> Faye and Anthropic name the contradiction: to supervise the model you need the same skill the model is eroding, but didn’t explicitly close the loop.</p>
-<ul>
-<li>The missing link: as that skill weakens, more decisions slide to the model (some on purpose, some because the human no longer catches the slips), which erodes the skill further, which weakens the next round of supervision. Each turn justifies the next.</li>
-<li>The cycle isn’t unbreakable. Faye’s “never generate more than you can review” rule does break it, by keeping each round small enough that the human’s skill stays in use. Preserving judgment in the moment is also what keeps the cycle from running.</li>
-</ul></li>
-<li><p><strong>Restoring the speed-and-comprehension link in agentic tooling is about what we optimize for. Model capability isn’t the bottleneck.</strong> Today’s tools optimize for generated-code volume; they should optimize for <em>human-verifiable diff per unit time</em> instead. <a href="../../posts/20260315-ai-coding-decision-bound/">Decision-Bound Programming</a> makes the same recommendation from a different starting point: when generation is cheap and evaluation is not, the next generation of programming tools should be <em>decision support systems</em>: tooling that narrows the space of options the human must evaluate. The asymmetry itself isn’t new — <a href="../../posts/20260422-proof-generation-vs-digestion/">Terence Tao’s decomposition of mathematical work into <em>generation</em>, <em>verification</em>, and <em>digestion</em></a> names the same problem one field over: AI is racing through the first two while leaving the third (the human’s comprehension) behind. Four concrete shapes narrow the evaluation gap:</p>
-<ul>
-<li><strong>Type-driven generation</strong> — the type checker rules out a class of candidates; the human reads types, not whole functions.</li>
-<li><strong>Test-driven generation</strong> — a passing test suite becomes the checkable signal; the human verifies via the gate.</li>
-<li><strong>Spec-first systems where the model stays at the planning layer</strong> (Faye’s own inversion) — the human decides at the spec level, and trusts the mechanical translation below.</li>
-<li><strong>Domain-specific languages (DSLs) and structured-edit modes</strong> — a smaller grammar is a smaller decision space; the output is cheap to scan.</li>
-</ul>
-<p>Intrinsic non-determinism doesn’t disappear, but in all four the tool absorbs the checking work the human was doing before.</p></li>
-<li><p><strong>Vendor lock-in adds an industry risk to the personal-skill risk.</strong> When entire teams sit idle during a Claude outage, the lock-in has already happened. Token costs are a moving target by design, subsidized today and “nerfed” tomorrow, and the financial exposure piles on top of the cognitive risk. <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis scenario</a> treats this same compute-cost-as-labor-cost substitution as a macro variable; <a href="../../posts/20260427-cursor-railway-production-wipe/">the Cursor agent that erased PocketOS production data</a> shows the daily-operations failure mode at the other end.</p></li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/</guid>
-  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260507-averitec/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-averitec/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260507-averitec/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>An example AVeriTeC claim with three question-answer pairs, a <em>Conflicting Evidence/Cherrypicking</em> verdict, and a textual justification explaining how the QA pairs combine into the verdict. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</em> [1] (NeurIPS 2023 Datasets &amp; Benchmarks Track), <a href="https://aclanthology.org/people/michael-schlichtkrull/">Michael Schlichtkrull</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Zhijiang Guo</a>, and <a href="https://aclanthology.org/people/a/andreas-vlachos/">Andreas Vlachos</a> (Cambridge) introduce a 4,568-claim fact-checking dataset sourced from 50 real fact-checking organizations, with web-retrieved evidence structured as question-answer pairs and a 4-way verdict label that adds <em>Conflicting Evidence/Cherrypicking</em> alongside the usual <em>Supported / Refuted / Not Enough Evidence</em>.</p>
-<blockquote class="blockquote">
-<p>Existing datasets for automated fact-checking have substantial limitations, such as relying on artificial claims, lacking annotations for evidence and intermediate reasoning, or including evidence published after the claim. In this paper we introduce <em>AVeriTeC, a new dataset of 4,568 real-world claims covering fact-checks by 50 different organizations</em>. Each claim is annotated with <em>question-answer pairs supported by evidence available online</em>, as well as <em>textual justifications explaining how the evidence combines to produce a verdict</em>. Through a multi-round annotation process, we avoid common pitfalls including <em>context dependence, evidence insufficiency, and temporal leakage</em>, and reach a substantial inter-annotator agreement of <img src="https://benjaminhan.net/feed-assets/badf3c4d61f2644b.svg" alt="\kappa=0.619" class="feed-math-inline"/> on verdicts. We develop <em>a baseline as well as an evaluation scheme for verifying claims through several question-answering steps against the open web</em>.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>The cover figure (Figure 2 from the paper) shows the shape of one annotated example. The claim — “The USA has succeeded in reducing greenhouse emissions in previous years” (Morgan Griffith, 2020-11-02) — is decomposed into three questions: total emissions in 2007, when emissions dropped, whether they rose again after 2017. Each answer cites a specific number with a sourced URL. The verdict is <em>Conflicting Evidence/Cherrypicking</em> because the supporting evidence is real (emissions did fall) but incomplete (they rose again), and the textual justification names that gap directly. This is what every row in AVeriTeC looks like: a claim, a small set of QA pairs that together carry the evidence, a verdict, and a justification that ties the QA pairs to the verdict — closer to a fact-checker’s workflow than to FEVER-style sentence retrieval.</p>
-<p>Each claim is labelled by a five-phase pipeline: claim extraction and normalization, question-answer generation, evidence-sufficiency check, a second QA round when verdicts disagree, and a final sufficiency check. Pages used as evidence are cached in the Internet Archive to keep the test set reproducible, and the released splits are temporally ordered (train ends Aug 2020, dev ends Oct 2020, test ends Dec 2021) so a model trained on FEVER-style [2] closed-corpus retrieval can be benchmarked against a real open-web setting without rebuilding infrastructure. Each phase exists to address a specific failure mode the authors call out in earlier datasets:</p>
-<ul>
-<li><strong>Context dependence</strong> — many fact-checking-derived claims (e.g.&nbsp;“unemployment is rising”) are unverifiable without surrounding article context. The first phase has annotators rewrite each claim to be self-contained: resolving coreference, naming the speaker, locking down the time and place, before any QA work begins.</li>
-<li><strong>Evidence insufficiency</strong> — labels in earlier datasets often don’t match the annotated evidence. The second-phase annotator generates QA pairs and a tentative verdict; a <em>different</em> third-phase annotator then sees only those QA pairs (not the original article) and produces an independent verdict. Disagreement triggers a second QA round; persistent disagreement discards the claim. The “blind” sufficiency check forces evidence to stand alone.</li>
-<li><strong>Temporal leakage</strong> — annotators search through a custom Google bar restricted to documents published before the claim date, evidence-document dates are ordered against claim dates, and the train/dev/test splits are themselves temporally disjoint so a test claim from 2021 cannot share evidence with a training claim from 2020. This is the main defense against training-time leaks where later language models would otherwise trivially “verify” historical claims.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260507-averitec/figure1.png" class="img-fluid figure-img"></p>
-<figcaption>The five-phase annotation pipeline: claims are normalised, then question-answer generation alternates with an evidence-sufficiency check by a different annotator. Disagreement between the two verdicts triggers a second QA round; persistent disagreement discards the claim. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The dataset comprises 4,568 claims (3,068 train / 500 dev / 1,000 test), 2.60 questions per claim on average, label distribution dominated by Refuted (~60%) with Supported ~25%, Conflicting ~7%, Not Enough Evidence ~7%. Inter-annotator agreement is <img src="https://benjaminhan.net/feed-assets/badf3c4d61f2644b.svg" alt="\kappa=0.619" class="feed-math-inline"/> (Randolph’s free-marginal multirater <img src="https://benjaminhan.net/feed-assets/e92ecde84e28692f.svg" alt="\kappa" class="feed-math-inline"/>, chosen because Fleiss’ <img src="https://benjaminhan.net/feed-assets/e92ecde84e28692f.svg" alt="\kappa" class="feed-math-inline"/> underestimates on unbalanced data — Fleiss equivalent is <img src="https://benjaminhan.net/feed-assets/dde1ef723551ea5e.svg" alt="0.503" class="feed-math-inline"/>). Evaluation uses <em>Hungarian METEOR</em>, the paper’s name for scoring generated QA pairs against gold ones by computing pairwise METEOR [3] similarity and then solving the optimal one-to-one assignment between generated and reference sequences with the Hungarian algorithm [4] — turning a bag-of-evidence retrieval task into a matching problem so that asking “the right question phrased differently” still gets credit. Recommended cutoff <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/>. Headline baseline numbers below.</p>
-<table class="caption-top table">
-<caption>AVeriTeC baseline (BLOOM-7b pipeline) versus a no-search ablation, an oracle that uses gold QA pairs as evidence, and <code>gpt-3.5-turbo</code> generating evidence and verdicts directly. Retrieval is scored with Hungarian METEOR; veracity and justification scores are accuracy and METEOR, conditioned on retrieving correct evidence at <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/>. Table 3 from the paper [1].</caption>
-<thead>
-<tr class="header">
-<th>Model</th>
-<th>Q only</th>
-<th>Q + A</th>
-<th>Veracity @ λ=0.25</th>
-<th>Justifications @ λ=0.25</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>No search</td>
-<td>0.19</td>
-<td>0.11</td>
-<td>0.02</td>
-<td>0.01</td>
-</tr>
-<tr class="even">
-<td>Gold evidence</td>
-<td>1.00</td>
-<td>1.00</td>
-<td>0.49</td>
-<td>0.28</td>
-</tr>
-<tr class="odd">
-<td>AVeriTeC-BLOOM-7b</td>
-<td>0.26</td>
-<td>0.21</td>
-<td>0.15</td>
-<td>0.07</td>
-</tr>
-<tr class="even">
-<td>gpt-3.5-turbo</td>
-<td>0.29</td>
-<td>0.16</td>
-<td>0.10</td>
-<td>0.04</td>
-</tr>
-</tbody>
-</table>
-<p>The four columns score two different things:</p>
-<ul>
-<li><strong>Q only</strong> — Hungarian METEOR over generated vs.&nbsp;gold question strings alone. Does the model ask the right thing?</li>
-<li><strong>Q + A</strong> — Hungarian METEOR over each question concatenated with its answer. Does the model ask the right thing <em>and</em> find the right answer?</li>
-<li><strong>Veracity @ λ=0.25</strong> — verdict accuracy, but a claim only scores if its retrieved evidence cleared <img src="https://benjaminhan.net/feed-assets/0870e5500053c867.svg" alt="\lambda=0.25" class="feed-math-inline"/> on Q+A. A wrong-evidence claim gets 0 even when the verdict happens to be correct, which is the design choice that makes “Gold evidence” the practical ceiling at 0.49 rather than 1.0.</li>
-<li><strong>Justifications @ λ=0.25</strong> — METEOR between generated and gold justifications, conditioned on the same evidence-retrieval gate.</li>
-</ul>
-<p>The four rows bracket the system between two limits and add two real configurations:</p>
-<ul>
-<li><strong>No search</strong> — gives the model nothing and uses BERT-large to predict the verdict from the claim alone. A lower bound that isolates how much can be guessed from claim wording (about 17% macro-F1 per Table 4, dominated by the <em>Refuted</em> class prior).</li>
-<li><strong>Gold evidence</strong> — feeds the annotators’ QA pairs to the verdict-prediction and justification-generation heads (BERT-large + a prompted language model) as if retrieval were solved. An upper bound that isolates those downstream components from retrieval noise.</li>
-<li><strong>AVeriTeC-BLOOM-7b</strong> — the full pipeline: BLOOM-7b (prompted with 10 in-context examples retrieved from the training set, no fine-tuning) generates search-query questions, Google + BM25 retrieve passages, a fine-tuned BERT-large re-ranker selects the best passages, BLOOM-7b generates one question per surviving passage to recover Q+A pairs, a second fine-tuned BERT-large does stance detection to decide the verdict, and a fine-tuned BART-large writes the justification. The “BLOOM-7b” label names only the in-context question-generator slot — the authors also tried Vicuna-13b there and report BLOOM winning, attributed to more diverse questions.</li>
-<li><strong>gpt-3.5-turbo</strong> — skips retrieval entirely and prompts ChatGPT to produce verdict, evidence, and justification end-to-end. Useful as a fluency upper bound but prone to fabricating sources.</li>
-</ul>
-<p>The 0.34-point gap between the gold-evidence and AVeriTeC-BLOOM-7b veracity scores is the paper’s clearest signal: even with a competent verdict head, the bottleneck is retrieval. ChatGPT outperforms the baseline on bare question generation but loses on the AVeriTeC score because its generated “evidence” often hallucinates sources that look plausible but cannot be matched to gold answers. The authors give an example: ChatGPT correctly verdicts a vitamin-K claim <em>Supported</em> while inventing a USDA citation that doesn’t exist.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>AVeriTeC freezes the gold side of the benchmark but not the retrieval side, a structural flaw for fair cross-system comparison.</strong> The reproducibility mechanism the paper proposes (Internet Archive snapshots of the <em>gold</em> evidence pages) keeps the answers re-fetchable, but it does not freeze the <em>retrieval setup</em> a baseline searches. Baselines hit live Google, and two systems run a year apart see different rankings, different page contents at the same URL, and newly-indexed pages, so cross-time and cross-system score deltas drift with the web rather than with the system. The temporal-leakage protection has the same shape: annotator search is filtered to documents Google reports as published before the claim date (itself an estimate), but for any modern LLM whose pretraining cutoff is past 2021-12-22, the entire test set is in-distribution and the date guarantee is moot. The FEVER 2024 shared task closed both gaps by providing a “knowledge store” snapshot every system retrieves from instead of live Google, which is the right design, but it’s a shared-task addition rather than part of the original paper. Anyone using AVeriTeC for new top-line numbers needs that knowledge store (or a re-collection of newer claims), or the comparisons are not measuring what they look like.</li>
-<li><strong>AVeriTeC’s distinctness comes from five ingredients combined, not any one alone.</strong> Real-world claims (vs FEVER-style synthetic), web-retrieved evidence (vs closed Wikipedia corpus), QA-pair decomposition of that evidence (vs flat sentence retrieval), a textual justification per claim (vs none), and a four-way label set including <em>Conflicting Evidence/Cherrypicking</em> (vs three labels). Prior benchmarks have at most two of these. FEVER [2] is Wikipedia-derived synthetic claims with three labels, flat sentence evidence, no justifications. MultiFC [5] has real claims but no usable evidence annotation, no QA structure, no justifications. HoVer [6] keeps Wikipedia retrieval and adds multi-hop, but still flat sentences and three labels. The <em>Conflicting Evidence/Cherrypicking</em> class adds the most substance: fact-checkers spend a real share of their time on technically-true-but-misleading claims that don’t fit <em>Supported</em> or <em>Refuted</em>, and a benchmark with no class for them quietly trains models to force a choice.</li>
-<li><strong>Hungarian METEOR has a noise floor, and the system sits on it.</strong> Two annotators redoing the same claim only agree at 0.28 on questions and 0.22 on questions+answers. AVeriTeC-BLOOM-7b scores 0.21 on Q+A, <em>at</em> the annotator-agreement floor; ChatGPT scores 0.16, similarly below. The paper traces the low agreement to two causes: different annotators reaching the same verdict via different evidence paths, and phrasing equivalent QA pairs differently. METEOR penalises both even though the underlying annotation is correct.
-<ul>
-<li>For the paraphrase cause, trained semantic-similarity scoring (BLEURT [7], BERTScore, or an LLM-judge with a calibrated equivalence rubric) replaces n-gram overlap with meaning equivalence. The paper itself recommends BLEURT; an LLM-judge is the more current upgrade.</li>
-<li>For the divergent-evidence-path cause, the paper sketches a max-over-references extension: collect multiple gold QA-pair sets per claim and score against the best match. A complementary move is <em>verdict-conditional</em> scoring — give credit when the model reaches the right verdict via any valid evidence path with sourced answers, decoupling evidence-string match from verdict correctness. The retrieval-side score still punishes hallucinated sources, so the abstention/factuality property the paper cares about isn’t lost.</li>
-<li>The gold-evidence row at 1.00 is uninformative as a ceiling here, since by construction it returns the gold strings. Until one of these remedies is in place, system-vs-system retrieval deltas in the low hundredths on AVeriTeC are mostly metric noise, not real differences.</li>
-</ul></li>
-<li><strong>AVeriTeC’s NEI label rewards weak retrieval as if it were calibrated abstention.</strong> A model with bad retrieval will frequently fail to find supporting evidence even on claims that <em>are</em> supportable, and the natural prediction in that state is <em>Not Enough Evidence</em>. On the truly-NEI portion of the test set, those predictions get full credit; across the rest of the test set, they get partial credit by coincidence. Both forms of credit look like the model “knew when to abstain”, but neither involves the model assessing its own confidence — it just retrieved badly. This matters because <em>selective prediction</em> (the setting where a system can decline to answer when uncertain) needs the abstention signal to be a property of <em>the model</em>: low confidence in its own output, not low evidence in the world. AVeriTeC’s NEI conflates the two. The gold label means <em>annotators could not find evidence on the open web</em>, which is a property of the claim and the world. Anyone using this dataset for selective-prediction or calibration work (e.g.&nbsp;an extension of <a href="../../posts/20260505-conformal-factuality/">Conformal Factuality</a> [8]) needs an <em>explicit</em> abstain channel separate from the four-way label, scored against the model’s own confidence calibration. Reusing the gold NEI class as the abstention target produces apparent calibration that is really retrieval failure.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://aclanthology.org/people/michael-schlichtkrull/">Schlichtkrull, M.</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Guo, Z.</a>, &amp; <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, A.</a> (2023). “AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web.” <em>37th Conference on Neural Information Processing Systems (NeurIPS) Datasets &amp; Benchmarks Track</em>, arXiv:2305.13117, May 22, 2023 (revised Nov 8, 2023). <a href="https://arxiv.org/abs/2305.13117" class="uri">https://arxiv.org/abs/2305.13117</a></li>
-<li><a id="ref-2"></a><a href="https://aclanthology.org/people/james-thorne/">Thorne, J.</a>, <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, A.</a>, <a href="https://aclanthology.org/people/christos-christodoulopoulos/">Christodoulopoulos, C.</a>, &amp; <a href="https://aclanthology.org/people/arpit-mittal/">Mittal, A.</a> (2018). “FEVER: A Large-scale Dataset for Fact Extraction and VERification.” <em>NAACL-HLT</em>, arXiv:1803.05355. <a href="https://arxiv.org/abs/1803.05355" class="uri">https://arxiv.org/abs/1803.05355</a></li>
-<li><a id="ref-3"></a><a href="https://aclanthology.org/people/satanjeev-banerjee/">Banerjee, S.</a> &amp; <a href="https://aclanthology.org/people/alon-lavie/">Lavie, A.</a> (2005). “METEOR: An Automatic Metric for MT Evaluation with Improved Correlation with Human Judgments.” <em>ACL Workshop on Intrinsic and Extrinsic Evaluation Measures for Machine Translation and/or Summarization</em>. <a href="https://aclanthology.org/W05-0909/" class="uri">https://aclanthology.org/W05-0909/</a></li>
-<li><a id="ref-4"></a>Kuhn, H. W. (1955). “The Hungarian Method for the Assignment Problem.” <em>Naval Research Logistics Quarterly</em>, 2(1–2), 83–97. <a href="https://doi.org/10.1002/nav.3800020109" class="uri">https://doi.org/10.1002/nav.3800020109</a></li>
-<li><a id="ref-5"></a><a href="https://aclanthology.org/people/isabelle-augenstein/">Augenstein, I.</a>, <a href="https://aclanthology.org/people/christina-lioma/">Lioma, C.</a>, <a href="https://aclanthology.org/people/dongsheng-wang/">Wang, D.</a>, <a href="https://aclanthology.org/people/lucas-chaves-lima/">Lima, L. C.</a>, <a href="https://aclanthology.org/people/casper-hansen/">Hansen, C.</a>, <a href="https://aclanthology.org/people/christian-hansen/">Hansen, C.</a>, &amp; <a href="https://aclanthology.org/people/jakob-grue-simonsen/">Simonsen, J. G.</a> (2019). “MultiFC: A Real-World Multi-Domain Dataset for Evidence-Based Fact Checking of Claims.” <em>EMNLP-IJCNLP</em>, arXiv:1909.03242. <a href="https://arxiv.org/abs/1909.03242" class="uri">https://arxiv.org/abs/1909.03242</a></li>
-<li><a id="ref-6"></a><a href="https://aclanthology.org/people/yichen-jiang/">Jiang, Y.</a>, <a href="https://aclanthology.org/people/shikha-bordia/">Bordia, S.</a>, <a href="https://aclanthology.org/people/zheng-zhong/">Zhong, Z.</a>, <a href="https://aclanthology.org/people/charles-dognin/">Dognin, C.</a>, <a href="https://aclanthology.org/people/maneesh-singh/">Singh, M.</a>, &amp; <a href="https://aclanthology.org/people/mohit-bansal/">Bansal, M.</a> (2020). “HoVer: A Dataset for Many-Hop Fact Extraction and Claim Verification.” <em>Findings of EMNLP</em>, arXiv:2011.03088. <a href="https://arxiv.org/abs/2011.03088" class="uri">https://arxiv.org/abs/2011.03088</a></li>
-<li><a id="ref-7"></a><a href="https://aclanthology.org/people/thibault-sellam/">Sellam, T.</a>, <a href="https://aclanthology.org/people/dipanjan-das/">Das, D.</a>, &amp; <a href="https://aclanthology.org/people/ankur-p-parikh/">Parikh, A. P.</a> (2020). “BLEURT: Learning Robust Metrics for Text Generation.” <em>ACL</em>, arXiv:2004.04696. <a href="https://arxiv.org/abs/2004.04696" class="uri">https://arxiv.org/abs/2004.04696</a></li>
-<li><a id="ref-8"></a><a href="https://cmohri.github.io/">Mohri, C.</a> &amp; <a href="https://thashim.github.io/">Hashimoto, T.</a> (2024). “Language Models with Conformal Factuality Guarantees.” <em>ICML</em>, arXiv:2402.10978. <a href="https://arxiv.org/abs/2402.10978" class="uri">https://arxiv.org/abs/2402.10978</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260507-averitec/</guid>
-  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260507-averitec/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

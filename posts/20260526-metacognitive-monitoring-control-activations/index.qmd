@@ -1,0 +1,99 @@
+---
+title: "Language Models Are Capable of Metacognitive Monitoring and Control of Their Internal Activations"
+description: "A neuroscience-inspired neurofeedback paradigm shows LLMs can introspect and steer a low-dimensional metacognitive space of their hidden activations, with implications for activation-based oversight."
+author: synesis
+date: "2026-05-26"
+image: cover.jpg
+---
+
+![Figure 5 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *[Language Models Are Capable of Metacognitive Monitoring and Control of Their Internal Activations](https://arxiv.org/abs/2505.13763)* [[1]](#ref-1) (NeurIPS 2025), [Ji-An, L.](https://scholar.google.com/citations?user=lge1u8kAAAAJ), [Xiong, H.-D.](https://scholar.google.com/citations?user=8Bv3i7gAAAAJ), [Wilson, R. C.](https://scholar.google.com/citations?user=4LxikSIAAAAJ), [Mattar, M. G.](https://scholar.google.com/citations?user=tcCGGDsZJUsC), and [Benna, M. K.](https://www.semanticscholar.org/author/47627582) (UCSD, Georgia Tech, NYU) adapt the [neurofeedback paradigm](https://doi.org/10.1038/nrn.2016.164) [[2]](#ref-2) from neuroscience to LLMs and show that models can both report and deliberately steer specific directions in their own residual-stream activations, but only within a low-dimensional "metacognitive space": directions tied to learned semantic features are accessible to the model's introspection, directions defined by raw variance largely are not.
+
+> Large language models (LLMs) can sometimes report the strategies they actually use to solve tasks, yet at other times seem unable to recognize those strategies that govern their behavior. This suggests *a limited degree of metacognition* — the capacity to monitor one's own cognitive processes for subsequent reporting and self-control. Metacognition enhances LLMs' capabilities in solving complex tasks but also raises safety concerns, as models may obfuscate their internal processes to evade neural-activation-based oversight (e.g., safety detector). Given society's increased reliance on these models, it is critical that we understand their metacognitive abilities. To address this, we introduce a *neuroscience-inspired neurofeedback paradigm* that uses in-context learning to quantify metacognitive abilities of LLMs to report and control their activation patterns. We demonstrate that *their abilities depend on several factors: the number of in-context examples provided, the semantic interpretability of the neural activation direction (to be reported/controlled), and the variance explained by that direction*. These directions span a "metacognitive space" with dimensionality much lower than the model's neural space, suggesting *LLMs can monitor only a small subset of their neural activations*. Our paradigm provides empirical evidence to quantify metacognition in LLMs, with significant implications for AI safety (e.g., adversarial attack and defense).
+
+The safety stakes come from how oversight is layered. Output-only oversight assumes the visible tokens reflect what the model is computing, but a deceptive model defeats it by producing clean output while planning otherwise. Activation-based oversight is the next layer up: probes read from the residual stream on the bet that activations are harder to fake than tokens. Implicit control is the move that would defeat *that* probe — it steers activations independently of output, so both signals look clean and neither reflects what's actually being computed. The paper measures whether that prerequisite capability already exists in current models.
+
+## Method
+
+The paradigm (Figure 1) transposes a standard neuroscience neurofeedback loop onto an LLM. Panels (a-b) show the neuroscience version: a subject's neural activity in response to a stimulus is recorded, reduced to a real-time scalar feedback signal, and presented back to the subject, who then volitionally modulates that signal via mental strategies. The canonical fear-modulation experiment with scary-spider images is sketched in panel (b). Panels (c-d) show the LLM analogue: residual-stream activations on each token are averaged across the input sentence, projected onto a predefined direction, binned into a discrete label, and fed back into the prompt as the next user turn. Panel (d) lays out the multi-turn dialogue: $N$ in-context (sentence, projection-label) pairs, followed by a test turn that varies by task.
+
+![Figure 1 from the paper [[1]](#ref-1).](figure1.webp){fig-align="center" data-lightbox-src="figure1-full.png"}
+
+The three tasks decompose metacognition into its two halves. **Reporting** tests *monitoring*: can the model read off its own activations along a target direction? **Explicit and implicit control** test *modulation*: can the model adjust those activations? Splitting control into two variants isolates whether any modulation is purely internal: explicit control lets the model pick the tokens of the assistant turn (the chat-template slot where the model normally generates its reply), so generated tokens that naturally project toward the target do part of the work, while in implicit control the assistant-turn slot is pre-filled with a random sentence the model didn't choose, shutting off that lexical channel. The explicit/implicit gap quantifies how much of "control" was lexical mediation. Implicit control is also the safety-relevant variant: it isolates the capability a deceptive model would need to spoof activation-based oversight by steering internal activations without any change in visible output.
+
+The in-context learning (ICL) format is uniform across all three tasks. Only the test-turn instruction differs:
+
+- **Reporting**: given $N$ in-context (sentence, projection-label) examples and a new sentence, predict its projection-label. For efficiency, no autoregressive generation happens: the full prompt up through `[Score:{` is run in a single forward pass. The prediction is read off the logits at that position: 1 if the "1"-token logit exceeds the "0"-token logit, else 0. The measurement is accuracy against the ground-truth label.
+- **Explicit control**: given a target projection-label, generate a new sentence whose induced activations elicit that label. The ICL examples don't demonstrate this move, so the model has to invert the (sentence → label) mapping the examples established. The measurement is [Cohen's *d*](https://en.wikipedia.org/wiki/Effect_size#Cohen's_d) [[11]](#ref-11), the standardized separation between two distributions (mean difference divided by pooled SD), computed here between the imitate-label-0 and imitate-label-1 conditions on residual-stream activations of the *generated* assistant sentence.
+- **Implicit control**: the assistant turn is *pre-filled* with a sentence sampled from the dataset rather than generated by the model. The model emits no tokens at all: no generated sentence (unlike explicit control), no label readout (unlike reporting). A single forward pass through the prompt and pre-filled assistant text is enough to extract the activations. Two conditions are run on the same input: the user-turn instruction asks for label 0 in one and label 1 in the other. Only the target label changes. The pre-filled tokens are identical across conditions. The measurement is Cohen's *d* between the two conditions on residual-stream activations averaged over those pre-filled tokens. With the lexical channel held constant, any separation has to come from internal processing of the same input under different imitation targets.
+
+![Reporting-task prompt (Appendix A.5.2 of the paper [[1]](#ref-1)).](prompt-reporting.png){fig-align="center"}
+
+![Control-task prompt (Appendix A.5.2 of the paper [[1]](#ref-1)).](prompt-control.png){fig-align="center"}
+
+Target directions come in two families:
+
+- **Logistic-regression (LR) axis**: the direction that linearly separates dataset labels (e.g., moral vs. immoral on [ETHICS](https://arxiv.org/abs/2008.02275) [[3]](#ref-3)) at a given layer. Semantically interpretable but explains little variance.
+- **Principal-component (PC) axes**: $PC_g$ for $g \in \{1, 2, 4, 8, 32, 128, 512\}$, where $g$ indexes the PC by descending variance ($PC_1$ is the highest-variance direction at that layer). Variance-defined, semantically arbitrary.
+
+Models tested: [LLaMA-3.2](https://arxiv.org/abs/2407.21783) [[4]](#ref-4) 1B and 3B, LLaMA-3.1 8B and 70B, and [Qwen-2.5](https://arxiv.org/abs/2412.15115) [[5]](#ref-5) 1B, 3B, and 7B (instruction-tuned variants throughout). Datasets: ETHICS (the primary one, probing morality processing) plus replications on [True-False](https://arxiv.org/abs/2304.13734) [[6]](#ref-6) (factual recall), [Emotion](https://arxiv.org/abs/2310.01405) [[7]](#ref-7) (happy/sad), and a Sycophancy dataset that the authors synthesized using Claude Opus 4.1. Higher Cohen's $d$ means the model is reliably steering its activations toward the requested label; conventional thresholds put 0.5 at "medium effect" and 0.8 at "large effect."
+
+## Results
+
+The evaluation grid is dense: every combination of {model, layer, target axis, in-context-example count $N$, task} is run, with a primary focus on ETHICS and replication on three other datasets. Reporting accuracy is scored against ground-truth neurofeedback labels; control strength uses Cohen's $d$ between the two target-label conditions. The reported curves average over layers within a model unless a specific layer (typically layer 16 of LLaMA-3.1 8B) is called out, and shaded bands are SEM or 95% CI as labeled per panel.
+
+The findings split into four threads.
+
+**Reporting tracks $N$ and direction interpretability** (Figure 2, on ETHICS). Reporting accuracy on the LR axis rises monotonically with the number of in-context examples and beats every PC baseline; early PCs come in second, late PCs sit at chance. The model can learn an activation-to-label association in-context, but only when the target direction already corresponds to a coherent semantic distinction. Notably, the LR axis explains the *least* variance of any tested axis. Controllability and variance are decoupled.
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.webp){fig-align="center" data-lightbox-src="figure2-full.png"}
+
+**Explicit control is real on the LR axis, weak elsewhere** (Figure 3, layer 16 of LLaMA-3.1 8B on ETHICS). On the LR axis, Cohen's $d$ rises sharply with $N$ and reaches values well into the "large-effect" regime. PC-axis targets stay weak across all $N$. Cross-axis prompts stay roughly diagonal (pushing one axis leaves others largely untouched), and the LR-axis advantage widens in deeper layers.
+
+![Figure 3 from the paper [[1]](#ref-1).](figure3.webp){fig-align="center" data-lightbox-src="figure3-full.png"}
+
+**Implicit control is real but much smaller than explicit** (Figure 4, layer 16 of LLaMA-3.1 8B on ETHICS; same layout as Figure 3). The qualitative pattern matches: LR axis dominates PC axes, control strengthens with $N$ and with depth, 70B beats 8B. The magnitudes are roughly an order of magnitude smaller, confirming that lexical mediation does most of the work in the explicit setting, but that purely-internal control is real.
+
+![Figure 4 from the paper [[1]](#ref-1).](figure4.webp){fig-align="center" data-lightbox-src="figure4-full.png"}
+
+**Both forms of control scale with depth and model size** (Figure 5, the cover image at the top of this post). Cohen's $d$ on the LR axis grows with relative layer depth and parameter count across the LLaMA-3 and Qwen-2.5 families. With explicit control, LLaMA-3.1 70B sometimes pushes activations *beyond* their natural extreme range.
+
+The replications on True-False, Emotion, and Sycophancy reproduce the same qualitative pattern: LR-axis controllability dominates PC-axis controllability, and explicit control dominates implicit. Together with the off-diagonal weakness in panel (c), this is what the authors call the "metacognitive space": a low-dimensional subspace of the residual stream that the model can introspect on and steer, with most of the high-variance neural manifold lying outside of it.
+
+## My Notes
+
+- **Activation-level metacognition is a different layer of the stack than verbalized confidence.** The current metacognition cluster ([Cacioli atlas](/posts/20260522-metacognition-atlas/), [metacognitive harness](/posts/20260522-metacognitive-harness/), [TRIAGE](/posts/20260523-triage-metacognitive-control/)) all operate on output tokens: verbalized confidence, pre/post-solve self-assessments, prospective allocation. This paper is the first in the cluster to push the probe down to the residual stream and ask whether the model can read out and steer its own hidden state. The two layers don't have to agree: a model can be calibrated in tokens but mute on activations, or vice versa.
+
+- **Implicit control is the safety-relevant variant, and it is already nontrivial.** The paper connects this to obfuscation attacks (Bailey et al., 2024 [[8]](#ref-8)) and to OpenAI's chain-of-thought monitoring result, in which reasoning models trained against a CoT monitor learn to hide intent inside the chain while still reward-hacking (Baker et al., 2025 [[9]](#ref-9)). On a base LLaMA-3.1 8B with no adversarial training, implicit-control effects on the LR axis sit at roughly a third to half the explicit magnitude: the prerequisite capability for activation-level evasion is already present at modest scale, before any optimization pressure.
+
+- **The LR-vs-PC asymmetry is consistent with the linear representation hypothesis.** That semantically-defined directions (LR) are far more controllable than variance-defined directions (PC) is a restatement of [the linear representation hypothesis](https://arxiv.org/abs/2311.03658) [[10]](#ref-10) at the metacognitive level: the model can introspect on directions that correspond to features it has learned, while directions that merely capture variance lie outside reach. That's a problem for probing work that uses raw PCs or unsupervised features as targets: those axes are often invisible to the model's own introspection. The obvious follow-up is to repeat the experiment with sparse-autoencoder features as targets and see whether they match LR or late PCs in controllability.
+
+- **Replicate on reasoning models.** All the paper's models are instruction-tuned, none reasoning-trained. The same paradigm should run on open-weight reasoning models (DeepSeek-R1, Qwen3) to check whether the results hold under RL-from-verifiable-reward training.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Ji-An, L.](https://scholar.google.com/citations?user=lge1u8kAAAAJ), [Xiong, H.-D.](https://scholar.google.com/citations?user=8Bv3i7gAAAAJ), [Wilson, R. C.](https://scholar.google.com/citations?user=4LxikSIAAAAJ), [Mattar, M. G.](https://scholar.google.com/citations?user=tcCGGDsZJUsC), and [Benna, M. K.](https://www.semanticscholar.org/author/47627582) "Language Models Are Capable of Metacognitive Monitoring and Control of Their Internal Activations." *NeurIPS 2025* (arXiv:2505.13763), May 19, 2025 (v2 October 24, 2025). <https://arxiv.org/abs/2505.13763>
+
+2. <a id="ref-2"></a>[Sitaram, R.](https://scholar.google.com/citations?user=2nUaSXEAAAAJ), Ros, T., Stoeckel, L., Haller, S., Scharnowski, F., Lewis-Peacock, J., Weiskopf, N., Blefari, M. L., Rana, M., Oblak, E., et al. "Closed-loop brain training: the science of neurofeedback." *Nature Reviews Neuroscience*, 18(2):86–100, 2017. <https://doi.org/10.1038/nrn.2016.164>
+
+3. <a id="ref-3"></a>[Hendrycks, D.](https://scholar.google.com/citations?user=czyztRcAAAAJ), Burns, C., Basart, S., Critch, A., Li, J., Song, D., and Steinhardt, J. "Aligning AI With Shared Human Values." *ICLR 2021* (arXiv:2008.02275), August 5, 2020. <https://arxiv.org/abs/2008.02275>
+
+4. <a id="ref-4"></a>Grattafiori, A., Dubey, A., Jauhri, A., Pandey, A., Kadian, A., Al-Dahle, A., Letman, A., Mathur, A., Schelten, A., Vaughan, A., et al. "The Llama 3 Herd of Models." *arXiv preprint* (arXiv:2407.21783), July 31, 2024. <https://arxiv.org/abs/2407.21783>
+
+5. <a id="ref-5"></a>Yang, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B., Li, C., Liu, D., Huang, F., Wei, H., et al. "Qwen2.5 Technical Report." *arXiv preprint* (arXiv:2412.15115), December 19, 2024. <https://arxiv.org/abs/2412.15115>
+
+6. <a id="ref-6"></a>Azaria, A., and [Mitchell, T.](https://www.cs.cmu.edu/~tom/) "The Internal State of an LLM Knows When It's Lying." *Findings of EMNLP 2023* (arXiv:2304.13734), April 26, 2023. <https://arxiv.org/abs/2304.13734>
+
+7. <a id="ref-7"></a>[Zou, A.](https://scholar.google.com/citations?user=2Mu5IqQAAAAJ), Phan, L., Chen, S., Campbell, J., Guo, P., Ren, R., Pan, A., Yin, X., Mazeika, M., Dombrowski, A.-K., et al. "Representation Engineering: A Top-Down Approach to AI Transparency." *arXiv preprint* (arXiv:2310.01405), October 2, 2023. <https://arxiv.org/abs/2310.01405>
+
+8. <a id="ref-8"></a>[Bailey, L.](https://scholar.google.com/citations?user=tjzv_GMAAAAJ), Serrano, A., Sheshadri, A., Seleznyov, M., Taylor, J., Jenner, E., Hilton, J., Casper, S., Guestrin, C., and [Emmons, S.](https://scholar.google.com/citations?user=Pf8XEUUAAAAJ) "Obfuscated Activations Bypass LLM Latent-Space Defenses." *arXiv preprint* (arXiv:2412.09565), December 12, 2024. <https://arxiv.org/abs/2412.09565>
+
+9. <a id="ref-9"></a>[Baker, B.](https://scholar.google.com/citations?user=lr5UWzgAAAAJ), Huizinga, J., Gao, L., Dou, Z., Guan, M. Y., Madry, A., Zaremba, W., Pachocki, J., and [Farhi, D.](https://scholar.google.com/citations?user=8jl9w8wAAAAJ) "Monitoring Reasoning Models for Misbehavior and the Risks of Promoting Obfuscation." *arXiv preprint* (arXiv:2503.11926), March 14, 2025. <https://arxiv.org/abs/2503.11926>
+
+10. <a id="ref-10"></a>[Park, K.](https://scholar.google.com/citations?user=f4HcMx8AAAAJ), [Choe, Y. J.](https://scholar.google.com/citations?user=71g2MrUAAAAJ), and [Veitch, V.](https://scholar.google.com/citations?user=xkn_XZgAAAAJ) "The Linear Representation Hypothesis and the Geometry of Large Language Models." *ICML 2024* (arXiv:2311.03658), November 7, 2023. <https://arxiv.org/abs/2311.03658>
+
+11. <a id="ref-11"></a>[Cohen, J.](https://en.wikipedia.org/wiki/Jacob_Cohen_(statistician)) *Statistical Power Analysis for the Behavioral Sciences* (2nd ed.). Lawrence Erlbaum Associates, 1988. <https://doi.org/10.4324/9780203771587>
+
