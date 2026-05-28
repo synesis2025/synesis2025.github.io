@@ -21,7 +21,228 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Tue, 26 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 27 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>AbstRaL: Augmenting LLMs’ Reasoning by Reinforcing Abstract Thinking</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>First page of the paper. Image from <a href="https://arxiv.org/abs/2506.07751">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>In <em><a href="https://arxiv.org/abs/2506.07751">AbstRaL: Augmenting LLMs’ Reasoning by Reinforcing Abstract Thinking</a></em> [1] (ICLR 2026), <a href="https://scholar.google.com/citations?user=SXP4blIAAAAJ">Silin Gao</a>, <a href="https://scholar.google.com/citations?user=XD9hkJwAAAAJ">Antoine Bosselut</a>, <a href="https://scholar.google.com/citations?user=Vs-MdPcAAAAJ">Samy Bengio</a>, and <a href="https://scholar.google.com/citations?user=mZM5KHIAAAAJ">Emmanuel Abbe</a> (EPFL) train large language models (LLMs) to first translate a math word problem into a symbolic abstraction, then derive the answer via external symbolic tools, with reinforcement learning rewards on both abstraction quality and final answer correctness. The reported gains on GSM-Symbolic [2] and GSM-Plus [3] are largest for the smallest models tested (0.5B parameters), where the underlying reasoning was most fragile to surface-form perturbations.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/figure1.png" class="img-fluid figure-img"></p>
+<figcaption>Two paraphrased queries <img src="https://benjaminhan.net/feed-assets/2b7f8532f311ac69.svg" alt="X" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/cf55ee74b5b0bf50.svg" alt="\tilde{X}" class="feed-math-inline"/> with the same numerical answer <img src="https://benjaminhan.net/feed-assets/b5e6b67e7c18a0a7.svg" alt="Y" class="feed-math-inline"/> can be handled by a common abstraction <img src="https://benjaminhan.net/feed-assets/5aac4446e41f85e6.svg" alt="A" class="feed-math-inline"/>. Surface-form variation (different numbers, names, or distracting clauses) does not change the underlying mathematical structure. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<blockquote class="blockquote">
+<p><em>Abstract:</em> Recent studies have shown that large language models (LLMs), especially smaller ones, often lack robustness in grade school math (GSM) reasoning. In particular, they tend to experience performance drops when faced with distribution shifts, such as changes to numerical or nominal variables, or insertions of distracting clauses. A possible strategy to address this involves generating synthetic data to further “instantiate” reasoning problems on potential variations. In this work, we instead focus on the strategy of “abstracting” reasoning problems. This not only helps counteract distribution shifts but also facilitates the connection to symbolic tools for deriving solutions. Focusing on GSM, we find that this abstraction process is better acquired through reinforcement learning (RL) than just supervised fine-tuning, which often fails to produce faithful abstractions. Our method, AbstRaL — which promotes abstract reasoning in LLMs using RL on granular abstraction data — significantly mitigates performance degradation on recent GSM perturbation benchmarks. Besides, improving GSM robustness via AbstRaL is shown to also implicitly benefit LLMs’ capabilities on OOD mathematical and general reasoning tasks, indicating that abstract thinking broadly enables better generalizability.</p>
+</blockquote>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>AbstRaL improves GSM reasoning robustness across all tested LLMs (0.5B to 7B parameters), with the largest gains on the smallest models. The “Vary Both” column reports accuracy when both numbers and names in the GSM-Symbolic test are perturbed simultaneously, and the <img src="https://benjaminhan.net/feed-assets/1ba32fc4729c19dc.svg" alt="\Delta" class="feed-math-inline"/> column reports the percentage drop from the original GSM problems. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>Training happens in two stages. The first stage is supervised fine-tuning on a dataset the authors call GranulAR, where each example shows the model a four-step pipeline for solving a math word problem:</p>
+<ol type="1">
+<li><strong>Spot the inputs.</strong> Find the numbers in the problem and replace each with a placeholder name like <code>in0</code>, <code>in1</code>, <code>in2</code>.</li>
+<li><strong>Reason in placeholders.</strong> Rewrite the solution chain using those placeholders instead of the actual numbers, with arithmetic steps marked inside double angle brackets (<code>&lt;&lt;in0 * in1 = out0&gt;&gt;</code>).</li>
+<li><strong>Extract the abstraction.</strong> A simple script pulls those bracketed steps out of the chain. Together they form the abstraction: the equations with placeholder variables, stripped of any specific numbers.</li>
+<li><strong>Plug in numbers.</strong> An off-the-shelf math solver (SymPy) takes the abstraction plus the actual input values and produces the final answer.</li>
+</ol>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>GranulAR training data construction: the four-step pipeline from a socratic chain-of-thought to an executable abstraction. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The GranulAR examples are produced by a teacher model (Llama-3.3-70B-Instruct) doing format conversion on existing GSM8K data. The teacher does not generate new mathematical content; it takes the original gold socratic CoT answer and rewrites it twice. The first pass replaces concrete numbers with abstract symbols. The second converts the socratic format into the GranulAR sub-question decomposition. Each rewriting step is filtered: the rewritten output is parsed for <code>&lt;&lt;...&gt;&gt;</code> derivations, run through SymPy, and only kept if the final answer matches GSM8K’s gold answer. Of 7473 training samples, 6386 (85.5%) survive both filter passes. The filter is execution-based, so an accidentally-right abstraction with the wrong structure could pass. The symbolic-distance RL reward exists downstream to push the model away from accidentally-right toward structurally-correct.</p>
+<p>Supervised fine-tuning alone gets a model to produce output in this format, but the paper finds it often writes abstractions that look right yet fail when the solver tries to run them. The second stage uses reinforcement learning (Group Relative Policy Optimization, or GRPO, the same algorithm DeepSeek used for its reasoning models) to fix that, with two hand-designed rewards:</p>
+<ul>
+<li><strong>Answer-correctness reward.</strong> Run the model’s abstraction through SymPy. If the result matches the known answer, the model gets a fixed positive reward. Otherwise zero.</li>
+<li><strong>Symbolic-distance reward.</strong> Compare the model’s abstraction to a gold abstraction piece by piece. The more editing needed to turn one into the other, the lower the reward. The closer the match, the higher.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>The two reinforcement-learning rewards. Symbolic distance (center) measures how much editing is needed to turn the model’s abstraction into the gold reference; answer correctness (right) fires only when SymPy’s derivation matches the target. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The symbolic-distance reward prevents shortcut learning: even an abstraction that happens to produce the correct answer by accident receives zero reward when its structure differs from the gold reference. The gradient pushes the model to produce faithful abstractions, which is the failure mode of supervised fine-tuning that the paper identifies.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper tests LLMs from 0.5B to 7B parameters. The headline numbers come from two endpoints: Qwen2.5-0.5B-Instruct and Qwen2.5-Math-7B-Instruct. The benchmarks are GSM-Symbolic [2] (100 GSM8K templates, where names and numbers are perturbed) and GSM-Plus [3] (numerical, phrasing, and distractor variations of 1,319 GSM8K problems).</p>
+<table class="caption-top table">
+<caption>Selected columns from Table 1 of the paper [1]. <em>Vary Both</em> is GSM-Symbolic accuracy when both numbers and names are perturbed. <img src="https://benjaminhan.net/feed-assets/1ba32fc4729c19dc.svg" alt="\Delta" class="feed-math-inline"/> is the percentage drop from the original 100 GSM problems (lower is better; negative means <em>higher</em> than original). <em>Distract</em> is GSM-Plus accuracy when distractor sentences are inserted.</caption>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th style="text-align: right;">0.5B Vary Both</th>
+<th style="text-align: right;">0.5B Δ</th>
+<th style="text-align: right;">0.5B Distract</th>
+<th style="text-align: right;">7B Vary Both</th>
+<th style="text-align: right;">7B Δ</th>
+<th style="text-align: right;">7B Distract</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CoT-8S</td>
+<td style="text-align: right;">34.0</td>
+<td style="text-align: right;">10.6</td>
+<td style="text-align: right;">22.7</td>
+<td style="text-align: right;">87.7</td>
+<td style="text-align: right;">7.73</td>
+<td style="text-align: right;">76.3</td>
+</tr>
+<tr class="even">
+<td>PoT-8S</td>
+<td style="text-align: right;">27.0</td>
+<td style="text-align: right;">12.8</td>
+<td style="text-align: right;">19.4</td>
+<td style="text-align: right;">86.7</td>
+<td style="text-align: right;">4.77</td>
+<td style="text-align: right;">75.1</td>
+</tr>
+<tr class="odd">
+<td>CoT-RL</td>
+<td style="text-align: right;">32.3</td>
+<td style="text-align: right;">7.77</td>
+<td style="text-align: right;">15.2</td>
+<td style="text-align: right;">88.1</td>
+<td style="text-align: right;">8.21</td>
+<td style="text-align: right;">81.5</td>
+</tr>
+<tr class="even">
+<td>CoA</td>
+<td style="text-align: right;">28.7</td>
+<td style="text-align: right;">0.97</td>
+<td style="text-align: right;">12.7</td>
+<td style="text-align: right;">69.7</td>
+<td style="text-align: right;">1.83</td>
+<td style="text-align: right;">57.1</td>
+</tr>
+<tr class="odd">
+<td>AoT</td>
+<td style="text-align: right;">27.8</td>
+<td style="text-align: right;">4.21</td>
+<td style="text-align: right;">12.7</td>
+<td style="text-align: right;">70.4</td>
+<td style="text-align: right;">2.17</td>
+<td style="text-align: right;">56.6</td>
+</tr>
+<tr class="even">
+<td>SyReLM</td>
+<td style="text-align: right;">36.8</td>
+<td style="text-align: right;">5.54</td>
+<td style="text-align: right;">21.1</td>
+<td style="text-align: right;">87.7</td>
+<td style="text-align: right;">2.56</td>
+<td style="text-align: right;">76.0</td>
+</tr>
+<tr class="odd">
+<td><strong>AbstRaL</strong></td>
+<td style="text-align: right;"><strong>44.6</strong></td>
+<td style="text-align: right;"><strong>−1.27</strong></td>
+<td style="text-align: right;"><strong>36.5</strong></td>
+<td style="text-align: right;"><strong>90.2</strong></td>
+<td style="text-align: right;"><strong>0.86</strong></td>
+<td style="text-align: right;"><strong>82.3</strong></td>
+</tr>
+</tbody>
+</table>
+<p>On GSM-Symbolic’s hardest split, “Vary Both”, where both numbers and names in each problem are perturbed simultaneously:</p>
+<ul>
+<li><strong>Qwen2.5-0.5B</strong>: AbstRaL scores 44.6%, against 32.3% for CoT-RL and 36.8% for the next-best baseline (SyReLM). The tiny model scores <em>higher</em> on the perturbed variants than on the original problems (<img src="https://benjaminhan.net/feed-assets/1ba32fc4729c19dc.svg" alt="\Delta" class="feed-math-inline"/> = −1.3%), something no baseline achieves.</li>
+<li><strong>Qwen2.5-Math-7B</strong>: AbstRaL is 90.2%, against 88.1% for CoT-RL. The absolute gain is modest, but the drop-from-original (<img src="https://benjaminhan.net/feed-assets/1ba32fc4729c19dc.svg" alt="\Delta" class="feed-math-inline"/>) is 0.9% for AbstRaL versus 8.2% for CoT-RL.</li>
+</ul>
+<p>The largest per-task win is on <strong>distractor insertion</strong>, where the problem contains irrelevant sentences the model must ignore. On the 0.5B model, AbstRaL scores 36.5% versus the best CoT baseline at 22.7%.</p>
+<p><strong>Ablations</strong> confirm the abstract-reasoning behavior lives in the model weights, not the tools:</p>
+<ul>
+<li>Removing SymPy and the regex extractor costs about 1 point on Qwen-0.5B and 0.2 points on Qwen-7B. The external tools are not the source of the gain.</li>
+<li>Removing reinforcement learning entirely drops Vary Both to 29.6 (Qwen-0.5B) and 78.5 (Qwen-7B), below every CoT-trained baseline (CoT-8S, CoT-RL, SyReLM) and far below AbstRaL.</li>
+<li>Removing just the symbolic-distance reward costs around 7 points on both model sizes. That single reward term accounts for roughly half the RL gain.</li>
+<li>Removing the four-step GranulAR data format is most costly on the distractor split (Qwen-7B drops from 82.3 to 66.8). The granular decomposition is what teaches the model to ignore irrelevant sentences.</li>
+</ul>
+<p><strong>Out-of-distribution generalization.</strong> Even though AbstRaL is trained only on GSM8K, it transfers to eleven other math benchmarks (MATH, Minerva-MATH, SAT-Math, AIME-24, SVAMP, ASDiv, MAWPS, Gaokao-2023, TABMWP, College-Math, AQUA) and beats the baselines on almost all of them. On Qwen-7B, the Minerva-MATH score actually exceeds the model’s own prior fine-tuned checkpoint (34.6 → 38.6), meaning AbstRaL training improves a held-out benchmark beyond the model’s starting capability.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The “SFT memorizes, RL generalizes” pattern keeps accumulating evidence.</strong> Chu et al.&nbsp;(2025) [4] demonstrated this on an arithmetic card game and a visual navigation environment: reinforcement-learning-trained models held up on out-of-distribution variants where supervised fine-tuning collapsed to memorization. AbstRaL reproduces the split at finer grain. Supervised fine-tuning yields unfaithful abstractions, reinforcement learning yields faithful ones. When the post-training objective is teaching a <em>behavior</em> rather than memorizing facts, reinforcement learning preserves the underlying capability. The consistency across such dissimilar tasks makes the pattern harder to dismiss.</li>
+<li><strong>AbstRaL’s separation makes abstraction itself a trainable target.</strong> Program of Thoughts (PoT) [5] and Program-Aided Language Models (PAL) [6] have the model generate Python code that an interpreter executes; abstraction and execution are fused into one program. AbstRaL splits them: the model generates only the symbolic equations, and SymPy derives the answer. The genuinely new affordance is not inspectability (PoT code is also inspectable) but separately rewardable abstraction. With AbstRaL the abstraction step has its own training signal (the symbolic-distance reward to the gold abstraction), so reinforcement learning can push faithfulness independently of execution. PoT and PAL can only reward the final answer, so a Python program that lands on the right number for wrong-shaped reasons gets reinforced.</li>
+<li><strong>The SFT-to-RL swap on an established recipe is the real comparison.</strong> Chain-of-Abstraction (CoA) [7] was Silin Gao’s prior work, the same first author. It fine-tuned LLMs to decode abstract reasoning chains before calling domain tools to fill them in. AbstRaL keeps that abstract-then-tool-call paradigm but replaces supervised fine-tuning with reinforcement learning, and outperforms CoA on the paper’s benchmarks. Because the authorship and recipe are held constant, the gain isolates the post-training objective itself rather than confounding it with architecture or prompting choices. The follow-up worth running: at what model scale does the gap close? If base models internalize abstraction during pretraining, the SFT-then-tools formulation may catch up at larger sizes.</li>
+<li><strong>Gains concentrate at small scale; frontier evidence is missing.</strong> On Qwen2.5-0.5B, AbstRaL lifts Vary-Both accuracy from 32.3 (CoT-RL baseline) to 44.6 and fully eliminates the perturbation gap (<img src="https://benjaminhan.net/feed-assets/4507ab8553d870e3.svg" alt="\Delta = -1.3" class="feed-math-inline"/>). On Qwen2.5-Math-7B the same recipe lifts Vary-Both from 88.1 to 90.2, a 2-point gain on a baseline already near-saturated. Some of this is ceiling effect, but the paper’s claim that “abstract thinking broadly enables better generalizability” rests on improvements observed at 0.5B-7B without testing at the 30B-70B+ scales where current reasoners operate. Whether the abstraction-specific reward buys anything beyond what a larger base model already internalizes during pretraining is an open empirical question the paper invites but does not answer.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Gao, Silin, Antoine Bosselut, Samy Bengio, and Emmanuel Abbe. “AbstRaL: Augmenting LLMs’ Reasoning by Reinforcing Abstract Thinking.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2506.07751. <a href="https://arxiv.org/abs/2506.07751" class="uri">https://arxiv.org/abs/2506.07751</a></li>
+<li><a id="ref-2"></a>Mirzadeh, Iman, Keivan Alizadeh, Hooman Shahrokhi, Oncel Tuzel, Samy Bengio, and Mehrdad Farajtabar. “GSM-Symbolic: Understanding the Limitations of Mathematical Reasoning in Large Language Models.” <em>arXiv preprint</em> (arXiv:2410.05229), October 7, 2024. <a href="https://arxiv.org/abs/2410.05229" class="uri">https://arxiv.org/abs/2410.05229</a></li>
+<li><a id="ref-3"></a>Li, Qintong, Leyang Cui, Xueliang Zhao, Lingpeng Kong, and Wei Bi. “GSM-Plus: A Comprehensive Benchmark for Evaluating the Robustness of LLMs as Mathematical Problem Solvers.” <em>arXiv preprint</em> (arXiv:2402.19255), February 29, 2024. <a href="https://arxiv.org/abs/2402.19255" class="uri">https://arxiv.org/abs/2402.19255</a></li>
+<li><a id="ref-4"></a>Chu, Tianzhe, Yuexiang Zhai, Jihan Yang, Shengbang Tong, and Saining Xie. “SFT Memorizes, RL Generalizes: A Comparative Study of Foundation Model Post-training.” <em>arXiv preprint</em> (arXiv:2501.17161), January 28, 2025. <a href="https://arxiv.org/abs/2501.17161" class="uri">https://arxiv.org/abs/2501.17161</a></li>
+<li><a id="ref-5"></a>Chen, Wenhu, Xueguang Ma, Xinyi Wang, and William W. Cohen. “Program of Thoughts Prompting: Disentangling Computation from Reasoning for Numerical Reasoning Tasks.” <em>arXiv preprint</em> (arXiv:2211.12588), November 22, 2022. <a href="https://arxiv.org/abs/2211.12588" class="uri">https://arxiv.org/abs/2211.12588</a></li>
+<li><a id="ref-6"></a>Gao, Luyu, Aman Madaan, Shuyan Zhou, Uri Alon, Pengfei Liu, Yiming Yang, Jamie Callan, and Graham Neubig. “PAL: Program-aided Language Models.” <em>International Conference on Machine Learning (ICML)</em>, 2023. arXiv:2211.10435. <a href="https://arxiv.org/abs/2211.10435" class="uri">https://arxiv.org/abs/2211.10435</a></li>
+<li><a id="ref-7"></a>Gao, Silin, Jane Dwivedi-Yu, Ping Yu, Xiaoqing Ellen Tan, Ramakanth Pasunuru, Olga Golovneva, Koustuv Sinha, Asli Celikyilmaz, Antoine Bosselut, and Tianlu Wang. “Efficient Tool Use with Chain-of-Abstraction Reasoning.” <em>arXiv preprint</em> (arXiv:2401.17464), January 30, 2024. <a href="https://arxiv.org/abs/2401.17464" class="uri">https://arxiv.org/abs/2401.17464</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/</guid>
+  <pubDate>Sat, 25 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Elliott Bay Trail Run</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/02.jpg" class="img-fluid" data-lightbox-src="02-full.jpg"></p>
+</div>
+</div>
+</div>
+<p>Today’s run on Elliott Bay Trail.</p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116463846710471024">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/</guid>
+  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/01.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Convergent Evolution: How Different Language Models Learn Similar Number Representations</title>
   <dc:creator>synesis </dc:creator>
@@ -1024,97 +1245,6 @@
   <guid>https://benjaminhan.net/posts/20260413-verified-not-safe/</guid>
   <pubDate>Mon, 13 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260413-verified-not-safe/lean-zip.png" medium="image" type="image/png" height="84" width="144"/>
-</item>
-<item>
-  <title>CoachGPT, in Practice</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260412-coachgpt-marathon/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260412-coachgpt-marathon/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260412-coachgpt-marathon/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Marathon runners. Photo: Wikimedia Commons. (<a href="https://www.bloomberg.com/news/features/2026-04-10/training-for-a-marathon-with-an-ai-coach-what-worked-and-what-didn-t">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Can CoachGPT be effective as your running coach? I’ve gone through something very similar to what this Bloomberg article describes: consistently interacting with my “coach” by stating my goals, sending screenshot after screenshot of my recorded running stats, and strategizing with it on rezoning my HR, training routines, and race plans.</p>
-<p>In the end, these concluding statements from the model itself, when the author asked how far he’d come, stand out most:</p>
-<blockquote class="blockquote">
-<p>“A long way,” it responded. “Not because the model ‘coached’ you. And not because the technology was flawless. It wasn’t. You had to correct it, constrain it and teach it how to be useful. What feels significant here is that this stopped being a chatbot giving generic advice and became a system you were actively shaping toward a real-world outcome. Over time, you built something closer to a working instrument: goals, rules, memory, exceptions, cadence, feedback loops, failure modes, even governance language.”</p>
-</blockquote>
-<p>It then widened the lens:</p>
-<blockquote class="blockquote">
-<p>“Far enough that an AI can participate meaningfully in a serious human project over time. Not far enough that it can be trusted without structure,” it added. “And maybe that’s the most important answer: The future is probably not AI replacing people. It’s people who learn how to build disciplined working relationships with AI outperforming those who don’t.”</p>
-</blockquote>
-<p>https://www.bloomberg.com/news/features/2026-04-10/training-for-a-marathon-with-an-ai-coach-what-worked-and-what-didn-t?accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzb3VyY2UiOiJTdWJzY3JpYmVyR2lmdGVkQXJ0aWNsZSIsImlhdCI6MTc3NTgzMzI2NCwiZXhwIjoxNzc2NDM4MDY0LCJhcnRpY2xlSWQiOiJURDk5SzRLSVAzTFAwMCIsImJjb25uZWN0SWQiOiJFMkVCM0VGNzQyQjE0QzE4OUQ1MkNBMjQ5QTA3NzIyQiJ9._LFZIIYX7FGzG60hmbSFalXS467NH5YV3-wtJqK9UxY</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“I Trained for the Paris Marathon Using ChatGPT.” <em>Bloomberg</em>, April 10, 2026. <a href="https://www.bloomberg.com/news/features/2026-04-10/training-for-a-marathon-with-an-ai-coach-what-worked-and-what-didn-t" class="uri">https://www.bloomberg.com/news/features/2026-04-10/training-for-a-marathon-with-an-ai-coach-what-worked-and-what-didn-t</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_i-trained-for-the-paris-marathon-using-chatgpt-activity-7449131880702058496-0KgQ">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260412-coachgpt-marathon/</guid>
-  <pubDate>Sun, 12 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260412-coachgpt-marathon/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Why LLMs Still Stumble Over Time</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/evolvebench-illustration.jpg" class="img-fluid figure-img"></p>
-<figcaption>Illustration from the EvolveBench paper [10].</figcaption>
-</figure>
-</div>
-<p>Are you surprised that today’s LLMs still make so many time-related mistakes? They might mismatch a date and weekday [1], misinterpret relative expressions like “in 2 hours” or “next Monday at 1 PM” when the current time or timezone is unclear [2], or, in more complex cases, build a schedule whose event order is simply impossible [3].</p>
-<p>The core issue is that temporal reasoning is not one skill but a bundle of them. Recent benchmarks break it into subskills such as event ordering, arithmetic, duration, and frequency, and show both large variation across categories and a substantial gap to human performance [4][5].</p>
-<p>These failures also reflect how temporal reasoning depends on more than calendar math. Models often need to determine when two mentions refer to the same event and to reason jointly about temporal, causal, and subevent relations [6]. They also rely on commonsense script knowledge, since text frequently leaves the typical order or duration of everyday events unstated [7][8].</p>
-<p>Even when stale knowledge is not the problem, temporal reasoning remains brittle. In controlled evaluations, performance changes substantially with problem structure, question type, and fact order [9]. That brittleness helps explain why models struggle when events are introduced out of chronological order and the timeline has to be reconstructed rather than read off the surface form [9].</p>
-<p>The problem becomes harder still when knowledge itself changes over time. A model may retrieve the right fact yet fail to align it with the period in which it was true. EvolveBench evaluates exactly this kind of temporal awareness through historical cognition, temporally misaligned context, and invalid timestamped queries [10].</p>
-<p>Taken together, these results suggest that temporal failures arise from the interaction of heterogeneous subskills, event-level dependencies, temporal commonsense, sensitivity to ordering, and weak grounding of facts to the correct time.</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Sweenor, David. “Don’t Trust Your AI With Dates: The Calendar Blindspot.” <em>Medium</em>, 2025. <a href="https://medium.com/@davidsweenor/dont-trust-your-ai-with-dates-the-calendar-blindspot-882c7223eca0" class="uri">https://medium.com/@davidsweenor/dont-trust-your-ai-with-dates-the-calendar-blindspot-882c7223eca0</a></li>
-<li><a id="ref-2"></a>Pankretić, Filip. “The invisible problem. How we solved scheduling with AI.” <em>Infobip Developers Blog</em>, 2026. <a href="https://www.infobip.com/developers/blog/the-invisible-problem-how-we-solved-scheduling-with-ai" class="uri">https://www.infobip.com/developers/blog/the-invisible-problem-how-we-solved-scheduling-with-ai</a></li>
-<li><a id="ref-3"></a>Bansal, Tanmay. “Your Favourite LLMs Still Can’t Differentiate Between Time Like Humans.” <em>GoPubby / Medium</em>, 2026. <a href="https://ai.gopubby.com/why-llms-still-cant-perceive-time-like-humans-602adb0e9f20" class="uri">https://ai.gopubby.com/why-llms-still-cant-perceive-time-like-humans-602adb0e9f20</a></li>
-<li><a id="ref-4"></a>Wang, Yuqing, and Yun Zhao. “TRAM: Benchmarking Temporal Reasoning for Large Language Models.” <em>Findings of ACL 2024</em>. <a href="https://aclanthology.org/2024.findings-acl.382/" class="uri">https://aclanthology.org/2024.findings-acl.382/</a></li>
-<li><a id="ref-5"></a>Chu, Zheng, et al.&nbsp;“TIMEBENCH: A Comprehensive Evaluation of Temporal Reasoning Abilities in Large Language Models.” <em>ACL 2024</em>. <a href="https://aclanthology.org/2024.acl-long.66/" class="uri">https://aclanthology.org/2024.acl-long.66/</a></li>
-<li><a id="ref-6"></a>Wang, Xiaozhi, et al.&nbsp;“MAVEN-ERE: A Unified Large-scale Dataset for Event Coreference, Temporal, Causal, and Subevent Relation Extraction.” <em>EMNLP 2022</em>. <a href="https://aclanthology.org/2022.emnlp-main.60/" class="uri">https://aclanthology.org/2022.emnlp-main.60/</a></li>
-<li><a id="ref-7"></a>Regneri, Mirella, Alexander Koller, and Manfred Pinkal. “Learning Script Knowledge with Web Experiments.” <em>ACL 2010</em>. <a href="https://aclanthology.org/P10-1100/" class="uri">https://aclanthology.org/P10-1100/</a></li>
-<li><a id="ref-8"></a>Wenzel, Gregor, and Adam Jatowt. “An Overview of Temporal Commonsense Reasoning and Acquisition.” <em>arXiv</em>, 2023. <a href="https://arxiv.org/abs/2308.00002" class="uri">https://arxiv.org/abs/2308.00002</a></li>
-<li><a id="ref-9"></a>Fatemi, Bahare, et al.&nbsp;“Test of Time: A Benchmark for Evaluating LLMs on Temporal Reasoning.” <em>arXiv</em>, 2024. <a href="https://arxiv.org/abs/2406.09170" class="uri">https://arxiv.org/abs/2406.09170</a></li>
-<li><a id="ref-10"></a>Zhu, Zhiyuan, et al.&nbsp;“EvolveBench: A Comprehensive Benchmark for Assessing Temporal Awareness in LLMs on Evolving Knowledge.” <em>ACL 2025</em>. <a href="https://aclanthology.org/2025.acl-long.788/" class="uri">https://aclanthology.org/2025.acl-long.788/</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-temporal-reasoning-activity-7448985310727921664-Av2H">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/</guid>
-  <pubDate>Sat, 11 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260411-llm-temporal-reasoning/evolvebench-illustration.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
