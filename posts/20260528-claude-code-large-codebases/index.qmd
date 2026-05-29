@@ -1,0 +1,55 @@
+---
+title: "How Claude Code Works in Large Codebases: Best Practices and Where to Start"
+description: "Anthropic opens its \"Claude Code at scale\" series with patterns from successful enterprise rollouts: five harness extension points, the order to add them, and three configuration patterns for monorepos and multi-repo orgs."
+author: synesis
+date: "2026-05-28"
+image: cover.jpg
+---
+
+![The Claude Code harness across a session: CLAUDE.md loads after the start hook fires and stays present throughout, skills load on demand when their task comes up, plugins are installed pre-session and available throughout, LSP and MCP fire when Claude calls them, and a subagent handles a "map → findings file" block in the middle. Image from [Anthropic's blog](https://claude.com/blog/how-claude-code-works-in-large-codebases-best-practices-and-where-to-start).](cover.jpg){fig-align="center"}
+
+[Anthropic](https://www.anthropic.com/) opens its [Claude Code at scale](https://claude.com/blog/how-claude-code-works-in-large-codebases-best-practices-and-where-to-start) series with the patterns it has seen across million-line monorepos, decades-old legacy systems, and orgs running Claude Code over dozens of microservices. The article argues the harness ([CLAUDE.md](https://docs.anthropic.com/en/docs/claude-code/memory) files, [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks), [skills](https://docs.anthropic.com/en/docs/claude-code/skills), [plugins](https://docs.anthropic.com/en/docs/claude-code/plugins), and [MCP servers](https://modelcontextprotocol.io/)) does more for outcomes than the model swap, and prescribes an order in which to build it.
+
+## Summary of the Article
+
+**What "large" means.** Multi-million-line monorepos, decades-old legacy systems, dozens of microservices across separate repos, organizations with thousands of developers, and codebases in C, C++, C#, Java, or PHP. The patterns generalize across all of these.
+
+**How Claude Code navigates.** It traverses the file system, reads files, greps, and follows references on the developer's machine. There is no embedding pipeline and no central index. [RAG (retrieval-augmented generation)](https://en.wikipedia.org/wiki/Retrieval-augmented_generation) tools fail at scale because the index falls behind active engineering teams and returns stale results without flagging them. Agentic search avoids that, but it needs enough starting context to know where to look.
+
+**The harness matters as much as the model.** The ecosystem around the model, the harness, drives Claude Code performance more than the model alone. There are five extension points and two capabilities, and the build order matters because each layer depends on the previous one. The cover image above shows when each one is active across a session.
+
+1. **CLAUDE.md.** Context files Claude reads automatically every session. Root file for the big picture, subdirectory files for local conventions. Keep them lean: every byte loads every session.
+
+2. **Hooks.** Most teams use hooks to prevent mistakes. The more valuable use is continuous improvement. A stop-hook can propose CLAUDE.md updates while the session context is fresh. A start-hook can load team-specific context dynamically. Hooks also enforce lint and format more reliably than asking Claude to remember.
+
+3. **Skills.** Packaged expertise that loads on demand. A security-review skill loads when Claude is reviewing for vulnerabilities. A deployment skill scoped to a path doesn't load elsewhere. This is how the harness scales without bloating CLAUDE.md.
+
+4. **Plugins.** A bundle of skills, hooks, and MCP configs in one installable package, distributed through marketplaces. Solves the problem of good setups staying tribal: new engineers get the team's full context on day one.
+
+5. **[LSP (language server protocol)](https://microsoft.github.io/language-server-protocol/).** Symbol-level navigation: go-to-definition and find-all-references instead of text matching. Without it, grep on a common name returns thousands of hits and Claude burns context filtering them. Called out as one of the highest-value investments for multi-language codebases.
+
+6. **[MCP (model context protocol)](https://modelcontextprotocol.io/).** How Claude reaches internal tools and data it can't otherwise touch. Powerful but easy to overbuild. The article warns against starting here before the basics are working.
+
+7. **Subagents.** A separate Claude instance with its own context window. Common pattern: one subagent maps a subsystem and writes findings to a file, then the main agent edits with the full picture.
+
+**Three configuration patterns.**
+
+- **Make the codebase navigable.** Keep CLAUDE.md lean and layered. Initialize Claude in subdirectories rather than the repo root, since it walks up the tree automatically. Scope test and lint commands per subdirectory. Use `.ignore` files and committed `permissions.deny` rules to exclude generated files and build artifacts. When the directory structure doesn't speak for itself, write a short codebase-map at the root. Run an LSP.
+
+- **Maintain CLAUDE.md as models evolve.** Rules written for one model can hurt the next. A "break every refactor into single-file changes" instruction that helped an earlier model would block a newer one's cross-file edits. Same for hooks made redundant by new native features. Review configuration every three to six months, or whenever performance plateaus after a model release.
+
+- **Assign ownership.** Bottoms-up adoption fragments without a center. The minimum is a DRI (directly responsible individual) with authority over settings, permissions, the plugin marketplace, and CLAUDE.md conventions. Larger orgs are creating an "agent manager" role, usually under developer experience. Regulated industries should bring engineering, infosec, and governance together before rollout, not after.
+
+**Common mistakes the article calls out.** One per harness component, plus a pair of cross-cutting ones.
+
+- **Putting reusable expertise in CLAUDE.md instead of a skill.** Anything that applies broadly belongs in CLAUDE.md, anything specialized belongs in a skill that loads on demand.
+- **Using prompts for things that should run automatically.** Lint, format, and consistent end-of-session reflection are hooks, not instructions Claude has to remember.
+- **Loading everything into CLAUDE.md instead of using skills.** Same shape as the first one, from the other direction. Bloating CLAUDE.md is the failure mode skills exist to prevent.
+- **Letting good setups stay tribal.** A working configuration on one engineer's box doesn't help anyone else until it's packaged as a plugin and made installable.
+- **Assuming LSP is automatic.** It isn't. A code-intelligence plugin and the language server binary have to be installed.
+- **Building MCP connections before the basics work.** The most common failure mode. MCP is powerful enough to look like the answer to everything, which is why teams reach for it before CLAUDE.md, hooks, and skills are right.
+- **Running exploration and editing in the same session.** A subagent should do the mapping and write findings to a file. The main agent then edits with the full picture instead of competing with exploration for context.
+- **Letting CLAUDE.md ossify.** Rules written for one model can hurt the next. Review every three to six months, or after a major model release.
+- **Skipping ownership.** Without a DRI, knowledge stays tribal and adoption plateaus.
+
+**Scope.** The patterns assume conventional setups — engineers as the primary contributors, Git, standard directory structures. Game engines with large binary assets, unconventional version control, and non-engineer contributors need additional work the article doesn't cover.
