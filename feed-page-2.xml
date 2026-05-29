@@ -21,7 +21,448 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 28 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 29 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>What Is JEPA?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260523-what-is-jepa/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-what-is-jepa/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-what-is-jepa/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Figure 10 from the V-JEPA 2 paper [4]: the V-JEPA 2-AC variant executing pick-and-place on a Franka arm. Highlighted frames mark sub-goal achievement.</figcaption>
+</figure>
+</div>
+<p>Joint-Embedding Predictive Architecture, or JEPA, is the name <a href="http://yann.lecun.com/">Yann LeCun</a> gave in 2022 [1] to a family of <strong>self-supervised</strong> models (models that learn from raw images and video without human-labeled examples) that learn by predicting <strong>representations</strong> of missing data rather than the missing data itself. A representation here is what the model has learned to summarize about its input: a vector of numbers, also called an <em>embedding</em>, that captures the input’s structure in a compressed form. JEPA’s design choice is to train the model to predict those vectors, not to reconstruct pixels.</p>
+<p>The acronym covers a research program more than a single model. Published JEPA models to date include <a href="https://arxiv.org/abs/2301.08243">I-JEPA</a> [2] for images, <a href="https://arxiv.org/abs/2404.08471">V-JEPA</a> [3] for video, and the action-conditioned <a href="https://arxiv.org/abs/2506.09985">V-JEPA 2</a> [4], which adds a real-robot deployment.</p>
+<section id="the-problem-jepa-is-trying-to-solve" class="level2">
+<h2 class="anchored" data-anchor-id="the-problem-jepa-is-trying-to-solve">The problem JEPA is trying to solve</h2>
+<p>Two empirical observations motivate the design.</p>
+<p>The first concerns where a generative model spends its capacity. To predict the next frame of a video pixel-for-pixel, a model has to reproduce every leaf texture, every shadow gradient, every detail at the edge of a cloud, most of which a downstream classifier, planner, or robot controller will never use. The same is true for next-token prediction over captions: the model is forced to commit to a specific word among synonyms even when the meaning doesn’t depend on which it picks. The cost is paid in model parameters and training compute that go toward fidelity rather than understanding.</p>
+<p>By the early 2020s, most leading methods for learning image representations from unlabeled data were non-generative: <a href="https://arxiv.org/abs/2002.05709">SimCLR</a> [5], <a href="https://arxiv.org/abs/1911.05722">MoCo</a> [6], <a href="https://arxiv.org/abs/2006.07733">BYOL</a> [7], <a href="https://arxiv.org/abs/2104.14294">DINO</a> [8], <a href="https://arxiv.org/abs/2105.04906">VICReg</a> [9]. On the standard evaluation (train a single linear layer on top of frozen features and measure classification accuracy on <a href="https://www.image-net.org/">ImageNet</a>), they performed competitively with or outperformed <a href="https://arxiv.org/abs/2111.06377">Masked Autoencoders</a> [10], the leading pixel-reconstruction approach, at lower compute. LeCun took this pattern as evidence that the right objective for representation learning operates in embedding space, not in pixel space.</p>
+<p>His 2022 position paper lays out the underlying taxonomy directly. It diagrams four architecture types side by side (deterministic generative, generative latent-variable, auto-encoder, and joint-embedding) and annotates each with the way it can collapse, identifying joint-embedding as the family worth scaling.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-what-is-jepa/figure-architectures.webp" class="img-fluid figure-img" data-lightbox-src="figure-architectures-full.png"></p>
+<figcaption>Figure 10 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The second observation is about data efficiency. <a href="../../posts/20260523-yann-lecun-after-llms/#zero-shot-generalization-and-the-17-year-old-driver">A teenager learns to drive in roughly twenty hours of practice</a>. Self-driving programs have ingested millions of hours of road video and have not yet reached level-five autonomy on the long tail of unfamiliar situations. The going hypothesis is that humans learn an internal <strong>world model</strong> (a predictor that can be queried about the consequences of an action) from passive observation. <em>Imitation learning</em>, the current standard for training robot policies, works by mimicking demonstrations of each specific task. It does not build the kind of general predictive model that would let a system handle an action it has never seen demonstrated. Building such a model from observation is the JEPA program’s long-horizon target.</p>
+</section>
+<section id="the-people-and-institutions" class="level2">
+<h2 class="anchored" data-anchor-id="the-people-and-institutions">The people and institutions</h2>
+<p>JEPA’s intellectual lineage runs through <a href="https://ai.meta.com/research/">FAIR</a> (Fundamental AI Research, <a href="https://about.meta.com/">Meta</a>’s long-standing research lab, originally Facebook AI Research). The position paper that introduced the JEPA family, <em>A Path Towards Autonomous Machine Intelligence</em> [1], was posted to <a href="https://openreview.net/forum?id=BZ5a1r-kVsf">OpenReview</a> in 2022 as LeCun’s solo-authored manifesto and read as a public commitment to a particular technical direction. The I-JEPA model paper that followed in 2023 had <a href="https://www.midoassran.ca/">Mahmoud Assran</a> as first author, with <a href="https://scholar.google.com/citations?user=euUV4iUAAAAJ">Nicolas Ballas</a>, <a href="https://adrien-bardes.netlify.app/">Adrien Bardes</a>, and LeCun among the senior authors. V-JEPA in 2024 had Bardes as first author. V-JEPA 2 in 2025, with Assran back at first position, added action conditioning and the first real-robot deployment. The FAIR Paris group has been the engine of the program throughout, and the DINO and JEPA lines continue there.</p>
+<p>The conceptual roots go further back. The mutual-information objective that motivates JEPA’s regularization (penalize representations that collapse, reward representations that retain information about the input) traces directly to <a href="https://www.nature.com/articles/355161a0">Becker and Hinton’s 1992 paper</a> [11] in <em>Nature</em>, which showed that a neural network could discover depth from random-dot stereograms by maximizing mutual information between adjacent image patches. Most modern non-contrastive self-supervised methods, including <a href="https://arxiv.org/abs/2006.07733">BYOL</a> [7], <a href="https://arxiv.org/abs/2105.04906">VICReg</a> [9], and the JEPA regularizers, can be read as descendants of that paper.</p>
+<p><a href="../../posts/20260523-yann-lecun-after-llms/#ch-why-left-meta">LeCun left Meta in November 2025</a> to start <a href="https://ami.inc/">AMI Labs</a>, an “Advanced Machine Intelligence” venture organized around scaling JEPA-style world models. <a href="https://randallbalestriero.github.io/">Randall Balestriero</a>, now an assistant professor at Brown, is the lead author of <a href="https://arxiv.org/abs/2511.08544">LeJEPA</a> [12], the post-FAIR paper that introduces SIGReg (Sketched Isotropic Gaussian Regularization), the anti-collapse objective discussed below.</p>
+</section>
+<section id="the-core-ideas" class="level2">
+<h2 class="anchored" data-anchor-id="the-core-ideas">The core ideas</h2>
+<p>The model has three components:</p>
+<ul>
+<li>An <strong>encoder</strong> is a neural network that takes the input (<img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/>, an image or video) and produces its embedding, the vector summarizing what the model has learned to find important about that input. Its weights are trained by gradient descent on the loss.</li>
+<li>A <strong>predictor</strong> is a smaller neural network that takes the embedding of one part of the input and predicts the embedding of another, masked part (<img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/>). The mask is chosen randomly each training step. The predictor’s weights are also trained by gradient descent on the loss.</li>
+<li>A <strong>target encoder</strong> produces the embeddings the predictor is trained against. Its weights are <em>not</em> updated by gradient descent. Instead, they are a slow exponential moving average of the encoder’s weights, recomputed each step, so the prediction target stays stable from one training step to the next. This asymmetry, where gradients flow only into the encoder and the predictor and never into the target encoder, is also part of what keeps the system from collapsing to a constant (see below).</li>
+</ul>
+<p>The loss is the distance, in embedding space, between the predicted vector and the actual target vector. There is no pixel-reconstruction term anywhere in the objective.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-what-is-jepa/figure-ijepa-arch.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 3 from the paper [2].</figcaption>
+</figure>
+</div>
+<p>Two design choices make the architecture work where simpler variants do not.</p>
+<p><strong>Predicting in latent space, not pixel space.</strong> Because the predictor only has to match a learned summary of <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/>, the encoder is free to discard whatever details cannot be predicted from context: leaf textures, fine speckle, exact shadow positions. Pixel-prediction objectives have no such freedom: they must commit to a specific pixel value at every location. The JEPA loss lets the representation itself decide what to retain.</p>
+<p><strong>Preventing representation collapse.</strong> The trivial cheat for this kind of training objective is for the encoder to output the same vector for every input. The predicted and target embeddings then match perfectly, the loss is zero, and the representation is useless. <em>Representation collapse</em> is the term of art for this failure mode, and every JEPA-family method spends most of its design budget defeating it. <a href="../../posts/20260523-yann-lecun-after-llms/#three-families-of-fixes-contrastive-distillation-and-regularizer-methods">The field has converged on three families of fixes</a>:</p>
+<ul>
+<li><strong>Contrastive methods</strong> (SimCLR, MoCo) include an extra term in the loss that pushes the embeddings of <em>different</em> inputs apart. As long as the model has to distinguish many different inputs, it can’t collapse onto one constant. The cost is the need for many negative examples per training step.</li>
+<li><strong>Distillation methods with an exponential-moving-average teacher encoder</strong> (BYOL, DINO, and the current V-JEPA / V-JEPA 2 line) use the asymmetry between the trained encoder and the slow target encoder to break the symmetric gradient path that would otherwise drive both encoders to a constant. They prevent collapse empirically, but the precise reason is not fully understood, and the training loss does not decrease monotonically, so practitioners don’t have a clean signal of convergence.</li>
+<li><strong>Information-content regularizers</strong> (VICReg, SIGReg) add a term that directly penalizes low-information embeddings (flat, constant, or low-variance outputs). VICReg uses variance and covariance penalties to keep each feature dimension active and to keep different dimensions from encoding the same thing. SIGReg [12], introduced in the LeJEPA paper in late 2025, projects encoder outputs onto random directions and applies a statistical normality test on each, pushing the joint distribution of embeddings toward an isotropic Gaussian (the distribution that carries the most information for a fixed variance).</li>
+</ul>
+<p>The collapse problem is the central technical difficulty of the family. Most current JEPA papers are trained with EMA-distillation. The LeJEPA paper provides a theoretical characterization of the regularizer route and is the direction the AMI Labs group is moving toward.</p>
+</section>
+<section id="published-results" class="level2">
+<h2 class="anchored" data-anchor-id="published-results">Published results</h2>
+<p>Results to date span three domains.</p>
+<ul>
+<li><p><strong>Images.</strong> I-JEPA, built on a <a href="https://arxiv.org/abs/2010.11929">Vision Transformer</a> (ViT) [13] backbone (a now-standard architecture that processes images as a sequence of patches), reaches ImageNet classification accuracy competitive with the best self-supervised baselines. Training a ViT-H/14 takes 16 A100 GPUs in under 72 hours [2], and the resulting features transfer to other tasks including object counting and depth estimation. The body of the paper reports lower compute than pixel-reconstruction approaches like MAE [10] at comparable downstream accuracy.</p></li>
+<li><p><strong>Video.</strong> V-JEPA learns from raw video without action labels and produces representations that transfer to action-recognition benchmarks (Kinetics-400, Something-Something-v2) and to motion-understanding tasks where pixel-prediction baselines underperform [3]. The masking is 3D multi-block: instead of masking individual frames, contiguous spatio-temporal regions are hidden from the encoder and the predictor is asked to fill them in latent space.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-what-is-jepa/figure-vjepa-masking.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 3 from the paper [3].</figcaption>
+</figure>
+</div></li>
+<li><p><strong>Action-conditioned planning.</strong> V-JEPA 2 extends the predictor with an additional input: the action taken at each step. The trained model is then a <em>forward dynamics model</em> in latent space, where, given the current embedding and a candidate action, it predicts the embedding at the next time step. Its V-JEPA 2-AC variant is post-trained on under 62 hours of <a href="https://droid-dataset.github.io/">Droid</a> robot videos and deployed zero-shot on Franka arms for pick-and-place [4]. This is the first JEPA-family deployment on a physical robot.</p></li>
+</ul>
+</section>
+<section id="potential-impact" class="level2">
+<h2 class="anchored" data-anchor-id="potential-impact">Potential impact</h2>
+<p>The application areas AMI Labs and the broader JEPA program are pointed at are visible from the V-JEPA 2 paper and from LeCun’s public statements.</p>
+<section id="robotics" class="level3">
+<h3 class="anchored" data-anchor-id="robotics">Robotics</h3>
+<p>The current dominant approach to training general-purpose robot policies collects large quantities of <em>teleoperation data</em> (humans manually steering the robot through each task) and trains a policy to mimic those demonstrations. Each new task usually means a new round of data collection. V-JEPA 2 demonstrates an alternative end-to-end pipeline: pretrain on internet video, post-train with a much smaller corpus that includes robot actions, then use the learned forward model to <em>plan</em>. Planning here means searching through candidate action sequences, picking the one that the model predicts will reach the goal, and executing it under a model-predictive-control loop that re-plans at each step. The post-training corpus was under 62 hours, which is small by current foundation-model standards. Whether this data efficiency holds up at the diversity of tasks a useful general-purpose robot would need to handle is an open empirical question.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-what-is-jepa/figure-vjepa2-robot.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the paper [4].</figcaption>
+</figure>
+</div>
+</section>
+<section id="industrial-process-control" class="level3">
+<h3 class="anchored" data-anchor-id="industrial-process-control">Industrial process control</h3>
+<p><a href="../../posts/20260523-yann-lecun-after-llms/#where-ami-is-pointed-domestic-robots-industry-healthcare">LeCun has described applications</a> to systems whose dynamics are too complex to model with closed-form equations but for which large amounts of operational data exist: chemical plants, jet engines, manufacturing lines. An action-conditioned JEPA trained on such data would function as a data-driven model of the process, usable for optimization and planning the same way the robot model is.</p>
+</section>
+<section id="video-understanding" class="level3">
+<h3 class="anchored" data-anchor-id="video-understanding">Video understanding</h3>
+<p>Self-supervised video pretraining already produces strong clip classifiers and text-to-video generators. A latent forward model adds a capability current generative video models do not have: planning over the model’s own predictions, by querying it about the consequences of candidate actions rather than only generating plausible-looking continuations.</p>
+</section>
+</section>
+<section id="related-research-lines" class="level2">
+<h2 class="anchored" data-anchor-id="related-research-lines">Related research lines</h2>
+<p>Several active research lines work on overlapping problems with different objectives. The relationships are easier to see when each is described on its own terms.</p>
+<ul>
+<li><strong>Generative video and pixel-space world models.</strong> <a href="https://openai.com/index/video-generation-models-as-world-simulators/">Sora</a> and the large-scale latent-diffusion video lineages that followed are trained to generate plausible video continuations. Some of this work is also described as world modeling: a model that can produce realistic next frames is implicitly predicting how the depicted scene will evolve. The training objective is reconstruction quality in pixel space, and downstream use for planning depends on whether the generated continuations can be conditioned on actions and queried for outcomes.</li>
+<li><strong>Autoregressive LLMs and multimodal LLMs.</strong> The frontier-lab path scales a large language model (LLM), often with multimodal inputs and tool use, to internalize world knowledge through next-token prediction. The model operates in token space, so physical predictions arrive only to the extent that a tokenized representation of physical state can capture them. Whether next-token prediction is sufficient for the model to acquire a genuine world model is itself a <a href="../../posts/20241108-transformers-world-models/">contested empirical question</a>. This line and JEPA are aimed at different deployment targets: LLMs at language- and code-mediated tasks, JEPA at embodied prediction.</li>
+<li><strong>Latent-space world models in reinforcement learning.</strong> <a href="https://arxiv.org/abs/2301.04104">DreamerV3</a> [14] and the broader model-based RL line train latent forward models for planning. The architectures share structural elements with JEPA (encoder, latent predictor, planning in latent space), but training takes place inside a reinforcement-learning loop with a reward signal, so the representation is shaped by the specific task being trained on. The JEPA program emphasizes self-supervised, observation-only pretraining of the representation before any task is specified.</li>
+<li><strong>Other non-contrastive self-supervised learning.</strong> <a href="https://arxiv.org/abs/2304.07193">DINOv2</a> [15] produces strong visual representations from large image corpora and is JEPA’s nearest relative for static images. DINO-style methods predict embeddings, use slow target encoders, and regularize against collapse, sharing much of the same design vocabulary as I-JEPA. The JEPA framing emphasizes the explicit predictor module and the extension from images to video to action-conditioned models.</li>
+</ul>
+</section>
+<section id="whats-next" class="level2">
+<h2 class="anchored" data-anchor-id="whats-next">What’s next</h2>
+<p>The open questions are concrete and the field will answer them within a year or two.</p>
+<ul>
+<li><strong>Scaling.</strong> I-JEPA and V-JEPA have published results at ViT-H/L scale. Whether the architecture continues to improve at frontier scale (billions of parameters, internet-scale video) is the question the AMI Labs program rests on.</li>
+<li><strong>Long-horizon action-conditioned planning.</strong> V-JEPA 2-AC demonstrates short-horizon consistency on real robots. Planning over many steps requires the latent forward model to roll out far into the future without errors compounding, which is harder than single-step prediction, and the published horizons remain short.</li>
+<li><strong>Cross-modal JEPA.</strong> Most JEPA work to date is single-modality. A unified vision-language-action JEPA is an obvious next target.</li>
+<li><strong>Theoretical foundations for collapse prevention.</strong> LeJEPA provides a theoretical characterization of one regularizer. Whether the rest of the family (distillation methods in particular) admits comparable analysis is an open problem.</li>
+</ul>
+<p>JEPA is an active self-supervised representation-learning program with published results in images, video, and action-conditioned planning. The empirical headline numbers and the next-generation regularization theory continue to evolve, and the next few years of papers will determine how far the program scales.</p>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>LeCun, Yann. “A Path Towards Autonomous Machine Intelligence (Version 0.9.2).” OpenReview, June 27, 2022. <a href="https://openreview.net/forum?id=BZ5a1r-kVsf" class="uri">https://openreview.net/forum?id=BZ5a1r-kVsf</a></li>
+<li><a id="ref-2"></a>Assran, Mahmoud, Quentin Duval, Ishan Misra, Piotr Bojanowski, Pascal Vincent, Michael Rabbat, Yann LeCun, and Nicolas Ballas. “Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture.” <em>IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</em>, 2023. arXiv:2301.08243, January 19, 2023. <a href="https://arxiv.org/abs/2301.08243" class="uri">https://arxiv.org/abs/2301.08243</a></li>
+<li><a id="ref-3"></a>Bardes, Adrien, Quentin Garrido, Jean Ponce, Xinlei Chen, Michael Rabbat, Yann LeCun, Mahmoud Assran, and Nicolas Ballas. “Revisiting Feature Prediction for Learning Visual Representations from Video.” <em>arXiv preprint</em> (arXiv:2404.08471), April 15, 2024. <a href="https://arxiv.org/abs/2404.08471" class="uri">https://arxiv.org/abs/2404.08471</a></li>
+<li><a id="ref-4"></a>Assran, Mahmoud, Adrien Bardes, et al.&nbsp;“V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning.” <em>arXiv preprint</em> (arXiv:2506.09985), June 11, 2025. <a href="https://arxiv.org/abs/2506.09985" class="uri">https://arxiv.org/abs/2506.09985</a></li>
+<li><a id="ref-5"></a>Chen, Ting, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. “A Simple Framework for Contrastive Learning of Visual Representations.” <em>International Conference on Machine Learning (ICML)</em>, 2020. arXiv:2002.05709. <a href="https://arxiv.org/abs/2002.05709" class="uri">https://arxiv.org/abs/2002.05709</a></li>
+<li><a id="ref-6"></a>He, Kaiming, Haoqi Fan, Yuxin Wu, Saining Xie, and Ross Girshick. “Momentum Contrast for Unsupervised Visual Representation Learning.” <em>IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</em>, 2020. arXiv:1911.05722. <a href="https://arxiv.org/abs/1911.05722" class="uri">https://arxiv.org/abs/1911.05722</a></li>
+<li><a id="ref-7"></a>Grill, Jean-Bastien, Florian Strub, Florent Altché, Corentin Tallec, Pierre H. Richemond, Elena Buchatskaya, Carl Doersch, Bernardo Avila Pires, Zhaohan Daniel Guo, Mohammad Gheshlaghi Azar, Bilal Piot, Koray Kavukcuoglu, Rémi Munos, and Michal Valko. “Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning.” <em>Neural Information Processing Systems (NeurIPS)</em>, 2020. arXiv:2006.07733. <a href="https://arxiv.org/abs/2006.07733" class="uri">https://arxiv.org/abs/2006.07733</a></li>
+<li><a id="ref-8"></a>Caron, Mathilde, Hugo Touvron, Ishan Misra, Hervé Jégou, Julien Mairal, Piotr Bojanowski, and Armand Joulin. “Emerging Properties in Self-Supervised Vision Transformers.” <em>IEEE/CVF International Conference on Computer Vision (ICCV)</em>, 2021. arXiv:2104.14294. <a href="https://arxiv.org/abs/2104.14294" class="uri">https://arxiv.org/abs/2104.14294</a></li>
+<li><a id="ref-9"></a>Bardes, Adrien, Jean Ponce, and Yann LeCun. “VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning.” <em>International Conference on Learning Representations (ICLR)</em>, 2022. arXiv:2105.04906. <a href="https://arxiv.org/abs/2105.04906" class="uri">https://arxiv.org/abs/2105.04906</a></li>
+<li><a id="ref-10"></a>He, Kaiming, Xinlei Chen, Saining Xie, Yanghao Li, Piotr Dollár, and Ross Girshick. “Masked Autoencoders Are Scalable Vision Learners.” <em>IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</em>, 2022. arXiv:2111.06377. <a href="https://arxiv.org/abs/2111.06377" class="uri">https://arxiv.org/abs/2111.06377</a></li>
+<li><a id="ref-11"></a>Becker, Suzanna, and Geoffrey E. Hinton. “Self-Organizing Neural Network That Discovers Surfaces in Random-Dot Stereograms.” <em>Nature</em> 355, no. 6356 (January 9, 1992): 161–163. <a href="https://www.nature.com/articles/355161a0" class="uri">https://www.nature.com/articles/355161a0</a></li>
+<li><a id="ref-12"></a>Balestriero, Randall, and Yann LeCun. “LeJEPA: Provable and Scalable Self-Supervised Learning Without the Heuristics.” <em>arXiv preprint</em> (arXiv:2511.08544), November 11, 2025. <a href="https://arxiv.org/abs/2511.08544" class="uri">https://arxiv.org/abs/2511.08544</a></li>
+<li><a id="ref-13"></a>Dosovitskiy, Alexey, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby. “An Image Is Worth 16x16 Words: Transformers for Image Recognition at Scale.” <em>International Conference on Learning Representations (ICLR)</em>, 2021. arXiv:2010.11929. <a href="https://arxiv.org/abs/2010.11929" class="uri">https://arxiv.org/abs/2010.11929</a></li>
+<li><a id="ref-14"></a>Hafner, Danijar, Jurgis Pasukonis, Jimmy Ba, and Timothy Lillicrap. “Mastering Diverse Domains through World Models.” <em>arXiv preprint</em> (arXiv:2301.04104), January 10, 2023. <a href="https://arxiv.org/abs/2301.04104" class="uri">https://arxiv.org/abs/2301.04104</a></li>
+<li><a id="ref-15"></a>Oquab, Maxime, Timothée Darcet, Théo Moutakanni, Huy Vo, Marc Szafraniec, Vasil Khalidov, Pierre Fernandez, Daniel Haziza, Francisco Massa, Alaaeldin El-Nouby, Mahmoud Assran, Nicolas Ballas, Wojciech Galuba, Russell Howes, Po-Yao Huang, Shang-Wen Li, Ishan Misra, Michael Rabbat, Vasu Sharma, Gabriel Synnaeve, Hu Xu, Hervé Jégou, Julien Mairal, Patrick Labatut, Armand Joulin, and Piotr Bojanowski. “DINOv2: Learning Robust Visual Features without Supervision.” <em>Transactions on Machine Learning Research (TMLR)</em>, 2024. arXiv:2304.07193. <a href="https://arxiv.org/abs/2304.07193" class="uri">https://arxiv.org/abs/2304.07193</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260523-what-is-jepa/</guid>
+  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260523-what-is-jepa/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>TRIAGE: Evaluating Prospective Metacognitive Control in LLMs Under Resource Constraints</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260523-triage-metacognitive-control/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Triage efficiency across models and benchmarks at moderate budget (<img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>). Figure 1 from the paper [1]. Image from <a href="https://arxiv.org/abs/2605.13414">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>In <em>TRIAGE: Evaluating Prospective Metacognitive Control in LLMs under Resource Constraints</em> [1], <a href="https://scholar.google.com/citations?user=Fd1-G4YAAAAJ">Zabir Al Nazi</a> (UC Riverside) and <a href="https://scholar.google.com/citations?user=j2ElsNIAAAAJ">Shubhashis Roy Dipta</a> (UMBC) introduce a benchmark that scores 20 frontier and open-source models on whether they can plan <em>token-budget allocation</em> across a queue of problems before any of them is attempted, and find that most cannot.</p>
+<blockquote class="blockquote">
+<p>Deploying language models as autonomous agents requires more than per-task accuracy: when an agent faces a queue of problems under a finite token budget, it must decide which to attempt, in what order, and how much compute to commit to each, all before any execution feedback is available. This is the prospective form of metacognitive control studied for decades in human cognition, yet whether language models possess it remains untested. We introduce <em>TRIAGE</em>, an evaluation framework in which a model receives a task pool and a token budget calibrated to its own baseline cost, and <em>commits to a single ordered plan that jointly encodes selection, sequencing, and per-problem allocation</em>. Plans are scored against an oracle with full knowledge of the model’s solvability and cost on each problem, yielding a triage efficiency ratio on a common scale. We evaluate frontier and open-source models, with and without reasoning enabled, across competition mathematics, graduate-level science, code generation, and expert multidisciplinary knowledge, and find that <em>current language models exhibit substantial gaps in prospective metacognitive control</em>, revealing a previously unmeasured capability dimension with direct implications for resource-efficient agent deployment.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>TRIAGE operationalizes the <a href="https://en.wikipedia.org/wiki/Metamemory#Nelson_and_Narens'_metamemory_framework">Nelson &amp; Narens (1990)</a> distinction between metacognitive monitoring (judging whether a problem is solvable) and metacognitive control (acting on those judgments to allocate effort), focusing on the prospective form: every decision is committed before any task is attempted. The harness has two stages.</p>
+<p>Intuitively, the setup is a competition-style budget allocation. The model sees a list of problems with point values and a shared token budget; without trying any of them, it must choose which to attempt, in what order, and how many tokens to spend on each. The plan is then executed and scored against an oracle that knew in advance which problems were solvable for <em>this</em> model and how expensive each would be. A model that’s good at planning skips the items it can’t solve and pours its budget into the ones it can; a model that’s bad at planning chases unsolvable problems and runs out of tokens.</p>
+<p>Scoring uses a triage efficiency ratio. Let <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> be the model’s plan and <img src="https://benjaminhan.net/feed-assets/7365b8651c9bc387.svg" alt="V(\pi)" class="feed-math-inline"/> the achieved value — the sum of point values <img src="https://benjaminhan.net/feed-assets/20ab901f1c796c36.svg" alt="v_i" class="feed-math-inline"/> over problems <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> actually solved within budget. The main protocol fixes <img src="https://benjaminhan.net/feed-assets/0118800d2c7d0f60.svg" alt="v_i = 1" class="feed-math-inline"/> for every problem — uniform by design, so the planner cannot read difficulty off the point values and must infer it from problem text alone. The ratio normalizes <img src="https://benjaminhan.net/feed-assets/7365b8651c9bc387.svg" alt="V(\pi)" class="feed-math-inline"/> against two references:</p>
+<p><img src="https://benjaminhan.net/feed-assets/ff9313cc24a25835.svg" alt="\eta = \frac{V(\pi) - V_{\text{random}}}{V_{\text{oracle}} - V_{\text{random}}}" class="feed-math-inline"/></p>
+<p>where <img src="https://benjaminhan.net/feed-assets/af31c6e476458381.svg" alt="V_{\text{oracle}}" class="feed-math-inline"/> is the best feasible plan with full knowledge of each problem’s solvability and cost, and <img src="https://benjaminhan.net/feed-assets/e089d81557e05599.svg" alt="V_{\text{random}}" class="feed-math-inline"/> is the expected value of a budget-feasible plan drawn uniformly. So <img src="https://benjaminhan.net/feed-assets/1be1120c657e14f0.svg" alt="\eta = 1" class="feed-math-inline"/> matches the oracle, <img src="https://benjaminhan.net/feed-assets/dd34cc072e8a22b9.svg" alt="\eta = 0" class="feed-math-inline"/> matches uninformed random selection, and <img src="https://benjaminhan.net/feed-assets/739fda5c1ba1295c.svg" alt="\eta &lt; 0" class="feed-math-inline"/> is worse than random.</p>
+<ul>
+<li><strong>Plan.</strong> The shared budget is <img src="https://benjaminhan.net/feed-assets/fc8b8c77176cc923.svg" alt="B = \alpha \cdot B_{\text{baseline}}" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/4317422e65c3c884.svg" alt="B_{\text{baseline}}" class="feed-math-inline"/> is the model’s own measured cost on a prior baseline run and <img src="https://benjaminhan.net/feed-assets/6393857280e718e9.svg" alt="\alpha \in \{0.25, 0.5, 0.75, 1.0\}" class="feed-math-inline"/> is the budget pressure — <img src="https://benjaminhan.net/feed-assets/dc7b57c17ce0e9b7.svg" alt="\alpha = 1.0" class="feed-math-inline"/> supplies the full baseline budget (every item fits, in principle); <img src="https://benjaminhan.net/feed-assets/562919ffe9ec1521.svg" alt="\alpha = 0.25" class="feed-math-inline"/> supplies a quarter of it, forcing the planner to skip most items.</li>
+<li><strong>Execute.</strong> The plan <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> is run in plan order under one of two regimes, yielding two scores:
+<ul>
+<li><em>Advisory</em> — each problem runs to its natural completion; the queue stops once the next item’s true cost would exceed the remaining <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>. Yields <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>.</li>
+<li><em>Enforced</em> — each problem is hard-capped at its declared <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> (over-budget attempts score zero, and <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> is still spent from <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>); the queue stops once the next item’s <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> would exceed the remaining <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>. Yields <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>.</li>
+</ul></li>
+</ul>
+<p>To diagnose the source of bad plans, the framework decomposes them along two axes:</p>
+<ul>
+<li><strong>Detection</strong> asks: did the planner correctly skip the unsolvables? <em>Higher is better.</em> Formally: <img src="https://benjaminhan.net/feed-assets/414a1282c07a05ce.svg" alt="D = |U \setminus S| / |U|" class="feed-math-inline"/>, the fraction of unsolvable problems correctly excluded from the plan, where <img src="https://benjaminhan.net/feed-assets/2f90ffabbf86aaab.svg" alt="S = \{i : a_i &gt; 0\}" class="feed-math-inline"/> is the planned set and <img src="https://benjaminhan.net/feed-assets/3676ddf98403b5ad.svg" alt="U" class="feed-math-inline"/> is the set of unsolvable items.</li>
+<li><strong>Waste</strong> asks: of the tokens it did spend, how many went to lost causes? <em>Lower is better.</em> Formally: <img src="https://benjaminhan.net/feed-assets/63424a6e033ef9f7.svg" alt="W = \sum_{i \in S \cap U} a_i / \sum_{i \in S} a_i" class="feed-math-inline"/>, the fraction of allocated tokens spent on unsolvable items.</li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The evaluation covers 20 model architectures: 4 standard LLMs and 16 reasoning-augmented LLMs, with each reasoning-augmented model run twice — once with extended reasoning enabled (marked <code>[ext]</code> in the heatmaps) and once without (<code>[std]</code>). Benchmarks: <a href="https://artofproblemsolving.com/wiki/index.php/AIME">AIME</a> 2024–2025, <a href="https://arxiv.org/abs/2311.12022">GPQA Diamond</a> [2], <a href="https://livecodebench.github.io/">LiveCodeBench</a> [3], and <a href="https://lastexam.ai/">Humanity’s Last Exam</a> (HLE) [4]. The cover figure at the top of the post (Figure 1 in the paper) summarizes the headline finding at <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>: solid bars are advisory <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>, hatched bars are enforced <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, and red dashed lines mark baseline accuracy. Three findings across budgets and benchmarks:</p>
+<ul>
+<li><strong>Most models plan worse than random.</strong> Both <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> are widely negative; only a handful of (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset) combinations reach positive <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> at all.</li>
+<li><strong>The advisory-vs-enforced gap is large.</strong> Models routinely declare per-problem budgets they then ignore — when allocations are merely advisory, planning skill (<img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>) is meaningfully higher than under enforcement (<img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>).</li>
+<li><strong>Reasoning-augmented modes often plan worse than standard.</strong> The <code>[ext]</code> rows in the heatmap below are systematically below the matching <code>[std]</code> rows, consistent with prior findings that reasoning training does not improve abstention behavior.</li>
+</ul>
+<p>The two heatmaps below show <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> across the full (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset) grid. The <img src="https://benjaminhan.net/feed-assets/dc7b57c17ce0e9b7.svg" alt="\alpha = 1.0" class="feed-math-inline"/> column should be read with caution: η loses resolution there because the oracle-random gap collapses (every item fits, so both oracle and random plans attempt nearly everything). The paper recommends its alternative <em>normalized regret</em> <img src="https://benjaminhan.net/feed-assets/4e7892edc9b101af.svg" alt="\tilde{R} = (V_{\text{oracle}} - V) / V_{\text{oracle}}" class="feed-math-inline"/> for that regime — bounded in <img src="https://benjaminhan.net/feed-assets/96fc4f656a64e575.svg" alt="[0, 1]" class="feed-math-inline"/> (<img src="https://benjaminhan.net/feed-assets/e404e936a6872228.svg" alt="\tilde{R} = 0" class="feed-math-inline"/> matches the oracle, <img src="https://benjaminhan.net/feed-assets/2060a3361b13d16f.svg" alt="\tilde{R} = 1" class="feed-math-inline"/> captures no value), so it stays stable when η doesn’t. Treat α=1.0 cells in the heatmaps as “metric saturated,” not “model planned well.”</p>
+<p>Figure 2 below is the <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> companion to the cover Figure 1 at the same <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/> anchor — solid bars are <img src="https://benjaminhan.net/feed-assets/6aed2e04a7e4b9f5.svg" alt="\tilde{R}_U" class="feed-math-inline"/> (advisory), hatched are <img src="https://benjaminhan.net/feed-assets/fb57592a36a60062.svg" alt="\tilde{R}_E" class="feed-math-inline"/> (enforced), red dashed lines mark baseline accuracy. The same configurations that lead in η lead in <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> (lower is better here); the bounded scale also lets you see how close models come to capturing zero value in the enforced regime, where many <img src="https://benjaminhan.net/feed-assets/fb57592a36a60062.svg" alt="\tilde{R}_E" class="feed-math-inline"/> values land near 1.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Normalized triage regret <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> across models and benchmarks at moderate budget (<img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Returning to η in heatmap form, Figure 5 shows the advisory regime (<img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>) across all four α values:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure5.webp" class="img-fluid figure-img" data-lightbox-src="figure5-full.png"></p>
+<figcaption>Triage skill in the advisory-budget regime, <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>, per (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset). Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 6 shows the same grid for the enforced regime, <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, where per-problem allocations are binding. The pattern is markedly worse: <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> is negative for the large majority of configurations at <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>, with most cells deep into anti-skill territory. Across all 30 configurations tested, only Gemini 2.5 Flash (standard) achieves positive <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> on every benchmark, and only it and Qwen 3.5 27B (standard) achieve usable enforced-regime performance on more than one.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure6.webp" class="img-fluid figure-img" data-lightbox-src="figure6-full.png"></p>
+<figcaption>Triage skill in the enforced-budget regime, <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, per (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset); color encoding identical to Figure 5. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>A focused detection experiment traces four models — Gemini 2.5 Flash (think), Qwen 2.5 32B, Qwen 3 32B (think), and GPT-OSS 20B (think) — through <img src="https://benjaminhan.net/feed-assets/09a33a403e620604.svg" alt="(D, W)" class="feed-math-inline"/> space on two benchmarks (GPQA-Abstain, MMLU-Math-Abstain) as the injection ratio <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/> — the fraction of the pool replaced by guaranteed-unsolvable problems drawn from <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> [7], with pool size held constant — varies from 0.25 to 1.0 (marker size grows with <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/>). Three findings:</p>
+<ul>
+<li><strong>Cluster split.</strong> Gemini 2.5 Flash and standard Qwen 2.5 32B stay near the high-<img src="https://benjaminhan.net/feed-assets/a247d4edb2cf86f8.svg" alt="D" class="feed-math-inline"/>, low-<img src="https://benjaminhan.net/feed-assets/25ad314822ebb606.svg" alt="W" class="feed-math-inline"/> corner; the two reasoning-trained models drift away from it.</li>
+<li><strong>Within-family probe.</strong> The Qwen pair is the cleanest test: at <img src="https://benjaminhan.net/feed-assets/5acec64972bb35ba.svg" alt="r = 0.25" class="feed-math-inline"/> the standard 32B detects most unsolvables (<img src="https://benjaminhan.net/feed-assets/5235c6118e6d5dd5.svg" alt="D = 0.67" class="feed-math-inline"/> on GPQA, <img src="https://benjaminhan.net/feed-assets/3f5f6965784330e3.svg" alt="D = 0.88" class="feed-math-inline"/> on MMLU-Math), while the reasoning-trained 32B at the same ratio detects far fewer (<img src="https://benjaminhan.net/feed-assets/b23f7376b819cd80.svg" alt="D = 0.08" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/5030049e6958eff9.svg" alt="D = 0.54" class="feed-math-inline"/>) — reproducing the AbstentionBench finding inside a single architecture family.</li>
+<li><strong>Mechanism gap.</strong> The paper documents the pattern but does not propose a mechanism, and explicitly hedges that the effect isn’t uniform across families (Gemini 2.5 Flash is also reasoning-augmented and retains detection across the range). The same shape — reasoning-trained models doing worse on a metacognitive task than non-reasoning siblings — also surfaces in the <a href="../../posts/20260522-compliance-trap/">Compliance Trap</a>’s “capability inversion” result (more-capable reasoning models suffer the worst degradation under compliance-forcing prompts), suggesting it isn’t an artifact of one benchmark family. A plausible mechanism appears in My Notes below.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Trajectories through <img src="https://benjaminhan.net/feed-assets/09a33a403e620604.svg" alt="(D, W)" class="feed-math-inline"/> space across four models and two benchmarks; marker size grows with <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/>, and the star marks the ideal corner. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>A separate budget-aware re-solve experiment probes the planning failure’s deeper layer: when the model is shown its own per-problem budget in the prompt and re-attempts the problem, accuracy lifts modestly across three tested models (Gemini 2.5 Flash +1.9pp, Kimi K2.5 +4.9pp, GLM 5.1 +8.3pp) — but compliance is poor (37%, 6%, 16% respectively). The paper’s interpretation: stating the budget in the prompt functions not as a respected constraint but as length pressure that prompts earlier commitment.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Measures the control axis, not just monitoring.</strong> <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar’s position paper</a> [5] named three components of metacognitive learning (knowledge, planning, evaluation) and argued that today’s self-improving agents lean on hand-designed extrinsic loops rather than intrinsic ones. TRIAGE doesn’t directly fill that gap (it uses the Nelson-Narens <em>monitoring vs.&nbsp;control</em> split rather than the Liu/vdSchaar terminology), but the design is in the same spirit: scoring what the model <em>does</em> under resource constraints, not what it verbally claims to know. Within that split, <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.’s “Mostly Know”</a> [6] sits on the monitoring side (predicting per-question correctness) and <a href="../../posts/20260522-metacognitive-harness/">Cao et al.’s metacognitive harness</a> [8] sits on the test-time control side (gating retry, stop, and aggregate decisions during inference); TRIAGE adds the prospective-control corner that neither covers.</li>
+<li><strong>Pre-commitment is what makes control measurable.</strong> Retrospective measures (post-hoc confidence, abstention after a partial attempt) collapse monitoring and control because the model can adjust mid-stream. By committing the plan ex ante — before any execution feedback — TRIAGE removes that mid-stream channel and forces the model to act on its prior estimate of its own cost and solvability. The same logic generalizes: only when self-assessment is locked in <em>before</em> observing partial output can it be cleanly separated from in-stream adjustment.</li>
+<li><strong>Why do reasoning models fare worse?</strong> <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">Kirichenko et al.’s AbstentionBench</a> [7] reports the upstream finding: reasoning fine-tuning degrades abstention by roughly 24% across 20 unanswerable-question datasets. The mechanism is plausible: RLHF/RLVR rewards arriving at <em>some</em> answer, so the trained policy learns to spend tokens rather than skip. A useful follow-up would isolate whether the gap closes when the reward function explicitly prices abstention, e.g.&nbsp;by training on the TRIAGE objective itself rather than per-problem accuracy.</li>
+<li><strong>Models lack a reliable internal token-counter.</strong> Length-controlled generation has been studied for instruction-following, but those benchmarks measure verbalized length compliance for human-readable outputs, not self-imposed compute budgets. The compliance numbers above suggest the gap runs deeper: no plan can survive an executor that ignores its own allocations, and the compliance failure deepens the planning failure rather than replacing it.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=Fd1-G4YAAAAJ">Nazi, Z. A.</a>, &amp; <a href="https://scholar.google.com/citations?user=j2ElsNIAAAAJ">Roy Dipta, S.</a> “TRIAGE: Evaluating Prospective Metacognitive Control in LLMs under Resource Constraints.” <em>arXiv preprint</em> (arXiv:2605.13414), May 13, 2026. <a href="https://arxiv.org/abs/2605.13414" class="uri">https://arxiv.org/abs/2605.13414</a></p></li>
+<li><p><a id="ref-2"></a>Rein, D., Hou, B. L., Stickland, A. C., Petty, J., Pang, R. Y., Dirani, J., Michael, J., &amp; Bowman, S. R. “GPQA: A Graduate-Level Google-Proof Q&amp;A Benchmark.” <em>arXiv preprint</em> (arXiv:2311.12022), November 20, 2023. <a href="https://arxiv.org/abs/2311.12022" class="uri">https://arxiv.org/abs/2311.12022</a></p></li>
+<li><p><a id="ref-3"></a>Jain, N., Han, K., Gu, A., Li, W.-D., Yan, F., Zhang, T., Wang, S., Solar-Lezama, A., Sen, K., &amp; Stoica, I. “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>arXiv preprint</em> (arXiv:2403.07974), March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></p></li>
+<li><p><a id="ref-4"></a>Phan, L., Gatti, A., Han, Z., Li, N., et al.&nbsp;“Humanity’s Last Exam.” <em>arXiv preprint</em> (arXiv:2501.14249), January 24, 2025. <a href="https://arxiv.org/abs/2501.14249" class="uri">https://arxiv.org/abs/2501.14249</a></p></li>
+<li><p><a id="ref-5"></a>Liu, T., &amp; van der Schaar, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>ICML 2025</em> (arXiv:2506.05109). <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></p></li>
+<li><p><a id="ref-6"></a>Kadavath, S., Conerly, T., Askell, A., Henighan, T., Drain, D., Perez, E., Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></p></li>
+<li><p><a id="ref-7"></a>Kirichenko, P., Ibrahim, M., Chaudhuri, K., &amp; Bell, S. J. “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038), June 10, 2025. <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></p></li>
+<li><p><a id="ref-8"></a><a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Cao, Q.</a>, <a href="https://www.semanticscholar.org/author/2108111686">Wang, Y.</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Qin, P.</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Zhang, S.</a>, and <a href="https://pengtaoxie.github.io/">Xie, P.</a> “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></p></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260523-triage-metacognitive-control/</guid>
+  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 6(a) from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</em> (NeurIPS 2025 Datasets and Benchmarks Track) [1], <a href="https://polkirichenko.github.io/">Polina Kirichenko</a>, <a href="https://www.semanticscholar.org/author/2297128866">Mark Ibrahim</a>, <a href="https://www.semanticscholar.org/author/2256991985">Kamalika Chaudhuri</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Samuel J. Bell</a> (<a href="https://ai.meta.com/research/">FAIR</a> at Meta) introduce a 20-dataset benchmark for abstention and report that scaling doesn’t help, reasoning fine-tuning makes it worse, and a generous system prompt only partly closes the gap.</p>
+<blockquote class="blockquote">
+<p>For Large Language Models (LLMs) to be reliably deployed in both everyday and high-stakes domains, knowing when not to answer is equally critical as answering correctly. Real-world user queries, which can be underspecified, ill-posed, or fundamentally unanswerable, require LLMs to reason about uncertainty and selectively abstain — i.e., refuse to answer definitively. However, abstention remains understudied, without a systematic evaluation framework for modern LLMs. In this work, we introduce <em>AbstentionBench</em>, a large-scale benchmark for holistically evaluating abstention across 20 diverse datasets, including questions with unknown answers, underspecification, false premises, subjective interpretations, and outdated information. <em>Evaluating 20 frontier LLMs reveals abstention is an unsolved problem, and one where scaling models is of little use.</em> While recent reasoning LLMs have shown impressive results in complex problem solving, surprisingly, we find that <em>reasoning fine-tuning degrades abstention (by 24% on average)</em>, even for math and science domains on which reasoning models are explicitly trained. We find that while a carefully crafted system prompt can boost abstention in practice, it does not resolve models’ fundamental inability to reason about uncertainty. We release AbstentionBench to foster research into advancing LLM reliability.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>AbstentionBench curates 17 existing abstention-relevant datasets plus 3 new reasoning-specific ones (<a href="https://arxiv.org/abs/2110.14168">GSM8K</a>-Abstain, <a href="https://arxiv.org/abs/2311.12022">GPQA</a>-Diamond-Abstain, <a href="https://arxiv.org/abs/2009.03300">MMLU</a>-Math-Abstain — versions with the answer redacted or the question made underspecified), grouped into six scenarios in which abstaining is the correct response:</p>
+<ul>
+<li><strong>Answer Unknown</strong>: questions with no knowable answer (e.g.&nbsp;<a href="https://arxiv.org/abs/2206.04615">BIG-Bench</a> Known Unknowns, KUQ Future, KUQ Unsolved).</li>
+<li><strong>Underspecified Intent</strong>: ambiguous user goals (<a href="https://arxiv.org/abs/2109.06157">SituatedQA</a>/Geo, KUQ Ambiguous, <a href="https://arxiv.org/abs/2407.12043">CoCoNot</a> Incomprehensible).</li>
+<li><strong>Stale</strong>: questions whose answer has changed since training cutoff (<a href="https://arxiv.org/abs/2310.03214">FreshQA</a>, CoCoNot Temporal).</li>
+<li><strong>Underspecified Context</strong>: missing premises needed to answer (<a href="https://arxiv.org/abs/1806.03822">SQuAD 2.0</a>, <a href="https://arxiv.org/abs/2105.03011">QASPER</a>, ALCUNA, WorldSense, MediQ, GPQA-Diamond-Abstain, MMLU-Math-Abstain, etc.).</li>
+<li><strong>False Premise</strong>: questions that embed a falsehood (QAQA, FalseQA, CoCoNot False Premise, KUQ False Premise).</li>
+<li><strong>Subjective</strong>: items with no factually correct answer (<a href="https://arxiv.org/abs/2307.14324">MoralChoice</a>, CoCoNot Humanizing, CoCoNot Subjective, KUQ Controversial).</li>
+</ul>
+<p>Whether a response counts as an abstention is decided by an LLM-as-judge — Llama 3.1 8B Instruct with a custom prompt adapted from <a href="https://arxiv.org/abs/2407.12043">Brahman et al.</a> Validated against human labels on a sample of responses from GPT-4o and Llama 3.1 70B, the judge agreed with the human label 88% of the time. Recall (the fraction of unanswerable items the model actually abstained on) is the headline metric, with precision and F1 reported alongside.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The headline evaluation covers ten base models — GPT-4o, o1, Gemini 1.5 Pro, Llama 3.1 {8B, 70B, 405B} Instruct, Llama 3.3 70B Instruct, Qwen 2.5 32B Instruct, Mistral 7B Instruct (v0.3), and OLMo 7B Instruct — plus two reasoning-tuned variants (s1.1 32B fine-tuned from Qwen 2.5 32B, and DeepSeek R1 Distill Llama 70B fine-tuned from Llama 3.3 70B Instruct) that allow isolating the effect of reasoning fine-tuning by holding the base architecture fixed. Three sweeps follow: model-scale (Llama 3.1 8B → 405B), post-training stage (the <a href="https://arxiv.org/abs/2411.15124">Tülu 3</a> [8] supervised fine-tuning (SFT) → direct preference optimization (<a href="https://arxiv.org/abs/2305.18290">DPO</a>) [9] → proximal policy optimization with verifiable rewards (<a href="https://arxiv.org/abs/1707.06347">PPO</a> RLVR) [10] checkpoints), and test-time reasoning budget (s1.1 token budgets of 512 → 4096).</p>
+<p>Figure 2 lays out per-model abstention recall across all 20 datasets, grouped into the six scenarios. Recall is weakest on Underspecified Context (especially MediQ, a medical-questioning benchmark) and False Premise; Subjective splits between near-zero (MoralChoice) and well above 0.5 (CoCoNot).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Across the headline runs:</p>
+<ul>
+<li><strong>No model solves abstention</strong>: the best overall model — Qwen 2.5 32B — sits around mid-recall; closed frontier models (GPT-4o, o1, Gemini 1.5 Pro) cluster near the open-weight Qwen, not above it.</li>
+<li><strong>Underspecified context and false premise are the hardest scenarios</strong>: on MediQ, recall drops near zero for every model.</li>
+<li><strong>Scaling Llama 3.1 from 8B to 405B does not improve abstention</strong>: the curve is essentially flat.</li>
+<li><strong>Post-training is mixed</strong>: SFT and DPO lift abstention recall on five of six scenarios but worsen it on underspecified context; the PPO RLVR stage is the only stage that degrades recall further.</li>
+<li><strong>Reasoning fine-tuning costs ~24% recall on average</strong>: s1.1 and DeepSeek R1 Distill both abstain less than their instruct bases, including on the reasoning-specific Abstain datasets the reasoning models were explicitly trained for.</li>
+<li><strong>Test-time scaling makes the tradeoff worse</strong>: pushing s1.1’s reasoning budget from 512 to 4096 tokens raises accuracy on GPQA / GSM8K / MMLU-Math / UMWP and lowers abstention recall in lockstep.</li>
+<li><strong>A generous system prompt boosts abstention for both standard and reasoning LLMs</strong> — enumerating scenarios where the model should not answer — without collapsing response rate on answerable questions, but the gap is not closed.</li>
+</ul>
+<p>Closed frontier models match the smaller Qwen 2.5 32B on average, and scaling Llama 3.1 from 8B to 405B leaves recall roughly flat. Per-dataset, abstention recall and response correctness correlate in different directions, so a higher-accuracy model isn’t automatically a better abstainer.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure3-4.webp" class="img-fluid figure-img" data-lightbox-src="figure3-4-full.png"></p>
+<figcaption>Figures 3 and 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>SFT and DPO add recall on most scenarios; PPO RLVR uniquely subtracts. Response accuracy improves at every stage. The verifiable-reward signal in RLVR teaches the model to commit to an answer, against abstaining when it should.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Reasoning-fine-tuned variants (s1.1, DeepSeek R1 Distill) lose abstention vs their instruction bases across both the full 20-dataset suite and the reasoning-only subset. The hatched overlay on the red bars in Panel (b) shows that letting the LLM judge consider the reasoning chain in addition to the final answer recovers most of the lost recall — the model is hedging heavily in chain-of-thought — but the model’s final answer still commits. The qualitative example in Panel (c): on a UMWP item, s1.1 hallucinates “$1576” as Edric’s monthly salary inside its chain and emits a confident wrong numeric answer.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure6.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>As s1.1’s reasoning budget grows from 512 to 4096 tokens, accuracy on GPQA-Diamond, GSM8K, MMLU-Math, and UMWP rises and abstention recall on the same datasets falls in lockstep.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure7.webp" class="img-fluid figure-img" data-lightbox-src="figure7-full.png"></p>
+<figcaption>Figure 7 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In Panel (a), the hatched overlay on each bar shows the additional abstention recall the LLM judge picks up when it inspects both the reasoning chain and the final answer. On the reasoning-specific datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain) the hatched portion dwarfs the solid bar — final-answer-only scoring catches ~5–10% recall, chain-aware scoring nearly maxes it out at ~85–95%. The reasoning models <em>are</em> expressing uncertainty in chain-of-thought; they just don’t carry it through to the final answer. Panel (b): a system prompt enumerating refuse-to-answer scenarios boosts abstention for Llama 3 8B, DeepSeek R1, and s1.1 without closing the gap.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure8.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 8 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Neither paper isolates domain from training</strong>: <a href="../../posts/20260522-metacognition-atlas/">Cacioli’s 33-model atlas</a> [3] finds Formal Reasoning the hardest <a href="https://arxiv.org/abs/2009.03300">MMLU</a> [7] domain to monitor in 27 of 33 models, including families with very different post-training pipelines from Tülu 3’s RLVR (Gemma, the GPT-OSS series). AbstentionBench shows the Tülu RLVR stage specifically degrades abstention recall. The first is consistent with the domain being intrinsically hard; the second with training making it worse. Cross-family per-domain abstention recall is the missing measurement.</li>
+<li><strong>No “abstain” action in the RLVR reward</strong>: the paper hypothesizes the verifiable-reward signal is what degrades abstention (§4.2). Concretely, recipes like <a href="https://arxiv.org/abs/2501.12948">DeepSeek-R1</a> [5] and <a href="https://arxiv.org/abs/2501.19393">s1</a> [6] reward picking a correct final answer and have no abstain action — the gradient has no path toward “I don’t know” when the gold label is unanswerable. The clean test: add abstain to the reward and re-train. If the degradation vanishes, the fix is recipe-level.</li>
+<li><strong>Signal in chain, ignored at answer</strong>: Figure 8(a) shows chain-aware scoring catches ~85–95% of abstention recall on reasoning-specific datasets, where final-answer-only scoring catches ~5–10%. The model hedges in chain-of-thought, then commits in the final answer anyway. The paper calls this a “fundamental inability to reason about uncertainty”; mechanically it’s a missing gate between an internal signal and the emitted answer. <a href="../../posts/20260522-metacognitive-harness/">Cao et al.’s test-time metacognitive harness</a> [2] is that gate, externalizing the post-solve judgment-of-learning (JOL) signal as a routing decision with no model changes required.</li>
+<li><strong>Same “must answer” collapse from training or inference</strong>: AbstentionBench shows the Tülu RLVR stage drops abstention recall by ~24% (Figure 5c, training time). <a href="../../posts/20260522-compliance-trap/">The compliance trap</a> [4] shows compliance-forcing <em>prompt instructions</em> drop accuracy by up to 30.2 points (inference time, factorially isolated from threat content). <a href="https://arxiv.org/abs/2212.08073">Constitutional AI</a> [11] training is the only known immunity. Same kind of pressure, two stages of the model lifecycle, similar magnitude. Typical RLVR-trained models exposed to compliance-forcing prompts in deployment should show the worst of both.</li>
+</ul>
+<p><strong>Followup:</strong> <a href="../../posts/20260527-prompted-vs-trained-cot-abstention/">Prompted vs.&nbsp;Trained Chain-of-Thought on Abstention</a> reads AbstentionBench against its closest precursor (Madhusudhan et al., COLING 2025), walks two apparent disagreements, and proposes three experiments that would clarify the picture.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://polkirichenko.github.io/">Kirichenko, P.</a>, <a href="https://www.semanticscholar.org/author/2297128866">Ibrahim, M.</a>, <a href="https://www.semanticscholar.org/author/2256991985">Chaudhuri, K.</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Bell, S. J.</a> “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038). <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Cao, Q.</a>, <a href="https://www.semanticscholar.org/author/2108111686">Wang, Y.</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Qin, P.</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Zhang, S.</a>, and <a href="https://pengtaoxie.github.io/">Xie, P.</a> “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></p></li>
+<li><p><a id="ref-3"></a><a href="https://scholar.google.com/citations?user=L3xQLp0AAAAJ">Cacioli, J.-P.</a> “Domain-level metacognitive monitoring in frontier LLMs: A 33-model atlas.” <em>arXiv preprint</em> (arXiv:2605.06673), April 21, 2026. <a href="https://arxiv.org/abs/2605.06673" class="uri">https://arxiv.org/abs/2605.06673</a></p></li>
+<li><p><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=iNctquYAAAAJ">Kumar, R.</a> “The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure.” <em>arXiv preprint</em> (arXiv:2605.02398), May 14, 2026. <a href="https://arxiv.org/abs/2605.02398" class="uri">https://arxiv.org/abs/2605.02398</a></p></li>
+<li><p><a id="ref-5"></a>DeepSeek-AI. “DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2501.12948), January 22, 2025. <a href="https://arxiv.org/abs/2501.12948" class="uri">https://arxiv.org/abs/2501.12948</a></p></li>
+<li><p><a id="ref-6"></a><a href="https://muennighoff.github.io/">Muennighoff, N.</a>, <a href="https://yangzhou02.github.io/">Yang, Z.</a>, <a href="https://wjshi.github.io/">Shi, W.</a>, <a href="https://xiangli.ac.cn/">Li, X. L.</a>, <a href="https://profiles.stanford.edu/fei-fei-li">Fei-Fei, L.</a>, <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a>, <a href="https://www.cs.washington.edu/people/faculty/lsz">Zettlemoyer, L.</a>, <a href="https://cs.stanford.edu/~pliang/">Liang, P.</a>, <a href="https://candes.su.domains/">Candès, E.</a>, and <a href="https://thashim.github.io/">Hashimoto, T.</a> “s1: Simple test-time scaling.” <em>arXiv preprint</em> (arXiv:2501.19393), January 31, 2025. <a href="https://arxiv.org/abs/2501.19393" class="uri">https://arxiv.org/abs/2501.19393</a></p></li>
+<li><p><a id="ref-7"></a><a href="https://people.eecs.berkeley.edu/~hendrycks/">Hendrycks, D.</a>, Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D., and Steinhardt, J. “Measuring Massive Multitask Language Understanding.” <em>ICLR 2021</em> (arXiv:2009.03300). <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></p></li>
+<li><p><a id="ref-8"></a>Lambert, N., Morrison, J., Pyatkin, V., Huang, S., Ivison, H., Brahman, F., Miranda, L. J. V., Liu, A., Dziri, N., Lyu, S., Gu, Y., Malik, S., Graf, V., Hwang, J. D., Yang, J., Bras, R. L., Tafjord, O., Wilhelm, C., Soldaini, L., Smith, N. A., Wang, Y., Dasigi, P., and Hajishirzi, H. “Tulu 3: Pushing Frontiers in Open Language Model Post-Training.” <em>arXiv preprint</em> (arXiv:2411.15124), November 22, 2024. <a href="https://arxiv.org/abs/2411.15124" class="uri">https://arxiv.org/abs/2411.15124</a></p></li>
+<li><p><a id="ref-9"></a>Rafailov, R., Sharma, A., Mitchell, E., Ermon, S., Manning, C. D., and Finn, C. “Direct Preference Optimization: Your Language Model is Secretly a Reward Model.” <em>NeurIPS 2023</em> (arXiv:2305.18290). <a href="https://arxiv.org/abs/2305.18290" class="uri">https://arxiv.org/abs/2305.18290</a></p></li>
+<li><p><a id="ref-10"></a>Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. “Proximal Policy Optimization Algorithms.” <em>arXiv preprint</em> (arXiv:1707.06347), July 20, 2017. <a href="https://arxiv.org/abs/1707.06347" class="uri">https://arxiv.org/abs/1707.06347</a></p></li>
+<li><p><a id="ref-11"></a><a href="https://yuntaobai.com/">Bai, Y.</a>, <a href="https://www.linkedin.com/in/saurav-kadavath/">Kadavath, S.</a>, Kundu, S., <a href="https://www.amandaaskell.com/">Askell, A.</a>, Kernion, J., Jones, A., Chen, A., Goldie, A., Mirhoseini, A., McKinnon, C., Chen, C., <a href="https://www.catherineolsson.com/">Olsson, C.</a>, <a href="https://colah.github.io/">Olah, C.</a>, Hernandez, D., Drain, D., <a href="https://deepganguli.com/">Ganguli, D.</a>, Li, D., Tran-Johnson, E., <a href="https://ethanperez.net/">Perez, E.</a>, Kerr, J., Mueller, J., Ladish, J., Landau, J., Ndousse, K., Lukosuite, K., Lovitt, L., Sellitto, M., Elhage, N., Schiefer, N., Mercado, N., DasSarma, N., Lasenby, R., Larson, R., Ringer, S., Johnston, S., Kravec, S., El Showk, S., Fort, S., Lanham, T., Telleen-Lawton, T., Conerly, T., Henighan, T., Hume, T., <a href="https://cims.nyu.edu/~sbowman/">Bowman, S. R.</a>, Hatfield-Dodds, Z., Mann, B., <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Amodei, D.</a>, Joseph, N., McCandlish, S., Brown, T., and <a href="https://sites.krieger.jhu.edu/jared-kaplan/">Kaplan, J.</a> “Constitutional AI: Harmlessness from AI Feedback.” <em>arXiv preprint</em> (arXiv:2212.08073), December 15, 2022. <a href="https://arxiv.org/abs/2212.08073" class="uri">https://arxiv.org/abs/2212.08073</a></p></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/</guid>
+  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Pentagon Releases Second Batch of UFO Videos and First-Hand Testimony</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>Pentagon releases second batch of UFO videos and first-hand testimony | UFOs | The Guardian <a href="https://www.theguardian.com/world/2026/may/22/pentagon-ufo-videos-testimony-documents">https://www.theguardian.com/world/2026/may/22/pentagon-ufo-videos-testimony-documents</a></p>
+<p><img src="https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/cover.jpg" class="img-fluid"></p>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116625924528589405">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/</guid>
+  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>My #100 Parkrun, Redmond Central Connector Trail’s First Anniversary</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>So I did it! I ran my 100th parkrun today, and it happened to be the one-year anniversary of the Redmond Central Connector Trail Parkrun!</p>
+<p>Still far away from my prime days of Parkrun racing, but at least I’m faster than last week, and I finally made it back to sub-8’ this time!</p>
+<p><img src="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116628280333438528">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/</guid>
+  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-3.jpeg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure</title>
   <dc:creator>synesis </dc:creator>
@@ -970,397 +1411,6 @@
   <guid>https://benjaminhan.net/posts/20260516-llm-self-correction-arc/</guid>
   <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
-</item>
-<item>
-  <title>Reflexion: Language Agents with Verbal Reinforcement Learning</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260516-reflexion/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-reflexion/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-reflexion/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Reflexion across three task types: decision-making (AlfWorld), programming (HumanEval), and reasoning (HotPotQA). For each task, the agent takes a trajectory, receives an evaluation signal (rule-based heuristic, self-generated unit tests, or exact-match grading on the final answer), reflects on what went wrong in natural language, and stores that reflection in memory for the next attempt. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Reflexion: Language Agents with Verbal Reinforcement Learning</em> [1] (<a href="https://neurips.cc/Conferences/2023">NeurIPS 2023</a>), <a href="https://noahshinn.com/">Noah Shinn</a> et al.&nbsp;(Northeastern, MIT, Princeton) introduce an agent architecture that “learns” across episodes purely by writing natural-language reflections to an episodic memory, without gradient updates or weight changes.</p>
-<blockquote class="blockquote">
-<p>Large language models (LLMs) have been increasingly used to interact with external environments (e.g., games, compilers, APIs) as goal-driven agents. However, it remains challenging for these language agents to quickly and efficiently learn from trial-and-error as traditional reinforcement learning methods require extensive training samples and expensive model fine-tuning. We propose <em>Reflexion</em>, a novel framework to <em>reinforce language agents not by updating weights, but instead through linguistic feedback</em>. Concretely, Reflexion agents verbally reflect on task feedback signals, then maintain their own reflective text in an episodic memory buffer to induce better decision-making in subsequent trials. Reflexion is flexible enough to incorporate various types (scalar values or free-form language) and sources (external or internally simulated) of feedback signals, and obtains significant improvements over a baseline agent across diverse tasks (sequential decision-making, coding, language reasoning). For example, <em>Reflexion achieves a 91% pass@1 accuracy on the HumanEval coding benchmark</em>, surpassing the previous state-of-the-art GPT-4 that achieves 80%.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-reflexion/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
-<figcaption>(a) Diagram of Reflexion. (b) Reflexion reinforcement algorithm. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>The agent operates by interaction: at each step it emits an <em>action</em> — a tool call, environment command, or free-form answer — and the environment returns an observation. A single attempt at the task is an <em>episode</em> (also called a <em>trial</em>), and the action-observation sequence within one episode is the <em>trajectory</em> (<img src="https://benjaminhan.net/feed-assets/c22f4f7100921e0c.svg" alt="\tau" class="feed-math-inline"/>) — the agent’s short-term memory.</p>
-<p>The Reflexion framework factors the agent into three roles. The Self-Reflection model is always an LLM. The Actor is always an LLM, and in most setups <em>the same</em> LLM as the Self-Reflection model, with different prompts. The Evaluator can be an LLM but is often a non-LLM signal: a hand-written heuristic, exact-match grading, or the pass/fail of a generated test suite.</p>
-<ul>
-<li><strong>Actor</strong> (<img src="https://benjaminhan.net/feed-assets/8f80dfb78b3e0cdc.svg" alt="M_a" class="feed-math-inline"/>) — an LLM whose weights, together with the current experience buffer, jointly parameterize the policy <img src="https://benjaminhan.net/feed-assets/a5f2016b0fbbffff.svg" alt="\pi_\theta(a_i \mid s_i)" class="feed-math-inline"/> from which each next action is sampled (<img src="https://benjaminhan.net/feed-assets/3880f5ad6cad0b7c.svg" alt="\theta = \{M_a,\ \text{experience}\}" class="feed-math-inline"/>).</li>
-<li><strong>Evaluator</strong> (<img src="https://benjaminhan.net/feed-assets/d90d45283aea085e.svg" alt="M_e" class="feed-math-inline"/>) — scores the resulting trajectory: a hand-written heuristic (or an LLM-as-judge variant) on AlfWorld, the pass/fail of self-generated unit tests on HumanEval, exact-match grading on HotPotQA’s final answer.</li>
-<li><strong>Self-Reflection</strong> (<img src="https://benjaminhan.net/feed-assets/7a4e1c76e59205e9.svg" alt="M_{sr}" class="feed-math-inline"/>) — takes the trajectory plus the evaluator’s signal and produces a short natural-language reflection (e.g.&nbsp;“I failed because I assumed they both had the same professions”), appended to the <em>experience</em> buffer — the agent’s long-term memory that persists across episodes.</li>
-</ul>
-<p>On the next episode, the Actor is conditioned on the accumulated experience and attempts the task again. The LLM weights stay fixed; the only thing that updates between episodes is the experience text. The “reinforcement signal” is literally the reflection text the Self-Reflection model writes after each failure.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper evaluates Reflexion on three task families:</p>
-<ul>
-<li><strong>AlfWorld [2] [2]</strong> (sequential decision-making, 134 task instances) — Reflexion adds 22 percentage points absolute over a ReAct [3] [3] baseline within 12 iterative learning steps, and the best variant solves 130 of 134 tasks. Figure 3(a) tracks cumulative tasks solved by trial number under both self-evaluation modes (a hand-written heuristic and a GPT-as-judge classifier); 3(b) decomposes the residual failures into hallucination and inefficient planning — both decay steadily under Reflexion, while the ReAct-only baseline plateaus.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-reflexion/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
-<figcaption>AlfWorld learning curves and failure-mode decomposition (Figure 3 [1]).</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>HotPotQA [4] [4]</strong> <!-- crosslink-todo: /posts/20260503-hotpotqa/ --> (multi-hop reasoning) — Reflexion improves accuracy by 20 points on a 100-question subset. Figure 4 separates the contribution: (a) Reflexion benefits both ReAct and Chain-of-Thought actors; (b) the gain holds even when the actor is given the ground-truth context, so it isn’t just better retrieval; (c) decomposes the lift between including past trajectories (episodic memory) and the verbal Self-Reflection step. Episodic memory carries most of the gain, and Self-Reflection adds an 8-point boost on top.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-reflexion/figure4.png" class="img-fluid figure-img"></p>
-<figcaption>HotPotQA results across actor variants and the episodic-memory ablation (Figure 4 [1]).</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>HumanEval [5] [5]</strong> (Python coding, GPT-4 as Actor) — Reflexion reaches 91% pass@1 versus the reported 80% GPT-4 baseline (11-point gain). Table 1 shows the gain is consistent across languages and benchmarks: HumanEval Rust 60 → 68, MBPP [6] [6] (Mostly Basic Programming Problems) Rust 71 → 75. The paper also introduces <strong>LeetcodeHardGym</strong>, a benchmark of 40 hard-rated Leetcode problems with scaffolding across 19 programming languages, but only reports results on the Python subset (7.5 → 15); the multi-language scope is released as an artifact, not used in any reported experiment. The exception to the across-the-board gains is MBPP Python, where Reflexion (77.1) underperforms the GPT-4 baseline (80.1) — see the test-generation table below.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-reflexion/table1.png" class="img-fluid figure-img"></p>
-<figcaption>Pass@1 across code-generation benchmarks and languages (Table 1 [1]).</figcaption>
-</figure>
-</div>
-<p>The paper’s ablations compare self-generated unit tests vs ground-truth tests as the evaluation signal, examine memory-length effects, and separate the contribution of the Evaluator from the Self-Reflection step. Two things to flag about Table 2 before reading. First, the test suites used as the Evaluator’s signal are all LLM-generated: Reflexion’s procedure is the same on every code benchmark — the Actor writes tests from the problem description (with chain-of-thought prompting), filters for syntactic validity, and uses those tests’ pass/fail as the signal. MBPP ships with its own curated tests, but Reflexion doesn’t use them; the model generates fresh tests from the prompt. Second, the four diagnostic columns are conditional probabilities: TP and FP are conditional on tests passing (TP + FP = 1), FN and TN on tests failing (FN + TN = 1).</p>
-<p>The <strong>Base</strong> and <strong>Reflexion</strong> columns are pass@1 — the approach’s headline accuracy with and without the Reflexion loop. The <strong>TP / FN / FP / TN</strong> columns rate the LLM-generated tests as a classifier of solution correctness, and they predict approach performance directly. HumanEval Python’s tests are clean — TP=0.99, FP=0.01 — and Reflexion lifts 0.80 → 0.91. MBPP Python’s tests are noisy on both sides: FP=0.16 lets buggy code through, FN=0.59 means most “test failures” were actually correct solutions the loop then rewrites, and Reflexion drops to 0.77.</p>
-<p>The paper doesn’t diagnose <em>why</em> MBPP’s LLM-generated tests are noisier, but the prompt structure of the two benchmarks is a plausible explanation: HumanEval prompts are docstrings that often include doctest-style I/O examples (the LLM can crib from those when writing tests), while MBPP prompts are bare natural-language sentences (“Write a function to remove duplicates…”) with no I/O examples, so the LLM has to invent both inputs and expected outputs from scratch.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-reflexion/table2.png" class="img-fluid figure-img"></p>
-<figcaption>Self-generated test accuracy on HumanEval and MBPP, broken into TP/FN/FP/TN. Rust columns use the hardest 50 HumanEval problems translated via MultiPL-E (Table 2 [1]).</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>Verbal feedback as policy state.</strong> Reflexion is the paper that established natural-language reflection as a first-class component of agent design, and the lineage is visible across 2024 agentic frameworks — from AutoGen [7] [7] to <a href="https://langchain-ai.github.io/langgraph/">LangGraph</a> to the critic-refiner loops in Anthropic’s computer-use agents. What’s distinctive here is keeping the reflections as long-term memory across trials rather than compressing them into the immediate context the way <a href="../../posts/20260516-self-refine/">Self-Refine</a> [8] does.</li>
-<li><strong>The 91% HumanEval caveat.</strong> Later reproductions found Reflexion’s gain is bottlenecked by test-generation quality rather than by the repair step itself: Olausson et al.&nbsp;(2024) [9] [9] studied iterative self-repair on HumanEval and APPS and argued that “self-repair is bottlenecked by the model’s ability to provide feedback on its own code” — substituting a stronger feedback model lifts the gains substantially. Reflexion’s own ablation (Table 3 on HumanEval Rust) tells the same story: removing test generation drops Reflexion from 0.68 to 0.52, while removing the self-reflection step alone barely moves the number (0.68 → 0.60). CodeT [10] [10] makes the self-generated-test mechanism explicit; Reflexion adds a reflection step on top but inherits CodeT’s dependence on test-generation quality.</li>
-<li><strong>Reflexion vs Cannot-Self-Correct.</strong> Reflexion’s headline claim — that verbal reinforcement lifts an LLM agent — sits next to a result by <a href="../../posts/20260516-cannot-self-correct/">Huang et al.</a> [11] that LLMs <em>cannot</em> reliably self-correct. The two don’t contradict.
-<ul>
-<li>Huang et al.&nbsp;define <em>intrinsic</em> self-correction as a model revising its own answer with no external signal, and show it degrades reasoning. Reflexion always supplies an external signal via the Evaluator — a heuristic on AlfWorld, exact-match on HotPotQA, test execution on HumanEval.</li>
-<li>The structural overlap is Reflexion’s Self-Reflection step. Diagnosing what went wrong over the model’s own trajectory is exactly what Huang et al.&nbsp;studied. The Evaluator is upstream: it gates whether Self-Reflection fires at all.</li>
-<li>Table 2 backs this up with the FN column: MBPP Python’s FN is 0.59 vs HumanEval Python’s 0.40, meaning MBPP’s tests fail on already-correct solutions much more often. Reflexion then “corrects” those correct solutions and ends up below the GPT-4 baseline on MBPP Python — 80.1 (baseline) vs 77.1 (Reflexion).</li>
-<li>So Reflexion is best read as a positive existence result for <em>self-correction with reliable external signal</em>, not a refutation of the intrinsic-failure result.</li>
-</ul></li>
-<li><strong>Memory-as-parameters has a context budget.</strong> The paper writes the policy as <img src="https://benjaminhan.net/feed-assets/943b9fa201c5a103.svg" alt="\pi_\theta" class="feed-math-inline"/> with <img src="https://benjaminhan.net/feed-assets/78fb84a948ad2623.svg" alt="\theta = \{M_a, \text{mem}\}" class="feed-math-inline"/> — the memory is part of the parameter set. The interesting question is what learning in token space gives up. First, the experience is task-specific and doesn’t transfer: every new task starts with an empty buffer. Second, as the buffer grows across trials, the Actor’s context budget becomes the bottleneck, so the effective “learning rate” is bounded by how much context the system can spend per inference. Later work on extending effective context (MemGPT [12] [12]) and agent-specific long-context finetuning is partly a response to this limit.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://noahshinn.com/">Shinn, N.</a>, <a href="https://federico.codes/">Cassano, F.</a>, Berman, E., <a href="https://meche.mit.edu/people/faculty/AGOPI@MIT.EDU">Gopinath, A.</a>, <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, <a href="https://ysymyth.github.io/">Yao, S.</a> “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS 2023</em> (arXiv:2303.11366), March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
-<li><a id="ref-2"></a>Shridhar, M., Yuan, X., Côté, M.-A., Bisk, Y., Trischler, A., Hausknecht, M. “ALFWorld: Aligning Text and Embodied Environments for Interactive Learning.” <em>ICLR 2021</em> (arXiv:2010.03768), October 8, 2020. <a href="https://arxiv.org/abs/2010.03768" class="uri">https://arxiv.org/abs/2010.03768</a></li>
-<li><a id="ref-3"></a>Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., Cao, Y. “ReAct: Synergizing Reasoning and Acting in Language Models.” <em>ICLR 2023</em> (arXiv:2210.03629), October 6, 2022. <a href="https://arxiv.org/abs/2210.03629" class="uri">https://arxiv.org/abs/2210.03629</a></li>
-<li><a id="ref-4"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W., Salakhutdinov, R., Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600), September 25, 2018. <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
-<li><a id="ref-5"></a>Chen, M., Tworek, J., Jun, H., Yuan, Q., Pinto, H. P. d.&nbsp;O., Kaplan, J., et al.&nbsp;“Evaluating Large Language Models Trained on Code.” <em>arXiv preprint</em> (arXiv:2107.03374), July 7, 2021. <a href="https://arxiv.org/abs/2107.03374" class="uri">https://arxiv.org/abs/2107.03374</a></li>
-<li><a id="ref-6"></a>Austin, J., Odena, A., Nye, M., Bosma, M., Michalewski, H., Dohan, D., Jiang, E., Cai, C., Terry, M., Le, Q., Sutton, C. “Program Synthesis with Large Language Models.” <em>arXiv preprint</em> (arXiv:2108.07732), August 16, 2021. <a href="https://arxiv.org/abs/2108.07732" class="uri">https://arxiv.org/abs/2108.07732</a></li>
-<li><a id="ref-7"></a>Wu, Q., Bansal, G., Zhang, J., Wu, Y., Li, B., Zhu, E., Jiang, L., Zhang, X., Zhang, S., Liu, J., Awadallah, A. H., White, R. W., Burger, D., Wang, C. “AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation.” <em>arXiv preprint</em> (arXiv:2308.08155), August 16, 2023. <a href="https://arxiv.org/abs/2308.08155" class="uri">https://arxiv.org/abs/2308.08155</a></li>
-<li><a id="ref-8"></a>Madaan, A., Tandon, N., Gupta, P., Hallinan, S., Gao, L., Wiegreffe, S., Alon, U., Dziri, N., Prabhumoye, S., Yang, Y., Gupta, S., Majumder, B. P., Hermann, K., Welleck, S., Yazdanbakhsh, A., Clark, P. “Self-Refine: Iterative Refinement with Self-Feedback.” <em>NeurIPS 2023</em> (arXiv:2303.17651), March 30, 2023. <a href="https://arxiv.org/abs/2303.17651" class="uri">https://arxiv.org/abs/2303.17651</a></li>
-<li><a id="ref-9"></a>Olausson, T. X., Inala, J. P., Wang, C., Gao, J., Solar-Lezama, A. “Is Self-Repair a Silver Bullet for Code Generation?” <em>ICLR 2024</em> (arXiv:2306.09896), June 16, 2023. <a href="https://arxiv.org/abs/2306.09896" class="uri">https://arxiv.org/abs/2306.09896</a></li>
-<li><a id="ref-10"></a>Chen, B., Zhang, F., Nguyen, A., Zan, D., Lin, Z., Lou, J.-G., Chen, W. “CodeT: Code Generation with Generated Tests.” <em>ICLR 2023</em> (arXiv:2207.10397), July 21, 2022. <a href="https://arxiv.org/abs/2207.10397" class="uri">https://arxiv.org/abs/2207.10397</a></li>
-<li><a id="ref-11"></a>Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X., Zhou, D. “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em> (arXiv:2310.01798), October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-<li><a id="ref-12"></a>Packer, C., Wooders, S., Lin, K., Fang, V., Patil, S. G., Stoica, I., Gonzalez, J. E. “MemGPT: Towards LLMs as Operating Systems.” <em>arXiv preprint</em> (arXiv:2310.08560), October 12, 2023. <a href="https://arxiv.org/abs/2310.08560" class="uri">https://arxiv.org/abs/2310.08560</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260516-reflexion/</guid>
-  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260516-reflexion/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Large Language Models Cannot Self-Correct Reasoning Yet</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260516-cannot-self-correct/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-cannot-self-correct/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Analysis of the changes in answers after two rounds of self-correction. <em>No Change</em>: The answer remains unchanged; <em>Correct <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Incorrect</em>: A correct answer is changed to an incorrect one; <em>Incorrect <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Correct</em>: An incorrect answer is revised to a correct one; <em>Incorrect <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Incorrect</em>: An incorrect answer is altered but remains incorrect. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Large Language Models Cannot Self-Correct Reasoning Yet</em> [1] (<a href="https://iclr.cc/Conferences/2024">ICLR 2024</a>), <a href="https://jeffhj.github.io/">Jie Huang</a>, <a href="https://xinyun-chen.github.io/">Xinyun Chen</a>, <a href="https://swarooprm.github.io/">Swaroop Mishra</a>, <a href="https://stevenzheng.github.io/">Huaixiu Steven Zheng</a>, <a href="https://www.adamsyu.com/">Adams Wei Yu</a>, Xinying Song, and <a href="https://dennyzhou.github.io/">Denny Zhou</a> (Google DeepMind + UIUC) argue that <em>intrinsic self-correction</em> — where a model revises its own reasoning answer with no external signal about correctness — does not improve and often degrades performance on reasoning benchmarks.</p>
-<blockquote class="blockquote">
-<p>Large Language Models (LLMs) have emerged as a groundbreaking technology with their unparalleled text generation capabilities across various applications. Nevertheless, concerns persist regarding the accuracy and appropriateness of their generated content. A contemporary methodology, self-correction, has been proposed as a remedy to these issues. Building upon this premise, this paper critically examines the role and efficacy of self-correction within LLMs, shedding light on its true potential and limitations. Central to our investigation is the notion of <em>intrinsic self-correction, whereby an LLM attempts to correct its initial responses based solely on its inherent capabilities, without the crutch of external feedback</em>. In the context of reasoning, our research indicates that <em>LLMs struggle to self-correct their responses without external feedback, and at times, their performance even degrades after self-correction</em>. Drawing from these insights, we offer suggestions for future research and practical applications in this field.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>The paper isolates <em>intrinsic</em> self-correction by stripping out the external verifier that prior self-correction work relied on. In the <strong>oracle setting</strong> (used by RCI [2] and Reflexion [3] in their reported evaluations), the loop has access to the gold-label answer:</p>
-<ol type="1">
-<li>Model generates an answer.</li>
-<li>Compare it to the ground truth (the oracle).</li>
-<li>If correct, stop. If wrong, prompt the model for a critique, generate a revision, return to step 2.</li>
-</ol>
-<p>The oracle is doing two jobs at once: it’s a stopping condition (don’t keep revising correct answers) and a trigger for revision (only revise when wrong). In the <strong>intrinsic setting</strong>, both jobs go away. The same model produces the initial answer, then is prompted to review and revise it without any external check, and has to decide on its own whether the answer needs further work. The evaluation runs on three reasoning datasets — GSM8K [10] (grade-school math), CommonSenseQA [11] (multiple-choice commonsense), and HotpotQA [12] (multi-hop QA) — across GPT-3.5-Turbo (<code>gpt-3.5-turbo-0613</code>), GPT-4, GPT-4-Turbo (<code>gpt-4-1106-preview</code>), and <code>Llama-2-70b-chat</code> [4]. Each round of self-correction costs two additional model calls (review, then revision), so two rounds bring the total per question to five.</p>
-<p>The paper then re-examines two related claims from prior work:</p>
-<ul>
-<li><strong>Section 4</strong> revisits multi-agent debate [5], where several LLM agents propose answers and critique each other across rounds until they converge on a consensus. The paper reproduces Du et al.&nbsp;[5]’s setup on GSM8K and compares it against self-consistency [6] [6] — generating multiple independent samples and majority-voting — at the <em>same total response budget</em>.</li>
-<li><strong>Section 5</strong> revisits Self-Refine [7] [7] <!-- crosslink-todo: /posts/20260503-self-refine/ -->, where the same LLM generates an output, critiques it, and refines based on its own critique over multiple iterations. The paper attributes Self-Refine’s reported gains on constrained generation to a sub-optimal initial prompt that the refinement loop is largely just patching.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
-<figcaption>Two GSM8K examples with GPT-3.5: a successful correction on the left, a failed one on the right where the model revises a correct answer into an incorrect one. The failure mode dominates the data. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<ul>
-<li><strong>Intrinsic self-correction degrades accuracy across every model tested.</strong> With oracle labels (Table 2 of the paper), self-correction improves modestly — GPT-3.5 on GSM8K rises from 75.9 to 84.3, GPT-4 on HotpotQA from 49.0 to 59.0. Without oracle labels, the same prompts and models <em>lose</em> accuracy. After two rounds of intrinsic self-correction, GPT-3.5 on GSM8K drops from 75.9 to 74.7. On CommonSenseQA the drop is sharper, 75.8 to 41.8. GPT-4 holds up better but still loses 6.5 points on GSM8K (95.5 → 89.0). Llama-2-70b-chat collapses, halving from 62.0 to 36.5 on GSM8K. The cover image’s Figure 1 decomposition shows why: correct → incorrect transitions outnumber incorrect → correct ones, so the loop is on average destructive.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/table2-3.png" class="img-fluid figure-img"></p>
-<figcaption><em>Table 2</em> (top): Results of GPT-3.5 and GPT-4 on reasoning benchmarks with oracle labels. <em>Table 3</em> (bottom): Results of GPT-3.5 and GPT-4 on reasoning benchmarks with intrinsic self-correction. Tables 2 and 3 from the paper [1].</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>Multi-agent debate underperforms self-consistency at matched budget.</strong> With three agents over two rounds of debate, the system uses nine total responses and reaches 83.0 on GSM8K. Self-consistency with nine responses reaches 88.2 with the same model. At every matched budget, simple majority voting beats the debate protocol. The paper concludes that what looks like critique is in practice a noisier form of consensus.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/table7.png" class="img-fluid figure-img"></p>
-<figcaption><em>Table 7</em>: Results of multi-agent debate and self-consistency. Table 7 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The RL follow-up.</strong> Two follow-ups from this same group at Google DeepMind reframe the negative result rather than overturn it. <a href="../../posts/20260512-score/">SCoRe</a> [8] trains Gemini 1.0 Pro and 1.5 Flash via multi-turn RL to actually self-correct on MATH, gaining 15.6 points on top of the base model — explicitly citing this paper as the problem statement. The o1-style training paradigm builds correction into the chain-of-thought RL signal itself. The conclusion of <em>Cannot Self-Correct Reasoning Yet</em> is essentially that prompting alone cannot induce self-correction in models that were not trained for it; the field has since shown that the right RL objective can.</li>
-<li><strong>The oracle-label confound is the methodological core.</strong> The paper’s most reusable contribution is naming the evaluation issue: RCI [2] [2] and Reflexion [3] [3] <!-- crosslink-todo: /posts/20260503-reflexion/ --> let the loop terminate based on whether the answer was correct, which leaks ground truth into the evaluation. Once you remove that signal, the loop runs without a stop condition and tends to drift. This generalizes: any test-time loop that uses the gold answer to decide when to halt is implicitly conditioning on it. The same issue surfaces in <a href="../../posts/20260512-lets-verify-step-by-step/">process reward model evaluation</a>, where a strong external verifier carries most of the signal that gets attributed to the generator.</li>
-<li><strong>Production loops have implicit signals.</strong> Real systems usually carry external signals that the paper’s “no oracle” definition excludes: format checks, runnable code, type errors, schema violations, factual lookups against retrieval. Reflexion [3] [3] <!-- crosslink-todo: /posts/20260503-reflexion/ -->, for instance, uses an environment reward (test pass/fail, task success). The paper’s negative result is for the strict version where the model has nothing to go on but its own prior; that is the version closest to “talking to yourself,” which is also the version least likely to converge.</li>
-<li><strong>Multi-agent debate as ensembling.</strong> Section 4’s finding that multi-agent debate underperforms self-consistency at matched response budget [5][6] has been replicated repeatedly since, across the multi-agent literature, including <a href="../../posts/20250802-mast-multi-agent-failures/">the MAST taxonomy of multi-agent failure modes</a> [9]. Stripped of training, much of what looks like agent collaboration reduces to weighted voting on independent samples. What matters is the sampling budget, not the protocol.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://jeffhj.github.io/">Huang, J.</a>, <a href="https://xinyun-chen.github.io/">Chen, X.</a>, <a href="https://swarooprm.github.io/">Mishra, S.</a>, <a href="https://stevenzheng.github.io/">Zheng, H. S.</a>, <a href="https://www.adamsyu.com/">Yu, A. W.</a>, Song, X., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em>, arXiv:2310.01798, October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-<li><a id="ref-2"></a>Kim, G., <a href="https://www.ics.uci.edu/~pfbaldi/">Baldi, P.</a>, and <a href="https://www.andrew.cmu.edu/user/smcaleer/">McAleer, S.</a> “Language Models can Solve Computer Tasks.” <em>NeurIPS</em>, arXiv:2303.17491, March 30, 2023. <a href="https://arxiv.org/abs/2303.17491" class="uri">https://arxiv.org/abs/2303.17491</a></li>
-<li><a id="ref-3"></a><a href="https://noahshinn.com/">Shinn, N.</a>, Cassano, F., Berman, E., Gopinath, A., <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a> “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS</em>, arXiv:2303.11366, March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
-<li><a id="ref-4"></a>Touvron, H., Martin, L., Stone, K., et al.&nbsp;“Llama 2: Open Foundation and Fine-Tuned Chat Models.” <em>arXiv preprint</em> (arXiv:2307.09288), July 18, 2023. <a href="https://arxiv.org/abs/2307.09288" class="uri">https://arxiv.org/abs/2307.09288</a></li>
-<li><a id="ref-5"></a><a href="https://yilundu.github.io/">Du, Y.</a>, <a href="https://people.csail.mit.edu/lishuang/">Li, S.</a>, <a href="https://groups.csail.mit.edu/vision/torralbalab/">Torralba, A.</a>, <a href="https://web.mit.edu/cocosci/josh.html">Tenenbaum, J. B.</a>, and <a href="https://www.mordatch.com/">Mordatch, I.</a> “Improving Factuality and Reasoning in Language Models through Multiagent Debate.” <em>arXiv preprint</em> (arXiv:2305.14325), May 23, 2023. <a href="https://arxiv.org/abs/2305.14325" class="uri">https://arxiv.org/abs/2305.14325</a></li>
-<li><a id="ref-6"></a><a href="https://xuezhiwang.github.io/">Wang, X.</a>, Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR</em>, arXiv:2203.11171, March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
-<li><a id="ref-7"></a><a href="https://madaan.github.io/">Madaan, A.</a>, <a href="https://niket.tandon.info/">Tandon, N.</a>, Gupta, P., Hallinan, S., <a href="https://luyug.github.io/">Gao, L.</a>, <a href="https://sarahwie.github.io/">Wiegreffe, S.</a>, <a href="https://urialon.cswp.cs.technion.ac.il/">Alon, U.</a>, <a href="https://nouhadziri.github.io/">Dziri, N.</a>, Prabhumoye, S., <a href="https://www.cs.cmu.edu/~yiming/">Yang, Y.</a>, Gupta, S., Majumder, B. P., Hermann, K., <a href="https://wellecks.com/">Welleck, S.</a>, Yazdanbakhsh, A., and <a href="https://allenai.org/team/peterc">Clark, P.</a> “Self-Refine: Iterative Refinement with Self-Feedback.” <em>NeurIPS</em>, arXiv:2303.17651, May 25, 2023. <a href="https://arxiv.org/abs/2303.17651" class="uri">https://arxiv.org/abs/2303.17651</a></li>
-<li><a id="ref-8"></a><a href="https://aviralkumar2907.github.io/">Kumar, A.</a>, <a href="https://vincentzhuang.github.io/">Zhuang, V.</a>, <a href="https://agarwl.github.io/">Agarwal, R.</a>, Su, Y., et al.&nbsp;“Training Language Models to Self-Correct via Reinforcement Learning.” <em>ICLR</em>, arXiv:2409.12917, September 19, 2024. <a href="https://arxiv.org/abs/2409.12917" class="uri">https://arxiv.org/abs/2409.12917</a></li>
-<li><a id="ref-9"></a>Cemri, M., Pan, M., Yang, S., Agrawal, L. A., Chopra, B., Tiwari, R., <a href="https://people.eecs.berkeley.edu/~keutzer/">Keutzer, K.</a>, Parameswaran, A., <a href="https://people.eecs.berkeley.edu/~klein/">Klein, D.</a>, Ramchandran, K., <a href="https://cs.stanford.edu/~matei/">Zaharia, M.</a>, <a href="https://people.eecs.berkeley.edu/~jegonzal/">Gonzalez, J.</a>, and <a href="https://people.eecs.berkeley.edu/~istoica/">Stoica, I.</a> “Why Do Multi-Agent LLM Systems Fail?” <em>arXiv preprint</em> (arXiv:2503.13657), March 17, 2025. <a href="https://arxiv.org/abs/2503.13657" class="uri">https://arxiv.org/abs/2503.13657</a></li>
-<li><a id="ref-10"></a>Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., and Schulman, J. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
-<li><a id="ref-11"></a>Talmor, A., Herzig, J., Lourie, N., and Berant, J. “CommonsenseQA: A Question Answering Challenge Targeting Commonsense Knowledge.” <em>NAACL 2019</em> (arXiv:1811.00937), November 2, 2018. <a href="https://arxiv.org/abs/1811.00937" class="uri">https://arxiv.org/abs/1811.00937</a></li>
-<li><a id="ref-12"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W. W., Salakhutdinov, R., and Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600), September 25, 2018. <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260516-cannot-self-correct/</guid>
-  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260516-cannot-self-correct/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Self-Refine: Iterative Refinement with Self-Feedback</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260516-self-refine/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-self-refine/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-self-refine/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>The Self-Refine loop: an initial output from model <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> is sent back to the same <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> for feedback, then <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> uses that feedback to produce a refined output, with the feedback-refine cycle repeating until a stopping condition is met. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Self-Refine: Iterative Refinement with Self-Feedback</em> [1] (<a href="https://neurips.cc/">NeurIPS 2023</a>), <a href="https://madaan.github.io/">Aman Madaan</a>, <a href="https://niket.tandon.info/">Niket Tandon</a>, and collaborators at <a href="https://www.cmu.edu/">CMU</a>, <a href="https://allenai.org/">Allen Institute for AI</a>, <a href="https://www.washington.edu/">University of Washington</a>, <a href="https://www.nvidia.com/">NVIDIA</a>, <a href="https://ucsd.edu/">UC San Diego</a>, and <a href="https://research.google/">Google Research</a> show that a single frozen large language model (LLM) can act as generator, critic, and rewriter in a prompt-only loop, and that this loop improves outputs across seven generation tasks without any additional training.</p>
-<blockquote class="blockquote">
-<p>Like humans, large language models (LLMs) do not always generate the best output on their first try. Motivated by how humans refine their written text, we introduce <em>Self-Refine</em>, an approach for improving initial outputs from LLMs through iterative feedback and refinement. The main idea is to generate an initial output using an LLMs; then, the same LLMs provides feedback for its output and uses it to refine itself, iteratively. Self-Refine <em>does not require any supervised training data, additional training, or reinforcement learning</em>, and instead <em>uses a single LLM as the generator, refiner, and feedback provider</em>. We evaluate Self-Refine across 7 diverse tasks, ranging from dialog response generation to mathematical reasoning, using state-of-the-art (GPT-3.5, ChatGPT, and GPT-4) LLMs. Across all evaluated tasks, outputs generated with Self-Refine are preferred by humans and automatic metrics over those generated with the same LLM using conventional one-step generation, <em>improving by ~20% absolute on average in task performance</em>. Our work demonstrates that <em>even state-of-the-art LLMs like GPT-4 can be further improved at test time</em> using our simple, standalone approach.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>The method is deliberately minimal. Self-Refine takes an input <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/>, uses three handcrafted few-shot prompts — <code>p_gen</code>, <code>p_fb</code>, <code>p_refine</code> — and runs the same model <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> three ways: <img src="https://benjaminhan.net/feed-assets/e8b3725b83adafa8.svg" alt="M(p_{\text{gen}} \Vert x)" class="feed-math-inline"/> produces the initial output <img src="https://benjaminhan.net/feed-assets/2ee217dd7c68669c.svg" alt="y_0" class="feed-math-inline"/>; <img src="https://benjaminhan.net/feed-assets/7a2c97cc586e08e6.svg" alt="M(p_{\text{fb}} \Vert x \Vert y_t)" class="feed-math-inline"/> emits natural-language feedback on <img src="https://benjaminhan.net/feed-assets/f8528223bc39d723.svg" alt="y_t" class="feed-math-inline"/>; and the refine step writes <img src="https://benjaminhan.net/feed-assets/6e2e7d596d4dcf3a.svg" alt="y_{t+1}" class="feed-math-inline"/> from the model conditioned on the input plus the full history of prior outputs and feedback (<img src="https://benjaminhan.net/feed-assets/20699f51fb480a4f.svg" alt="y_0, fb_0, \ldots, y_t, fb_t" class="feed-math-inline"/>). No fine-tuning, no external reward model, no reinforcement learning. The loop halts either at a fixed iteration budget or when <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> itself signals that no further refinement is needed. The paper evaluates on dialogue response generation, code optimization, code readability improvement, mathematical reasoning (GSM8K [5]), sentiment reversal, acronym generation, and constrained generation, with base models GPT-3.5 (<code>text-davinci-003</code> and <code>gpt-3.5-turbo</code>), <a href="https://openai.com/index/chatgpt/">ChatGPT</a>, Codex [6] (<code>code-davinci-002</code>), and <a href="https://openai.com/index/gpt-4/">GPT-4</a>.</p>
-<p>Two things distinguish the prompts from generic “what do you think?” critique prompting. First, <code>p_fb</code> is few-shot-exemplified to elicit feedback that is <strong>actionable</strong> (names a concrete change to make) and <strong>specific</strong> (pinpoints the exact phrase or line to change). The Figure 2(e) example — “This code is slow as it uses a for loop… A better approach is to use the formula <code>(n(n+1))/2</code>” — is the template: identify the offending construct, propose the replacement. Second, <code>p_refine</code> is also few-shot, with <img src="https://benjaminhan.net/feed-assets/b25874a6e531611a.svg" alt="\langle x, y_t, fb_t, y_{t+1} \rangle" class="feed-math-inline"/> quadruples that show how to translate feedback into a concrete edit rather than paraphrase or hedge.</p>
-<p>The few-shot exemplars in <code>p_fb</code> are themselves built from a per-task <strong>rubric</strong> — 10 qualitative aspects for Dialogue Response Generation (relevant, informative, interesting, consistent, etc.), a 5-dimension rubric for Acronym Generation (pronunciation, spelling, etc.), the missing-concept checklist for Constrained Generation. The rubric is never invoked explicitly at inference. The model learns it from the exemplars.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-self-refine/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
-<figcaption>Examples of Self-Refine: an initial output generated by the base LLM is passed back to the same LLM for feedback, then refined. The top row illustrates dialogue generation, where an initial response gets transformed into a more engaging one that also addresses the user’s intent. The bottom row illustrates code optimization, where a brute-force loop is replaced with the closed-form <img src="https://benjaminhan.net/feed-assets/13f173ffa96ee481.svg" alt="n(n+1)/2" class="feed-math-inline"/>. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>Across the seven tasks, Self-Refine beats single-shot prompting by 5–40 points absolute, averaging around 20 points of improvement by human preference and automatic metrics. The gains are largest on tasks with multifaceted or hard-to-define objectives (dialogue, code readability, constrained generation) and smallest on math reasoning, where Table 1 shows essentially no improvement (↑0 to ↑0.2) — the paper attributes this to the feedback model’s inability to detect subtle math errors. Code optimization improves by 8.7 points absolute on GPT-4 (27.3 → 36.0), and by up to 13 points absolute when applied to Codex. Human raters prefer Self-Refine outputs at rates generally consistent with the automatic metrics. The paper releases prompts and code.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-self-refine/table1.png" class="img-fluid figure-img"></p>
-<figcaption>Self-Refine results on various tasks using GPT-3.5, ChatGPT, and GPT-4 as base LLM. Self-Refine consistently improves the base LLM across preference- and rule-based metrics, with the smallest gains on Math Reasoning. Table 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>The paper also ablates the feedback prompt itself, replacing actionable+specific feedback with generic “what do you think?” feedback or no feedback at all (Table 2). The actionable+specific shape carries most of the signal, especially on tasks where “good output” is hard to define — Sentiment Reversal goes from 43.2 to 31.2 to 0 across the three feedback regimes. On Code Optimization, where “fast” is well-defined, generic feedback already gets you most of the way there.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-self-refine/table2.png" class="img-fluid figure-img"></p>
-<figcaption>Ablating the feedback prompt: Self-Refine’s actionable+specific feedback vs.&nbsp;generic feedback (“Improve the efficiency of the code”) vs.&nbsp;no feedback (the model still iterates but isn’t explicitly given feedback). The gap is widest on Sentiment Reversal, where output quality is hardest to define from a one-line critique. Table 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The gain doesn’t generalize beyond strong critics.</strong> The ~20-point headline held up in the paper’s own benchmarks but is sensitive to task and model. Kamoi et al.&nbsp;[4] [4]’s survey concludes that no prior work demonstrates successful self-correction with feedback generated by LLMs prompting themselves under fair settings, and they specifically flag Self-Refine’s evaluation as over-stating the gain (Table 4 of the survey: weak prompts on the initial-response side combined with appropriate prompts on the self-correction side). On reasoning tasks, Huang et al.&nbsp;[2] [2] show intrinsic self-correction can degrade accuracy on average — Table 1’s near-zero math result here was already a tell. The loop assumes the critic produces actionable feedback. When the critic is weak (smaller models make this worse rather than introduce it), the iterations don’t help.</li>
-<li><strong>Feedback quality drives more gain than iteration count.</strong> The paper omits the cleanest ablation: a single-pass critique-and-refine prompt that gives the base LLM the rubric without iteration. Without it, a substantial part of the gain on dialogue and constrained generation may be attributable to the rubric embedded in the feedback prompt rather than to iteration itself. <a href="../../posts/20260516-reflexion/">Reflexion</a> [3], which appeared around the same time, makes the memory question explicit: it persists verbal reflections across episodes, while Self-Refine’s history is scoped to a single input.</li>
-<li><strong>The prompt-only antecedent of o1.</strong> Self-Refine spends several times more tokens per problem than one-shot generation in exchange for task-quality gains — the same compute-for-quality tradeoff that <a href="https://openai.com/index/learning-to-reason-with-llms/">o1</a>-style models would later formalize with RL-trained chains, but realized through prompting alone. In 2023 the framing was novel. The <em>test-time compute</em> idiom only entered general usage with the o1 release in late 2024.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://madaan.github.io/">Madaan, A.</a>, <a href="https://niket.tandon.info/">Tandon, N.</a>, Gupta, P., Hallinan, S., <a href="https://luyug.github.io/">Gao, L.</a>, <a href="https://sarahwie.github.io/">Wiegreffe, S.</a>, <a href="https://urialon.cswp.cs.technion.ac.il/">Alon, U.</a>, <a href="https://nouhadziri.github.io/">Dziri, N.</a>, Prabhumoye, S., <a href="https://www.cs.cmu.edu/~yiming/">Yang, Y.</a>, Gupta, S., Majumder, B. P., Hermann, K., <a href="https://wellecks.com/">Welleck, S.</a>, Yazdanbakhsh, A., and <a href="https://allenai.org/team/peterc">Clark, P.</a> “Self-Refine: Iterative Refinement with Self-Feedback.” <em>NeurIPS</em>, arXiv:2303.17651, May 25, 2023. <a href="https://arxiv.org/abs/2303.17651" class="uri">https://arxiv.org/abs/2303.17651</a></li>
-<li><a id="ref-2"></a>Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X., and Zhou, D. “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR</em>, October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-<li><a id="ref-3"></a>Shinn, N., Cassano, F., Berman, E., Gopinath, A., Narasimhan, K., and Yao, S. “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS</em>, arXiv:2303.11366, March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
-<li><a id="ref-4"></a>Kamoi, R., Zhang, Y., Zhang, N., Han, J., and Zhang, R. “When Can LLMs Actually Correct Their Own Mistakes? A Critical Survey of Self-Correction of LLMs.” <em>Transactions of the Association for Computational Linguistics</em>, arXiv:2406.01297, December 3, 2024. <a href="https://arxiv.org/abs/2406.01297" class="uri">https://arxiv.org/abs/2406.01297</a></li>
-<li><a id="ref-5"></a>Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., and Schulman, J. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
-<li><a id="ref-6"></a>Chen, M., Tworek, J., Jun, H., Yuan, Q., et al.&nbsp;“Evaluating Large Language Models Trained on Code.” <em>arXiv preprint</em> (arXiv:2107.03374), July 7, 2021. <a href="https://arxiv.org/abs/2107.03374" class="uri">https://arxiv.org/abs/2107.03374</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260516-self-refine/</guid>
-  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260516-self-refine/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>The Anthropic Institute’s Research Agenda</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260516-anthropic-institute-agenda/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-anthropic-institute-agenda/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-anthropic-institute-agenda/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Illustration from <a href="https://www.anthropic.com/research/anthropic-institute-agenda">Anthropic</a>.</figcaption>
-</figure>
-</div>
-<p>Anthropic <a href="https://www.anthropic.com/research/anthropic-institute-agenda">published</a> the research agenda for The Anthropic Institute (TAI) on May 7, 2026. The premise: a frontier lab can see AI’s real-world effects earlier than outside researchers can, and TAI’s job is to publish those signals so external organizations, governments, and the public can act on them. Outputs are described as inputs to the <a href="https://www.anthropic.com/news/the-long-term-benefit-trust">Long-Term Benefit Trust</a> (LTBT) and to release decisions, with the Anthropic Fellowship as the recruitment surface. The LTBT is an independent five-trustee body that, via a special Class T share, elects a growing share of Anthropic’s board (a majority within four years); its remit was announced as long-range and extreme-event decisions, not day-to-day operations.</p>
-<p>The agenda lays out four pillars:</p>
-<ul>
-<li><strong>Economic diffusion.</strong> Higher-cadence and more granular data from the <a href="https://www.anthropic.com/economic-index">Anthropic Economic Index</a> as an “early warning signal for significant change and disruption”. Open questions:
-<ul>
-<li>adoption inequality across countries;</li>
-<li>firm-level concentration of AI usage;</li>
-<li>productivity growth;</li>
-<li>how junior-role pipelines train senior practitioners once AI absorbs the entry-level tasks.</li>
-</ul></li>
-<li><strong>Threats and resilience.</strong> Topics feeding the <a href="https://red.anthropic.com/">Frontier Red Team</a> and <a href="https://www.anthropic.com/glasswing">Project Glasswing</a> backlog, framed by an explicit asymmetric tempo (capabilities advance in months, regulatory and insurance responses on years):
-<ul>
-<li>dual-use observability;</li>
-<li>market-based risk pricing;</li>
-<li>offense-defense balance in cyber and bio;</li>
-<li>crisis-coordination infrastructure for AI scenarios.</li>
-</ul></li>
-<li><strong>AI systems in the wild.</strong>
-<ul>
-<li>group epistemology when most users consult the same few models;</li>
-<li>critical-thinking degradation under increasing deference;</li>
-<li>governance of autonomous agents, with naval-law analogies for unattended ships;</li>
-<li>AI oversight of AI.</li>
-</ul></li>
-<li><strong>AI-driven R&amp;D.</strong>
-<ul>
-<li>telemetry for measuring research speedup;</li>
-<li>“fire drill” tabletop exercises for an intelligence-explosion scenario;</li>
-<li>who governs systems that build their successors;</li>
-<li>a separate “jagged frontier” question on whether models can be steered toward high-externality science (drug discovery, materials) that markets underweight.</li>
-</ul></li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>TAI is the field’s first research-agenda layer.</strong> Across the four frontier labs, <a href="../../posts/20260428-openai-agi-principles/">OpenAI’s <em>Our principles</em></a> and its peer documents map two existing document types: declared values and deployment gates. TAI is a third type, set up to produce empirical findings the other two layers can be checked against. The <a href="../../posts/20260423-anthropic-economic-index/">Anthropic Economic Index</a>, with more granular data and higher cadence under TAI, is one concrete commitment. OpenAI’s new “Adaptability” principle commits to updating positions as evidence accumulates; TAI is the closest the field has to an institution set up to produce that evidence.</p></li>
-<li><p><strong>Two ways TAI matters, both untested.</strong></p>
-<ul>
-<li><strong>Externally,</strong> the agenda promises an “early warning signal for significant change and disruption”, language that asserts a verifiable measurement. If outsiders can’t reproduce TAI’s numbers from the published procedure, anyone acting on the early-warning claim has to take Anthropic’s word for it.</li>
-<li><strong>Internally,</strong> TAI’s findings feed into the LTBT, giving the Trust a steady research-policy stream beyond the extreme-event scope it was originally announced for. That integration becomes meaningful only when a Trust position publicly diverges from a commercial decision.</li>
-</ul></li>
-<li><p><strong>The R&amp;D pillar’s telemetry could check Clark’s forecast.</strong> <a href="../../posts/20260508-import-ai-455-automating-ai-research/">Jack Clark</a> put 60% on full AI-driven R&amp;D by end of 2028 from public benchmark trends. TAI commits to publishing the internal R&amp;D speedup data that would let outside readers compare that forecast to actual progress. Without publication, the pillar stays purely internal and only useful to Anthropic.</p></li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260516-anthropic-institute-agenda/</guid>
-  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260516-anthropic-institute-agenda/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Perrigo Parkrun #300, My #99</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260516-my-99-parkrun-perrigo-300/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-my-99-parkrun-perrigo-300/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>Today is Perrigo #Parkrun #300, and also my 99th parkrun!</p>
-<p>(imagine if I ran just one more time… 😔 )</p>
-<p><img src="https://benjaminhan.net/posts/20260516-my-99-parkrun-perrigo-300/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260516-my-99-parkrun-perrigo-300/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260516-my-99-parkrun-perrigo-300/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260516-my-99-parkrun-perrigo-300/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116585831426535983">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260516-my-99-parkrun-perrigo-300/</guid>
-  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260516-my-99-parkrun-perrigo-300/cover.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

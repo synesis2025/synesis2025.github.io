@@ -1,0 +1,33 @@
+---
+title: "Dynamic Workflows in Claude Code"
+description: "Claude Code can now write orchestration scripts that fan a task out across tens to hundreds of parallel subagents, check the findings against each other, and resume an interrupted run where it left off."
+author: synesis
+date: "2026-05-29"
+image: cover.jpg
+---
+
+![A dynamic workflow mid-run: a Zig-to-Rust migration split into phases (Inventory, Pattern Analysis, Infrastructure, Migrate Core, Migrate App, Verify & Report) with 28 of 35 subagents working in parallel across the codebase. Image from [Claude's blog](https://claude.com/blog/introducing-dynamic-workflows-in-claude-code).](cover.jpg){fig-align="center"}
+
+[Anthropic](https://www.anthropic.com/) has [introduced dynamic workflows](https://claude.com/blog/introducing-dynamic-workflows-in-claude-code) in [Claude Code](https://claude.com/product/claude-code), a research-preview feature for the tasks too big for a single pass — work you'd normally plan in quarters, done in days. What the announcement describes:
+
+- **What it is.** Claude writes an orchestration script that breaks a task into subtasks and fans them out across tens to hundreds of subagents running in parallel within one session, checking each result before folding it in and returning a single coordinated answer.
+- **How it converges.** Agents attack the problem from independent angles while other agents try to refute what they find, and the run keeps iterating until the answers agree. That redundancy-plus-refutation loop is, per the post, how a workflow "reaches results a single pass can't."
+- **What it's for.** Codebase-wide bug hunts, profiler-guided optimization and security audits, and hardening passes (auth checks, input validation, unsafe patterns); large migrations and language ports spanning thousands of files; and high-stakes work you want checked twice, with adversarial agents trying to break the result before you see it.
+- **Long-running and resumable.** It is built for jobs that run for hours or days. Progress is saved as the run goes, so an interrupted job resumes instead of restarting, and because the coordination lives outside the conversation the plan holds its shape as the task grows.
+- **Where it runs.** Research preview in the Claude Code CLI, desktop app, and VS Code extension on Max, Team, and Enterprise (admin-enabled) plans, plus the Claude API, Amazon Bedrock, Vertex AI, and Microsoft Foundry.
+- **How to start.** Ask Claude to "create a workflow," or turn on the new `ultracode` setting (the effort menu's maximum, `xhigh`), which lets Claude decide for itself when a task warrants one. It is on by default on Max, Team, and the API, and off by default on Enterprise at launch. Anthropic warns it consumes substantially more tokens than a normal session, so the first run pauses for confirmation and admins can disable it.
+
+### Case study: rewriting Bun
+
+The announcement's marquee example is the rewrite of [Bun](https://bun.sh/), the JavaScript runtime. [Jarred Sumner](https://github.com/Jarred-Sumner) used dynamic workflows to port it from [Zig](https://ziglang.org/) to [Rust](https://www.rust-lang.org/): roughly 750,000 lines of Rust, 99.8% of the existing test suite passing, eleven days from first commit to merge. One workflow mapped the right Rust lifetime for every struct field in the Zig code; the next wrote each `.rs` file as a behavior-identical port of its `.zig` counterpart, hundreds of agents in parallel with two reviewers on each file; a fix loop then drove the build and test suite until both ran clean; and an overnight workflow opened a separate PR for each unnecessary data copy it found. The post notes the result is not yet in production, so the 99.8% is a test-pass rate on a port rather than a measure of shipped software running under load.
+
+## My Notes
+
+- **The script makes the run inspectable.** Claude writes the coordination as an explicit script instead of burying it in one long completion. So you can read the plan, the subtasks, and what each subagent was told. When a long run goes wrong, you can find the step that broke it, and you can approve or fix the plan before hundreds of agents act on it. That matters more as runs get longer and costlier to redo.
+
+- **Convergence is not correctness.** The run stops when the agents and their refuters agree, and that agreement is reported as a verified result. But they are the same base model reading the same context, so they share blind spots: wrong answers can converge as cleanly as right ones. The claim only holds if the refuters are genuinely adversarial, not just agreeable, and that is the part still to be proven.
+
+- **Dynamic authoring replaces topology search.** Earlier multi-agent work searched for good agent topologies offline (ADAS, AFlow, and [MASS](/posts/20260430-multi-agent-system-search/), which found topology matters *least*, behind the prompts at both ends). Dynamic workflows have Claude write the orchestration fresh for each task. That swaps an expensive offline search for per-task generation, but the risk moves rather than vanishes: whether a generated plan beats a tuned fixed one, when a bad plan costs hours of parallel compute, is the open question.
+
+- **It is the Ralph loop, grown up.** The cheapest version of this idea is the [Ralph loop](https://ghuntley.com/ralph/): one agent in a `while true` shell loop, fed the same prompt until the repo looks done, with git as the only memory. Dynamic workflows keep that deterministic outer loop but let Claude write it, fan the work across parallel agents, and add agents whose job is to attack the results. The Ralph loop trusts repetition to converge; this trusts refutation. What is unproven is whether the extra machinery, and the much larger token bill, earns its keep on tasks a plain loop would have finished anyway.
+

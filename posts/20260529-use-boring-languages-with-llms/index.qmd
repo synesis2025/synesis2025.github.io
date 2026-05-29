@@ -1,0 +1,58 @@
+---
+title: "Use Boring Languages with LLMs"
+description: "Coding agents produce more reliable output in cohesive language ecosystems like Go than in fragmented ones like JavaScript or Python."
+author: synesis
+date: "2026-05-29"
+image: cover.jpg
+---
+
+![The xkcd "Python environment" comic the article uses to picture Python's tooling sprawl. Image from [xkcd 1987](https://xkcd.com/1987/).](cover.jpg){fig-align="center"}
+
+[Jacob Young](https://jry.io/) [argues](https://jry.io/writing/use-boring-languages-with-llms/) that coding agents produce more reliable output in languages and ecosystems with low variance in their training data, and that [Go](https://go.dev/) is the best mainstream language for this moment because its conventions, standard library, and one-right-way tooling give an agent fewer ways to go wrong.
+
+## What the article argues
+
+The case, in the order the article makes it:
+
+- **The core claim:** coding agents inherit the variance of their training data. Ecosystems with heavy fragmentation produce the worst agentic output, and the ones with the strongest conventions produce the best.
+- **Inference is a gamble:** even when code is cheap, any single generation might install a needless package or reproduce an outdated pattern. The bet is to spend tokens where the model's weights are most reinforced, which yields median output, and the median program is mostly doing the basics anyway: reading files, serving requests, responding over the network.
+- **JavaScript and Python are the cautionary cases:** the [2024 State of JS](https://2024.stateofjs.com/) survey describes a fragmented ecosystem, and Python forces a matrix of choices among [pip](https://pip.pypa.io/), [Poetry](https://python-poetry.org/), and [uv](https://docs.astral.sh/uv/), sync versus async, [Django](https://www.djangoproject.com/) versus [FastAPI](https://fastapi.tiangolo.com/). The public corpus reflects every variant in roughly equal weight, so the model has no single idiom to default to.
+- **Ruby on Rails and Go are the counter-cases:** [Ruby on Rails](https://rubyonrails.org/) produces more consistent agentic output because there is essentially one Rails, where JavaScript has a dozen production-grade frameworks covering the same features. Convention over configuration, once a win for human programmers, now helps machines more.
+- **Go gives an agent five specific advantages:**
+  - Goroutines avoid the [colored-function](https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/) problem: there is no async-versus-sync split for the model to track.
+  - The standard library carries a large share of real services, net/http and the Google-funded cryptography packages in particular, without reaching for third-party code.
+  - One-right-way tooling (gofmt, go vet, [gopls](https://pkg.go.dev/golang.org/x/tools/gopls), [golangci-lint](https://golangci-lint.run/)) enforces a single canonical style and feeds the agent real-time semantic and lint feedback.
+  - Garbage collection gives native-like performance without asking the agent to manage memory, which the article contrasts with [Rust](https://www.rust-lang.org/)'s borrow checker ("a constant fight for agents") and the memory bugs that fill C and C++ training data.
+  - The set of footguns is small and bounded, unlike Python with arbitrary metaclasses.
+- **What the article concludes:** not that Go is the best language, but that this language and toolchain can write the majority of non-visual software, the next CLI, backend server, or agent orchestrator.
+
+## My Notes
+
+The notes below weigh the thesis from both sides, each marked for or against.
+
+- **Variance may be the wrong variable.** *Against the thesis.* The article credits low corpus variance but never accounts for corpus size, a separate variable. JavaScript and Python are the most fragmented mainstream ecosystems, yet also the most-represented in training data, and code models are strongest on well-represented languages and weaker on low-resource ones like OCaml or Racket [[1]](#ref-1).
+
+- **The toolchain advantage isn't about the language alone.** *Against the thesis, on its internal logic.* The article names two ingredients for good agentic output: a consistent training corpus and "one-right-way tooling for testing and feedback at runtime." The second is language-independent: deterministic in-loop tooling (gofmt, go vet, gopls, golangci-lint) is a checkable signal the agent can iterate against, and any ecosystem with a strong checker provides one no matter how consistent its corpus is. So only the corpus half supports picking a boring language. The tooling half holds for any language with good tools.
+
+- **Betting on the median optimizes the cheap part.** *Against the thesis, on its payoff.* The basics the article's wager targets are also where a competent engineer was already fast, and where an agent's leverage is smallest. The work that actually costs human time is the non-median part: the unfamiliar API, the awkward edge case, the migration nobody has done before. [ProgramBench](/posts/20260526-programbench-rebuild-from-scratch/) shows that gap with numbers: asked to rebuild whole programs from scratch with no constraint on language, nine frontier models fully resolve none of 200 tasks, and the failures are architectural rather than matters of language idiom. Picking a boring language makes the agent reliable exactly where reliability was cheapest to get.
+
+- **The advantage shrinks as harnesses improve.** *Against the thesis, on its durability.* The article cites [Claude Code](https://www.anthropic.com/claude-code)'s "hard-coded some bias for JavaScript frameworks" as proof fragmentation is costly. But that fix lives in the harness, not the language. As harness conventions (system-prompt defaults, convention files, pinned lockfiles) normalize a fragmented ecosystem, the reason to switch languages weakens. The advice is strongest today and weaker with every harness improvement.
+
+- **The [Hacker News thread](https://news.ycombinator.com/item?id=48237012) (228 points, 168 comments) divides on the same fault lines.** The salient points, by side.
+  - *Against the thesis:*
+    - The most common objection is corpus size rather than variance, the point in the first note above. Commenters report the model writes "much better PHP, than Swift" because there is far more open-source PHP to train on, and that the worst results come from GDScript, "python minus the huge corpus of training data."
+    - The available benchmarks don't single Go out. A commenter cited [AutoCodeBench](/posts/20260529-autocodebench/) [[2]](#ref-2), a 20-language Pass@1 benchmark, for models being "better at writing Elixir than most other languages," but the benchmark classifies Elixir as low-resource and clusters the popular languages, Go included, within a narrow band, roughly 50 to 54 Pass@1. No mainstream language stands out.
+    - A large camp argues the property that helps is strictness rather than boringness, and would go the other way toward Rust, OCaml, or Haskell: required `Result`/`Option` handling means "if it compiles, chances are higher the code is correct," which catches more agent errors than a low-variance corpus does.
+    - Goroutines drew specific pushback. Several report agents "trip up a lot on the races and locking" in Go and have moved their agent work to Rust, and note the article gives no evidence for the goroutine claim.
+    - Others argue human familiarity matters more than the model's preference, since "the bottleneck isn't what languages the LLM can handle, but what I can handle" coming out of it.
+  - *For the thesis:*
+    - The feedback-loop point drew the most agreement: compile-time errors and clear compiler messages let the agent iterate, which commenters found true in Elm and Rust as much as in Go.
+    - Anecdotal wins for Go: one reports the code Sonnet "produces for Go is much better than the Python it creates," another that LLM-assisted Node-to-Go ports came out clean and cut memory roughly tenfold.
+    - "Pit of success" was offered as the better name for the real effect: predictable defaults that are hard to get wrong.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>Cassano, Federico, Gouwar, John, Lucchetti, Francesca, Schlesinger, Claire, Freeman, Anders, Anderson, Carolyn Jane, Feldman, Molly Q., Greenberg, Michael, Jangda, Abhinav, Guha, Arjun. "Knowledge Transfer from High-Resource to Low-Resource Programming Languages for Code LLMs." *arXiv preprint* (arXiv:2308.09895), August 19, 2023. <https://arxiv.org/abs/2308.09895>
+2. <a id="ref-2"></a>Chou, Jason, Liu, Ao, Deng, Yuchi, Zeng, Zhiying, Zhang, Tao, Zhu, Haotian, Cai, Jianwei, Mao, Yue, Zhang, Chenchen, Tan, Lingyun, Xu, Ziyan, Zhai, Bohui, Liu, Hengyi, Zhu, Speed, Zhou, Wiggin, Lian, Fengzong. "AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators." *arXiv preprint* (arXiv:2508.09101), August 12, 2025. <https://arxiv.org/abs/2508.09101>

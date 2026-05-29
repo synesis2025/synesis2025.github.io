@@ -21,7 +21,306 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 28 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 29 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>A Rube Goldberg Pipeline for Sharing Links</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Rube Goldberg’s <em>Self-Operating Napkin</em>, the canonical absurd contraption (Professor Butts, 1931). Image via <a href="https://commons.wikimedia.org/wiki/File:Self-operating_napkin_(Rube_Goldberg_cartoon_with_caption).jpg">Wikimedia Commons (public domain)</a>.</figcaption>
+</figure>
+</div>
+<p>Most posts here start as a link or a paragraph I read on my phone, in Mastodon or RSS or an article. By the time I’m back at my Mac, the thread is usually gone: the link buried under three days of tabs, the half-formed reaction long since dissolved.</p>
+<p>What I wanted, in three steps:</p>
+<ol type="1">
+<li><strong>I capture on my phone</strong> in seconds, with whatever sliver of a thought I have at the moment.</li>
+<li><strong>I finish on my Mac</strong> at leisure, with VSCode and Claude Code.</li>
+<li><strong>I publish to the blog</strong> in one motion, with the cover image and <code>llms.txt</code> entry following along.</li>
+</ol>
+<p>What it took: half a dozen different systems chained together. It starts when a scaffolded draft lands in my repo within seconds of a phone tap. Hours or days later, when I’m back at my Mac and have written my commentary, running the <code>publish</code> command takes about three minutes to put the post live on <code>benjaminhan.net</code>. For quick reshares where I have nothing to add, a <code>Capture+publish:</code> variant skips the Mac loop entirely and lets CI promote the draft on its own. The systems involved are the iOS share sheet, a <a href="http://omz-software.com/pythonista/">Pythonista</a> script, GitHub’s Contents API, GitHub Actions, and GitHub Pages. Two adjacent stages aren’t covered here: the Cloudflare CDN + feed-analytics Worker in front of GitHub Pages, and the optional Mastodon cross-post that can fire after deploy.</p>
+<p>The result is more engineering than bookmarking really needs. Below is the contraption, and the spots where it tends to stick.</p>
+<section id="the-pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="the-pipeline">The pipeline</h2>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/83217d89111c9164.svg" alt="flowchart TB
+    subgraph capture [&quot; &quot;]
+        direction LR
+        A[iOS Share Sheet] --&gt; B[Pythonista]
+        B --&gt;|GitHub Contents API| C[draft .qmd in repo]
+        C --&gt;|git pull + /expand-draft| D[Expanded draft]
+        D --&gt; M[Manual edit&lt;br/&gt;VSCode + Claude Code]
+    end
+    subgraph depl" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+</section>
+<section id="what-each-stage-actually-does" class="level2">
+<h2 class="anchored" data-anchor-id="what-each-stage-actually-does">What each stage actually does</h2>
+<ul>
+<li><strong>iOS Pythonista</strong> captures the URL plus a handful of prompts (title, slug, optional one-liner, “Notes to Claude,” “is the post mine?”), auto-detects the source platform (Mastodon, YouTube, arxiv, Substack, GitHub, etc.) from the URL host, and <code>PUT</code>s a stub <code>.qmd</code> to the repo via GitHub’s Contents API. The platform tag tells the next stage how to dispatch.</li>
+<li><strong>Auto-publish</strong> is the Mac-less shortcut for a link I want to reshare verbatim. The iOS capture sets <code>auto-publish: true</code> and commits with <code>Capture+publish:</code> (no <code>[skip ci]</code>), so the workflow runs. An early step pulls the source toot via Mastodon’s public API, downloads its image attachments, maps its hashtags against the existing tag vocabulary, fills in missing required frontmatter, and <code>git mv</code>s the draft to <code>posts/</code> before <code>quarto render</code>. Mastodon-only today. Other platforms raise a hard <code>SystemExit</code>, so a malformed capture fails CI rather than shipping a broken post.</li>
+<li><strong><code>/expand-draft</code> skill</strong> runs on the Mac in Claude Code. It reads the stub’s <code>source-url</code> and <code>source-platform</code>, fetches the page, extracts <code>og:image</code> / <code>og:description</code>, suggests categories from the existing tag set, downloads the cover image (with a citation in the figcaption), and writes a STYLE.md-compliant draft. If <code>notes-for-claude</code> is set, the skill follows it as per-draft direction. If <code>source-mine: true</code>, it skips the framing-commentary scaffolding. A <code>/review-draft</code> pass then fact-checks against the source, flags voice and logic issues, and applies safe fixes before the expansion is committed.</li>
+<li><strong>Manual editing</strong> happens between expand and publish. I open the draft in VSCode and write or polish my commentary with Claude Code at hand. Quick link shares take minutes. Essays can take days. The expanded scaffolding stays deliberately minimal.</li>
+<li><strong><code>/publish-draft</code> skill</strong> validates the draft against the style guide, strips scaffolding, <code>git mv</code>s to <code>posts/</code>, commits, pushes.</li>
+<li><strong>GitHub Actions</strong> implements <em>incremental rendering</em>. A classifier (<code>_scripts/render_diff.py</code>) diffs the working tree against the last successful build’s cached <code>_site/</code> and picks one of <code>full</code>, <code>incremental</code>, or <code>skip-render</code>. A post edit typically routes to <code>incremental</code> and renders in ~20 s instead of ~4 min. Pre-render scripts then emit the tag histogram, the external <code>post-index.json</code> that hydrates the home + archive listings, the bucket-paginated home and archive pages, and <code>llms.txt</code>. Quarto renders the <code>.qmd</code> files. Post-render, <code>feed-render.py</code> rasterizes Mermaid diagrams and MathJax expressions to SVG so the RSS feed carries real images, <code>feed-utm.py</code> UTM-tags the feed item URLs (so GA4 can attribute RSS click-throughs back to the feed channel) and prepends a “Read on benjaminhan.net” back-link to each item’s body, and <code>feed-paginate.py</code> slices the feed into RFC 5005 paged archives so the index file stays small while subscribers can still walk back through history. Three more scripts run before deploy to strip redundant listing H1s, prune inline asset blobs from pages that don’t need them, and fingerprint <code>styles.css</code> for cache-busting.</li>
+</ul>
+</section>
+<section id="gotchas" class="level2">
+<h2 class="anchored" data-anchor-id="gotchas">Gotchas</h2>
+<p>The pipeline above looks clean in a flowchart. It is not. Here are the bumps I hit, in roughly the order they showed up.</p>
+<ul>
+<li><strong><code>dialogs.input_alert</code> doesn’t block in Pythonista’s share extension.</strong> The dialog works fine when I tap ▶ inside the Pythonista app. From the share sheet, it races through every prompt with empty inputs. Symptom: nothing happens, no error, the script finishes silently. Fix: switch to <code>console.input_alert</code>. Same signature, behaves correctly in the extension sandbox.</li>
+<li><strong>GitHub Contents API needs <code>sha</code> to update an existing file.</strong> I hit this on a slug collision (HTTP 422, “sha wasn’t supplied”). The script now <code>GET</code>s the path first. If the file exists, it offers Replace (passing the existing <code>sha</code> so the <code>PUT</code> is treated as an update) or Cancel.</li>
+<li><strong>Quarto’s <code>draft-mode: gone</code> strips draft pages to empty HTML.</strong> Local <code>quarto preview</code> shows blank pages for files in <code>drafts/</code>. Workaround: a <code>_quarto-preview.yml</code> profile that flips <code>draft-mode: unlinked</code> for previews. Production CI builds without the <code>--profile=preview</code> flag, so the deployed site never includes drafts.</li>
+<li><strong>VSCode’s Quarto extension doesn’t inherit <code>terminal.integrated.env.osx</code>.</strong> Setting <code>QUARTO_PROFILE=preview</code> in workspace settings only affects the integrated terminal. The extension spawns Quarto in a separate process tree with its own inherited env. Real fix: <code>export QUARTO_PROFILE=preview</code> in <code>~/.zshrc</code>, then <code>Cmd-Q</code> and relaunch VSCode from the terminal so the extension inherits it.</li>
+<li><strong><code>image:</code> frontmatter is metadata, not body content.</strong> Quarto uses <code>image:</code> only for <code>og:image</code> meta tags and listing thumbnails. It does not render an inline cover image on the post page itself. The body needs an explicit <code>![](cover.jpg){fig-align="center"}</code> for the cover to actually appear.</li>
+<li><strong><code>.claude/</code> was gitignored, hiding the per-project skills.</strong> The first commit of <code>expand-draft.md</code> and <code>publish-draft.md</code> resulted in zero tracked files. The directory was excluded entirely. Git’s rule is that a re-include cannot reach a file under an already-excluded parent directory, so <code>!.claude/skills/</code> does not work against <code>.claude/</code>. The fix is to widen the exclusion to <code>.claude/*</code> first, then re-include <code>.claude/skills/</code>.</li>
+</ul>
+</section>
+<section id="why-bother" class="level2">
+<h2 class="anchored" data-anchor-id="why-bother">Why bother</h2>
+<p>Two reasons:</p>
+<ul>
+<li><strong>The iOS-to-Mac handoff matches how I actually find good links.</strong> On a phone, in an RSS or Mastodon reader, away from a keyboard. Capturing them as scaffolded drafts means I don’t lose the thread between “I should put more thought to it” and “I’m back at the Mac.” The drafts queue up. I work on them when I have time.</li>
+<li><strong>The pipeline keeps a human in the loop.</strong> The phone capture is mine. The commentary is mine. The publish command is a manual step, not a webhook. Automation handles plumbing. Editorial calls stay with me.</li>
+</ul>
+<p>The pipeline is elaborate, fragile, and a little excessive. For a workflow that runs every few days, that is also fine.</p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/</guid>
+  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Sounds of Joy</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260420-sounds-of-joy/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-sounds-of-joy/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260420-sounds-of-joy/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Listening Museum — preview card showing 36 mechanical keyboards. Image from <a href="https://sheets.works/data-viz/keyboard-sounds">sheets.works</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://sheets.works/data-viz/keyboard-sounds"><strong>The Listening Museum</strong></a> — an interactive page that lets you click any of 36 mechanical keyboards (from the 1985 IBM Model M to modern thocky customs) and hear it mapped to your typing.</p>
+<p>I’ve been a faithful user of Apple Magic Keyboards, and I love their low profiles. But I’ve been obsessed with mechanical keyboards — the low-profile ones. Just haven’t found a perfect one I like.</p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260420-sounds-of-joy/</guid>
+  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260420-sounds-of-joy/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260420-opus-47-token-count/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-opus-47-token-count/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260420-opus-47-token-count/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Claude Token Counter card from Simon Willison’s blog post. Image from <a href="https://simonwillison.net/2026/Apr/20/claude-token-counts/">Simon Willison’s Weblog</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://simonwillison.net/2026/Apr/20/claude-token-counts/"><strong>Claude Token Counter, now with model comparisons</strong></a> — Simon Willison upgraded his token counter to compare Claude models head-to-head. Headline findings:</p>
+<ul>
+<li><strong>Opus 4.7 ships a new tokenizer</strong> — the first Claude model to change it. Anthropic’s announcement framed it as a 1.0–1.35× token-count increase depending on content type.</li>
+<li><strong>Real measurement: 1.46×.</strong> Pasting the Opus 4.7 system prompt itself through both tokenizers gave 4.7 ~46% more tokens than 4.6, slightly above Anthropic’s stated upper bound.</li>
+<li><strong>Per-token pricing is unchanged</strong> ($5 / M input, $25 / M output for Opus). So at the same workload, Opus 4.7 effectively costs <strong>~40% more</strong> than Opus 4.6.</li>
+<li><strong>Images are mostly a wash, with a caveat.</strong> Opus 4.7 also added higher-resolution image support (up to 2,576 px on the long edge — ~3.75 MP, 3× prior models). A 3.7 MB PNG showed a 3.01× token increase, but that was the new resolution support, not the tokenizer; a smaller 682×318 image cost roughly the same on both versions.</li>
+<li><strong>PDFs land in between.</strong> A 15 MB, 30-page text-heavy PDF showed only a 1.08× multiplier — much lower than raw text alone.</li>
+</ul>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260420-opus-47-token-count/</guid>
+  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260420-opus-47-token-count/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Earth Day 10K with My Daughter — First in Our Age Groups</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/02.jpg" class="img-fluid" data-lightbox-src="02-full.jpg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/03.jpg" class="img-fluid" data-lightbox-src="03-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/04.jpg" class="img-fluid" data-lightbox-src="04-full.jpg"></p>
+</div>
+</div>
+</div>
+<p>Earth Day 10K race today! My daughter and I ran as a team (“Speedy Swine &amp; Bovine” anyone?): her time was 49:36:31 ranked 11 (of 102), and my time was 55:37:32 ranked 25. We both earned our #1 in our respective age groups!</p>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/05.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/06.jpg" class="img-fluid" data-lightbox-src="06-full.jpg"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/07.jpg" class="img-fluid" data-lightbox-src="07-full.jpg"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/08.jpg" class="img-fluid" data-lightbox-src="08-full.jpg"></p>
+</div>
+</div>
+</div>
+<p>Coming from 3 days of no running due to ankle/knee problem, and only 2-hour sleep two nights ago (hooked with work), I was planning to just <em>walk</em> this race. But no, that type-A me just said go ahead! I did try to stay easy-ish pace, and in the end I didn’t feel too taxing. But my HR disagreed: avg/max 155/173 bpm at this pace! Terrible!</p>
+<p>Next race is in June — time to recover and rebuild!</p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116431843411259407">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/</guid>
+  <pubDate>Sat, 18 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/01.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Silver Bars and Language Models: Reading Babel in the Age of LLMs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260417-babel-llm-comparison/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260417-babel-llm-comparison/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260417-babel-llm-comparison/babel-cover.jpg" class="img-fluid figure-img" width="240"></p>
+<figcaption>Cover of R.F. Kuang’s <em>Babel: Or the Necessity of Violence</em> (Harper Voyager, 2022). (<a href="https://en.wikipedia.org/wiki/Babel,_or_the_Necessity_of_Violence">Source</a>)</figcaption>
+</figure>
+</div>
+<p>R.F. Kuang’s <em>Babel</em> was published in August 2022 [1], three months before OpenAI released ChatGPT [2]. The novel is set in an alternate 1830s Oxford and concerns the British Empire’s monopoly on a magical system of translation: silver bars that harvest the gap between languages and convert it into industrial power. Kuang was not writing about AI. But she finished describing a world in which linguistic knowledge is industrialized and centralized just as our world began building exactly that, and in retrospect the structural parallels are precise enough that the novel reads as one of the clearest available descriptions of what large language models actually do.</p>
+<section id="the-asymmetry-the-silver-mines" class="level3">
+<h3 class="anchored" data-anchor-id="the-asymmetry-the-silver-mines">The Asymmetry the Silver Mines</h3>
+<p>In Kuang’s novel, silver bars harvest the gap between languages. A word in Mandarin carries connotations its English counterpart does not, and that untranslatable remainder is what powers the silver. The system converts linguistic asymmetry into material force: bridges that do not collapse, ships that sail faster, an empire that holds.</p>
+<p>LLMs run on a structurally similar logic, except the asymmetry they mine is between what any one person knows and what the system has absorbed from millions. A radiologist has deep expertise in chest imaging but limited knowledge of rare genetic disorders. A junior developer can write a for-loop but struggles to architect a distributed system. LLMs sit in these gaps, having ingested the radiologist’s textbooks and the senior engineer’s Stack Overflow answers along with most of what is in between.</p>
+<p>The extraction is not limited to natural language. When a physicist uses an LLM to debug a simulation, or a philosopher uses one to stress-test an argument, the model is operating inside formalized reasoning: mathematical proof, algorithmic design, diagnostic logic. These are the structured systems humans built over centuries to close gaps in their own understanding, and they are now being absorbed into the model alongside the words. Language is the most visible layer of what LLMs ingest. The deeper layer is the full spectrum of how people think and solve problems.</p>
+</section>
+<section id="the-hidden-labor" class="level3">
+<h3 class="anchored" data-anchor-id="the-hidden-labor">The Hidden Labor</h3>
+<p>In <em>Babel</em>, the silver-work appears as refined scholarship: brilliant students in a beautiful tower translating ancient texts. The system depends on the colonized world — languages taken from peoples who will not share in the benefits equally, knowledge extracted along trade routes that are really routes of control.</p>
+<p>LLMs have their own version. In 2023, TIME reported that OpenAI had paid Kenyan workers less than two dollars an hour to label traumatic content so ChatGPT could learn to be polite [3]. The conversational interface most users experience as helpful, even charming, was refined through labor most of those users will never see. Behind that labor sit the writers whose work became training data without negotiation, and the domain experts whose hard-won knowledge now surfaces in model outputs without attribution.</p>
+</section>
+<section id="a-different-kind-of-dependence" class="level3">
+<h3 class="anchored" data-anchor-id="a-different-kind-of-dependence">A Different Kind of Dependence</h3>
+<p>A common response to worries about LLM dependence is that humans have always depended on powerful tools — electricity, antibiotics, the internal combustion engine. The relevant difference is what kind of capacity is being delegated. LLMs intervene in the specific work humans have most prided themselves on: reasoning, synthesis, and creation.</p>
+<p>Software engineering offers an early read. Industry surveys by 2025 showed that most professional developers had adopted AI coding assistants in their daily workflow [4]. Whether this widespread use is producing dependence is harder to measure, though the early signals point that way. Anthropic’s own study of AI-assisted coding found that delegating to the model correlated with worse comprehension on quiz questions, particularly on debugging and conceptual understanding, while using the model to ask conceptual questions and explain errors went the other way [5]. The pattern is that more delegative use thins the underlying skill.</p>
+<p>This is qualitatively different from depending on a calculator for arithmetic. A calculator handles a mechanical task so the user can focus on higher reasoning. An LLM that helps architect a system or draft an analysis is operating in the territory the user would otherwise occupy. The more fluent it gets, the harder it becomes to tell the assisting tool from the substituting one. In <em>Babel</em>, the students gradually lose the ability to imagine scholarship outside the silver-work; they can still think, but the infrastructure of their thinking has been absorbed into a system they do not control.</p>
+</section>
+<section id="benefit-does-not-cancel-asymmetry" class="level3">
+<h3 class="anchored" data-anchor-id="benefit-does-not-cancel-asymmetry">Benefit Does Not Cancel Asymmetry</h3>
+<p>One of <em>Babel</em>’s sharper insights is that the silver genuinely works. It heals the sick, strengthens buildings, and reaches even the colonized populations, who receive real advantages, distributed unevenly and always on terms set by the empire. That is what makes the students’ position agonizing: they are not dupes, they see the exploitation, and they also see the good the system produces and have built their lives inside it.</p>
+<p>The same structure holds for LLMs. A first-generation college student who cannot afford a tutor uses one to learn organic chemistry at midnight; a small business owner who cannot afford a lawyer drafts a workable contract. Dismissing these benefits would be dishonest.</p>
+<p>The benefits also flow through a system with a particular shape. A handful of companies control the most capable models. The people who extract the most value tend to be those who already have education, technical literacy, and institutional access. The dynamic is class-based rather than colonial, but the structure rhymes: those with existing advantages compound them, and those without gain just enough to deepen their dependence. In <em>Babel</em>, the empire does not need to withhold silver entirely. It only needs to control who gets how much, and on what terms.</p>
+</section>
+<section id="mediation-without-visible-seams" class="level3">
+<h3 class="anchored" data-anchor-id="mediation-without-visible-seams">Mediation Without Visible Seams</h3>
+<p>A central theme in <em>Babel</em> is that translation always involves loss, selection, and power. The translator chooses which nuance to preserve and which to sacrifice, and those choices serve the institution commissioning the translation. The silver does not transmit meaning; it transforms it, and the transformation is never neutral.</p>
+<p>LLMs mediate knowledge along similar lines. They compress, reframe, and smooth over ambiguity. They privilege patterns that were frequent in training data and underweight those that were not. When a medical student asks for a differential diagnosis and receives a confident, well-structured answer, the contested choices behind that answer — which studies were overrepresented, which demographic biases the medical literature carried forward — are not visible in the output. The answer reads as authoritative because the system shows no seams.</p>
+<p>This is a different sort of mediation from what universities, encyclopedias, or search engines perform. Those institutions also shape knowledge, but through visible editorial processes, peer review, and named accountability. Encyclopedias have editorial boards; journal articles have authors and methods sections; an LLM output has a prompt and a response, with the entire process of knowledge construction collapsed inside the model. The mediation is deeper and less legible.</p>
+</section>
+<section id="where-the-analogy-breaks" class="level3">
+<h3 class="anchored" data-anchor-id="where-the-analogy-breaks">Where the Analogy Breaks</h3>
+<p>LLMs are not silver bars, and the companies building them are not the British Empire. The comparison is strongest at the level of political economy: both systems convert distributed human knowledge into centralized capability, both produce real benefits alongside deep asymmetries, and both make complicity feel rational.</p>
+<p>The differences also matter. The British Empire held its silver monopoly through military force, and no one was free to leave. LLM companies operate inside markets where, in principle, competition exists, alternatives can be built, and users can switch away. The coercion is softer — convenience, integration, the cost of building a rival system — and that softness changes both the moral weight of participation and what resistance can plausibly look like.</p>
+<p>Intent is another difference. The people building LLMs would largely reject the <em>Babel</em> framing; they would say they are democratizing access to knowledge, and they would not be wrong. The same system that concentrates power also puts capability into the hands of people who previously had less of it. In <em>Babel</em>, the institution also believed it was doing civilizational good — advancing scholarship, building infrastructure, improving lives. Kuang’s point is that sincerity and extraction can coexist comfortably, and often do.</p>
+</section>
+<section id="pressure-points" class="level3">
+<h3 class="anchored" data-anchor-id="pressure-points">Pressure Points</h3>
+<p>The analogy is not a prophecy. <em>Babel</em> ends in revolt and destruction; the present situation is more open-ended. The students in the novel had almost no leverage, since the silver system was controlled entirely by one institution and the only option they could imagine was to break it. The current LLM infrastructure is concentrated but not sealed, and there are at least three pressure points that, taken seriously, could bend the trajectory away from the pattern Kuang describes.</p>
+</section>
+<section id="transparency-and-distributed-ownership" class="level3">
+<h3 class="anchored" data-anchor-id="transparency-and-distributed-ownership">Transparency and Distributed Ownership</h3>
+<p>The first is transparency and distributed ownership. A reasonable objection is that these sound naive in a capitalist economy: why would companies that spent billions on proprietary models voluntarily open them up? They would not, entirely. But transparency and distributed ownership are not anti-market positions, and they have coexisted with capitalism before. Pharmaceutical companies operate in a fiercely competitive market while being required to disclose clinical trial data and submit to regulatory review. The drugs remain proprietary, the companies remain profitable, and the knowledge needed to evaluate safety is not locked inside a black box. Requiring that LLMs surface their sources, flag uncertainty, and make training data composition auditable would not mean giving away model weights. It would mean establishing a floor of legibility.</p>
+<p>The ownership side is not about outcompeting every commercial lab. It is about building a public layer alongside the commercial one, the way public libraries did not dismantle the publishing industry but kept access to knowledge from depending entirely on ability to pay. Public investment in open models and shared compute infrastructure — efforts like the EU’s nascent sovereign AI programs [6] — could keep hospitals and school districts from being entirely at the mercy of one company’s pricing and priorities. Transparency without distributed ownership gives the public the right to see inside a system it cannot influence. Distributed ownership without transparency just produces another black box. The two together start to resemble a mixed economy of intelligence.</p>
+</section>
+<section id="education" class="level3">
+<h3 class="anchored" data-anchor-id="education">Education</h3>
+<p>The second is education. If the deepest risk is cognitive dependence, the most direct response is to teach people to think with these tools without being absorbed by them. Curricula should treat LLMs the way good math programs treat calculators: useful, permitted, but not a substitute for understanding the underlying reasoning.</p>
+</section>
+<section id="shared-language" class="level3">
+<h3 class="anchored" data-anchor-id="shared-language">Shared Language</h3>
+<p>The third is shared language. One reason <em>Babel</em> resonates is that it names a dynamic many people feel but cannot quite articulate: the sense that something valuable is being quietly reorganized, and that the benefits are real but the terms are not theirs to set. A framework for that feeling is itself a form of power, since a system that can be described is harder to be captured by.</p>
+<p>The asymmetry between what individuals know and what these systems have absorbed will keep being mined; I do not think that can be stopped. What is still open is whether the extraction is governed, shared more broadly, and made more accountable than it is now. <em>Babel</em> is most useful here as a description sharp enough to make the trap visible while there is still room to step around parts of it.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Kuang, R.F. <em>Babel: Or the Necessity of Violence: An Arcane History of the Oxford Translators’ Revolution</em>. Harper Voyager, August 2022.</li>
+<li><a id="ref-2"></a>OpenAI. “Introducing ChatGPT.” OpenAI Blog, November 30, 2022. <a href="https://openai.com/blog/chatgpt" class="uri">https://openai.com/blog/chatgpt</a></li>
+<li><a id="ref-3"></a>Perrigo, Billy. “OpenAI Used Kenyan Workers on Less Than $2 Per Hour to Make ChatGPT Less Toxic.” <em>TIME</em>, January 18, 2023. <a href="https://time.com/6247678/openai-chatgpt-kenya-workers/" class="uri">https://time.com/6247678/openai-chatgpt-kenya-workers/</a></li>
+<li><a id="ref-4"></a>Stack Overflow. “2025 Developer Survey.” Stack Overflow, 2025. <a href="https://survey.stackoverflow.co/2025/" class="uri">https://survey.stackoverflow.co/2025/</a></li>
+<li><a id="ref-5"></a>Anthropic. “AI Assistance and Coding Skills.” <em>Anthropic Research</em>. <a href="https://www.anthropic.com/research/AI-assistance-coding-skills" class="uri">https://www.anthropic.com/research/AI-assistance-coding-skills</a></li>
+<li><a id="ref-6"></a>European Commission. “AI Factories: European Initiative for Sovereign AI Infrastructure.” Digital Strategy, 2024. <a href="https://digital-strategy.ec.europa.eu/en/policies/ai-factories" class="uri">https://digital-strategy.ec.europa.eu/en/policies/ai-factories</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260417-babel-llm-comparison/</guid>
+  <pubDate>Fri, 17 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260417-babel-llm-comparison/babel-cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Chain-of-Thought, by Way of 4chan</title>
   <dc:creator>synesis </dc:creator>
@@ -713,254 +1012,6 @@
   <guid>https://benjaminhan.net/posts/20260319-language-puzzles/</guid>
   <pubDate>Thu, 19 Mar 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260319-language-puzzles/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Journey into Coding with AI [3/4]: Decision-Bound Programming</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/post-attachment.jpg" class="img-fluid figure-img"></p>
-<figcaption>Illustration from the original post. (<a href="https://www.linkedin.com/posts/benjaminhan_ai-coding-programming-activity-7439035461278482433-see_">Source</a>)</figcaption>
-</figure>
-</div>
-<p>AI is shifting programming from execution-bound work to decision-bound work.</p>
-<section id="generation-is-cheap-evaluation-is-not" class="level3">
-<h3 class="anchored" data-anchor-id="generation-is-cheap-evaluation-is-not">Generation Is Cheap, Evaluation Is Not</h3>
-<p>Many developers describe AI coding tools as both powerful and exhausting. Recent empirical work offers a plausible explanation. In a randomized controlled experiment, METR asked experienced developers to solve issues in familiar repositories, with and without AI tools [1]. On average, developers took about 19% longer when AI assistance was allowed, even though they believed they were faster. Reuters’ coverage notes that much of the extra time went into prompting, reviewing generated code, and correcting partially correct outputs [2]. These findings suggest that AI lowers the cost of producing candidate code while increasing the effort required to evaluate it.</p>
-<p>Once generation becomes cheap, the structure of development changes. Developers can quickly produce implementations, refactorings, or architectural variations. Not every developer will explore every branch, but the number of plausible alternatives grows. Each candidate must then be interpreted, validated, and compared before it can be trusted. Programming becomes less about executing a plan and more about evaluating possibilities.</p>
-</section>
-<section id="heuristics-and-context-switching" class="level3">
-<h3 class="anchored" data-anchor-id="heuristics-and-context-switching">Heuristics and Context Switching</h3>
-<p>The theory of bounded rationality [3] suggests that as the number of alternatives grows, people can no longer evaluate every option fully and instead rely on heuristics to reach satisfactory decisions. AI-assisted coding can increase the number of candidate solutions that must be screened and compared, helping explain why developers may perceive higher mental effort even when code is generated faster.</p>
-<p>A second burden is context switching. Research on programming interruptions has long shown that rebuilding context is expensive [4]. More recent AI-specific work strengthens this point. The 2026 EditFlow paper reports that 68.81% of code-edit recommendations disrupted developers’ mental flow [5]. A separate five-day field study found that proactive AI suggestions worked better after commits than mid-task [6].</p>
-<p>Recent studies also report higher perceived cognitive load during AI-assisted development [7]. Related work on user mental models in AI-driven code completion found that developers want better timing, display, granularity, and explanation [8].</p>
-</section>
-<section id="toward-decision-support" class="level3">
-<h3 class="anchored" data-anchor-id="toward-decision-support">Toward Decision Support</h3>
-<p>Taken together, the evidence suggests a broader pattern: AI accelerates code generation, but it can also increase interpretation, comparison, judgment, and context management during development. The bottleneck does not disappear. It moves. This means programming environments should evolve beyond code generation toward decision support. They should reduce unnecessary branching, summarize differences between alternatives, surface trade-offs, highlight risks, and make the implications of choices explicit.</p>
-<p>In other words, the next generation of programming tools should be decision support systems, not just code generators.</p>
-<p>(Part 2: <a href="../20250906-coding-with-ai-2-shifting-gears/">Shifting Gears</a>)</p>
-<hr>
-<p><strong>Continue the series:</strong> <a href="../20250905-coding-with-ai-1-running-back-to-code/">← Part 1: Running Back to Code</a> · <a href="../20250906-coding-with-ai-2-shifting-gears/">← Part 2: Shifting Gears</a></p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>METR. “Early-2025 AI on OSS Dev Productivity.” 2025. <a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/" class="uri">https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/</a></li>
-<li><a id="ref-2"></a>“AI slows down some experienced software developers, study finds.” <em>Reuters</em>, 2025. <a href="https://www.reuters.com/business/ai-slows-down-some-experienced-software-developers-study-finds-2025-07-10/" class="uri">https://www.reuters.com/business/ai-slows-down-some-experienced-software-developers-study-finds-2025-07-10/</a></li>
-<li><a id="ref-3"></a>Simon, Herbert A. <em>Models of Man</em>. 1957. (See also Klahr, 2004: <a href="https://www.cmu.edu/dietrich/psychology/pdf/klahr/PDFs/klahr%202004.pdf" class="uri">https://www.cmu.edu/dietrich/psychology/pdf/klahr/PDFs/klahr%202004.pdf</a>)</li>
-<li><a id="ref-4"></a>Parnin, Chris, and Spencer Rugaber. “Resumption Strategies for Interrupted Programming Tasks.” <em>Software Quality Journal</em>, 2011. <a href="https://chrisparnin.me/pdf/parnin-sqj11.pdf" class="uri">https://chrisparnin.me/pdf/parnin-sqj11.pdf</a></li>
-<li><a id="ref-5"></a>Liu, et al.&nbsp;“EditFlow.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2602.21697" class="uri">https://arxiv.org/abs/2602.21697</a></li>
-<li><a id="ref-6"></a>Kuo, et al.&nbsp;“Proactive AI Field Study.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2601.10253" class="uri">https://arxiv.org/abs/2601.10253</a></li>
-<li><a id="ref-7"></a>Brandebusemeyer, et al.&nbsp;“GenAI Mixed-Methods Field Study.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2512.19926" class="uri">https://arxiv.org/abs/2512.19926</a></li>
-<li><a id="ref-8"></a>Desolda, et al.&nbsp;“Mental Models in AI Code Completion.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2502.02194" class="uri">https://arxiv.org/abs/2502.02194</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_ai-coding-programming-activity-7439035461278482433-see_">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/</guid>
-  <pubDate>Sun, 15 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/post-attachment.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Woodinville Half: HM #76, the Comeback</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260308-woodinville-half-marathon/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260308-woodinville-half-marathon/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260308-woodinville-half-marathon/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260308-woodinville-half-marathon/02.jpg" class="img-fluid"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260308-woodinville-half-marathon/03.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260308-woodinville-half-marathon/04.jpg" class="img-fluid"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260308-woodinville-half-marathon/05.jpg" class="img-fluid"></p>
-</div>
-</div>
-</div>
-<p>I ran my HM #76 today (since 2023) at the Woodinville Half. Chip time matched my watch: 1:44:20 (7:57/mi). I finished 58/554 overall, 45/216 men, 5/29 AG. Felt like I still had gas left at the end!</p>
-<p>Course surprise: the gravel section on the Eastrail wasn’t where the map suggested. I expected it around mile ~2, but they changed the ordering so it ran from mile 8 to 11. Rain left puddles, so we had to run on rougher gravel parts to avoid them, which cost more pace. Those miles were a bit over 8:00/mi, but the rest were sub-8, and I finished faster than I started!</p>
-<p>Weather was rainy and cold (felt like ~40F at the start with ~9mph wind). Also today was the DST change, so we lost an hour of sleep.</p>
-<p>Pretty happy with this one, even though it’s not a PR (1:39:07). A month or so ago I was at rock bottom after the <a href="../20260112-bridle-trails-50k/">disastrous 50K trail race in January</a> and a cough that lasted over a month. Today felt like I finally made it back: VO₂max recovered from 45.9 to 51.5 since February, and my &lt;130 bpm easy pace improved from 10:30/mi to 9:15/mi.</p>
-<p>Happy International Women’s Day!</p>
-<hr>
-<p>A few weeks before the race I scouted the course on foot. Here’s the preview run on YouTube (not the race itself):</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260308-woodinville-half-marathon/video-preview.jpg" class="img-fluid figure-img"></p>
-<figcaption>Woodinville Half preview run on YouTube (not the race itself). <a href="https://youtu.be/vmOXClJ4Sy8">Watch on YouTube</a></figcaption>
-</figure>
-</div>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-activity-7436545314745987072-2-XY">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260308-woodinville-half-marathon/</guid>
-  <pubDate>Sun, 08 Mar 2026 08:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260308-woodinville-half-marathon/01.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Knuth’s Hamiltonian Cycles, Solved by Claude</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260308-knuth-hamiltonian-claude/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260308-knuth-hamiltonian-claude/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260308-knuth-hamiltonian-claude/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Cover image from the original LinkedIn post. (<a href="https://www.linkedin.com/posts/benjaminhan_mathematica-math-genai-activity-7436552626042716160-qHiQ">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Donald Knuth found out that Hamiltonian cycle decomposition problem he came up with while writing The Art of Computer Programming was solved by Claude Opus 4.6 [1]. Perhaps Mathematica will integrate with Claude now alongside ChatGPT?</p>
-<p>(the reverse already exists)</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Knuth, Donald E. <em>Claude Cycles</em> (note). Stanford CS. <a href="https://www-cs-faculty.stanford.edu/~knuth/papers/claude-cycles.pdf" class="uri">https://www-cs-faculty.stanford.edu/~knuth/papers/claude-cycles.pdf</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_mathematica-math-genai-activity-7436552626042716160-qHiQ">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260308-knuth-hamiltonian-claude/</guid>
-  <pubDate>Sun, 08 Mar 2026 08:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260308-knuth-hamiltonian-claude/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>iPhone and iPad Approved for Classified NATO Information</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260226-iphone-ipad-nato-classified/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260226-iphone-ipad-nato-classified/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260226-iphone-ipad-nato-classified/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Cover image from the Apple Newsroom announcement. (<a href="https://www.apple.com/newsroom/2026/02/iphone-and-ipad-approved-to-handle-classified-nato-information/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>The first and only consumer devices to meet these international government security standards [1].</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“iPhone and iPad approved to handle classified NATO information.” <em>Apple Newsroom</em>, February 2026. <a href="https://www.apple.com/newsroom/2026/02/iphone-and-ipad-approved-to-handle-classified-nato-information/" class="uri">https://www.apple.com/newsroom/2026/02/iphone-and-ipad-approved-to-handle-classified-nato-information/</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_iphone-and-ipad-approved-to-handle-classified-activity-7433020333361893376-1Gso">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260226-iphone-ipad-nato-classified/</guid>
-  <pubDate>Thu, 26 Feb 2026 08:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260226-iphone-ipad-nato-classified/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Marcus vs. Brundage: A Concrete AGI Bet</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260223-marcus-brundage-agi-bet/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260223-marcus-brundage-agi-bet/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260223-marcus-brundage-agi-bet/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from the original LinkedIn post. (<a href="https://www.linkedin.com/posts/benjaminhan_ai-agi-future-activity-7431923340866658304-h6F-">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Gary Marcus, a cognitive scientist and longtime critic of scaling-centric AI, and Miles Brundage, an AI policy researcher and former OpenAI policy lead, agreed in 2024 to make the following bet on AI [1]:</p>
-<blockquote class="blockquote">
-<p>If AI can complete at least eight of the milestones with minimal human involvement by the end of 2027, Marcus pays Brundage $2,000. If not, Brundage pays Marcus $20,000.</p>
-</blockquote>
-<p>The tasks are ambitious. AI systems must:</p>
-<ol type="1">
-<li>Watch and analyze&nbsp;a new film.</li>
-<li>Read and interpret&nbsp;a new novel.</li>
-<li>Write&nbsp;a NYT-caliber obituary without hallucinations.</li>
-<li>Master&nbsp;most new video games.</li>
-<li>Draft&nbsp;a professional legal brief without fake citations.</li>
-<li>Generate&nbsp;10,000+ lines of correct production code.</li>
-<li>Produce&nbsp;a Pulitzer-caliber book.</li>
-<li>Write&nbsp;an Oscar-caliber screenplay.</li>
-<li>Make&nbsp;a Nobel-caliber scientific discovery.</li>
-<li>Translate&nbsp;a published mathematical proof into formal, machine-verifiable form.</li>
-</ol>
-<p>My first reaction: this doesn’t look like&nbsp;<em>average</em>&nbsp;human general intelligence. Almost no human could do all of these tasks! Clearing eight of ten feels less like “human-level AGI” and more like cross-domain elite expertise — something close to a superhuman polymath.</p>
-<p>But the wager does&nbsp;not&nbsp;require a single unified AI system to accomplish all tasks. Multiple AI systems can be used across domains, as long as each task is completed with minimal human involvement. So the benchmark is about demonstrating AI capability&nbsp;<em>collectively</em>, not necessarily one monolithic AGI.</p>
-<p>The asymmetric odds are striking. Brundage risks $20,000 to win $2,000. For that to be positive expected value, he would need to believe the probability of success exceeds roughly&nbsp;<em>91 percent</em>. Here is how prediction markets see it today:</p>
-<ul>
-<li>Manifold Markets: ~21% [2]</li>
-<li>Metaculus: ~15% [3]</li>
-</ul>
-<p>That gap between the private conviction and the crowd forecast is especially interesting. But ultimately, the bet surfaces a deeper question: What do we actually mean by AGI — average human breadth, elite cross-domain capability, or highly autonomous systems operating across fields?</p>
-<p>Whatever happens by 2027, I appreciate that this wager forces the conversation into concrete, falsifiable milestones instead of vague timeline claims.</p>
-<p>REFERENCES</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Marcus, Gary. “Where will AI be at the end of 2027? A bet.” <em>Substack</em>, 2024. <a href="https://garymarcus.substack.com/p/where-will-ai-be-at-the-end-of-2027" class="uri">https://garymarcus.substack.com/p/where-will-ai-be-at-the-end-of-2027</a></li>
-<li><a id="ref-2"></a>Manifold Markets. “Will Miles Brundage win his bet with Gary Marcus?” <a href="https://manifold.markets/dreev/will-miles-brundage-win-his-bet-wit" class="uri">https://manifold.markets/dreev/will-miles-brundage-win-his-bet-wit</a></li>
-<li><a id="ref-3"></a>Metaculus. “2027 AI bet: Winner between Gary Marcus and Miles Brundage?” <a href="https://www.metaculus.com/questions/31246/2027-ai-bet-winner-between-gary-marcus-and-miles-brundage/" class="uri">https://www.metaculus.com/questions/31246/2027-ai-bet-winner-between-gary-marcus-and-miles-brundage/</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_ai-agi-future-activity-7431923340866658304-h6F-">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260223-marcus-brundage-agi-bet/</guid>
-  <pubDate>Mon, 23 Feb 2026 08:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260223-marcus-brundage-agi-bet/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

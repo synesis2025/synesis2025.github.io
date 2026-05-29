@@ -1,0 +1,87 @@
+---
+title: "Claude Code Beyond the Prompt"
+description: "Arpan Patel's field guide to running Claude Code as a programmable agent rather than a terminal chatbot."
+author: synesis
+date: "2026-05-29"
+image: cover.jpg
+---
+
+![The opening of Arpan Patel's Claude Code field guide. Image from [Arpan Patel's blog](https://arps18.github.io/posts/claude-code-mastery/).](cover.jpg){fig-align="center"}
+
+[Arpan Patel](https://arps18.github.io/) wrote a [long field guide](https://arps18.github.io/posts/claude-code-mastery/) to running [Claude Code](https://www.anthropic.com/claude-code) as a programmable agent instead of a terminal chatbot: the `.claude` directory, `CLAUDE.md` the way [Boris Cherny](https://www.anthropic.com/team/boris-cherny) writes it, skills, custom subagents, plugins, the underused commands, MCPs, and the workflow habits the Anthropic team actually runs. The author's badge says it hit #7 on the [Hacker News](https://news.ycombinator.com/) front page.
+
+## What the Guide Covers
+
+**The operating principle.** Run Claude Code as an agent that needs guardrails, not a prompt-and-wait chatbot.
+
+- Give Claude a way to verify its own work, whether a test, a build, or a grep-able condition, so it keeps iterating until the code runs. Cherny pegs this single move at a 2-3x quality bump.
+- Drop into read-only plan mode before any change that touches more than one file, so you can review and edit the plan before it turns into code. Skip it for small fixes.
+- Reference files with `@path` and pipe errors in with `cat error.log | claude`, because exact context beats an approximate description.
+- Write a crisp brief and let Claude run rather than steering it line by line, since the model does better when you delegate than when you pair-program.
+
+**The `.claude` directory.** A layered config system, not just a home for `CLAUDE.md`.
+
+- Split config by scope: project files (`.claude/`, committed) describe the project, global files (`~/.claude/`) describe you.
+- Let `CLAUDE.md` files cascade in a monorepo, so a service folder adds local conventions on top of the root file.
+- Move folder-specific guidance into path-gated `rules/*.md`, so it loads only where it applies instead of bloating every session.
+- Prefer skills over loose `commands/*.md`, since skills carry supporting files, tool restrictions, and agent overrides.
+
+**`CLAUDE.md`.** The file Claude reads at the start of every session, kept as a guardrail rather than a knowledge base.
+
+- Keep it short by cutting any line whose removal wouldn't cause a mistake, because long files bury the rules that matter.
+- After each mistake, tell Claude to "update CLAUDE.md so you don't repeat this," so the file becomes a curated gotcha list in the model's own phrasing.
+- Limit it to build commands, run order, single-test invocations, and a Gotchas section of real shipped bugs, and leave out style conventions and codebase tours that go stale.
+- Commit rules straight from PR-review comments with `@claude`, so every review becomes a permanent fix (Cherny's "Compounding Engineering").
+
+**`CLAUDE.local.md`.** A gitignored sibling that loads like `CLAUDE.md` but never leaves your machine.
+
+- Paste recurring PR-review feedback into it as you read it, so it becomes a private rule file tuned to the comments you keep getting.
+- Keep project feedback and personal habits in separate sections, and prune once something is muscle memory, so the file stays easy to maintain.
+
+**Skills.** Folders that package reusable expertise as slash commands.
+
+- Put a `SKILL.md` in a folder; the folder name becomes the command, so a repeated workflow turns into something you invoke by name.
+- Rely on progressive disclosure: only the ~100-token description loads at session start and the full instructions load when the skill fires, which keeps context lean.
+- Use frontmatter to restrict tools, pin an agent, or require explicit invocation for skills with side effects, so a deploy skill runs only when you type it.
+- Heuristic: if you've typed the same instructions twice, write a skill.
+
+**Subagents.** Separate Claude instances with their own context and scoped tools.
+
+- Hand a fifty-file investigation to a subagent, so it doesn't crowd the main session's context.
+- Keep a reviewer agent read-only, because a reviewer that can patch starts defending its own fixes instead of flagging them.
+- Give a review agent a "Do NOT flag" section, so its output isn't drowned in nitpicks.
+- Add `isolation: worktree` to run one agent per task across parallel git worktrees.
+
+**Plugins.** Installable bundles of skills, hooks, subagents, and MCP servers.
+
+- Install through `/plugin`, so a team's setup travels instead of staying on one machine.
+- Start with `/code-review` (parallel agents, confidence-scored findings) and `/feature-dev`.
+- Add a language server plugin for symbol-level navigation and on-edit diagnostics, which the team rates the highest-impact install.
+
+**Underused commands.** What's past `/clear` and `/compact`.
+
+- Use `/rewind` to roll back to a checkpoint instead of typing "that didn't work," which only buries the bad attempt in context.
+- Reach for `/branch`, `/batch`, `/voice`, and `/insights` to fork a session, fan work out, dictate prompts, and review your usage monthly.
+- Set `/goal` to a verifiable completion condition and let Claude grind until it holds.
+- Force compaction before 300-400k tokens, where context rot starts on the 1M-token model.
+- For mass edits, generate the task list, hand-check three, tighten the prompt, then loop. That is how he migrated roughly 2,000 component files.
+
+**MCPs.** A protocol for reaching external systems from inside the session.
+
+- Wire in servers like GitHub, Postgres, Sentry, Figma, or Linear through [MCP (Model Context Protocol)](https://modelcontextprotocol.io/), so the agent reasons about your whole stack, not just the repo.
+- Install few: every server enlarges the tool list Claude reasons over, and a bloated list degrades decision quality.
+- Treat an Obsidian vault as three memory tiers: a daily session log (hot), project notes Claude rehydrates at session start (warm), and promoted decisions and reusable notes (cold).
+
+**Daily workflow and team habits.** How the Anthropic team runs it day to day.
+
+- Reproduce a bug with a failing test before asking for a fix, so the fix isn't a guess.
+- Run three to five parallel sessions in separate git worktrees, the habit the team rates the single biggest unlock.
+- Pair a writer session with a fresh reviewer session, so the review carries no implementation bias.
+- Default to Opus at high effort, since a weaker model that needs correcting is slower overall.
+- Never let Claude claim success without evidence, because the trust-then-verify gap is the biggest source of bad output.
+
+## My Notes
+
+- **Harness over model.** The guide's bigger point is the same one Anthropic makes in its official [large-codebases piece](/posts/20260528-claude-code-large-codebases/): what you build around the model matters more than which model you run.
+
+- **`/goal`, a built-in Ralph loop.** It packages the pattern, retry until an external check passes, as a single command.

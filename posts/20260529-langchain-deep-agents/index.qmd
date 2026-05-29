@@ -1,0 +1,114 @@
+---
+title: "LangChain's Deep Agents: A Batteries-Included Agent Harness"
+description: "LangChain packages the planning-plus-subagents-plus-filesystem pattern behind Claude Code into a model-agnostic library, and names a new layer of the agent stack to place it in."
+author: synesis
+date: "2026-05-29"
+image: cover.jpg
+---
+
+![The Deep Agents harness bundles planning, a virtual filesystem with permissions, subagents, context management, code execution, human-in-the-loop approval, skills, and memory around the core tool-calling loop. Diagram from the [Deep Agents documentation](https://docs.langchain.com/oss/python/deepagents/harness).](cover.jpg){fig-align="center"}
+
+[LangChain](https://docs.langchain.com/oss/python/langchain/) has shipped [Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview), a standalone library for building agents that plan, spawn subagents, and read and write a filesystem to manage their own context over long runs. It comes in two forms: the [`deepagents`](https://pypi.org/project/deepagents/) SDK for building your own agents, and [Deep Agents Code](https://docs.langchain.com/oss/python/deepagents/code/overview) (`dcode`), a terminal coding agent built on that SDK in the mold of Claude Code. Both work across any tool-calling model rather than a single provider.
+
+The library matters less than the vocabulary around it. LangChain now describes the agent stack as three layers, and Deep Agents is its bet on the topmost one.
+
+- **Framework**: the abstractions you start with: content blocks, the agent loop, middleware. LangChain is one, alongside [Vercel's AI SDK](https://ai-sdk.dev/docs/introduction), [CrewAI](https://www.crewai.com/), the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/), [Google ADK](https://google.github.io/adk-docs/), and [LlamaIndex](https://www.llamaindex.ai/).
+- **Runtime**: the machinery that runs agents in production: durable execution, streaming, human-in-the-loop, persistence. [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview) is one, alongside durable-execution engines like [Temporal](https://temporal.io/) and [Inngest](https://www.inngest.com/).
+- **Harness**: an opinionated, batteries-included layer that ships predefined tools, prompts, and subagents so an agent can take on complex, open-ended tasks. Deep Agents is one, and LangChain explicitly files [Anthropic's Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) and [Manus](https://manus.im/) alongside it.
+
+`deepagents` is built on LangChain's core and runs on the LangGraph runtime, so the harness inherits durable execution, streaming, and persistence rather than reimplementing them.
+
+## What the docs describe
+
+The SDK exposes one constructor, `create_deep_agent(model=..., tools=..., system_prompt=...)`, and bundles a set of capabilities that you would otherwise wire up by hand:
+
+- **Planning**: a built-in `write_todos` tool lets the agent decompose a task, track progress, and revise the plan as it goes.
+- **Context management**: large tool inputs and results are offloaded to a virtual filesystem, and older messages are summarized, so the agent stays within budget across long sessions.
+- **Pluggable filesystem backends**: the virtual filesystem can be backed by in-memory state, local disk, the LangGraph store, a composite router, or a custom backend, each governed by declarative read/write permission rules.
+- **Code execution**: shell-capable backends add an `execute` tool. A `LocalShellBackend` runs on the host, and sandbox backends run it in isolation. A separate JavaScript interpreter lets the agent compose tools and transform data without a full shell.
+- **Subagents**: a `task` tool spawns general or specialized subagents in isolated context windows. Async subagents run in the background with progress checks and cancellation.
+- **Memory, skills, and human-in-the-loop**: long-term memory persists across threads via the LangGraph store, [skills](https://docs.langchain.com/oss/python/deepagents/skills) package reusable workflows, and sensitive tool calls can pause for human approval.
+- **Harness profiles** (beta): per-provider or per-model bundles of prompt, tool, and middleware tweaks, so one agent can be tuned for several models declaratively.
+
+Deep Agents Code wraps the SDK as a terminal coding agent. It installs from a `curl` one-liner, works with any tool-calling LLM, and can switch providers or models mid-session. It carries persistent memory, reads `AGENTS.md` files for project and subagent configuration, gates file writes and shell commands behind approval (with a `--auto-approve` escape hatch), loads [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) servers, runs tools in remote sandboxes ([LangSmith](https://docs.langchain.com/langsmith/sandbox-auth-proxy), Daytona, Modal, Runloop, AgentCore), and exposes itself to IDEs over the [Agent Client Protocol](https://docs.langchain.com/oss/python/deepagents/acp). Web search runs through [Tavily](https://www.tavily.com/). It is MIT-licensed.
+
+The docs include a direct [comparison with the Claude Agent SDK](https://docs.langchain.com/oss/python/deepagents/comparison). At a glance:
+
+| | Deep Agents | Claude Agent SDK |
+|---|---|---|
+| Where the agent runs | Inside a sandbox, or outside it [driving the sandbox as a tool](https://www.langchain.com/blog/the-two-patterns-by-which-agents-connect-sandboxes) | Inside a sandbox only |
+| Execution backend | Pluggable: local, virtual filesystem, remote sandbox, or custom | The sandbox's local filesystem |
+| Model provider | Any (Anthropic, OpenAI, Google, and 100+ others) | Claude only (Anthropic, Bedrock, Vertex, Azure) |
+| Per-model tuning | Harness profiles (beta), declarative | Configured in code at each call site |
+| Deployment | Managed in LangSmith, or self-hosted standalone image | Self-hosted; you build the server, auth, and streaming |
+| Multi-tenancy | Built in: scoped threads, per-user sandboxes, role-based access control | Build it yourself |
+| License | MIT | MIT (Claude Code itself is proprietary) |
+
+: Deep Agents vs. the Claude Agent SDK, as the LangChain docs frame the comparison. {.striped tbl-colwidths="[22,39,39]"}
+
+LangChain says Deep Agents is in production behind [OpenSWE](https://github.com/langchain-ai/open-swe) and LangSmith Fleet.
+
+## What building one looks like
+
+The docs' [deep research agent](https://docs.langchain.com/oss/python/deepagents/deep-research) shows how little of this you write yourself:
+
+| Step | What the agent does | Comes from |
+|---|---|---|
+| 1. Plan | Breaks the question into a todo list | `write_todos`, built in |
+| 2. Save the request | Writes the question to `/research_request.md` | virtual filesystem, built in |
+| 3. Delegate | Hands each sub-question to a subagent in its own context window | `task`, built in |
+| 4. Search | Each subagent runs Tavily and fetches full pages as markdown | the one tool you write |
+| 5. Synthesize | Consolidates findings and merges duplicate citations | your orchestrator prompt |
+| 6. Write the report | Writes `/final_report.md` | virtual filesystem, built in |
+| 7. Verify | Re-reads `/research_request.md` to confirm coverage | virtual filesystem, built in |
+
+: Building a research agent with Deep Agents. You supply a search tool and a prompt (steps 4 and 5). Planning, subagents, and the filesystem come from the harness. The filesystem steps are also the context management: the request and report live in files rather than the message history, so a long run stays within budget. {.striped tbl-colwidths="[16,54,30]"}
+
+LangChain ships two other end-to-end builds in the same shape: a [data analysis agent](https://docs.langchain.com/oss/python/deepagents/data-analysis) over data files with visualizations, and a [content builder agent](https://docs.langchain.com/oss/python/deepagents/content-builder) with brand memory, skills, subagents, and image generation. The [Quickstart](https://docs.langchain.com/oss/python/deepagents/quickstart) is a stripped-down version of the research agent.
+
+## My Notes
+
+Most of the comparison with the Claude Agent SDK reduces to "we support more models and we manage deployment for you," which is a business-model difference. The one substantive architectural difference is where the agent process runs relative to its execution environment. [Harrison Chase](https://x.com/hwchase17) lays out [two patterns](https://www.langchain.com/blog/the-two-patterns-by-which-agents-connect-sandboxes): the agent runs *inside* the sandbox and executes against its local filesystem, or it runs outside on a long-lived server and calls the sandbox as a remote tool. The Claude Agent SDK supports only the first, while Deep Agents supports both. The decoupled pattern is mostly a security and state-ownership argument.
+
+- **Credentials stay out of the sandbox**: running the agent inside means its model API keys live there too, so a prompt injection or container escape can exfiltrate them. With the sandbox as a tool, only code execution happens in isolation, and the keys stay on the agent's host.
+- **The security boundary wraps the bash tool, not the whole agent**: [Nuno Campos](https://github.com/nfcampos), who created LangGraph, makes the strongest version of this point in a [comment on Chase's post](https://www.langchain.com/blog/the-two-patterns-by-which-agents-connect-sandboxes). With the agent inside, nothing it does can hold more privilege than the bash tool, so any model-generated code inherits the agent's full network and tool access. With the sandbox as a tool, a web-fetch or database tool can carry more privilege than the model-generated bash, because the isolation wraps execution rather than the agent.
+- **Agent state survives the sandbox**: conversation history, reasoning, and memory live with the long-lived process, not the disposable container. A sandbox crash does not lose the run, you can swap providers without touching agent logic, run one agent across several sandboxes in parallel, and pay for sandbox time only while code executes.
+- **This is the harder shape to retrofit**: LangChain reads even Anthropic's own hosted Claude managed agents as decoupled, the direction production is heading, which makes the in-sandbox-only SDK the legacy shape. Build a multi-tenant product on the Claude Agent SDK and you write the per-user sandbox orchestration and the network layer yourself. The decoupled design is what lets Deep Agents hand you per-user isolation, scoped threads, and an auth proxy without that work.
+
+---
+
+## References
+
+**Deep Agents documentation**
+
+- [Deep Agents overview](https://docs.langchain.com/oss/python/deepagents/overview) — the SDK and its built-in capabilities
+- [Harness capabilities](https://docs.langchain.com/oss/python/deepagents/harness) — execution environment, context management, delegation, steering
+- [Frameworks, runtimes, and harnesses](https://docs.langchain.com/oss/python/concepts/products) — the three-layer taxonomy
+- [Comparison with the Claude Agent SDK](https://docs.langchain.com/oss/python/deepagents/comparison)
+- [Deep Agents Code (`dcode`)](https://docs.langchain.com/oss/python/deepagents/code/overview) — the terminal coding agent
+- [Quickstart](https://docs.langchain.com/oss/python/deepagents/quickstart) — a worked research-agent example
+
+**Background**
+
+- [Harrison Chase, "The Two Patterns by Which Agents Connect Sandboxes"](https://www.langchain.com/blog/the-two-patterns-by-which-agents-connect-sandboxes) — LangChain blog, February 10, 2026
+
+**People**
+
+- [Harrison Chase](https://x.com/hwchase17) — co-founder and CEO of LangChain
+- [Nuno Campos](https://github.com/nfcampos) — creator of LangGraph
+
+**Frameworks, runtimes, and harnesses**
+
+- [LangChain](https://docs.langchain.com/oss/python/langchain/) — the framework layer
+- [LangGraph](https://docs.langchain.com/oss/python/langgraph/) — the runtime layer
+- [`deepagents`](https://pypi.org/project/deepagents/) — the Deep Agents SDK on PyPI
+- [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) and [Claude Code](https://www.anthropic.com/claude-code), Anthropic's harness and coding agent
+- [Manus](https://manus.im/)
+- Peer frameworks: [Vercel AI SDK](https://ai-sdk.dev/docs/introduction), [CrewAI](https://www.crewai.com/), [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/), [Google ADK](https://google.github.io/adk-docs/), [LlamaIndex](https://www.llamaindex.ai/)
+- Durable-execution runtimes: [Temporal](https://temporal.io/), [Inngest](https://www.inngest.com/)
+
+**Protocols and conventions**
+
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+- [Agent Client Protocol (ACP)](https://docs.langchain.com/oss/python/deepagents/acp)
+- [`AGENTS.md`](https://agents.md/) — open standard for agent memory files

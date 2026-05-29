@@ -21,7 +21,212 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 28 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 29 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>From ‘Reversal Curse’ to Teaching Large Language Models New Facts</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/cover.jpg" class="img-fluid"></p>
+<p>If a powerful LLM is told that “Daphne Barrington is the director of <em>A Journey Through Time</em>”, it would surely be able to answer the question “Who is the director of <em>A Journey Through Time</em>?”, right? Well, according to a recent paper [1], not quite. They found that after being fine-tuned with sentences of pattern “&lt;name&gt; is &lt;description&gt;”, LLMs such as GPT-3 175B, 2.7B and Llama-7B completely failed at answering questions in the reverse pattern “&lt;description&gt; is &lt;name&gt;” (results of GPT3 175B). The fine-tuned models actually scored the correct answer no different from a random answer!</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot1.jpg" class="img-fluid figure-img" data-lightbox-src="screenshot1-full.jpg"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>The authors above name this phenomenon “the Reversal Curse”. If you have read the paper discussed previously in [2] that shows LLMs fail at retrieving more intricate topological and semantic attributes of facts, you’d know this is not entirely surprising: inverse relations are just one type of ontology topology (or predicate entailment) that these models are not good at. The interesting bit here is that this performance gap exists even after fine-tuning with one side of the relations.</p>
+<p>These discoveries are actually quite relevant to another effort we had previously discussed: model editing [3]. There the goal is to surgically change model weights to update outdated or incorrect facts buried inside the LLMs’ parametric knowledge. One crucial consideration is that the editing should not only successfully update the targeted facts, but it should also update all the facts that can be inferred from the changes, i.e., updating according to the “ripple effects”. Cast in this light, LLMs’ failure of recognizing “B is A” even after learning “A is B” is just a case of not being able to account for one of the most rudimentary ripple effects.</p>
+<p>If we follow this train of thought, the paper at the top actually cast doubt on the idea of performing model editing via fine-tuning, because it cannot account for the ripple effects. Fine-tuning has also been discredited when used for this purpose in an ACL 2023 paper [4], where it was compared to popular model editing methods such as MEND, ROME, and In-Context Learning (ICL, aka prompting). The authors formulated three tasks, and the edited models were given probe sentences to answer:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot4.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>Two metrics were deployed to measure model performance before and after model editing: Target measures the delta accuracy (for Entity Inferences task; higher is better) or the delta perplexity of the targeted entities (for the two ECBD tasks; lower is better), and Specificity measures the delta accuracy or the delta perplexity of the non-targeted entities (same as above, respectively; 0 is the best). The result shows fine-tuning (FT) failed at Specificity for Entity Inferences and Target for ECBD. ECBD is hard because unlike Entity Inferences, textual overlapping is not guaranteed between input and output (ECBD-Easy relaxed this restriction a bit therefore FT was not as bad at Target, at least for the decoder-only models).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot5.jpg" class="img-fluid figure-img" data-lightbox-src="screenshot5-full.jpg"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>In summary, fine-tuning in the current form as a way to perform model editing is not good at ripple effects, is not good at updating the targeted facts when textual overlap is low, and is not good at not affecting non-targeted facts when textual overlap is high.</p>
+<p>The search is on!</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/from-reversal-curse-teaching-large-language-models-new-benjamin-han/">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Lukas Berglund, Meg Tong, Max Kaufmann, Mikita Balesni, Asa Cooper Stickland, Tomasz Korbak, and Owain Evans. “The Reversal Curse: LLMs trained on ‘A is B’ fail to learn ‘B is A.’” 2023. <a href="https://arxiv.org/abs/2309.12288" class="uri">https://arxiv.org/abs/2309.12288</a></li>
+<li><a id="ref-2"></a>Benjamin Han. “Give Us The Facts: Large Language Models vs.&nbsp;Knowledge Graphs.” <em>synesis</em>, 2023. <a href="../20230902-llms-vs-knowledge-graphs/index.html">Read on this blog.</a></li>
+<li><a id="ref-3"></a>Benjamin Han. “Model Editing: Performing Digital Brain Surgery.” LinkedIn, 2023. <a href="https://www.linkedin.com/posts/benjaminhan_llms-causal-papers-activity-7101756262576525313-bIge" class="uri">https://www.linkedin.com/posts/benjaminhan_llms-causal-papers-activity-7101756262576525313-bIge</a></li>
+<li><a id="ref-4"></a>Yasumasa Onoe, Michael J. Q. Zhang, Shankar Padmanabhan, Greg Durrett, and Eunsol Choi. “Can LMs Learn New Entities from Descriptions? Challenges in Propagating Injected Knowledge.” 2023. <a href="https://arxiv.org/abs/2305.01651" class="uri">https://arxiv.org/abs/2305.01651</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/</guid>
+  <pubDate>Mon, 02 Oct 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Nobel Prize Awarded to Covid Vaccine Pioneers</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20231002-nobel-prize-mrna/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20231002-nobel-prize-mrna/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20231002-nobel-prize-mrna/cover.jpg" class="img-fluid"></p>
+<p>“Katalin Karikó and Drew Weissman, who together identified a chemical tweak to messenger RNA, were awarded the Nobel Prize in Physiology or Medicine on Monday. Their work enabled potent Covid vaccines to be made in less than a year, averting tens of millions of deaths and helping the world recover from the worst pandemic in a century.” [1]</p>
+<p>Thank you, Dr.&nbsp;Karikó and Dr.&nbsp;Weissman!</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_nobel-prize-awarded-to-covid-vaccine-pioneers-activity-7114636847426801665-0ItL">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“Nobel Prize Awarded to Covid Vaccine Pioneers.” <em>The New York Times</em>, October 2, 2023. <a href="https://www.nytimes.com/2023/10/02/health/nobel-prize-medicine.html" class="uri">https://www.nytimes.com/2023/10/02/health/nobel-prize-medicine.html</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20231002-nobel-prize-mrna/</guid>
+  <pubDate>Mon, 02 Oct 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20231002-nobel-prize-mrna/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>LAGRANGE: Cyclic Evaluation for KG-Text Datasets</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230925-lagrange-kg-text-datasets/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230925-lagrange-kg-text-datasets/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>Our paper on automatic knowledge-graph-aligned dataset construction is out! The main points [1]:</p>
+<ol type="1">
+<li><p>We showed cyclic evaluation — the process of training GTG (graph-to-text-to-graph) or TGT using a graph-aligned dataset (screenshot 1) — reflects faithfully the same trend a unidirectional evaluation does (screenshot 2-3). It is therefore a better way to assess data quality because it does not rely on knowing ground truth matches!</p></li>
+<li><p>We constructed a large graph-aligned dataset called LAGRANGE (screenshot 4), and showed when used to train a T5-large model it performs the best among the automatically constructed datasets, even outperforming the manually constructed dataset WebNLG on BLUE-4 and ROUGE-4, and outperforming LLM-generated (ChatGPT and Guanaco ) datasets on graph construction metrics (screenshot 5 &amp; 6).</p></li>
+<li><p>For out-of-distribution evaluation, we showed LAGRANGE-trained models, when subject to two separate cyclic evaluations using TeKGen and LAGRANGE datasets, respectively, outperform the models trained with the other automatically constructed datasets, even the one for which train and test distributions match (TeKGen). The consistency in model rankings between these two cyclic evaluations also confirm the stability of the evaluation methodology (screenshot 7).</p></li>
+</ol>
+<p>REFERENCE</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_chatgpt-guanaco-knowledgegraphs-activity-7111945686794833920-L_qZ">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Ali Mousavi, Xin Zhan, He Bai, Peng Shi, Theodoros Rekatsinas, Benjamin Han, Yunyao Li, Jeff Pound, Joshua Susskind, Natalie Schluter, Ihab Ilyas, and Navdeep Jaitly. “Construction of Paired Knowledge Graph-Text Datasets Informed by Cyclic Evaluation.” 2023. <a href="https://arxiv.org/abs/2309.11669" class="uri">https://arxiv.org/abs/2309.11669</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20230925-lagrange-kg-text-datasets/</guid>
+  <pubDate>Mon, 25 Sep 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230925-lagrange-kg-text-datasets/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>NASA OSIRIS-REx Returns Bennu Asteroid Sample</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230924-nasa-bennu-asteroid-sample/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230924-nasa-bennu-asteroid-sample/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230924-nasa-bennu-asteroid-sample/cover.jpg" class="img-fluid"></p>
+<p>(Someone left a package in the middle of desert?)</p>
+<p>From 27,650 mph to 0 in 4 hours, across 63,000 miles in distance, and then — bullseye!</p>
+<ul>
+<li>A long-awaited asteroid sample has landed in the US (CNN) [1]</li>
+<li>A NASA Spacecraft Comes Home With an Asteroid Gift for Earth (NYTimes) [2]</li>
+</ul>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_nasa-space-bennu-activity-7111740661472641024-GCP2">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“A long-awaited asteroid sample has landed in the US.” <em>CNN</em>, September 24, 2023. <a href="https://www.cnn.com/2023/09/24/world/osiris-rex-asteroid-sample-return-scn/index.html" class="uri">https://www.cnn.com/2023/09/24/world/osiris-rex-asteroid-sample-return-scn/index.html</a></li>
+<li><a id="ref-2"></a>“A NASA Spacecraft Comes Home With an Asteroid Gift for Earth.” <em>The New York Times</em>, September 24, 2023. <a href="https://www.nytimes.com/2023/09/24/science/nasa-osiris-rex-asteroid-sample-landing.html" class="uri">https://www.nytimes.com/2023/09/24/science/nasa-osiris-rex-asteroid-sample-landing.html</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20230924-nasa-bennu-asteroid-sample/</guid>
+  <pubDate>Sun, 24 Sep 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230924-nasa-bennu-asteroid-sample/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Thinking in a Foreign Language Improves Decision-Making</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20230918-foreign-language-decision-making/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230918-foreign-language-decision-making/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20230918-foreign-language-decision-making/cover.jpg" class="img-fluid"></p>
+<p>Thinking in a foreign language can improve decision-making:</p>
+<blockquote class="blockquote">
+<p>“[Professor Boaz Keysar] suggests that people employ more careful and deliberative thinking when using their foreign language: ‘You need to make sure that what you say, and how you understand things, is correct.’ And they apply the same attention to the monitoring of their memories, leading them to question the accuracy of their recollections rather than simply recounting the first thing that comes into their heads.” [1]</p>
+</blockquote>
+<p>Prompt: “Let’s think about the question in a different language.”</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_how-thinking-in-a-foreign-language-improves-activity-7109599687929720833-n19U">LinkedIn</a>.</em></p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“How learning, thinking in a foreign language improves decision-making.” <em>The Guardian</em>, September 17, 2023. <a href="https://www.theguardian.com/science/2023/sep/17/how-learning-thinking-in-a-foreign-language-improves-decision-making" class="uri">https://www.theguardian.com/science/2023/sep/17/how-learning-thinking-in-a-foreign-language-improves-decision-making</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20230918-foreign-language-decision-making/</guid>
+  <pubDate>Mon, 18 Sep 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230918-foreign-language-decision-making/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>ICL Still Loses to Fine-Tuning at Named Entity Recognition</title>
   <dc:creator>synesis </dc:creator>
@@ -660,240 +865,6 @@
   <guid>https://benjaminhan.net/posts/20230731-bbc-on-mastodon/</guid>
   <pubDate>Mon, 31 Jul 2023 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20230731-bbc-on-mastodon/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How “Attention Is All You Need” Was Born: The Story Behind the Transformer Paper</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p><img src="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/cover.jpg" class="img-fluid"></p>
-<p>A great recounting written by Madhumita Murgia on how “All you need is attention” – the Transformers paper – was born out of a “serendipitous assembly of a group of scientists”: Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan Gomez, Lukasz Kaiser, and Illia Polosukhin.</p>
-<blockquote class="blockquote">
-<p>“In early 2017, two Google research scientists, Ashish Vaswani and Jakob Uszkoreit, were in a hallway of the search giant’s Mountain View campus, discussing a new idea for how to improve machine translation, the AI technology behind Google Translate…</p>
-<p>During their chat in the hallway, Uszkoreit and Vaswani were overheard by Noam Shazeer… So when he heard his colleagues talking about this idea of “self-attention”, he decided to jump in and help. “I said, I’m with you . . . let’s do it, this is going to make life much, much better for all AI researchers,” Shazeer says.</p>
-<p>The chance conversation formalised a months-long collaboration in 2017 that eventually produced an architecture for processing language, known simply as the “transformer”. The eight research scientists who eventually played a part in its creation described it in a short paper with a snappy title: “Attention Is All You Need.” ”</p>
-</blockquote>
-<p>Especially love this:</p>
-<blockquote class="blockquote">
-<p>“Each was drawn towards what was widely seen as an emerging field of AI research: natural language processing. The group’s educational, professional and geographic diversity — coming from backgrounds as varied as Ukraine, India, Germany, Poland, Britain, Canada and the US — made them unique.”</p>
-</blockquote>
-<p>[1]</p>
-<p>(X-post on <a href="https://sigmoid.social/@BenjaminHan">Mastodon</a>)</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_transformers-the-google-scientists-who-pioneered-activity-7088879945875148801-BLRp">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Madhumita Murgia. “Transformers: the Google scientists who pioneered an AI revolution.” <em>Financial Times.</em> <a href="https://www.ft.com/content/37bb01af-ee46-4483-982f-ef3921436a50" class="uri">https://www.ft.com/content/37bb01af-ee46-4483-982f-ef3921436a50</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/</guid>
-  <pubDate>Sun, 23 Jul 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>The Dutch Government Joins Mastodon</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230713-dutch-government-mastodon/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230713-dutch-government-mastodon/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p><img src="https://benjaminhan.net/posts/20230713-dutch-government-mastodon/screenshot1.jpg" class="img-fluid"></p>
-<p>The Dutch government is now running their own Mastodon instance, after the German government and the EuropeanCommission.</p>
-<p>Translation:</p>
-<p>“Today we are launching our government server on Mastodon.</p>
-<p>In the letter I sent to the House on ‘Digital Community Goods’ on 22 June, I indicated that I support two value-driven alternatives to social media.</p>
-<p>One of these alternatives is an ‘owned’ Mastodon server used by government organisations.</p>
-<p>With this, we are taking another step in our Value-driven Digitization Work Agenda.</p>
-<p>General information about our ministry: <span class="citation" data-cites="minbzk">@minbzk</span>”</p>
-<p>https://social.overheid.nl/<span class="citation" data-cites="avhuffelen/110700825255524685">@avhuffelen/110700825255524685</span></p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_mastodon-europeancommission-activity-7085263835917385729-aULz">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Alexandra van Huffelen (<span class="citation" data-cites="avhuffelen">@avhuffelen</span>). Mastodon post, social.overheid.nl, 2023-07-13. <a href="https://social.overheid.nl/@avhuffelen/110700825255524685" class="uri">https://social.overheid.nl/@avhuffelen/110700825255524685</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230713-dutch-government-mastodon/</guid>
-  <pubDate>Thu, 13 Jul 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230713-dutch-government-mastodon/screenshot1.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Scientific Writing in the Age of Generative AI</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230712-writing-and-generative-ai/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230712-writing-and-generative-ai/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p><img src="https://benjaminhan.net/posts/20230712-writing-and-generative-ai/cover.jpg" class="img-fluid"></p>
-<p>Scientific exploration and writing in the age of GenerativeAI:</p>
-<p>“The researchers [Roy Kishony and Tal Ifargan] designed a software package that automatically fed prompts to ChatGPT and built on its responses to refine the paper over time. This autonomous data-to-paper system led the chatbot through a step-by-step process that mirrors the scientific process, from initial data exploration, through writing data analysis code and interpreting the results, to writing a polished manuscript.” [1]</p>
-<p>To be honest certain aspects of this new regime is actually quite appealing. But what about the idea “Writing is Thinking” [2][3]? Will we witness a generation suffering from intellectual muscle atrophy?</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_writing-generativeai-chatgpt-activity-7084760687985496064-Fv3b">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Gemma Conroy. 2023. “Scientists used ChatGPT to generate an entire paper from scratch - but is it any good?” <em>Nature</em>. <a href="http://dx.doi.org/10.1038/d41586-023-02218-z" class="uri">http://dx.doi.org/10.1038/d41586-023-02218-z</a></li>
-<li><a id="ref-2"></a>Steven Mintz. November 2021. “Writing Is Thinking.” <em>Inside Higher Ed</em>. <a href="https://www.insidehighered.com/blogs/higher-ed-gamma/writing-thinking" class="uri">https://www.insidehighered.com/blogs/higher-ed-gamma/writing-thinking</a></li>
-<li><a id="ref-3"></a>Steph Smith. October 2019. “Writing is Thinking: Learning to Write with Confidence.” <a href="https://blog.stephsmith.io/learning-to-write-with-confidence/" class="uri">https://blog.stephsmith.io/learning-to-write-with-confidence/</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230712-writing-and-generative-ai/</guid>
-  <pubDate>Wed, 12 Jul 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230712-writing-and-generative-ai/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Do LLMs Really Understand? Recent Papers Reveal</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230710-do-llms-really-understand/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230710-do-llms-really-understand/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/cover.jpg" class="img-fluid" data-lightbox-src="cover-full.jpg"></p>
-<p>When performing reasoning or generating code, do LLMs really understand what they’re doing, or do they just memorize? Several new results seem to have painted a not-so-rosy picture.</p>
-<p>The authors in [1] are interested in testing LLMs on “semantic” vs.&nbsp;“symbolic” reasoning: the former involves reasoning with language-like input, and the latter is reasoning with abstract symbols. They use a symbolic dataset and a semantic dataset to test models’ abilities on memorization and reasoning (Fig. 1). For each dataset they created a corresponding one in the other modality, e.g., they replace natural language labels for the relations and the entities with abstract symbols to create a symbolic version of a semantic dataset (Fig. 2). The end result? LLMs perform much worse on <em>symbolic</em> reasoning (Fig. 3), suggesting they leverage heavily on the semantics of the words involved rather than really understand and follow reasoning patterns.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig1.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig2.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig3.jpg" class="img-fluid figure-img" data-lightbox-src="fig3-full.jpg"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
-</figure>
-</div>
-<p>The same tendency is borne out by another paper focusing on testing code-generating LLMs when function names are <em>swapped</em> in the input [2] (Fig. 4). They not only found almost all models failed completely, but also most of them exhibit an “inverse scaling” effect: the larger a model is, the worse it gets (Fig. 5). This shows the semantic priors learned from these function names have totally dominated, and the models don’t really understand what they are doing.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig4.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig5.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
-</figure>
-</div>
-<p>How about LLMs on causal reasoning? There have been reports of extremely impressive performance of GPT 3.5 and 4, but these models also lack consistency in performance and even possibly have cheated by memorizing the tests [3], as discussed in a previous <a href="../20230506-llm-causal-reasoning-memorization/">post</a>. In a more recent work [5], the authors tested LLMs on <em>pure</em> causal inference tasks, where all variables are now symbolic (Fig. 6). They constructed systematically a dataset starting by picking variables, to generating all possible causal graphs, to finally mapping all possible statistical correlations. They then “verbalize” these graphs into problems for LLMs to solve for a given causation hypothesis (Fig. 7). The results? Both GPT-4 and Alpaca perform worse than BART fine-tuned with MNLI, and not much better than the uniform random baseline (Fig. 8).</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig6.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig7.jpg" class="img-fluid figure-img" data-lightbox-src="fig7-full.jpg"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230710-do-llms-really-understand/fig8.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2305.14825">the paper</a>.</figcaption>
-</figure>
-</div>
-<p>(On <a href="https://sigmoid.social/@BenjaminHan/110687186074579773">Mastodon</a>)</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/do-llms-really-understand-recent-papers-reveal-benjamin-han/">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Xiaojuan Tang, Zilong Zheng, Jiaqi Li, Fanxu Meng, Song-Chun Zhu, Yitao Liang, and Muhan Zhang. 2023. “Large Language Models are In-Context Semantic Reasoners rather than Symbolic Reasoners.” <a href="http://arxiv.org/abs/2305.14825" class="uri">http://arxiv.org/abs/2305.14825</a></li>
-<li><a id="ref-2"></a>Antonio Valerio Miceli-Barone, Fazl Barez, Ioannis Konstas, and Shay B. Cohen. 2023. “The Larger They Are, the Harder They Fail: Language Models do not Recognize Identifier Swaps in Python.” <a href="http://arxiv.org/abs/2305.15507" class="uri">http://arxiv.org/abs/2305.15507</a></li>
-<li><a id="ref-3"></a>Emre Kıcıman, Robert Ness, Amit Sharma, and Chenhao Tan. 2023. “Causal Reasoning and Large Language Models: Opening a New Frontier for Causality.” <a href="http://arxiv.org/abs/2305.00050" class="uri">http://arxiv.org/abs/2305.00050</a></li>
-<li><a id="ref-5"></a>Zhijing Jin, Jiarui Liu, Zhiheng Lyu, Spencer Poff, Mrinmaya Sachan, Rada Mihalcea, Mona Diab, and Bernhard Schölkopf. 2023. “Can Large Language Models Infer Causation from Correlation?” <a href="http://arxiv.org/abs/2306.05836" class="uri">http://arxiv.org/abs/2306.05836</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230710-do-llms-really-understand/</guid>
-  <pubDate>Mon, 10 Jul 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230710-do-llms-really-understand/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Does Early ArXiving Help Papers Get Accepted?</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/screenshot1.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2306.13891">the paper</a>.</figcaption>
-</figure>
-</div>
-<p>ArXiv.org has been a wonderful place for researchers to submit findings and catch up with the latest, but does submitting papers there (“early ArXiving”) increase the odds for them to be accepted later in a peer-reviewed venue?</p>
-<p>(Drumroll please)</p>
-<p>The authors answer this question in [1] by first laying out the causal graph where early ArXiving is the treatment (variable A) and paper acceptance in a conference is the effect (variable Y; screenshot 1). Two confounders exist — one unobserved that is the creativity and originality of a paper (intrinsic), while the other is observed that is the topic/authors/institute of a paper (extrinsic).</p>
-<p>To cope with the unobserved confounder, they deploy a popular causalInference framework known as negative outcome control [2], where a variable called Negative Control Outcome (NCO) is added to correct the bias. NCO must share the same observed and unobserved confounders as the outcome variable while being not causally affected by the treatment. They use “citation counts after certain years of publishing” as the NCO.</p>
-<p>Numerically the effect of early ArXiving is defined by the causal estimand ATET (screenshot 2). The paper reports ATET is high (9.76%) <em>before</em> accounting for NOC. BUT after considering NCO, the effect is almost non-existent for authors with different citation counts or institution ranks (screenshot 3).</p>
-<p>Conclusion: enjoy your guilt-free early ArXiving!</p>
-<p>—</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_causalinference-research-paper-activity-7080935063630082048-BHIO">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Yanai Elazar, Jiayao Zhang, David Wadden, Bo Zhang, and Noah Smith. 2023. “Estimating the Causal Effect of Early ArXiving on Paper Acceptance.” <a href="http://arxiv.org/abs/2306.13891" class="uri">http://arxiv.org/abs/2306.13891</a></li>
-<li><a id="ref-2"></a>David Card and Alan B. Krueger. 1993. “Minimum Wages and Employment: A Case Study of the Fast Food Industry in New Jersey and Pennsylvania.” <a href="http://dx.doi.org/10.3386/w4509" class="uri">http://dx.doi.org/10.3386/w4509</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/</guid>
-  <pubDate>Sat, 01 Jul 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/screenshot1.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
