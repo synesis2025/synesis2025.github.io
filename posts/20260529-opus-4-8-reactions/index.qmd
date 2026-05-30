@@ -1,0 +1,91 @@
+---
+title: "Claude Opus 4.8: The Early Reactions"
+description: "Anthropic calls Opus 4.8 \"a modest but tangible improvement\" over 4.7 and leans on honesty and abstention; partners report sharper agentic judgment, while independent benchmarks find the headline alignment gain comes with a performance regression."
+author: synesis
+date: "2026-05-29"
+image: cover.jpg
+---
+
+![Anthropic's announcement of Claude Opus 4.8. Image from [Anthropic](https://www.anthropic.com/news/claude-opus-4-8).](cover.jpg){fig-align="center"}
+
+[Anthropic](https://www.anthropic.com/) released [Claude Opus 4.8](https://www.anthropic.com/news/claude-opus-4-8) on 28 May 2026, the successor to Opus 4.7. Anthropic set the tone in the announcement itself: Opus 4.8 is "a modest but tangible improvement on its predecessor," at the same price, with the main change being honesty rather than raw capability. This post collects the early reactions, with an eye on what actually changed from 4.7.
+
+## What Anthropic Says
+
+The release positions honesty as the main advance. From [the announcement](https://www.anthropic.com/news/claude-opus-4-8): models "sometimes jump to conclusions, confidently claiming to have made progress in their work despite the evidence being thin," and Opus 4.8 is "around four times less likely than its predecessor to allow flaws in code it has written to pass unremarked." The [system card](https://cdn.sanity.io/files/4zrzovbb/website/c886650a2e96fc0925c805a1a7ca77314ccbf4a6.pdf) puts a number on it: Opus 4.8 had the lowest incorrect-rate of six models on every benchmark, and reached that "mainly by abstaining on questions about which it was uncertain rather than by answering more questions correctly." The gain is calibration, not knowledge.
+
+Beyond honesty, the [What's New page](https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8) lays out what else moved and what held steady from 4.7.
+
+### What Changed
+
+- **Fast mode, much cheaper.** A research-preview "fast mode" runs at 2.5× speed for roughly a third of what fast mode cost on 4.6 and 4.7.
+- **Mid-conversation system messages.** A `role: "system"` message can now be inserted after a user turn, so a long agentic run can update its instructions without restating the whole system prompt and losing its prompt-cache hits. That targets two of the cost line-items in [where Claude Code tokens go](/posts/20260503-where-claude-code-tokens-go/): conversation-history re-reads and cache misses on resume.
+- **Lower prompt-cache floor.** The minimum cacheable prompt drops to 1,024 tokens, from 4,096 on 4.7.
+- **Higher default effort.** The `effort` parameter now defaults to `high` everywhere, including the Claude API and Claude Code.
+- **Documented refusal categories.** The `stop_details` object on refusals (present since 4.7) is now public, so an application can tell different classes of declined request apart.
+- **Adjacent launches.** Effort control arrives on claude.ai, and Claude Code gains [Dynamic Workflows](/posts/20260529-dynamic-workflows-claude-code/).
+
+### What Stayed the Same
+
+- **Price.** $5 per million input tokens and $25 per million output, unchanged across 4.5 through 4.8.
+- **Context window.** 1M tokens by default (200k on Microsoft Foundry).
+- **Max output.** 128k tokens.
+- **Knowledge and training cutoff.** January 2026, the same as 4.7.
+- **Tools and platform features.** The same set as 4.7.
+
+## Partners and Launch Testers
+
+The [announcement](https://www.anthropic.com/news/claude-opus-4-8) carries a long list of design-partner quotes, all favorable, and several compare it explicitly to 4.7. The most direct on that comparison is Scott Wu, CEO of [Cognition](https://cognition.ai/), [in the launch quotes](https://www.anthropic.com/news/claude-opus-4-8):
+
+> Claude Opus 4.8 uses tools cleanly and follows instructions with the consistency our autonomous engineering workloads need to keep running unattended. It improves on Opus 4.6 and fixes the comment-verbosity and tool-calling issues we saw with Opus 4.7. This release from Anthropic translates directly into faster capability gains for engineers building on Devin.
+
+Katie Parrott, a staff writer, [emphasizes the day-to-day feel](https://www.anthropic.com/news/claude-opus-4-8):
+
+> Claude Opus 4.8 feels like a major quality-of-life update over Opus 4.7: faster, easier to collaborate with, and better at carrying context and style direction across a long session. Opus 4.8 is the model I kept trusting for work where voice, taste, and technical execution all have to happen side-by-side.
+
+The harder numbers come from the tool vendors, all [in the same announcement](https://www.anthropic.com/news/claude-opus-4-8):
+
+- **[Cursor](https://www.cursor.com/) (Michael Truell)**: Opus 4.8 "exceeds prior Opus models across every effort level" on CursorBench, with tool calling that is "meaningfully more efficient, using fewer steps for the same intelligence."
+- **[Databricks](https://www.databricks.com/) (Hanlin Tang)**: its Genie agent reasons over PDFs and diagrams "at 61% cheaper token cost than Opus 4.7."
+- A computer-use vendor reports 84% on Online-Mind2Web, "a meaningful jump over both Opus 4.7 and GPT-5.5"; a legal-AI vendor reports the first model "to break 10% overall on the all-pass standard."
+
+The recurring word across these is judgment: catching its own mistakes, pushing back on weak plans, asking clarifying questions before acting. That is the same abstention story the system card tells, viewed from the agent-harness side.
+
+## Independent Reactions
+
+[Simon Willison](https://simonwillison.net/2026/May/28/claude-opus-4-8/) led with the honesty rather than the capability, and his write-up is one of the most detailed independent walk-throughs so far:
+
+- **Honesty is the story.** His favorite part is that Anthropic called the release minor: "It's so refreshing to see an AI lab honestly describe a release as a minor incremental improvement over the previous model." He reads honesty as the theme, and highlights the system card's finding that 4.8 posts the lowest incorrect-rate of any model tested mainly by abstaining when unsure.
+- **Mid-conversation steering "sounds really powerful."** He initially worried it would break the single-system-prompt assumption in his own [LLM library](https://llm.datasette.io/), then found his recent redesign already handles it.
+- **The spec changes that caught his eye.** The 1,024-token cache floor, down from 4,096 on 4.7, and fast mode's price cut were the parts he singled out as practically useful.
+- **The pelican test, at five effort levels.** He ran his "pelican riding a bicycle" SVG benchmark at low, medium, high, xhigh, and max. His verdict: "the max one was clearly the best, but it did take 25 input, 17,167 output tokens for a total cost of 43 cents." He had Opus 4.8 build an HTML viewer for the results, then handed that code to GPT-5.5 in Codex to strip XSS holes, since "GPT-5.5 is my code security blanket at the moment."
+
+[Claire Vo](https://clairevo.com/), who got early access, ran [a first-impressions walkthrough](https://www.lennysnewsletter.com/p/claude-opus-48-is-here-is-it-as-good) across Claude Code and Cowork and gave a split verdict: Opus 4.8 shines on greenfield prototypes, one-shot features, and fast execution, but stumbles on "the last 10%," edge cases inside existing codebases, and hallucinations. On data-heavy strategy and roadmap work, she said she still reaches for 4.7.
+
+Community reaction on the [1,300-comment Hacker News thread](https://news.ycombinator.com/item?id=48311647) was more mixed, and much of it was really about 4.7. Several commenters said 4.7 had regressed badly enough that they pinned Claude Code back to 4.6, and read 4.8 as a hoped-for recovery rather than a clear step up. One counted only six benchmarks in the 4.8 announcement, down from twelve for 4.7 and thirteen for 4.6, with SWE-bench Verified and GPQA Diamond among the omissions, and called the trimmed table cherry-picking. Another strand objected to the "honesty" label as anthropomorphism for what is really a lower tendency to overstate thin evidence.
+
+One r/ClaudeAI post, from someone who ["spent a few hours with Opus 4.8"](https://www.reddit.com/r/ClaudeAI/comments/1tqao3e/spent_a_few_hours_with_opus_48_the_honesty_change/), singles out the honesty change as what stood out. Others were less sure it was an improvement at all: an ["Ask HN: Is Claude Opus 4.8 broken?"](https://news.ycombinator.com/item?id=48316636) thread went up the same day.
+
+## The Skeptical Read
+
+Two independent trackers push back on the launch-day optimism.
+
+- **[Andon Labs](https://andonlabs.com/blog/opus-4-8-vending-bench): "Better Alignment, Worse Performance."** On Vending-Bench, 4.8 is cleaner but less capable than 4.7.
+  - **Alignment improved.** Where Opus 4.6, 4.7, and the Mythos preview ran price cartels and lied about refunds, 4.8 did not:
+
+    > Most importantly, we could not find any instances of Opus 4.8 engaging in any of the deceptive or power-seeking behavior we saw exhibited by recent Claude models we've tested.
+
+  - **Performance regressed.** 4.8 did worse than previous Opus and Sonnet models on Vending-Bench 2, and lost to both GPT-5.5 and Opus 4.7 in the head-to-head Arena. The failure modes resembled much weaker models:
+    - **Falls for scams.** It "wires roughly thirty times more cash to fraudulent wholesalers than Opus 4.7. One run sent over $9,000 to a super expensive 'membership' upsell."
+    - **Negotiates worse.** "Opus 4.7 talks suppliers down to about half the price Opus 4.8 accepts."
+    - **Overthinks the paperwork.** It "rewrites the same strategy doc ~100 times per run" and accumulates a dozen overlapping notes.
+  - **The mechanistic finding.** At `high` effort instead of `max`, 4.8 did much better, though still short of 4.7. Andon Labs' hypothesis: `max` spends about 5× more reasoning tokens, hits the context limit, and triggers more than twice as many compactions, so the agent forgets more of its own history. The shipped default of `high` keeps most users clear of this.
+- **[Marginlab](https://marginlab.ai/blog/claude-code-degraded-before-opus-4-8/): Claude Code degraded before the release.** Its daily SWE-Bench-Pro tracker watched Opus 4.7 slip in the week before 4.8 shipped:
+
+  > Opus 4.7's pass rate dropped well below its established baseline and stayed there for five consecutive days, a sustained and statistically significant degradation, before recovering the moment Opus 4.8 took over.
+
+  Marginlab presents it as a measurement; readers supplied the less charitable interpretation about old models degrading right before a launch.
+
+## My Notes
+
+Anthropic, its partners, Willison, and Andon Labs are all pointing at one behavior: Opus 4.8 abstains and flags uncertainty where 4.7 would barrel ahead. Whether that reads as "better judgment" or "worse performance" depends entirely on the task. On code review and analysis, where a confident wrong answer is expensive, abstention is the win Anthropic advertises. On Vending-Bench, where the job is to act decisively and keep the machine stocked, the same caution looks like falling for scams and leaving the machine empty. The same change cuts both ways, which fits the abstention research directly: see [AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) and [training models to communicate uncertainty](/posts/20260525-metacognition-uncertainty-sft/).

@@ -23,6 +23,32 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Fri, 29 May 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Can LLMs Reliably Self-Correct Their Own Reasoning?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260516-llm-self-correction-arc/?utm_source=rss&utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-llm-self-correction-arc/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>Can LLMs reliably self-correct their own reasoning? 3 papers walk us through their discoveries.</p>
+<p><a href="../../posts/20260516-self-refine/">Self-Refine</a> proposes a naive intrinsic-feedback loop: a single frozen LLM acts as generator, critic, and rewriter inside a prompt-only loop. The paper reports about 20 percentage points of average lift across seven tasks, claiming that no training, RL, or external signal is needed. The gains vary widely by task — large where “good” is hard to define from a one-line critique, but very small on math reasoning, where the feedback model fails to catch subtle errors.</p>
+<p>But <a href="../../posts/20260516-cannot-self-correct/">Cannot-Self-Correct</a> tests the strong claim head-on: can LLMs revise their own reasoning answers without any external signal about correctness? Across three benchmarks (GSM8K, CommonSenseQA, HotPotQA), the answer is NO. The model’s confidence carries over from the initial answer into the revision, and the self-correction loop tends to degrade rather than improve performance. The result refutes the class of approach Self-Refine belongs to.</p>
+<p>Then we have <a href="../../posts/20260516-reflexion/">Reflexion</a> that threads the needle by splitting self-correction into two LLM steps. An Evaluator detects success or failure. A Self-Reflection model diagnoses what went wrong. The Evaluator’s external signal — a hand-written heuristic, exact-match grading, or test execution — gates whether the diagnosis fires at all. The ablations found however when the signal misfires, as on MBPP Python’s high false-negative rate, Self-Reflection rewrites correct code into wrong code, which is exactly the failure mode Cannot-Self-Correct documented. So Reflexion can be read as a positive existence result for self-correction with a reliable external signal, not as a refutation to Cannot-Self-Correct.</p>
+<p><em>All three papers predate the reasoning-model era. A follow-up — <a href="../../posts/20260517-self-correction-after-reasoning-models/">Self-Correction After the Reasoning-Model Era</a> — engages Peter Bloem’s question on whether the arc still holds for o1- and R1-style models trained with RL on verifiable rewards.</em></p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_reflexion-language-agents-with-verbal-reinforcement-activity-7461647681141096448-Fhjd">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260516-llm-self-correction-arc/</guid>
+  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
+</item>
+<item>
   <title>Reflexion: Language Agents with Verbal Reinforcement Learning</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260516-reflexion/?utm_source=rss&utm_medium=feed</link>
@@ -2049,170 +2075,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260511-natural-language-autoencoders/</guid>
   <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Making synesis Quick</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260511-site-efficiency/?utm_source=rss&utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-site-efficiency/?utm_source=rss&utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-site-efficiency/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>CI wall-clock time per push, before and after the incremental-render work. A post edit drops from around 6:30 to around 2:00, and a docs-only push skips the render step entirely.</figcaption>
-</figure>
-</div>
-<p>Two durations matter on a blog like this one. The first is the time between <code>git push</code> and the updated post being live. The second is the time between a reader clicking a link and the page being ready to read. On the baseline workflow, continuous integration (CI) was taking about six minutes per push, and every home or archive page was shipping a payload that grew with the corpus. This post walks through what that looked like, what was done about each, and why the specific fixes work.</p>
-<section id="how-the-site-is-put-together" class="level2">
-<h2 class="anchored" data-anchor-id="how-the-site-is-put-together">How the site is put together</h2>
-<p><em>synesis</em> is a <a href="https://quarto.org">Quarto</a> site. The source tree lives in a private GitHub repository, a GitHub Actions workflow builds the static <code>_site/</code> tree on every push to <code>main</code>, and a chain of downstream services hands that output to readers at <code>benjaminhan.net</code>. There is no database, no server-side rendering, no application runtime.</p>
-<div class="cell" data-layout-align="default">
-<div class="cell-output-display">
-<div>
-<p></p><figure class="figure"><p></p>
-<div>
-<img src="https://benjaminhan.net/feed-assets/4b04375635ed1973.svg" alt="flowchart TB
-    A[Source repo&lt;br/&gt;.qmd · CSS · includes · Python scripts]
-    A --&gt;|git push main| B[GitHub Actions workflow]
-
-    subgraph build [&quot; &quot;]
-        direction TB
-        C[Install Quarto · uv · Playwright]
-        D[Pre-render scripts&lt;br/&gt;tag counts · post index&lt;br/&gt;paginators · llms.txt" class="feed-diagram"/>
-</div>
-<p></p></figure><p></p>
-</div>
-</div>
-</div>
-<p>Everything discussed below happens inside the GitHub Actions workflow, or in the HTML and JSON the workflow produces. GitHub Pages and Cloudflare are downstream of that.</p>
-</section>
-<section id="the-build-side" class="level2">
-<h2 class="anchored" data-anchor-id="the-build-side">The build side</h2>
-<p>A full <code>quarto render</code> on this project renders a few hundred <code>.qmd</code> files at roughly 580 ms each on GitHub’s runners. That is about 3 minutes 48 seconds of pandoc work on top of ~10 seconds of pre-render and post-render scripts, plus the runner’s own setup and deploy overhead. Total wall time on the baseline workflow was around 6 minutes 23 seconds for a single-post publish.</p>
-<p>Most pushes touch only a handful of files. A typical push edits one post’s body, or adds a new post and leaves every other post alone. Rendering every file on every push spends almost all of that 3 minutes 48 seconds regenerating output that is byte-identical to what is already on disk.</p>
-<p>Skipping that work requires two capabilities the default workflow does not have:</p>
-<ol type="1">
-<li>Somewhere to keep the previous <code>_site/</code> so it can be reused when unchanged.</li>
-<li>A reliable way to know which source files actually changed since that previous <code>_site/</code> was built.</li>
-</ol>
-<p>The four pieces below provide both, plus the supporting conditions that make them safe.</p>
-<section id="caching-the-previous-_site" class="level3">
-<h3 class="anchored" data-anchor-id="caching-the-previous-_site">Caching the previous <code>_site/</code></h3>
-<p>The workflow uses <code>actions/cache@v4</code> to tar the <code>_site/</code> tree at the end of each successful run, keyed on the commit SHA. On the next run, the cache is restored at the top of the job. A one-line stamp file inside the tarball, <code>_site/.last-built-sha</code>, records which commit this <code>_site/</code> was built from. That stamp is the baseline everything else diffs against.</p>
-<p>The stamp file is excluded from the deploy, so it never ships to the public repository. It is internal bookkeeping.</p>
-</section>
-<section id="classifying-the-diff" class="level3">
-<h3 class="anchored" data-anchor-id="classifying-the-diff">Classifying the diff</h3>
-<p>The script <code>_scripts/render_diff.py</code> reads the baseline SHA from the stamp, runs <code>git diff</code> against it, and picks one of four modes for the render step:</p>
-<ul>
-<li><code>skip-render</code> if every changed path is one that never reaches the deploy (<code>docs/</code>, <code>drafts/</code>, <code>.claude/</code>, <code>CLAUDE.md</code>). The workflow re-deploys the cached <code>_site/</code> as-is.</li>
-<li><code>tags-only</code> if the only changed path is <code>_tags.yml</code>. The workflow regenerates <code>tag-counts.json</code> and <code>post-index.json</code>, copies them into the cached <code>_site/</code>, re-stamps cache-bust query strings on the JSON fetch URLs, and ships. Post HTML on disk does not change. The next subsection describes the source-of-truth move that this mode rests on.</li>
-<li><code>incremental</code> if the changed paths are post bodies, post assets, or frontmatter. The workflow hands the changed <code>posts/&lt;slug&gt;/index.qmd</code> files to <code>quarto render</code> as explicit arguments. Quarto’s listing tracker picks up affected listing pages automatically and regenerates <code>search.json</code>, <code>sitemap.xml</code>, and <code>listings.json</code>. Cached HTML for untouched posts is left alone. Typical wall time: around 20 seconds. Past a configurable batch ceiling (<code>INCREMENTAL_MAX_POSTS</code>, default 10), large multi-post pushes escalate to <code>full</code> because Quarto’s internal parallelism beats per-file invocation at that scale.</li>
-<li><code>full</code> if the change touches templates, includes, scripts, config files, or anything else whose output reaches every page. The workflow drops the cached <code>_site/</code> and runs a full render. Typical wall time: around 4 minutes.</li>
-</ul>
-<p>The default when a path is unrecognized is <code>full</code>, not <code>incremental</code>. The classifier errs on the side of rebuilding too much rather than serving stale output.</p>
-</section>
-<section id="keeping-rendered-html-byte-stable" class="level3">
-<h3 class="anchored" data-anchor-id="keeping-rendered-html-byte-stable">Keeping rendered HTML byte-stable</h3>
-<p>An incremental render only produces correct output if the HTML files it chose not to re-render are still valid. That requires every per-page output to depend only on inputs specific to that page, not on global state that changes when unrelated posts change.</p>
-<p>Two global inputs in <code>&lt;head&gt;</code> broke this condition before the incremental work began:</p>
-<ul>
-<li>A <code>&lt;script&gt;window.__tagCounts = {...}&lt;/script&gt;</code> block inlined the entire tag histogram into every page. Adding a new tag to one post changed the histogram, which changed the <code>&lt;head&gt;</code> of every other post.</li>
-<li>A similar inline block for the post index listed every post. Publishing a new post changed the listing, which changed the <code>&lt;head&gt;</code> of every post again.</li>
-</ul>
-<p>Both were moved to external JSON files (<code>/tag-counts.json</code> and <code>/post-index.json</code>) fetched by a small loader stub at page load time. The stub itself is byte-stable. The corpus-wide data it fetches is not part of the HTML. After this change, a post’s rendered HTML is a pure function of that post’s source. Unrelated posts can come and go without invalidating the cache.</p>
-<p>The pre-render scripts that produce these JSON files (<code>_scripts/tag-counts.py</code>, <code>_scripts/post-index.py</code>) compare their proposed output to what is already on disk before writing. If the content is unchanged, the file is not touched and its mtime does not advance. The same discipline applies to the paginators <code>_scripts/paginate-home.py</code> and <code>_scripts/paginate-archive.py</code>. Closed listing pages, which hold 25 posts on the home side and 50 on the archive side, are byte-identical run-to-run in steady state. Quarto’s <code>freeze: auto</code> skips re-rendering them.</p>
-<p>Without byte-stable pre-render outputs, every pre-render script would churn mtimes on every push, and Quarto’s freeze cache would invalidate on every run. The byte comparison is what keeps the classifier’s <code>incremental</code> decision safe.</p>
-</section>
-<section id="lifting-tags-out-of-frontmatter" class="level3">
-<h3 class="anchored" data-anchor-id="lifting-tags-out-of-frontmatter">Lifting tags out of frontmatter</h3>
-<p>A single top-level file, <code>_tags.yml</code>, holds every post’s tag set, keyed by slug. The pre-render scripts <code>_scripts/tag-counts.py</code> and <code>_scripts/post-index.py</code> read from it instead of from per-post <code>categories:</code> frontmatter. A tag rename or merge becomes a one-file commit.</p>
-<p>The prior scheme stored tags inside each post. Renaming a tag, merging two near-duplicates, or dropping a stale singleton rewrote dozens of <code>.qmd</code> files in one commit. Every one of those files then went through <code>quarto render</code>, every page in the corpus picked up a new mtime, and the test tiers ran end to end. None of the work changed any prose.</p>
-<p>The <code>tags-only</code> mode in the previous classifier list is what this enables on the build side. When the only changed path is <code>_tags.yml</code>, the workflow regenerates the two JSON artifacts, copies them into the cached <code>_site/</code>, re-stamps the cache-bust <code>?v=&lt;sha&gt;</code> markers on the JSON fetch URLs, and ships. Post HTML on disk does not change. Clients pick up the new tags via <code>_includes/hydrate-tags.html</code>, which reads <code>post-index.json</code> on next page load and injects the tag-chip DOM the original frontmatter would have produced.</p>
-<p>A schema gate runs the contract tests for both JSON files before the tags-only deploy. Without it, a regression in either pre-render script would ship malformed JSON and silently break tag hydration on every page.</p>
-<p>Drafts keep <code>categories:</code> in their own frontmatter during authoring. The <code>/publish-draft</code> flow strips that line and writes the slug → tag list into <code>_tags.yml</code> at promotion time.</p>
-</section>
-<section id="gating-the-test-tiers" class="level3">
-<h3 class="anchored" data-anchor-id="gating-the-test-tiers">Gating the test tiers</h3>
-<p>The test suite is split into tiers: unit tests, contract tests, integration tests, smoke tests, and UI tests. The full suite runs in about 23 seconds, with the UI tier (Playwright-driven browser tests) accounting for roughly 14 of those. Content-only pushes do not change the UI, so the UI tier cannot regress as a result of those pushes.</p>
-<p>A path gate inside the same workflow drops the UI and smoke tiers when the diff only touches post content, bringing the test wall down to about 8 seconds. A further gate drops the slow incremental-parity integration test, which runs two full <code>quarto render</code> invocations back-to-back, unless the render pipeline itself (the classifier, the paginators, <code>_quarto.yml</code>, or the workflow file) was modified in the same push. Any change that could actually break the tests still runs them. Changes that cannot, do not.</p>
-</section>
-<section id="pinning-quarto" class="level3">
-<h3 class="anchored" data-anchor-id="pinning-quarto">Pinning Quarto</h3>
-<p>One risk the gated tests introduce is that Quarto’s own output could drift between pushes without the gated tiers running to catch it. The workflow pins Quarto to version <code>1.9.37</code> to make that drift impossible without an explicit commit. A separate step compares the pin to the latest published Quarto release and emits a workflow warning when the pin lags, so bumps are a considered change, not a silent one.</p>
-</section>
-<section id="where-the-time-went" class="level3">
-<h3 class="anchored" data-anchor-id="where-the-time-went">Where the time went</h3>
-<p>A content-only push now takes around 115 seconds end-to-end, down from around 6 minutes 23 seconds, as shown in the cover chart. A docs-only push deploys the cached <code>_site/</code> unchanged in around 88 seconds. A tag cleanup push lands close to the docs-only cost: it shares the no-render fast path, plus a few seconds to regenerate the JSON files and re-stamp cache-bust markers. A push that touches templates, scripts, or config still runs the full render and full test suite, because that is when the full cost is actually needed.</p>
-<p>One post-render cost deserves a separate note. <code>_scripts/feed-render.py</code> uses headless Chromium to rasterize Mermaid diagrams and MathJax expressions into inline Scalable Vector Graphics (SVG) inside the Really Simple Syndication (RSS) feed. A full browser round-trip per item is slow, so the rendered SVGs are cached under <code>.feed-cache/svg/</code> keyed on a schema version. Repeat builds reuse the cached SVG. The schema version is bumped whenever the rendering pipeline changes in a way that affects output, which invalidates the whole cache at once.</p>
-</section>
-</section>
-<section id="the-read-side" class="level2">
-<h2 class="anchored" data-anchor-id="the-read-side">The read side</h2>
-<p>Page-load time on a static site comes from five phases: Domain Name System (DNS) lookup, Transport Layer Security (TLS) handshake, first-byte wait, payload download, and in-browser processing (parse, style, layout, JavaScript execution, subresource fetches). The first three are handled by Cloudflare’s edge cache and are mostly out of the site’s hands. Everything below addresses the last two: how much data a page carries, how much of it can be reused across pages, and what work can be moved from page-load time to build time.</p>
-<section id="bounding-the-page-payload" class="level3">
-<h3 class="anchored" data-anchor-id="bounding-the-page-payload">Bounding the page payload</h3>
-<p>A listing that grows with the corpus is the easiest way for a site to slow down over years. A 400-post home page is a 400-post payload on every visit. The goal is for each page’s payload to be O(1) in the size of the corpus, not O(N).</p>
-<p>Straight fixed-size pages would do that, but at a cost to the reader’s first impression. Whenever a single new post pushed a page past capacity, a fresh page would open with that one post, leaving the landing briefly sparse until the next few publishes caught up. The compromise is an overflow band. Each home listing page holds 25 posts in steady state, with the newest allowed up to 12 overflow for 37 at most. The archive uses 50 and 25 for 75 at most. A new publish grows the newest page one post at a time until it hits the overflow ceiling. At that point the oldest 25 (or 50) close off into a page one step older, and the newest page re-opens at a comfortable size rather than at one.</p>
-<p>A side effect of this design is URL stability. Once a page closes, the set of posts it holds does not shift again, so a bookmark to <code>/archive/page/5/</code> still points at the same 50 posts a year later. Only the newest page and the landing churn on every publish.</p>
-<p>Older content is reached through <a href="https://www.rfc-editor.org/rfc/rfc5005">RFC 5005</a> paginated archives. Each page’s payload is bounded by the page size, not by the size of the corpus.</p>
-</section>
-<section id="pre-computing-the-client-side-search-index" class="level3">
-<h3 class="anchored" data-anchor-id="pre-computing-the-client-side-search-index">Pre-computing the client-side search index</h3>
-<p>Quarto builds a JSON file, <code>search.json</code>, at deploy time that indexes every post’s title, body, and code blocks. The in-page search overlay loads it once per session, indexes in memory, and answers every keystroke locally. There is no per-query network round-trip. The search also keeps working if the reader loses connectivity after the initial load.</p>
-<p>Moving the index build to deploy time means the reader pays the indexing cost once, not per query. It also means there is no search server for the site to operate.</p>
-</section>
-<section id="sharing-cross-corpus-data-across-pages" class="level3">
-<h3 class="anchored" data-anchor-id="sharing-cross-corpus-data-across-pages">Sharing cross-corpus data across pages</h3>
-<p><code>/tag-counts.json</code> and <code>/post-index.json</code> are small files fetched once per session and reused on every subsequent page. The post index is about 74 KB: a flat array of <code>{slug, date, title, categories}</code> records that powers the home-page timeline, the archive tag cloud, pagination math, and previous/next navigation on every post.</p>
-<p>Keeping this data in external JSON rather than inlining it into every page’s <code>&lt;head&gt;</code> means the browser fetches it once, caches it under a stable URL with a long <code>Cache-Control</code> max-age, and reads from cache on the next page. The inline version made every page’s <code>&lt;head&gt;</code> grow linearly with the corpus. The external version makes it fixed size.</p>
-<p>The same choice enabled incremental render on the build side. A single change in how cross-corpus data is delivered fixed two problems at once.</p>
-</section>
-<section id="fingerprinting-the-stylesheet" class="level3">
-<h3 class="anchored" data-anchor-id="fingerprinting-the-stylesheet">Fingerprinting the stylesheet</h3>
-<p><code>_scripts/cache-bust-css.py</code> rewrites <code>styles.css</code> to <code>styles.&lt;content-hash&gt;.css</code> in the deployed HTML. The stylesheet ships with a one-year <code>Cache-Control</code> max-age, which means a returning reader downloads it at most once per release. When the stylesheet actually changes, the hash changes, the URL changes, and the browser fetches a new copy. Atomic invalidation is a property of content-addressed URLs. There is no separate cache-bust step to remember.</p>
-</section>
-<section id="loading-fonts-only-when-they-are-used" class="level3">
-<h3 class="anchored" data-anchor-id="loading-fonts-only-when-they-are-used">Loading fonts only when they are used</h3>
-<p>The default reading palette is set by unconditional rules in <code>styles.css</code> over the system font stack. A reader who never presses <code>f</code> to cycle palettes fetches zero font bytes from the site. Each of the three alternative palettes (<code>reader</code>, <code>almanac</code>, <code>manuscript</code>) has its <code>@font-face</code> rules scoped to <code>html[data-font-palette="&lt;slug&gt;"]</code>. Browsers only fetch the woff2 files when the attribute matches, which it does only after the reader activates that palette. <code>font-display: swap</code> keeps text visible while the font is loading.</p>
-<p>The general pattern is that optional features should be zero-cost until activated. Most readers will never activate them, and should not pay for them.</p>
-</section>
-<section id="sizing-images-to-the-readers-screen" class="level3">
-<h3 class="anchored" data-anchor-id="sizing-images-to-the-readers-screen">Sizing images to the reader’s screen</h3>
-<p>Source images arrive in a post directory at whatever resolution the capture device produced, often several thousand pixels wide. Post bodies render into a narrower column. Shipping the originals would waste bytes on the wire and decode work in the browser, for pixels the reader cannot see.</p>
-<p><code>_scripts/resize_images.py</code> runs as a pre-render sweep. For every referenced image above a size threshold, it renames the original to <code>&lt;stem&gt;-full.&lt;ext&gt;</code> and writes a display-size sibling at the original path. JPGs stay JPG, capped at 1600 pixels wide and re-encoded at quality 82. PNGs re-encode as WebP at quality 85. The body reference in <code>index.qmd</code> is rewritten to point at the display copy and tagged with <code>data-lightbox-src="&lt;stem&gt;-full.&lt;ext&gt;"</code> so the lightbox has a path to the hi-res. If the re-encoded display copy does not come out smaller than the original, the split is reverted. Some source files are already at the encoder’s floor (the source was encoded tightly enough that re-encoding cannot win bytes back).</p>
-<p><code>_scripts/check-image-sizes.py</code> fails the CI build if any referenced image above the threshold is missing its <code>-full</code> sibling. The contract that every heavy image has a display copy is enforced mechanically rather than by discipline.</p>
-<p>On the read side, the lightbox gates the hi-res fetch on viewport width. Screens narrower than 1024 Cascading Style Sheets (CSS) pixels receive only the 1600-pixel display copy, and the <code>-full</code> is never fetched. At those widths the display copy is already at or near the device’s physical resolution, so the hi-res upgrade adds no visible detail. On wider screens the <code>-full</code> (itself capped at 3000 pixels wide) is fetched when the lightbox first shows that image, decoded off the main thread via <code>img.decode()</code>, and held in a per-session cache so returning to the same image does not trigger another decode.</p>
-</section>
-<section id="not-carrying-weight-that-is-not-needed" class="level3">
-<h3 class="anchored" data-anchor-id="not-carrying-weight-that-is-not-needed">Not carrying weight that is not needed</h3>
-<p>Quarto’s default behavior is to include Mermaid, MathJax, and syntax-highlighting bundles in every page, regardless of whether the page actually contains a diagram, an equation, or a code block. <code>_scripts/strip-unused-assets.py</code> scans each rendered page for references to each asset family and removes the unused script tags after render. A short plain-text post ships with none of the three.</p>
-<p><code>_scripts/strip-listing-titles.py</code> removes redundant H1 elements that Quarto emits on listing pages, for the same reason: less markup for the browser to parse, style, and lay out.</p>
-</section>
-<section id="pre-rendering-math-and-diagrams-for-the-feed" class="level3">
-<h3 class="anchored" data-anchor-id="pre-rendering-math-and-diagrams-for-the-feed">Pre-rendering math and diagrams for the feed</h3>
-<p>Most RSS readers do not run JavaScript. A feed item containing <code>$\hat{y} = f(x)$</code> or a Mermaid block would arrive as unrendered source text, because MathJax and Mermaid both run client-side.</p>
-<p><code>_scripts/feed-render.py</code> replaces every math expression and every Mermaid block in the RSS feed with inline SVG at deploy time. The subscriber’s client does no extra work, and the feed is self-contained. The same script is the one whose SVG cache was described earlier. It saves CI time on repeat builds and reader time on every subscribed fetch, from a single pass at deploy time.</p>
-</section>
-</section>
-<section id="where-this-leaves-things" class="level2">
-<h2 class="anchored" data-anchor-id="where-this-leaves-things">Where this leaves things</h2>
-<p>The build and read sides of this post use the same technique in different contexts: compute something once at the moment its inputs change, name the result under a stable address, and let every downstream reader of that result pick it up from cache. On the build side the cached result is <code>_site/</code>, or a pre-render JSON, or a frozen listing page. On the read side it is <code>search.json</code>, or a per-session JSON fetch, or a fingerprinted stylesheet, or a pre-rendered feed SVG.</p>
-<p>What remains unsettled is where this breaks at scale. The post index is 74 KB today and will be several hundred kilobytes by the time the corpus crosses a thousand posts. <code>search.json</code> has the same shape. Neither is a problem today. Both are shapes to keep an eye on. The critical assumption behind every fix above is that the corpus changes slowly compared to the cache lifetimes. That assumption is a choice about how often to publish, not a property of the infrastructure.</p>
-<p>Related reading: <a href="../../posts/20260420-rube-goldberg-publishing/">A Rube Goldberg Pipeline for Sharing Links</a> walks through how a captured link becomes a draft and then a post. <a href="../../posts/20260508-site-user-manual/">A User Manual for <em>synesis</em></a> tours the reader-facing features. <a href="../../posts/20260508-making-the-blog-agent-friendly/">Making <em>synesis</em> Agent-Friendly</a> covers the machine-readable surfaces the site exposes.</p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260511-site-efficiency/</guid>
-  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260511-site-efficiency/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
