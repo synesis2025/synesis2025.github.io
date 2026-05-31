@@ -585,7 +585,7 @@ window.__postIndexReady = fetch('/post-index.json?v=3468093eb9')
 <link rel="https://llmstxt.org/" type="text/plain" href="../../llms.txt">
 
 
-<link rel="stylesheet" href="../../styles.079840d748.css">
+<link rel="stylesheet" href="../../styles.4b95ca5d72.css">
 <meta property="og:title" content="Rancho San Antonio Trail Run, Cupertino – synesis">
 <meta property="og:description" content="9.67 mi, 1,545 ft EG on Rancho San Antonio trails — 3 hours of daylight, well spent.">
 <meta property="og:image" content="https://benjaminhan.net/posts/20250302-rancho-san-antonio-trail-run/cover.jpg">
@@ -6002,10 +6002,13 @@ window.__postIndexReady = fetch('/post-index.json?v=3468093eb9')
 //   3. Once the first measurement lands, add `body.navbar-ready` so
 //      the styles.css visibility gate on #quarto-header lifts and
 //      the bar↔pill transitions can run for subsequent state changes.
-//   4. Toggle `body.navbar-pill` on scroll past half the navbar's
-//      at-top height — drives the bar↔pill morph independently of
-//      Headroom's class flips so transients (iPad address-bar settle,
-//      iOS rubber-band, theme-cycle layout shift) stay quiet.
+//   4. Drive a scroll-direction reveal: the full bar stays at the top of
+//      the page, hides when the reader scrolls down (slides off the top
+//      edge via `body.navbar-hidden`), and slides back in on scroll-up so
+//      they can reach the other top-level pages; after a short inactivity
+//      window it auto-hides again. Independent of Headroom's class flips
+//      so transients (iPad address-bar settle, iOS rubber-band, theme-
+//      cycle layout shift) stay quiet.
 //
 // Page tagging (html.page-home / page-archive / page-about) lives in
 // _includes/page-class.html instead — it has to run in <head> to beat
@@ -6142,52 +6145,127 @@ window.__postIndexReady = fetch('/post-index.json?v=3468093eb9')
     }
   }
 
-  // --- Bar↔pill morph trigger ---
-  // Toggle `body.navbar-pill` once the user has scrolled past half the
-  // navbar's at-top height. Driving the morph from our own threshold
-  // (instead of Headroom's hardcoded tolerance:5) means transients —
-  // iPad address-bar settle ~15–20px, iOS rubber-band, tap jitter,
-  // theme-cycle layout shift — never reach the trigger. The defensive
-  // pin loops + sessionStorage handoff that previously fought those
-  // false trips are gone (see git history).
+  // --- Scroll-direction reveal trigger ---
+  // The navbar is a full-width bar fixed at the top. It follows reading
+  // intent: scroll down and it slides off the top edge; scroll up and the
+  // full bar slides back so the reader can jump to another top-level page.
+  //   • scroll DOWN  → slide the bar off the top edge (body.navbar-hidden)
+  //   • scroll UP    → slide the bar back in + arm an inactivity timer
+  //   • inactivity   → after the timer, hide again (gesture- and time-driven)
+  //   • near the top → always show the bar (clears any pending hide)
+  // There is no pill state and no shape morph — just the bar sliding via
+  // `top` in styles.css (no transform), so the header.headroom transform-
+  // none fix above stays intact and the iPadOS containing-block gap can't
+  // recur. We own the scroll handler outright; Headroom's own translateY
+  // flips are neutralized in styles.css.
   var navbarEl = document.querySelector('.navbar');
-  var pillThreshold = 40;
+  var topThreshold = 40;       // px band near the top where the bar always shows
+  var lastY = window.scrollY;
+  var TOLERANCE = 4;           // px of sustained motion before reacting — kills trackpad/momentum jitter
+  var hideTimer = null;
+
   function measureThreshold() {
-    // Only measure in bar state. The morph shrinks padding + font-size
-    // in pill state (~50px tall vs ~75px in bar), so measuring then
-    // would give a too-low threshold and create boundary jitter around
-    // the morph trigger.
-    if (!navbarEl || document.body.classList.contains('navbar-pill')) return;
+    // Two measurements off the bar's at-top height:
+    //  • topThreshold — the "always show" band near the top, ~1.5× the bar
+    //    height, so a fast scroll-to-top (and the momentum / rubber-band
+    //    bounce that settles a little *below* the top right after it) stays
+    //    inside the band and keeps the bar shown instead of the settle's
+    //    downward drift reading as a fresh scroll-down and re-hiding it.
+    //  • --navbar-h — the live bar height, so the fixed top-right search
+    //    button can center against it in CSS without a hard-coded guess
+    //    that drifts whenever the navbar padding is re-tuned.
+    if (!navbarEl) return;
     var h = navbarEl.getBoundingClientRect().height;
-    if (h > 0) pillThreshold = Math.max(20, Math.round(h / 2));
+    if (h > 0) {
+      topThreshold = Math.max(60, Math.round(h * 1.5));
+      document.documentElement.style.setProperty('--navbar-h', h + 'px');
+    }
   }
-  function syncMorph() {
-    // Freeze morph state while the mobile-aside sheet is open.
-    // With the current simple `overflow: hidden` scroll-lock on
-    // html+body this guard is defensive — scroll events shouldn't
-    // fire while the body can't scroll — but it was also the fix
-    // for the original iOS-safe position-fixed-swap lock, where
-    // `body.position: fixed` collapsed window.scrollY to 0 and would
-    // flip navbar-pill → bar mid-modal. Cheap to keep.
+
+  function hideDelay() {
+    // Touch has no hover/focus to pause on and slower reach-time, so give
+    // fingers a longer window before the revealed bar auto-hides.
+    return (window.matchMedia && window.matchMedia('(hover: none)').matches) ? 5000 : 3000;
+  }
+  function armHideTimer() {
+    clearTimeout(hideTimer);
+    // Never auto-hide while the reader is hovering the bar or has keyboard
+    // focus inside it — re-armed on mouseleave / focusout (listeners below).
+    if (navbarEl && (navbarEl.matches(':hover') ||
+                     navbarEl.contains(document.activeElement))) return;
+    hideTimer = setTimeout(function () {
+      document.body.classList.add('navbar-hidden');
+    }, hideDelay());
+  }
+
+  // Position-only sync for load / resize / restore — only ever *shows* the
+  // bar (near the top), never hides it, so a deep-link load or bfcache
+  // scroll-restore can't be misread as a scroll-down. Direction-driven
+  // hiding lives only in syncReveal, fired by real scroll events.
+  function syncPosition() {
     if (document.body.classList.contains('mobile-aside-open')) return;
-    document.body.classList.toggle('navbar-pill',
-                                   window.scrollY >= pillThreshold);
+    if (window.scrollY <= topThreshold) {
+      document.body.classList.remove('navbar-hidden');
+    }
+    lastY = window.scrollY;
   }
+
+  function syncReveal() {
+    // Freeze while the mobile-aside sheet is open: its scroll-lock can
+    // collapse scrollY and flip state mid-modal. Cheap to keep.
+    if (document.body.classList.contains('mobile-aside-open')) return;
+    var y = window.scrollY;
+    var dy = y - lastY;
+    lastY = y;                                       // track every frame, so a momentum/bounce
+                                                     // settle can't accumulate a stale delta
+    if (y <= topThreshold) {                         // near the top → always show the bar.
+      clearTimeout(hideTimer);                       // This is what keeps a fast scroll-to-top
+      document.body.classList.remove('navbar-hidden'); // (and its bounce) from hiding the bar.
+      return;
+    }
+    if (dy < -TOLERANCE) {                            // scrolling up → reveal + countdown
+      document.body.classList.remove('navbar-hidden');
+      armHideTimer();
+    } else if (dy > TOLERANCE) {                      // scrolling down (past the band) → hide
+      clearTimeout(hideTimer);
+      document.body.classList.add('navbar-hidden');
+    }
+    // within the ±TOLERANCE deadzone: hold state (lastY already advanced)
+  }
+
   function settle() {
     update();
     measureThreshold();
-    syncMorph();
+    syncPosition();
   }
 
   settle();
   // One-frame follow-up in case the browser restores scrollY (deep-link
   // hard-refresh, bfcache restore) after our initial synchronous sync.
-  requestAnimationFrame(syncMorph);
+  // Position-only on purpose — a restore must not read as a scroll-down.
+  requestAnimationFrame(syncPosition);
   window.addEventListener('load', settle);
   window.addEventListener('resize', settle, { passive: true });
-  window.addEventListener('scroll', syncMorph, { passive: true });
+  window.addEventListener('scroll', syncReveal, { passive: true });
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(settle);
+  }
+
+  // Pause the inactivity timer on genuine interaction with the revealed
+  // bar, re-arm when the reader leaves. pointerdown covers touch, which
+  // has neither hover nor focus to pause on. focusin also *reveals* a
+  // hidden header: its links stay in the tab order while slid off-screen,
+  // so a keyboard user tabbing into the nav must pull it back into view.
+  if (navbarEl) {
+    navbarEl.addEventListener('mouseenter', function () { clearTimeout(hideTimer); });
+    navbarEl.addEventListener('mouseleave', armHideTimer);
+    navbarEl.addEventListener('focusin', function () {
+      clearTimeout(hideTimer);
+      document.body.classList.remove('navbar-hidden');  // no-op at top; reveals when scrolled
+    });
+    navbarEl.addEventListener('focusout', armHideTimer);
+    navbarEl.addEventListener('pointerdown', function () { clearTimeout(hideTimer); },
+                              { passive: true });
   }
 })();
 </script>

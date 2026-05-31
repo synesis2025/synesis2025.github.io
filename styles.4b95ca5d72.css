@@ -25,7 +25,12 @@
      Bootswatch theme defines --bs-primary-rgb, so this tracks whichever
      theme the visitor has picked via the `t` shortcut. */
   --navbar-bg: rgba(var(--bs-primary-rgb), 0.85);
-  --navbar-blur: blur(200px) saturate(1.8);
+  /* 40px is well past the point where a backdrop blur fully obscures the
+     content behind it (the 0.85 tint above already does most of that), and
+     it's far cheaper to re-sample than the old 200px radius — which, on a
+     fixed bar that now *slides* on scroll, made WebKit drop frames and paint
+     a half-rendered backdrop during fast/bouncy scrolls. */
+  --navbar-blur: blur(40px) saturate(1.8);
   --navbar-ease: cubic-bezier(0.4, 0, 0.2, 1);
   /* 0.18s is the middle ground between the old 0.12s linear() tween
      (which landed before the eye could follow) and 0.28s (which felt
@@ -48,12 +53,12 @@
   --link-color: #2c5282;
   --link-color-hover: #1a365d;
   --link-color-dark: #90cdf4;
-  /* Frosted-glass surface tokens: bar↔pill navbar in scrolled state,
-     the three floating utility buttons (search, theme toggle, kbd help),
-     and the theme-tools wrapper all share the same glass recipe. Keep
-     the four tokens here in one place so any future re-tuning of the
-     glass — tint strength, border, blur intensity, inner highlight vs
-     drop shadow — moves in lockstep across every surface. */
+  /* Frosted-glass surface tokens: the three floating utility buttons
+     (search, theme toggle, kbd help) and the theme-tools wrapper share
+     one glass recipe. Keep the four tokens here in one place so any
+     future re-tuning of the glass — tint strength, border, blur
+     intensity, inner highlight vs drop shadow — moves in lockstep across
+     every surface. */
   --glass-bg: rgba(var(--bs-primary-rgb), 0.42);
   --glass-border: 1px solid rgba(127, 127, 127, 0.55);
   --glass-blur: blur(24px) saturate(1.8);
@@ -61,25 +66,23 @@
                   0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-/* Navbar architecture: the bar fills the viewport at the top of the page;
-   once the user scrolls past it, the bar background drops away and the
-   inner container morphs into a floating content-width pill (see
-   `body.navbar-pill` below). --content-left / --content-right are set
+/* Navbar architecture: a full-width bar fixed at the top of the page. It
+   stays a bar at every scroll position — there is no pill or shape morph.
+   On scroll it hides/reveals by sliding off the top edge (see the scroll-
+   direction reveal below). --content-left / --content-right are set
    per-page by _includes/navbar-content-align.html so the brand always
    lines up with body-content-start.
 
-   The themed backdrop lives on .navbar-container (not .navbar) in BOTH
-   states so the bar→pill morph is one continuous element changing shape,
-   not two separate bgs crossfading in/out. With the bg on two elements
-   the overlap during transition read as a "second object appearing,"
-   which broke the illusion of one morph. */
+   The themed backdrop lives on .navbar-container (not .navbar) so the
+   bar's blurred surface is a single element; padding on the container
+   (not the bar) keeps the brand/links aligned to the content column. */
 .navbar {
   background-color: transparent !important;
   /* Quarto's bootstrap-dark build ships a `background-image:
      linear-gradient(rgba(255,255,255,0.15), rgba(255,255,255,0))` on
      `.navbar` — a legacy "top shine" that reads as a white gradient band
-     across the viewport at the top edge in every dark theme. Our bar +
-     pill already carry their own backdrop; the shine just muddies it. */
+     across the viewport at the top edge in every dark theme. The bar
+     already carries its own backdrop; the shine just muddies it. */
   background-image: none !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -89,7 +92,7 @@
   padding-right: 0 !important;
   /* Slate's theme CSS puts a 1px outer border on .navbar plus vertical
      dividers between links/brand; other Bootswatch themes don't. Killing
-     them here keeps the bar→pill morph clean across the curated set. */
+     them here keeps the bar clean across the curated set. */
   border: none !important;
 }
 .navbar .nav-link,
@@ -103,33 +106,13 @@
   max-width: none !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
-  padding-top: 1rem;
-  padding-bottom: 1rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
   /* Fallback approximates Quarto's article grid (5fr on each side,
      ~118px chrome, ~800px body-content) so the first paint is close
      to where the JS measurement lands. JS overrides via inline style. */
   padding-left: var(--content-left, max(1em, calc((100vw - 1180px) / 2 + 118px))) !important;
   padding-right: var(--content-right, max(1em, calc((100vw - 1180px) / 2 + 118px))) !important;
-}
-
-/* Bar↔pill morph: gentle cubic-bezier(0.4, 0, 0.2, 1) ease-in-out at ~180ms.
-   Bi-directional easing gives the shape change a calmer feel than a fast
-   ease-out without stretching the click-to-settle time. Duration + easing
-   live in --navbar-dur / --navbar-ease above. */
-body.navbar-ready .navbar {
-  transition: padding var(--navbar-dur) var(--navbar-ease);
-}
-body.navbar-ready .navbar > .navbar-container {
-  transition: border-radius var(--navbar-dur) var(--navbar-ease),
-              box-shadow var(--navbar-dur) var(--navbar-ease),
-              padding-top var(--navbar-dur) var(--navbar-ease),
-              padding-bottom var(--navbar-dur) var(--navbar-ease),
-              margin var(--navbar-dur) var(--navbar-ease);
-}
-body.navbar-ready .navbar .navbar-brand,
-body.navbar-ready .navbar .nav-link {
-  transition: font-size var(--navbar-dur) var(--navbar-ease),
-              padding var(--navbar-dur) var(--navbar-ease);
 }
 
 /* Pre-paint gate: hide the entire header until flattenNav() has rebuilt
@@ -307,9 +290,11 @@ html.js-navbar body:not(.navbar-ready) #quarto-header {
 /* Headroom.js sets inline `transform: translateY(...)` on <header> on
    every scroll event — `translateY(-100%)` on scroll-down (--unpinned)
    to hide the bar, `translateY(0%)` on scroll-up (--pinned) to reveal.
-   We want the bar to stay visible regardless of scroll direction, so
-   we zero the transform at every state. `.headroom` is present in all
-   states, so one rule covers them all.
+   We run our own scroll-direction reveal instead — hiding via `top`, not
+   transform (see the `body.navbar-hidden` block below) — so we zero
+   Headroom's transform at every state to take its competing animation
+   out of the loop. `.headroom` is present in all states, so one rule
+   covers them all.
 
    Zeroing the transform outright (rather than pinning it to 0%) also
    fixes an iPadOS Safari quirk: any transform on a position:fixed
@@ -343,106 +328,67 @@ header.headroom {
   will-change: auto !important;
 }
 
-/* Bar↔pill morph. Past the trigger, the outer bar fades to transparent
-   and the inner container becomes a floating capsule sized to its 3
-   items (synesis / Archive / About) and centered in the viewport.
-   Auto margins do the centering; since the Quarto article grid is
-   symmetric (equal --content-left and --content-right), viewport-center
-   == content-column-center.
-
-   The trigger fires once the user scrolls past `pillThreshold`
-   (≈ navbar height / 2) on viewports ≥768px — set high enough that
-   transients (iPad address-bar settle, iOS rubber-band, tap jitter)
-   stay quiet. Toggle lives in _includes/navbar-content-align.html as
-   a `body.navbar-pill` class flip. */
-body.navbar-pill .navbar {
-  padding-top: 0.5rem !important;
-  padding-bottom: 0.5rem !important;
-}
-body.navbar-pill .navbar > .navbar-container {
-  border-radius: 9999px;
-  /* Frosted-glass pill (dark mode default): drop the alpha so underlying
-     content shows through, dial the blur back from the bar state's heavy
-     200px tint to a classic ~24px (Apple-style vibrancy), and add a 1px
-     inner highlight + outer shadow so the edge reads as glass rather than
-     a flat panel. Light mode flips to solid primary below — glass looked
-     washed-out against light body content. Shared recipe lives in the
-     --glass-* tokens on :root. */
-  background-color: var(--glass-bg) !important;
-  backdrop-filter: var(--glass-blur) !important;
-  -webkit-backdrop-filter: var(--glass-blur) !important;
-  box-shadow: var(--glass-shadow);
-  width: fit-content !important;
-  max-width: none !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  padding: 0.3rem 1.75rem !important;
-  overflow-x: visible !important;
-}
-/* Light mode: solid primary pill with white text, matching Bootstrap's
-   .bg-primary navbar convention. Glass tint read as low-contrast against
-   the bright body bg across several light Bootswatch themes. */
-body.quarto-light.navbar-pill .navbar > .navbar-container {
-  background-color: rgba(var(--bs-primary-rgb), 1) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-body.quarto-light.navbar-pill .navbar .navbar-brand,
-body.quarto-light.navbar-pill .navbar .nav-link {
-  color: #fff !important;
-}
-/* Shrink the text + link-padding in the pill state so the whole morph
-   reads as proportional rather than just a tighter frame around
-   bar-sized text. Scoped to ≥768px because the phone media query
-   further down collapses the pill back into an in-flow bar. */
+/* Scroll-direction reveal. The fixed full-width bar slides off the top
+   edge on scroll-down (body.navbar-hidden) and slides back in on scroll-up
+   so the reader can reach the other top-level pages; the trigger lives in
+   _includes/navbar-content-align.html. We animate `top` rather than
+   `transform` so the header.headroom transform:none fix above stays intact
+   — a transform on the fixed header is exactly what re-creates the iPadOS
+   containing-block gap. `top` offsets are inert under position:static, so
+   this is naturally a no-op on phones (≤767.98px) where the header scrolls
+   away in normal flow; scoped ≥768px anyway to keep the slide off mobile
+   entirely. The 6rem offset plus the safe-area inset clears the bar
+   (~4.7rem tall) with margin to spare so nothing peeks during the slide.
+   pointer-events:none stops a half-slid header from eating clicks. */
 @media (min-width: 768px) {
-  body.navbar-pill .navbar .navbar-brand,
-  body.navbar-pill .navbar .nav-link {
-    font-size: 0.8rem;
-    padding: 0.3rem 0;
+  body.navbar-ready #quarto-header {
+    transition: top var(--navbar-dur) var(--navbar-ease);
+  }
+  body.navbar-hidden #quarto-header {
+    top: calc(-6rem - env(safe-area-inset-top, 0px));
+    pointer-events: none;
   }
 }
 
-/* Phone (≤767.98px): drop the fixed-position navbar and the bar↔pill morph.
+/* Kill the elastic overscroll "rubber-band" at the top/bottom of the page on
+   pointer devices (desktop mouse/trackpad). When you fling to the top, the
+   bounce keeps moving the page under the fixed bar for a few frames after
+   scrollY has already settled — which re-samples the bar's backdrop-filter
+   mid-bounce and momentarily mis-paints it (the "missing / half-rendered
+   navbar on fast scroll-to-top"). No bounce → nothing to re-sample against →
+   the bar stays solid.
+
+   Scoped to `(hover: hover) and (pointer: fine)` — i.e. devices driven by a
+   mouse/trackpad — NOT to a width breakpoint. iPad (and phones) report
+   `hover: none` / `pointer: coarse`, so they're excluded and keep their
+   native pull-to-refresh / elastic scroll intact. The glitch is a
+   pointer-scroll artifact, so this is exactly the surface that needs it. */
+@media (hover: hover) and (pointer: fine) {
+  html {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Reduced motion: hide/reveal cuts instantly instead of sliding. */
+@media (prefers-reduced-motion: reduce) {
+  body.navbar-ready #quarto-header {
+    transition: none;
+  }
+}
+
+/* Phone (≤767.98px): drop the fixed-position navbar and the scroll-reveal.
    The bar sits in normal flow at the top of the page so it scrolls away
    with the content — frees vertical screen space for reading. Quarto's
    inline body padding-top (set by quarto-nav.js to compensate for the
-   fixed header) is undone here. `body.navbar-pill` still toggles on
-   scroll, but every pill rule below maps it back to bar values, so
-   the morph is a no-op. */
+   fixed header) is undone here. `body.navbar-hidden` still toggles on
+   scroll, but the `top` slide is scoped ≥768px (and inert under
+   position:static), so it's a no-op down here. */
 @media (max-width: 767.98px) {
   #quarto-header {
     position: static !important;
   }
   body {
     padding-top: 0 !important;
-  }
-  body.navbar-pill .navbar {
-    padding-top: 0;
-    padding-bottom: 0;
-  }
-  body.navbar-pill .navbar > .navbar-container {
-    border-radius: 0;
-    box-shadow: none;
-    width: auto !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    padding: 0 var(--content-left, 1em) !important;
-  }
-  /* Mobile collapses the morph, so cancel the bar↔pill animations —
-     the end values on either side of the class flip are already
-     identical after the mobile overrides above, but the transitions
-     still *run* (1rem → 0 padding collapse on the container, etc.),
-     visibly animating at each scroll of the top edge.
-     We zero `transition-duration` rather than wholesale `transition:
-     none` so the transition-property list stays intact; any future
-     per-link `:hover` / `:focus` color or opacity transition on these
-     same elements still applies its own duration via normal cascade. */
-  body.navbar-ready .navbar,
-  body.navbar-ready .navbar > .navbar-container,
-  body.navbar-ready .navbar .navbar-brand,
-  body.navbar-ready .navbar .nav-link {
-    transition-duration: 0s !important;
   }
 }
 
@@ -1825,8 +1771,8 @@ svg.mermaid-js .edgeLabel p {
   height: 2.25rem;
   border-radius: 50%;
   border: var(--glass-border);
-  /* Frosted glass: shared recipe with the bar↔pill navbar and the
-     theme-tools wrapper — see --glass-* tokens on :root. */
+  /* Frosted glass: shared recipe with the theme-tools wrapper — see
+     --glass-* tokens on :root. */
   background: var(--glass-bg);
   color: inherit;
   cursor: pointer;
@@ -2127,33 +2073,17 @@ body.quarto-dark :is(#quarto-search, .quarto-color-scheme-toggle, .mobile-aside-
 }
 
 #quarto-search {
-  /* Vertically center on the bar (top state). Bar height ≈ 4.725rem given
-     the current navbar chrome (0 navbar + 1rem container + 0.5rem link +
-     ~1.725rem text + 0.5rem link + 1rem container + 0 navbar). Button is
-     2.25rem, so centered top ≈ (4.725 - 2.25) / 2 ≈ 1.24rem. Floor at
-     env(safe-area-inset-top) so iPhone notch doesn't overlap. */
-  top: max(1.25rem, env(safe-area-inset-top, 0px));
+  /* Vertically center on the bar using its live measured height
+     (--navbar-h, published by navbar-content-align.html); falls back to
+     ~3.5rem before the first measurement lands. Button is 2.25rem. Floor at
+     env(safe-area-inset-top) so the iPhone notch doesn't overlap. Measuring
+     instead of hard-coding keeps the button centered no matter how the
+     navbar's vertical padding is re-tuned. */
+  top: max(calc((var(--navbar-h, 3.5rem) - 2.25rem) / 2), env(safe-area-inset-top, 0px));
   right: max(1rem, env(safe-area-inset-right, 1rem));
   bottom: auto;
   left: auto;
   overflow: hidden;
-}
-/* In pill state the bar collapses to ~3.4rem tall (0.5rem navbar + 0.3rem
-   container + 0.3rem link + 1.2rem text + 0.3rem link + 0.3rem container +
-   0.5rem navbar), so the button re-centers closer to the top: ~(3.4 - 2.25) / 2
-   ≈ 0.575rem. Morph transitions `top` alongside the bar↔pill duration/easing
-   (see #quarto-search transition above). Keyed on `body.navbar-pill`,
-   the same body class that drives the navbar morph itself (see
-   _includes/navbar-content-align.html). */
-body.navbar-pill #quarto-search {
-  top: max(0.55rem, env(safe-area-inset-top, 0px));
-}
-@media (max-width: 767.98px) {
-  /* Phone: pill morph is a no-op (bar stays in flow), so keep search
-     aligned to the bar-state center even when navbar-pill is set. */
-  body.navbar-pill #quarto-search {
-    top: max(1.25rem, env(safe-area-inset-top, 0px));
-  }
 }
 
 /* Normalize Quarto's detached-search button (injected by autocomplete.js
@@ -3120,7 +3050,7 @@ html.mobile-aside-locked body {
 }
 
 /* Honor user-agent reduced-motion preference. Long transitions and
-   animations (navbar bar-pill morph, timeline dot tracking, lightbox
+   animations (navbar reveal slide, timeline dot tracking, lightbox
    fades) collapse to ~0 so they do not trigger vestibular symptoms.
    Durations stay non-zero so transitionend/animationend listeners still
    fire for any JS that waits on them. */
