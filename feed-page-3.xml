@@ -21,7 +21,159 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 31 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 01 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Image from <a href="https://arxiv.org/abs/2603.07972">arXiv</a>. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning</em> (ICLR 2026 Poster) [1], <a href="https://www.semanticscholar.org/author/Wei-Yang/2270893841">Wei Yang</a>, <a href="https://defucao.github.io/">Defu Cao</a>, Jiacheng Pang, Muyan Weng, and <a href="https://viterbi-web.usc.edu/~yanliu/">Yan Liu</a> (USC) train each agent in a multi-agent system to choose one of three high-level actions at each round (Evaluate a peer’s answer, Create a new one, Defer to a human expert) and turn deferral events into supervised data for continual capability growth.</p>
+<blockquote class="blockquote">
+<p>While scaling individual Large Language Models (LLMs) has delivered remarkable progress, the next frontier lies in scaling collaboration through multi-agent systems (MAS). However, purely autonomous MAS remain “closed-world” systems, constrained by the static knowledge horizon of pre-trained models. This limitation makes them brittle on tasks requiring knowledge beyond training data, often leading to collective failure under novel challenges. To address this, we propose the <em>Human-In-the-Loop Multi-Agent Collaboration (HILA)</em> framework, a principled paradigm for human–agent collaboration. HILA trains agents to learn a <em>metacognitive policy that governs when to solve problems autonomously and when to defer to a human expert</em>. To operationalize this policy, we introduce <em>Dual-Loop Policy Optimization</em>, which disentangles immediate decision-making from long-term capability growth. The inner loop applies Group Relative Policy Optimization (GRPO) with a cost-aware reward to optimize deferral decisions, while the outer loop implements <em>continual learning, transforming expert feedback into high-quality supervised signals</em> that strengthen the agent’s reasoning ability. Experiments on challenging mathematical and problem-solving benchmarks show that HILA, equipped with Dual-Loop Policy Optimization, <em>consistently outperforms advanced MAS</em>, establishing a principled foundation for collaborative and continually improving agentic systems.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>HILA (Human-In-the-Loop Multi-Agent Collaboration) models human-agent collaboration as a Metacognitive <a href="https://en.wikipedia.org/wiki/Markov_decision_process">Markov Decision Process</a> (Meta-MDP). At each round <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/>, every agent <img src="https://benjaminhan.net/feed-assets/fe3599bc03ddee62.svg" alt="i" class="feed-math-inline"/> observes a shared state <img src="https://benjaminhan.net/feed-assets/5c904342ae2733ae.svg" alt="s_t = \text{concat}(\mathbf{x}^{\text{task}}_t, \mathbf{x}^{\text{self}}_t, \mathbf{x}^{\text{peer}}_t, \mathbf{z}^{\text{soc}}_t, \mathbf{z}^{\text{mon}}_t, \mathbf{z}^{\text{ctrl}}_t)" class="feed-math-inline"/> — task context, self context, peer context, plus three optional cognitive cues (social consensus, metacognitive monitoring, cognitive control) computed from interaction traces with rule-based heuristics. The action space is a discrete set of three high-level strategies: <img src="https://benjaminhan.net/feed-assets/aab66ff460854c58.svg" alt="a^{\text{eval}}" class="feed-math-inline"/> endorses an existing peer answer, <img src="https://benjaminhan.net/feed-assets/8b42270c46eedb14.svg" alt="a^{\text{create}}" class="feed-math-inline"/> generates a new candidate, and <img src="https://benjaminhan.net/feed-assets/c68cb777ec2fc5bb.svg" alt="a^{\text{defer}}" class="feed-math-inline"/> routes the round’s output to a human expert.</p>
+<p>Dual-Loop Policy Optimization (DLPO) [1] trains the policy with two coupled loops. The <strong>inner loop</strong> teaches the agent which of the three actions to pick at each round. The reward pays the agent for getting the answer right and charges it a small fee for creating a new answer, a larger fee for calling the human, so the policy learns to defer only when the expected accuracy gain outweighs the cost. Formally, this is Group Relative Policy Optimization (GRPO) [4] on a cost-aware reward, with <img src="https://benjaminhan.net/feed-assets/166c87a68ac5ae8f.svg" alt="C_{\text{defer}} &gt; C_{\text{create}} \geq 0" class="feed-math-inline"/>:</p>
+<p><img src="https://benjaminhan.net/feed-assets/82ce80e8ff1c4ac3.svg" alt="R(s_t, a_t) = \begin{cases} R_{\text{gt}}(\hat{y}(a_t)), &amp;amp; a_t = \text{EVAL} \\ R_{\text{gt}}(\hat{y}(a_t)) - C_{\text{create}}, &amp;amp; a_t = \text{CREATE} \\ R_{\text{gt}}(\hat{y}_{\text{human}}(a_t)) - C_{\text{defer}}, &amp;amp; a_t = \text{DEFER} \end{cases}" class="feed-math-inline"/></p>
+<p>Correctness <img src="https://benjaminhan.net/feed-assets/1d46bf99ef3f73ac.svg" alt="R_{\text{gt}}" class="feed-math-inline"/> is the primary signal. The two cost terms break ties toward the cheaper action when multiple choices lead to similar outcomes. GRPO turns these rewards into a learning signal by sampling several actions at the same state, comparing each one’s reward against the group’s average, and pushing the policy toward the actions that beat the average. The advantage <img src="https://benjaminhan.net/feed-assets/de438ba071e5e946.svg" alt="A(s_t, a_k) = R(s_t, a_k) - \tfrac{1}{K}\sum_j R(s_t, a_j)" class="feed-math-inline"/> feeds the policy-gradient term <img src="https://benjaminhan.net/feed-assets/56fdfa9c70f732f6.svg" alt="\mathcal{L}_{\text{PG}}" class="feed-math-inline"/>, which scales each action’s log-probability by its advantage. Two regularizers stabilize training: <img src="https://benjaminhan.net/feed-assets/6c365d4f435cae2f.svg" alt="\mathcal{L}_{\text{KL}}" class="feed-math-inline"/> is the KL divergence between the current policy and the initial reference policy (keeps the trained policy close to its starting point so it doesn’t drift off into degenerate behaviors), and <img src="https://benjaminhan.net/feed-assets/a01978f989c09277.svg" alt="\mathcal{L}_{\text{Entropy}}" class="feed-math-inline"/> is the policy’s entropy over the three actions (subtracted to <em>encourage</em> spread, preventing collapse onto a single action). The combined inner objective is <img src="https://benjaminhan.net/feed-assets/4367f16176867906.svg" alt="\mathcal{L}_{\text{Inner}} = \mathcal{L}_{\text{PG}} + \beta_{\text{kl}} \mathcal{L}_{\text{KL}} - \beta_{\text{ent}} \mathcal{L}_{\text{Entropy}}" class="feed-math-inline"/>.</p>
+<p>The <strong>outer loop</strong> runs continual supervised fine-tuning (SFT) on every deferral event. Each time the agent calls the human, the human’s answer is recorded as a training example, and the generator is later fine-tuned to produce that answer itself given the same context. Over many deferrals the agent absorbs the human’s expertise on cases it could not handle, so future encounters with similar problems no longer need a deferral. Formally, the human’s response <img src="https://benjaminhan.net/feed-assets/1b2c0c7a659e923e.svg" alt="y_{\text{human}} = (t_1, \dots, t_L)" class="feed-math-inline"/> becomes a target sequence trained with token-level cross-entropy:</p>
+<p><img src="https://benjaminhan.net/feed-assets/4ef017082f069caa.svg" alt="\mathcal{L}_{\text{SFT}}(\theta) = -\sum_{i=1}^{L} \log \pi_\theta(t_i \mid s_t, t_{1:i-1})." class="feed-math-inline"/></p>
+<p>The two losses share parameters and are combined under an indicator that gates SFT to deferral steps only:</p>
+<p><img src="https://benjaminhan.net/feed-assets/4ee0ef925ab8945c.svg" alt="\mathcal{L}_{\text{total}}(\theta) = \mathbb{E}_{(s_t, a_t)}\left[\mathcal{L}_{\text{Inner}}(\theta) + \lambda_{\text{sft}} \cdot \mathbb{I}(a_t = a^{\text{defer}}) \cdot \mathcal{L}_{\text{SFT}}(\theta)\right]." class="feed-math-inline"/></p>
+<p>The inner loop decides <em>when</em> to defer. The outer loop teaches the generator <em>what</em> the human said when it did.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/figure6.png" class="img-fluid figure-img"></p>
+<figcaption>Accuracy versus deferral rate on GSM8K across the three training stages (Init policy, +GRPO inner loop, +DLPO with continual outer loop). DLPO moves the operating point up and to the left simultaneously: higher accuracy with lower reliance on the human expert. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper evaluates HILA on five benchmarks spanning math reasoning (GSM8K [5], AMC, AIME), code generation (HumanEval [6]), and general knowledge (MMLU [7]), with LLaMA3-8B as the main backbone and ablations on LLaMA3-3B and Qwen2.5-3B. The primary metric is task accuracy. Deferral rate (the fraction of rounds that call the human) is reported as the cost dimension. Baselines split into single-agent prompting strategies — Chain-of-Thought (CoT) [8], Self-Consistency (SC) [9] — and multi-agent systems — Progressive Hint Prompting (PHP) [10] (classified as MA in the paper, framed as a pairwise/pooled critique baseline), LLM-Debate [11], GroupDebate (G-Debate) [12], DyLAN [13], GPTSwarm (G-Swarm) [14], AgentPrune (A-Prune) [15], and AFlow [16]. The “Vanilla” reference is the backbone with no agentic scaffolding. Headline numbers come from Table 1. Cross-backbone scaling and ablations live in Tables 2 and 4, and the cost-sensitivity sweep is Figure 11(a).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/table1.png" class="img-fluid figure-img"></p>
+<figcaption>Table 1 from the paper [1]. Main comparison on the LLaMA3-8B backbone across GSM8K, AMC, AIME, HumanEval, and MMLU. Parenthesized values are absolute deltas vs the Vanilla baseline. Underlines mark the best non-HILA entry per benchmark. SA = single-agent, MA = multi-agent.</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>HILA tops every benchmark over every baseline</strong> — single-agent (CoT, SC) and multi-agent (PHP, LLM-Debate, G-Debate, DyLAN, G-Swarm, A-Prune, AFlow). The runner-up varies by task (G-Swarm on GSM8K, G-Debate on AMC and MMLU, AFlow on HumanEval), but no single multi-agent baseline wins anything.</li>
+<li><strong>Big gains on hard reasoning, AIME ceiling</strong>: HumanEval +24.59 over Vanilla, AMC +24.47, GSM8K +17.10, MMLU +15.63, AIME +6.41. Deferral pays off most on AMC and HumanEval. The modest AIME gain suggests the human proxy itself struggles there, capping the upside.</li>
+<li><strong>Cross-backbone story (Table 2 in the paper)</strong>: the absolute gain grows as the backbone weakens. On LLaMA3-3B, HILA lifts GSM8K from 45.26 to 83.85 (+38.59), the largest gain of any base model tested.</li>
+<li><strong>Inner-loop vs outer-loop (Table 4 ablation, LLaMA3-8B)</strong>: HILA Init Policy (the unoptimized HILA system, before any training) starts at 88.15/33.33/68.30 (GSM8K/AMC/MMLU). GRPO inner-loop alone adds +0.23/-0.83/+2.17 (flat on GSM8K, mild AMC regression, real MMLU lift). Full DLPO with continual-SFT outer-loop lifts +1.71/+2.50/+5.32 over Init Policy.</li>
+<li><strong>Cost-sensitivity</strong> (Figure 11(a) below): as the deferral cost <img src="https://benjaminhan.net/feed-assets/ec5e240d45a3b9db.svg" alt="C_{\text{defer}}" class="feed-math-inline"/> rises, the policy defers less and accuracy degrades gracefully. The same trained model serves a range of operating points without re-fitting.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/figure9.png" class="img-fluid figure-img"></p>
+<figcaption>Accuracy on AMC and MMLU under different deferral costs <img src="https://benjaminhan.net/feed-assets/ec5e240d45a3b9db.svg" alt="C_{\text{defer}}" class="feed-math-inline"/>. As deferral becomes more expensive, the policy defers less and accuracy degrades gracefully. The meta-policy is calibrated to the cost rather than fixed. Figure 11(a) from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>“Inner/outer” suggests nesting that isn’t there.</strong> In meta-learning and bilevel optimization, the naming usually marks a nested solver structure: an inner loop runs to convergence (or partial convergence) per outer step, often against separate parameters or objectives. HILA’s actual training objective is <img src="https://benjaminhan.net/feed-assets/b0644c158398c598.svg" alt="\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{Inner}} + \lambda \cdot \mathbb{I}(a=\text{defer}) \cdot \mathcal{L}_{\text{SFT}}" class="feed-math-inline"/>. That’s a sum of two terms with shared parameters, gated by an indicator, updated together each step. The time-scale separation is genuine: per-round decisions accumulate to feed SFT updates over training. Beyond that, there’s no nesting. Plainer labels like “policy loss + SFT loss” or “decisions plus demonstrations” would map more directly to what the equations do.</li>
+<li><strong>Cost-aware abstention.</strong> The missing piece in most “calibration” work. <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath’s “Mostly Know”</a> [2] measures whether a model’s confidence tracks its correctness, but stops short of prescribing what the model should do when confidence is low. HILA closes the loop by making deferral a first-class action with an explicit price tag. The cost-sensitivity sweep in Figure 11(a), where accuracy degrades gracefully as <img src="https://benjaminhan.net/feed-assets/ec5e240d45a3b9db.svg" alt="C_{\text{defer}}" class="feed-math-inline"/> increases, is the part most production deployments need: a single knob that maps a budget into an operating point.</li>
+<li><strong>Defer-event SFT is weaker intrinsic metacognition.</strong> <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar</a> [3] argued that genuine self-improvement requires the agent to decide <em>what to learn</em> and <em>how to evaluate</em> its learning, not just execute a designer-defined loop. HILA’s outer loop is an extrinsic mechanism, with the trigger (defer event), the target (human’s answer), the loss (SFT), and the schedule all wired in. What the outer loop gets right is the data-curation half: the agent’s own metacognitive policy decides which examples enter the SFT set. That’s a step toward intrinsic metacognition, but every other part of the loop is still hand-designed.</li>
+<li><strong>Strongest gain, weakest base.</strong> On LLaMA3-3B, HILA lifts GSM8K from 45.26 to 83.85 (+38.59), against DyLAN’s +30.91 and GPTSwarm’s +26.59 on the same base. Two readings: (i) deferral is most valuable when the base policy is most likely to be wrong, which is the right scaling direction for an “open-world” claim, and (ii) the comparison is partly unfair to the autonomous baselines, which have no human oracle to defer to. The paper counts Defer as an action with a cost, but the missing experiment is DyLAN with the same human-call budget HILA spends. The Vanilla-DLPO ablation on LLaMA3-8B (72.76 → 82.11 on GSM8K) isolates the SFT contribution but doesn’t match budgets either.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><a id="ref-1"></a>1. Yang, Wei, Defu <a href="https://defucao.github.io/">Cao</a>, Jiacheng Pang, Muyan Weng, and Yan <a href="https://viterbi-web.usc.edu/~yanliu/">Liu</a>. “Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning.” <em>International Conference on Learning Representations (ICLR)</em>, 2026 (Poster). arXiv:2603.07972, March 9, 2026. <a href="https://arxiv.org/abs/2603.07972" class="uri">https://arxiv.org/abs/2603.07972</a></p>
+<p><a id="ref-2"></a>2. <a href="https://www.semanticscholar.org/author/Saurav-Kadavath/2143805037">Kadavath</a>, Saurav, Tom <a href="https://www.semanticscholar.org/author/Tom-Conerly/2167521293">Conerly</a>, Amanda <a href="https://askell.io/">Askell</a>, Tom Henighan, Dawn Drain, Ethan Perez, Nicholas Schiefer, Zac Hatfield-Dodds, Nova DasSarma, Eli Tran-Johnson, et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></p>
+<p><a id="ref-3"></a>3. <a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></p>
+<p><a id="ref-4"></a>4. <a href="https://zhshao.com/">Shao</a>, Zhihong, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo. “DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.” <em>arXiv preprint</em> (arXiv:2402.03300), February 5, 2024. <a href="https://arxiv.org/abs/2402.03300" class="uri">https://arxiv.org/abs/2402.03300</a></p>
+<p><a id="ref-5"></a>5. Cobbe, Karl, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></p>
+<p><a id="ref-6"></a>6. Chen, Mark, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared Kaplan, Harri Edwards, et al.&nbsp;“Evaluating Large Language Models Trained on Code.” <em>arXiv preprint</em> (arXiv:2107.03374), July 7, 2021. <a href="https://arxiv.org/abs/2107.03374" class="uri">https://arxiv.org/abs/2107.03374</a></p>
+<p><a id="ref-7"></a>7. Hendrycks, Dan, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. “Measuring Massive Multitask Language Understanding.” <em>International Conference on Learning Representations (ICLR)</em>, 2021. arXiv:2009.03300, September 7, 2020. <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></p>
+<p><a id="ref-8"></a>8. Wei, Jason, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.” <em>NeurIPS 2022</em>. arXiv:2201.11903, January 28, 2022. <a href="https://arxiv.org/abs/2201.11903" class="uri">https://arxiv.org/abs/2201.11903</a></p>
+<p><a id="ref-9"></a>9. Wang, Xuezhi, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2023. arXiv:2203.11171, March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></p>
+<p><a id="ref-10"></a>10. Zheng, Chuanyang, Zhengying Liu, Enze Xie, Zhenguo Li, and Yu Li. “Progressive-Hint Prompting Improves Reasoning in Large Language Models.” <em>arXiv preprint</em> (arXiv:2304.09797), April 19, 2023. <a href="https://arxiv.org/abs/2304.09797" class="uri">https://arxiv.org/abs/2304.09797</a></p>
+<p><a id="ref-11"></a>11. Du, Yilun, Shuang Li, Antonio Torralba, Joshua B. Tenenbaum, and Igor Mordatch. “Improving Factuality and Reasoning in Language Models through Multiagent Debate.” <em>International Conference on Machine Learning (ICML)</em>, 2024. arXiv:2305.14325, May 23, 2023. <a href="https://arxiv.org/abs/2305.14325" class="uri">https://arxiv.org/abs/2305.14325</a></p>
+<p><a id="ref-12"></a>12. Liu, Tongxuan, Xingyu Wang, Weizhe Huang, Wenjiang Xu, Yuting Zeng, Lei Jiang, Hailong Yang, and Jing Li. “GroupDebate: Enhancing the Efficiency of Multi-Agent Debate Using Group Discussion.” <em>arXiv preprint</em> (arXiv:2409.14051), September 21, 2024. <a href="https://arxiv.org/abs/2409.14051" class="uri">https://arxiv.org/abs/2409.14051</a></p>
+<p><a id="ref-13"></a>13. Liu, Zijun, Yanzhe Zhang, Peng Li, Yang Liu, and Diyi Yang. “A Dynamic LLM-Powered Agent Network for Task-Oriented Agent Collaboration.” <em>Conference on Language Modeling (COLM)</em>, 2024. arXiv:2310.02170, October 3, 2023. <a href="https://arxiv.org/abs/2310.02170" class="uri">https://arxiv.org/abs/2310.02170</a></p>
+<p><a id="ref-14"></a>14. Zhuge, Mingchen, Wenyi Wang, Louis Kirsch, Francesco Faccio, Dmitrii Khizbullin, and Jürgen Schmidhuber. “GPTSwarm: Language Agents as Optimizable Graphs.” <em>International Conference on Machine Learning (ICML)</em>, 2024. arXiv:2402.16823, February 26, 2024. <a href="https://arxiv.org/abs/2402.16823" class="uri">https://arxiv.org/abs/2402.16823</a></p>
+<p><a id="ref-15"></a>15. Zhang, Guibin, Yanwei Yue, Zhixun Li, Sukwon Yun, Guancheng Wan, Kun Wang, Dawei Cheng, Jeffrey Xu Yu, and Tianlong Chen. “Cut the Crap: An Economical Communication Pipeline for LLM-based Multi-Agent Systems (AgentPrune).” <em>arXiv preprint</em> (arXiv:2410.02506), October 3, 2024. <a href="https://arxiv.org/abs/2410.02506" class="uri">https://arxiv.org/abs/2410.02506</a></p>
+<p><a id="ref-16"></a>16. Zhang, Jiayi, Jinyu Xiang, Zhaoyang Yu, Fengwei Teng, Xionghui Chen, Jiaqi Chen, Mingchen Zhuge, Xin Cheng, Sirui Hong, Jinlin Wang, Bingnan Zheng, Bang Liu, Yuyu Luo, and Chenglin Wu. “AFlow: Automating Agentic Workflow Generation.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2410.10762, October 14, 2024. <a href="https://arxiv.org/abs/2410.10762" class="uri">https://arxiv.org/abs/2410.10762</a></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/</guid>
+  <pubDate>Wed, 20 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Update: Karpathy’s ‘AGI Is Still a Decade Away’ — Karpathy Joins Anthropic</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260520-karpathy-agi-update/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260520-karpathy-agi-update/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><a href="https://karpathy.ai/">Andrej Karpathy</a> <a href="https://www.forbes.com/sites/aliciapark/2026/05/19/openai-cofounder-and-former-tesla-ai-leader-andrej-karpathy-joins-anthropic/">joined Anthropic</a> on May 19, 2026, seven months after his October interview with <a href="https://www.dwarkesh.com/">Dwarkesh Patel</a>. He’ll be working on pre-training under team lead <a href="https://x.com/nickevanjoseph">Nick Joseph</a> and helping launch a new team focused on using Claude to develop Anthropic’s models. On X, he wrote that “the next few years at the frontier of LLMs will be especially formative.”</p>
+<p>That news is the reason for this revisit. <a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a> — the original takeaways post on the Dwarkesh interview — now carries:</p>
+<ul>
+<li>A top-of-page <strong>callout</strong> about the Anthropic move, with a pointer to the <em>Future of education</em> chapter where Karpathy describes <a href="https://eurekalabs.ai/">Eureka</a> as the place he can “a lot more uniquely add value than an incremental improvement in the frontier lab.” Read alongside the news, the framing in that chapter shifts.</li>
+<li>A full <strong>enriched transcript</strong> at the bottom — chapter outline with anchor IDs, first-mention hyperlinks, bracketed expansions, editor’s-note callouts on factually questionable claims, and a numbered References block.</li>
+</ul>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260520-karpathy-agi-update/</guid>
+  <pubDate>Wed, 20 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260520-karpathy-agi-update/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>“Wanton Destruction of CBS Property”</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260520-letterman-colbert-rooftop-toss/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260520-letterman-colbert-rooftop-toss/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260520-letterman-colbert-rooftop-toss/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>David Letterman invites Stephen Colbert back up to the roof of the Ed Sullivan Theater to reprise one of the most cherished bits from the old <em>Late Show</em> — “Wanton Destruction of CBS Property”. <a href="https://youtu.be/eBKWKu2Rqxc">Watch on YouTube</a></figcaption>
+</figure>
+</div>
+<p>This is more cathartic than I’m willing to admit.</p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116607425680566407">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260520-letterman-colbert-rooftop-toss/</guid>
+  <pubDate>Wed, 20 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260520-letterman-colbert-rooftop-toss/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents</title>
   <dc:creator>synesis </dc:creator>
@@ -1679,321 +1831,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260513-gepa/</guid>
   <pubDate>Wed, 13 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260513-gepa/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>The Math Behind the Cost of AI Agents</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Cover image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://www.linkedin.com/in/vascoschiavo92/">Vasco Schiavo</a>, writing on the <a href="https://pythagorai.substack.com/">Inference Notes Substack</a>, <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">derives why agent token costs explode</a> and fits the predicted curves against real benchmark traces. The core claim: each turn re-sends the entire conversation history, so total input tokens pile up as a triangular number <img src="https://benjaminhan.net/feed-assets/d27deec524470f16.svg" alt="T(T-1)/2" class="feed-math-inline"/>, quadratic in turns, while output tokens grow linearly.</p>
-<section id="the-growth-law" class="level2">
-<h2 class="anchored" data-anchor-id="the-growth-law">The growth law</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-diagram-colored.png" class="img-fluid figure-img"></p>
-<figcaption>A four-turn conversation, colored by token type: blue cells are input, red cells are output. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
-</figure>
-</div>
-<p>Prompt caching does not change the shape of this picture, but it changes which cells are cheap. Green cells below are cached input, billed at a fraction of the fresh rate (typically around 10%). The triangle still grows quadratically, but the dominant term becomes cheap re-reads instead of full-price input, so over the practical turn range the total cost looks linear even though the underlying formula is not.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-diagram-cached.png" class="img-fluid figure-img"></p>
-<figcaption>The same diagram with caching on. Green cells are cached input. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
-</figure>
-</div>
-<p>The full with-cache cost formula is <img src="https://benjaminhan.net/feed-assets/8275004afe56f0a9.svg" alt="M \cdot T + c \cdot M \cdot T(T-1)/2" class="feed-math-inline"/>, still quadratic in <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> with the <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/> term just multiplied by the small constant <img src="https://benjaminhan.net/feed-assets/890168619d7adb58.svg" alt="c \cdot M / 2" class="feed-math-inline"/>. The post argues that once caching is deployed, the linear term dominates over the practical turn range, so it fits the cached data with a line rather than a quadratic. The takeaway it pulls out: without caching, cost scales as <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/>; with caching, cost scales as <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> plus a negligible <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/> correction.</p>
-</section>
-<section id="fits-on-swe-bench" class="level2">
-<h2 class="anchored" data-anchor-id="fits-on-swe-bench">Fits on SWE-bench</h2>
-<p>To test those predictions on real data, the post fits two curve shapes — <img src="https://benjaminhan.net/feed-assets/3c904cdd68df8365.svg" alt="a \cdot t^2" class="feed-math-inline"/> for no-cache and <img src="https://benjaminhan.net/feed-assets/dc09b1b92cb073a0.svg" alt="b \cdot t" class="feed-math-inline"/> for with-cache — against cumulative paid tokens per turn on <a href="https://www.swebench.com/">SWE-bench</a> traces from the <a href="https://www.all-hands.dev/">OpenHands</a> evaluation index, across three models: GPT-5.2, Gemini-3-Flash, and <a href="https://www.anthropic.com/claude/opus">Claude Opus 4.6</a>. Each coefficient has a concrete interpretation:</p>
-<ul>
-<li><img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> — <strong>per-turn verbosity.</strong> How many fresh tokens each turn contributes on average. A large <img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> means the model (or its harness) is pushing a lot of new content per turn.</li>
-<li><img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> — <strong>cache-era marginal cost.</strong> The effective per-turn cost once caching is doing its job. A small <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> means cache hits are carrying most of the load. A large <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> means the cache is not catching much.</li>
-</ul>
-<p>In all three panels below, red is the no-cache median (dashed line = quadratic fit), blue is the with-cache median (dashed line = linear fit), and the pink band is the <a href="https://en.wikipedia.org/wiki/Interquartile_range">interquartile range</a> (IQR) across task instances.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-gpt52-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-gpt52-swebench-full.png"></p>
-<figcaption>GPT-5.2 on SWE-bench, 493 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-gemini-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-gemini-swebench-full.png"></p>
-<figcaption>Gemini-3-Flash on SWE-bench, 500 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-opus-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-opus-swebench-full.png"></p>
-<figcaption>Claude Opus 4.6 on SWE-bench, 483 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
-</figure>
-</div>
-<p>The three fits split along both axes:</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 15%">
-<col style="width: 21%">
-<col style="width: 21%">
-<col style="width: 21%">
-<col style="width: 21%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Model</th>
-<th style="text-align: right;"><img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> (per-turn verbosity)</th>
-<th style="text-align: right;">≈ fresh tokens/turn</th>
-<th style="text-align: right;"><img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> (cache-era marginal cost)</th>
-<th style="text-align: right;">Trajectory length <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/></th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>GPT-5.2</td>
-<td style="text-align: right;">0.00050</td>
-<td style="text-align: right;">1,000</td>
-<td style="text-align: right;">0.0095</td>
-<td style="text-align: right;">~75</td>
-</tr>
-<tr class="even">
-<td>Gemini-3-Flash</td>
-<td style="text-align: right;">0.00015</td>
-<td style="text-align: right;">300</td>
-<td style="text-align: right;">0.0086</td>
-<td style="text-align: right;">~175</td>
-</tr>
-<tr class="odd">
-<td>Claude Opus 4.6</td>
-<td style="text-align: right;">0.00046</td>
-<td style="text-align: right;">920</td>
-<td style="text-align: right;">0.0008</td>
-<td style="text-align: right;">~80</td>
-</tr>
-</tbody>
-</table>
-<p>GPT-5.2 and Opus 4.6 are roughly matched on <img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> (around 1,000 fresh tokens per turn), while Gemini-3-Flash is a third of that, reflecting shorter responses and more compact tool calls. On <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/>, the three separate sharply: Opus’s <img src="https://benjaminhan.net/feed-assets/ce6523cd7c9cb805.svg" alt="0.0008" class="feed-math-inline"/> is more than 10× shallower than the other two, meaning a higher cache hit rate, less fresh content per turn, or both at Anthropic’s end. That is why, on the Opus panel above, the with-cache line almost disappears into the x-axis against a no-cache peak of 3.7M tokens.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Tension with “Where Claude Code tokens go”.</strong> Reading this alongside <a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code tokens go</a> surfaces a tension. Mnimiy’s proxy measured ~13% of Claude Code cost going to conversation-history re-reads and another ~10% to cache misses on session resume, together about a quarter of spend on the re-read triangle. But the SWE-bench Opus 4.6 fit here puts with-cache marginal cost at <img src="https://benjaminhan.net/feed-assets/b3c8a7c45c3a7052.svg" alt="b = 0.0008" class="feed-math-inline"/>, so flat that re-reads should barely register. The gap is probably the cache-hit-rate assumption: SWE-bench traces one continuous session under near-ideal cache conditions, while real Claude Code usage invalidates the cache constantly — 5-minute timeouts on coffee breaks, <code>CLAUDE.md</code> edits, hook changes, tool reordering — pushing re-reads back to full price and moving the user onto the steeper no-cache curve.</p></li>
-<li><p><strong>IQR variance across the three models.</strong> Fitting to the median across ~500 tasks smooths away the tail that actually burns money, and the post barely addresses how wide that tail is. The no-cache interquartile bands differ sharply. Opus at <img src="https://benjaminhan.net/feed-assets/aea1c177fbb47303.svg" alt="T=80" class="feed-math-inline"/> has a band about 0.8M wide on a 3.7M median — roughly 20% of the median width. Gemini at <img src="https://benjaminhan.net/feed-assets/c54e24720f1f7f8f.svg" alt="T=175" class="feed-math-inline"/> is in a different regime: the median is 8M tokens and the upper quartile reaches 16M, so just the upper half of the IQR equals the median itself. GPT-5.2 sits in between. Some of that is Gemini running longer trajectories, which lets cumulative variance compound. But even at similar turn counts the proportional spread is higher for Gemini, probably because its per-turn token count is more variable: tool calls ranging from small greps to full-file reads, or a subset of tasks dragging into verbose off-path exploration. With Q3 = 2× median, 25% of Gemini sessions cost at least double what the median fit would predict, before you hit true outliers. For anyone using these curves to forecast agent spend, a <img src="https://benjaminhan.net/feed-assets/1df616e9ed9d55d7.svg" alt="p95" class="feed-math-inline"/> cumulative-token curve would be more decision-relevant than the median fit.</p></li>
-<li><p><strong>Gemini’s 2× trajectory length.</strong> Trajectory length itself differs markedly across models, and the post doesn’t unpack why. Gemini-3-Flash runs out to <img src="https://benjaminhan.net/feed-assets/a994175ad98086f0.svg" alt="T \approx 175" class="feed-math-inline"/>; GPT-5.2 tops out around <img src="https://benjaminhan.net/feed-assets/2dca9b00c3a4175a.svg" alt="T \approx 75" class="feed-math-inline"/> and Opus 4.6 around <img src="https://benjaminhan.net/feed-assets/597aadc5625c1dc0.svg" alt="T \approx 80" class="feed-math-inline"/>. Even with Gemini’s leaner per-turn verbosity (<img src="https://benjaminhan.net/feed-assets/4dc7e9649f7182d9.svg" alt="\sim 300" class="feed-math-inline"/> tokens/turn), the longer trajectories end up consuming more total tokens: <img src="https://benjaminhan.net/feed-assets/e318b62944dba7b2.svg" alt="\sim 8\text{M}" class="feed-math-inline"/> cumulative no-cache at session end versus <img src="https://benjaminhan.net/feed-assets/68af1fdb47744704.svg" alt="\sim 3.7\text{M}" class="feed-math-inline"/> for Opus. If the tasks are roughly equivalent across runs, that is twice the work to reach comparable outcomes, which would look like a capability gap. But I can’t rule out harness-level differences: different per-model step limits, different tool-call styles (many small reads vs fewer large ones), or different early-exit thresholds could each produce the same pattern without implying anything about the model. Without OpenHands config detail it stays ambiguous. The observation worth holding onto either way: “leaner per turn” doesn’t translate to “cheaper overall” if it costs twice as many turns to finish.</p></li>
-<li><p><strong>The two-line fix anecdote.</strong> The author <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents#:~:text=two%2Dline%20fix">notes in passing</a> that the OpenAI cache slope looked several times steeper than theory predicted, traced it to a bug in how their own code was calling OpenAI’s cache API, and shaved the slope down with a two-line fix. That is a useful case for regression-testing cache behavior against a theoretical baseline. Any provider whose cached slope deviates from <img src="https://benjaminhan.net/feed-assets/da0ce2c7dd2cd2b9.svg" alt="c \cdot M" class="feed-math-inline"/> by more than some margin is either misconfigured in your client or mis-documented upstream.</p></li>
-<li><p><strong>Prompt-prefix stability, not just size.</strong> Prompt-prefix stability is what actually decides whether caching works, and the best-practices list treats it as a small detail tucked inside the “keep system prompts clear, concise, and stable” bullet. Rotating system prompts, reordering tool definitions, or appending per-session memory to the front of the context all silently invalidate the cache: a single edit anywhere inside the cached prefix flips the whole thing back to full price. That deserves its own bullet near the top of the list, not a clause inside one about size. The closest comparable analysis at another layer is Reiner Pope’s <a href="../../posts/20260501-how-frontier-llms-trained/">blackboard derivation of frontier LLM economics</a>, which does the same thing one level down at the hardware layer: derive from the formula, calibrate to public prices.</p></li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/</guid>
-  <pubDate>Wed, 13 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>ACL 2026 Desk-Rejects Papers with Hallucinated References</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Excerpt from the ACL 2026 PC chairs’ statement. (<a href="https://2026.aclweb.org/acl_statement/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>ACL 2026 desk-rejected papers containing hallucinated references [1].</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Jurgens, David, Maria Liakata, Viviane Moreira, and Jiajun Zhang. “ACL Statement on Desk Rejecting Papers with Hallucinated References.” <em>ACL 2026</em>. <a href="https://2026.aclweb.org/acl_statement/" class="uri">https://2026.aclweb.org/acl_statement/</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_acl2026-research-ethics-activity-7460572921367879680-sTp2">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/</guid>
-  <pubDate>Wed, 13 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260513-acl2026-hallucinated-refs/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Interaction Models: Training Real-Time Collaboration into the Model</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260512-interaction-models/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260512-interaction-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-interaction-models/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Cover <a href="https://youtu.be/A12AVongNN4">video</a> from <a href="https://thinkingmachines.ai/blog/interaction-models/">Thinking Machines Lab</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://thinkingmachines.ai/">Thinking Machines Lab</a>, the OpenAI-alumni startup founded in February 2025 by former OpenAI CTO <a href="https://en.wikipedia.org/wiki/Mira_Murati">Mira Murati</a> with OpenAI cofounder <a href="https://en.wikipedia.org/wiki/John_Schulman">John Schulman</a>, former OpenAI VP of Research <a href="https://scholar.google.com/citations?user=NL_7iTwAAAAJ">Barret Zoph</a>, and former OpenAI VP <a href="https://scholar.google.com/citations?user=dCa-pW8AAAAJ">Lilian Weng</a> on its founding team, has <a href="https://thinkingmachines.ai/blog/interaction-models/">announced</a> a research preview of <em>interaction models</em>: frontier models trained from scratch to take in audio, video, and text concurrently and to think, respond, and act in real time, without a surrounding orchestration harness handling turns, interruptions, or modality switches.</p>
-<p>The argument the announcement makes:</p>
-<ul>
-<li><strong>The bottleneck is the turn.</strong> Today’s commercial general-purpose models experience the world as a single thread. They wait while the user is still typing or speaking, and they freeze perception while generating. That narrow channel forces humans out of the loop, not because the work is autonomous, but because the interface has no room for them.</li>
-<li><strong>Interaction should scale with intelligence.</strong> Most real-time voice systems stitch components together to emulate interruptions, multimodality, and concurrency, a classic orchestration harness. The post invokes Sutton’s bitter lesson [1] to argue that hand-crafted interaction systems will be outpaced by scale, so interactivity has to be part of the model itself.</li>
-</ul>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<section id="capabilities" class="level3">
-<h3 class="anchored" data-anchor-id="capabilities">Capabilities</h3>
-<p>With interaction native to the model rather than the harness, one system provides what normally takes a stack of separate components:</p>
-<ul>
-<li><strong>Seamless dialog management</strong> (<a href="https://youtu.be/Ys6i_MGnjUA">video</a>). The model implicitly tracks whether the speaker is thinking, yielding, self-correcting, or inviting a response, without a separate turn-taking module.</li>
-<li><strong>Verbal and visual interjections</strong> (<a href="https://youtu.be/n2GXGjy41HQ">video</a>). It jumps in when context warrants (“interrupt when I say something wrong”, “tell me when I’ve written a bug”) rather than waiting for the user to finish.</li>
-<li><strong>Simultaneous speech</strong> (<a href="https://youtu.be/2ky5MXBvZP8">video</a>). User and model can talk at the same time, which makes live translation and live commentary straightforward.</li>
-<li><strong>Time awareness</strong> (<a href="https://youtu.be/sqJNfze19jA">video</a>). A direct sense of elapsed time, so “remind me to breathe every four seconds until I ask you to stop” is a first-class request.</li>
-<li><strong>Concurrent tools, search, and generative UI</strong> (<a href="https://youtu.be/ly3GtaiRFyo">video</a>). Web searches, tool calls, and UI generation can run while the model is still speaking and listening, with results folded into the conversation as they arrive.</li>
-</ul>
-</section>
-<section id="approach" class="level3">
-<h3 class="anchored" data-anchor-id="approach">Approach</h3>
-<ul>
-<li><strong>Time-aligned micro-turns.</strong> Input and output are streams chunked into 200 ms windows and continuously interleaved, so silence, overlap, and interruption stay in the model’s context instead of being flattened into an alternating token sequence.</li>
-<li><strong>Two-model split.</strong> A real-time <em>interaction model</em> holds presence with the user; an asynchronous <em>background model</em> handles sustained reasoning, tool use, and longer-horizon work. The interaction model delegates with the full conversation as context and weaves background results back into dialog when the moment fits.</li>
-<li><strong>Encoder-free early fusion.</strong> Audio enters as dMel [2] embeddings, images as 40×40 patches through a light hMLP [3], audio exits via a flow head [4], and every component is co-trained from scratch with the transformer. No standalone <a href="https://openai.com/index/whisper/">Whisper</a>-style encoder or text-to-speech (TTS) decoder.</li>
-<li><strong>Streaming-session inference.</strong> A custom inference path, upstreamed into <a href="https://github.com/sgl-project/sglang">SGLang</a>, appends each 200 ms chunk into a persistent GPU sequence to avoid per-chunk prefill overhead, paired with batch-invariant kernels for bitwise trainer-sampler alignment.</li>
-</ul>
-</section>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The benchmarks below:</p>
-<ul>
-<li><strong>FD-bench v1</strong> [6]: simple turn-taking latency in seconds; streaming audio, lower is better.</li>
-<li><strong>FD-bench v1.5</strong> [6]: average interaction quality across four scenarios: user interruption, user backchannel, talking to others, and background speech.</li>
-<li><strong>FD-bench v3</strong> [6]: response quality and pass@1 on audio + tool-use tasks.</li>
-<li><strong>Audio MultiChallenge</strong> [7]: turn-based intelligence and instruction-following, scored as Average Pass Rate (APR).</li>
-<li><strong>BigBench Audio</strong> [8]: turn-based accuracy on audio tasks.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-interaction-models/fig5-intelligence-interactivity.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 5 from the announcement. “Our model dominates interaction quality while being more intelligent than any non-thinking model. We achieve the best responsiveness measured as a latency between user and model turns.”</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>TML-interaction-small leads interactivity by a wide margin.</strong> On FD-bench v1.5 (interaction quality, average) it scores 77.8, versus 54.3 for the next best (Gemini-3.1-flash-live minimal) and 46–48 for the GPT-realtime-2.0 variants.</li>
-<li><strong>Lowest turn-taking latency measured.</strong> FD-bench v1 puts it at 0.40 s, against 0.57 s for Gemini-flash-live minimal, 1.18 s for GPT-realtime-2.0 minimal, and 1.63 s for GPT-realtime-2.0 xhigh.</li>
-<li><strong>Instant-model Pareto frontier on intelligence too.</strong> Audio MultiChallenge APR is 43.4%, the best among non-thinking realtime models; only thinking variants like GPT-realtime-2.0 xhigh (48.5%) score higher, at the cost of much larger latency.</li>
-<li><strong>Two new in-house proactive-audio benchmarks.</strong> TimeSpeak tests whether the model initiates speech at a user-specified time with correct content; CueSpeak tests whether it speaks at the semantically right moment, including while the user is still talking.</li>
-</ul>
-<p>Headline numbers, one flagship per lineage (excerpted from the <a href="https://thinkingmachines.ai/blog/interaction-models/">full table</a>):</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 29%">
-<col style="width: 14%">
-<col style="width: 17%">
-<col style="width: 19%">
-<col style="width: 19%">
-</colgroup>
-<thead>
-<tr class="header">
-<th></th>
-<th style="text-align: right;">TML-interaction-small*</th>
-<th style="text-align: right;">GPT-realtime-2.0 (xhigh)†</th>
-<th style="text-align: right;">Gemini-3.1-flash-live (high)†</th>
-<th style="text-align: right;">Qwen 3.5 OMNI-plus-realtime*</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>FD-bench v1 turn-taking latency (s, ↓)</td>
-<td style="text-align: right;"><strong>0.40</strong></td>
-<td style="text-align: right;">1.63</td>
-<td style="text-align: right;">0.94</td>
-<td style="text-align: right;">2.14</td>
-</tr>
-<tr class="even">
-<td>FD-bench v1.5 interaction quality (avg, ↑)</td>
-<td style="text-align: right;"><strong>77.8</strong></td>
-<td style="text-align: right;">47.8</td>
-<td style="text-align: right;">45.5</td>
-<td style="text-align: right;">39.0</td>
-</tr>
-<tr class="odd">
-<td>FD-bench v3 response quality / pass@1 (↑)</td>
-<td style="text-align: right;"><strong>82.8 / 68.0</strong></td>
-<td style="text-align: right;">81.0 / 58.0</td>
-<td style="text-align: right;">71.4 / 48.0</td>
-<td style="text-align: right;">60.0 / 50.0</td>
-</tr>
-<tr class="even">
-<td>Audio MultiChallenge APR (%, ↑)</td>
-<td style="text-align: right;">43.4</td>
-<td style="text-align: right;"><strong>48.5</strong></td>
-<td style="text-align: right;">36.1</td>
-<td style="text-align: right;">–</td>
-</tr>
-<tr class="odd">
-<td>BigBench Audio accuracy (%, ↑)</td>
-<td style="text-align: right;">75.7 / <strong>96.5</strong></td>
-<td style="text-align: right;"><strong>96.6</strong></td>
-<td style="text-align: right;"><strong>96.6</strong></td>
-<td style="text-align: right;">73.0</td>
-</tr>
-</tbody>
-</table>
-<p>*Instant (no thinking). †Thinking variant, higher reasoning budget and higher latency. Slashed values show response-quality / pass@1 for FD-bench v3, and “baseline / with background agent” for TML’s BigBench Audio (the 96.5 uses background agent).</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>Human-in-the-loop latency deserves its own objective.</strong> Most recent frontier work treats autonomy as the capability that matters and interaction as something you add afterward with voice-activity detection, turn routers, and interruption heuristics. Thinking Machines takes the opposite bet: the right architectural split is <em>human-in-the-loop latency</em> vs.&nbsp;<em>no-human-waiting latency</em>, and the first deserves its own training objective. That parallels <a href="../../posts/20260511-the-inference-shift/">Ben Thompson’s argument</a> that the inference stack is already splitting into answer inference (human waits, latency premium) and agentic inference (no human waits, memory capacity wins), with different hardware and latency profiles. The claim here extends the same split up into training objectives and model families. The awkward case is the middle: today’s chat interfaces, which are neither fully autonomous nor genuinely real-time.</li>
-<li><strong>In-model interaction isn’t a new ambition.</strong> Moshi [5] (Kyutai, 2024), <a href="https://platform.openai.com/docs/guides/realtime">GPT-Realtime</a>, and <a href="https://developer.nvidia.com/nemotron-voicechat-early-access">Nemotron VoiceChat</a> trained full-duplex audio into the model rather than bolting it on. Rabbit Inc.&nbsp;pitched an analogous framing for UI actions with its <a href="https://rabbit.tech/research">“Large Action Model”</a>, though <a href="https://arstechnica.com/gadgets/2024/05/rabbit-r1-ai-box-is-just-an-android-app-and-the-software-can-run-on-a-phone/">how much of the shipped r1 was actually a trained action model versus scripted Android automation became contested</a>. The preview extends the in-model claim to video, text, and tool use alongside audio, with enough general capability to compete on intelligence benchmarks. The 200 ms micro-turn design is tuned for sub-second exchange; whether it also scales to agentic work running for minutes or hours is the open architectural question.</li>
-<li><strong>Pointing is the same question at the input layer.</strong> <a href="../../posts/20260512-pointing-for-ai/">DeepMind’s AI-enabled pointer</a>, announced the day after this post, attacks the same bottleneck from the input side: today’s chat box forces users to drag their world into a small window, so the fix is to let humans gesture at what they mean. Point at a PDF, say “summarize this”; hover over a table, say “pie chart.” Thinking Machines trains interactivity into the model. DeepMind builds it into the input modality. Both bets assume today’s text-prompt interface is the bottleneck, but they disagree on which layer to unbottleneck.</li>
-<li><strong>Evaluation is the hard part.</strong> Every widely-used LLM benchmark is turn-based. The post introduces TimeSpeak, CueSpeak, and the FD-bench family as interactivity metrics, but these are in-house and not yet standard across labs. Without a cross-lab metric for “good collaborator,” effort keeps flowing to the measurable thing (the existing intelligence benchmarks) and the interactivity side keeps being filed under “qualitative.”</li>
-<li><strong>UX is the bottleneck; labor displacement is its consequence.</strong> Today’s chat UX fits turn-based question-and-answer, not continuous collaboration, so for work that would benefit from sustained human presence capable models default to autonomous use, which looks like labor substitution. Interaction models are Thinking Machines’ attempt to change that bottleneck: a model trained for real-time collaboration recasts the <a href="../../posts/20260502-2028-intelligence-crisis/">substitute-vs-augment debate</a> as a UX problem that can be solved, not a capability fact that has to be accepted. The test is whether the result stays closer to <a href="https://www.youtube.com/watch?v=ob_GX50Za6c">“a bicycle for the mind”</a>, amplifying the human in the loop, or drifts into a tool that works best when the human is absent.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Sutton, Richard. “The Bitter Lesson.” Personal blog, March 13, 2019. <a href="http://www.incompleteideas.net/IncIdeas/BitterLesson.html" class="uri">http://www.incompleteideas.net/IncIdeas/BitterLesson.html</a></li>
-<li><a id="ref-2"></a>Bai, Richard He, Tatiana Likhomanenko, Ruixiang Zhang, Zijin Gu, Zakaria Aldeneh, and Navdeep Jaitly. “dMel: Speech Tokenization made Simple.” <em>arXiv preprint</em> (arXiv:2407.15835), July 22, 2024. <a href="https://arxiv.org/abs/2407.15835" class="uri">https://arxiv.org/abs/2407.15835</a></li>
-<li><a id="ref-3"></a>Touvron, Hugo, Matthieu Cord, Alaaeldin El-Nouby, Jakob Verbeek, and Hervé Jégou. “Three things everyone should know about Vision Transformers.” <em>arXiv preprint</em> (arXiv:2203.09795), March 18, 2022. <a href="https://arxiv.org/abs/2203.09795" class="uri">https://arxiv.org/abs/2203.09795</a></li>
-<li><a id="ref-4"></a>Lipman, Yaron, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel, and Matt Le. “Flow Matching for Generative Modeling.” <em>International Conference on Learning Representations (ICLR)</em>, 2023. arXiv:2210.02747. <a href="https://arxiv.org/abs/2210.02747" class="uri">https://arxiv.org/abs/2210.02747</a></li>
-<li><a id="ref-5"></a>Défossez, Alexandre, Laurent Mazaré, Manu Orsini, Amélie Royer, Patrick Pérez, Hervé Jégou, Edouard Grave, and Neil Zeghidour. “Moshi: a speech-text foundation model for real-time dialogue.” <em>arXiv preprint</em> (arXiv:2410.00037), September 17, 2024. <a href="https://arxiv.org/abs/2410.00037" class="uri">https://arxiv.org/abs/2410.00037</a></li>
-<li><a id="ref-6"></a>Lin, Guan-Ting, Jiachen Lian, Tingle Li, Qirui Wang, Gopala Anumanchipalli, Alexander H. Liu, and Hung-yi Lee. “Full-Duplex-Bench: A Benchmark to Evaluate Full-duplex Spoken Dialogue Models on Turn-taking Capabilities.” <em>arXiv preprint</em> (arXiv:2503.04721), March 6, 2025. <a href="https://arxiv.org/abs/2503.04721" class="uri">https://arxiv.org/abs/2503.04721</a></li>
-<li><a id="ref-7"></a>Gosai, Advait, Tyler Vuong, Utkarsh Tyagi, Steven Li, Wenjia You, Miheer Bavare, Arda Uçar, Zhongwang Fang, Brian Jang, et al.&nbsp;“Audio MultiChallenge: A Multi-Turn Evaluation of Spoken Dialogue Systems on Natural Human Interaction.” <em>arXiv preprint</em> (arXiv:2512.14865), 2025. <a href="https://arxiv.org/abs/2512.14865" class="uri">https://arxiv.org/abs/2512.14865</a></li>
-<li><a id="ref-8"></a>Artificial Analysis. “Introducing Big Bench Audio: A new benchmark for large audio models.” Hugging Face blog, December 2024. <a href="https://huggingface.co/blog/big-bench-audio-release" class="uri">https://huggingface.co/blog/big-bench-audio-release</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260512-interaction-models/</guid>
-  <pubDate>Tue, 12 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260512-interaction-models/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -21,7 +21,359 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 31 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 01 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/cover.png" class="img-fluid figure-img"></p>
+<figcaption>Spectrum of shared metacognition, from intrinsic (agent runs its own metacognitive loop) through shared (agent and designer split the metacognitive work) to extrinsic (metacognitive loop is fully externally defined). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</em> (ICML 2025) [1], <a href="https://tennisonliu.github.io/">Tennison Liu</a> and <a href="https://www.vanderschaar-lab.com/prof-mihaela-van-der-schaar/">Mihaela van der Schaar</a> at Cambridge argue that almost every current “self-improving” LLM agent leans on hand-designed metacognitive loops, and that genuine, sustained self-improvement requires agents that can themselves evaluate, plan, and adapt their own learning processes.</p>
+<blockquote class="blockquote">
+<p>Self-improving agents aim to continuously acquire new capabilities with minimal supervision. However, current approaches face two key limitations: their self-improvement processes are often rigid, <em>fail to generalize across tasks domains, and struggle to scale with increasing agent capabilities</em>. We argue that effective self-improvement requires intrinsic metacognitive learning, defined as an agent’s intrinsic ability to actively evaluate, reflect on, and adapt its own learning processes. Drawing inspiration from human metacognition, we introduce a formal framework comprising three components: <em>metacognitive knowledge</em> (self-assessment of capabilities, tasks, and learning strategies), <em>metacognitive planning</em> (deciding what and how to learn), and <em>metacognitive evaluation</em> (reflecting on learning experiences to improve future learning). Analyzing existing self-improving agents, we find they <em>rely predominantly on extrinsic metacognitive mechanisms, which are fixed, human-designed loops that limit scalability and adaptability</em>. Examining each component, we contend that many ingredients for intrinsic metacognition are already present. Finally, we explore how to optimally distribute metacognitive responsibilities between humans and agents, and robustly evaluate and improve intrinsic metacognitive learning, key challenges that must be addressed to enable truly sustained, generalized, and aligned self-improvement.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The paper formalizes metacognitive learning as a bi-level process. A metacognitive layer sits above the cognitive layer where task-level learning actually happens, monitoring and regulating it. The metacognitive layer has three components that close a loop: knowledge informs planning, planning produces learning activity, and evaluation feeds back into both.</p>
+<ul>
+<li><strong>Metacognitive knowledge</strong> is the agent’s self-model.
+<ul>
+<li>It comes in three flavors: <em>knowledge of self</em> (what the agent can already do, where its limits lie, what skills it has), <em>knowledge of task</em> (what the current task demands and what would help), and <em>knowledge of strategies</em> (which learning approaches are available and where each tends to apply).</li>
+<li>The biggest threat to this component is hallucination: LLMs can confidently misrepresent their own internal state, including basic facts about which tools they have access to.</li>
+<li>The paper cites recent work showing agents can classify math problems by required solution procedure [2] and identify which training tasks would help them, so the ingredient is at least partially present.</li>
+</ul></li>
+<li><strong>Metacognitive planning</strong> turns that self-model into action through two questions.
+<ul>
+<li><em>What to learn</em> is a task-allocation question, traditionally answered by curriculum learning over a curated task pool [3]. Intrinsic variants replace the human-designed curriculum with internal drivers like curiosity, learnability, and regret, and let agents generate their own tasks rather than draw from a fixed pool [4].</li>
+<li><em>How to learn</em> is a strategy-selection question with two phases:
+<ul>
+<li><em>Exploration</em> (temperature scaling, upper-confidence-bound tree search [5], uncertainty-guided sampling, prompt-based novelty seeking) chooses what experiences the agent gathers.</li>
+<li><em>Learning</em> extracts capabilities from those experiences via in-weight updates (finetuning on self-generated traces, à la STaR [6]), long-term memory writes (episodic experiences, abstract rules, reusable skills as tool functions), or both.</li>
+</ul></li>
+<li>The paper flags this whole component as the most under-developed in current systems: nearly every shipped agent picks one fixed mechanism and applies it uniformly across tasks and over time.</li>
+</ul></li>
+<li><strong>Metacognitive evaluation</strong> closes the loop and has two aspects.
+<ul>
+<li><em>Tracking progress</em> is the ongoing assessment of how learning is going. Held-out benchmarks like MMLU [7] work for well-defined capabilities. LLM-as-judge [8] fills in for fuzzier targets like emotional intelligence, creativity, or interestingness, where no quantifiable metric exists.</li>
+<li><em>Metacognitive reflection</em> is the post-hoc analysis of learning plans, distinct from task-level reflection (Reflexion-style [9]) by operating one level up: it evaluates long-term learning trajectories rather than per-task performance.</li>
+<li>Because it operates over representations of the cognitive process rather than the task itself, metacognitive reflection can in principle be domain-agnostic, given enough domain-specific signal to extract progress from.</li>
+</ul></li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper walks three well-known systems through this framework as case studies, ordered by increasing intrinsic-ness:</p>
+<ul>
+<li><strong>STaR</strong> [6] (Zelikman et al., 2022): a reasoning bootstrapping method. Given a small set of problems with reasoning traces plus a larger set with answers only, the agent attempts problems and gets finetuned on any trace that led to a correct answer, then the cycle repeats on harder problems. Almost entirely extrinsic: the agent doesn’t assess its own capabilities, doesn’t choose which tasks to attempt (externally curated), and doesn’t adapt its learning strategy (rationalization with answer hints is fixed). The metacognitive loop sits with the system designer.</li>
+<li><strong>Voyager</strong> [10] (Wang et al., 2023): an LLM-based embodied agent for lifelong learning in Minecraft. It maintains a growing library of executable Python skills and autonomously discovers increasingly complex actions to perform. Partially intrinsic: the agent tracks what it can do (knowledge) and balances exploration against task learnability when picking next goals (planning). The learning strategy stays fixed though: the same exploration-learning loop runs across all tasks. Voyager beats expert-designed curriculum baselines, which the paper takes as evidence the intrinsic components matter.</li>
+<li><strong>Generative Agents</strong> [11] (Park et al., 2023): agents in a Sims-style sandbox that accumulate experiences, form relationships, and develop distinct personas through lived interaction. Most intrinsic of the three. Agents form evolving identities and motivations (knowledge), autonomously plan daily activities (planning), and periodically trigger an abstract reflection, such as recognizing a newfound interest or reinterpreting recent events, that updates their semantic memory and shapes future plans (evaluation). The paper flags the contrast with Reflexion-style [9] techniques: Reflexion reflects at the cognitive level to improve performance on specific tasks; Generative Agents reflect at the metacognitive level, drawing inferences about their own trajectory.</li>
+</ul>
+<p>The arc across the three case studies is how the paper builds its argument: each system is intrinsic on more components than the last, and the paper argues the more-intrinsic systems show more sustained progress in the diversity and novelty of their evolving capabilities. The paper acknowledges these are preliminary observations that still require rigorous, systematic studies to substantiate.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Both limitation claims rest on one example each.</strong> The “lose efficacy” claim cites Song et al.’s 2024 generation-verification-gap finding [12]. The “fail to generalize” claim points at STaR and bootstrapped self-training, which worked in their original domain but didn’t transfer. No new experiments.</p></li>
+<li><p><strong>Every shipped agent is extrinsic in this taxonomy.</strong> The system designer decides what to monitor, what counts as progress, and when to switch strategies. <a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum</a> [13] hand-designs a Co-Regulation Agent with a fixed role and loop position. <a href="../../posts/20260430-rema-meta-think/">ReMA</a> [14] hand-designs the high-low decomposition. The prompt-optimization line (<a href="../../posts/20260430-multi-agent-system-search/">MASS</a>, <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO</a>, <a href="../../posts/20260430-evoprompt/">EvoPrompt</a>) uses LLMs as inner-loop optimizers but humans fix the search-space structure.</p></li>
+<li><p><strong>“Sustained progress” lacks a cross-system metric.</strong> STaR runs in math/reasoning, Voyager in Minecraft, Generative Agents in a Sims sandbox. A residual learning rate (slope late in training over slope early) gets the y-axis unit-free, but the x-axis stays domain-specific: a STaR training step isn’t a Voyager training step, and Sims days don’t align with Minecraft exploration. The cross-system ordering needs either a shared benchmark or a principled x-axis alignment, neither of which the paper provides.</p></li>
+<li><p><strong>SelfReflect bounds the optimism about LLM metacognitive ingredients.</strong> The paper argues frontier LLMs already exhibit pieces of metacognitive knowledge, planning, and evaluation. Apple’s <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [15] finds, across 20 modern models, that LLM self-reports of their own answer distributions don’t match what those models actually sample. So the metacognitive-knowledge ingredient is thinner than the paper’s optimism implies, at least without help from techniques like sample-then-summarize.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+<li><a id="ref-2"></a>Didolkar, Aniket, Anirudh Goyal, Nan Rosemary Ke, Siyuan Guo, Michal Valko, Timothy Lillicrap, Danilo Rezende, Yoshua Bengio, Michael Mozer, and Sanjeev Arora. “Metacognitive Capabilities of LLMs: An Exploration in Mathematical Problem Solving.” <em>arXiv preprint</em> (arXiv:2405.12205), May 20, 2024. <a href="https://arxiv.org/abs/2405.12205" class="uri">https://arxiv.org/abs/2405.12205</a></li>
+<li><a id="ref-3"></a>Bengio, Yoshua, Jérôme Louradour, Ronan Collobert, and Jason Weston. “Curriculum Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2009. <a href="https://dl.acm.org/doi/10.1145/1553374.1553380" class="uri">https://dl.acm.org/doi/10.1145/1553374.1553380</a></li>
+<li><a id="ref-4"></a>Faldor, Maxence, Jenny Zhang, Antoine Cully, and Jeff Clune. “OMNI-EPIC: Open-endedness via Models of human Notions of Interestingness with Environments Programmed in Code.” <em>arXiv preprint</em> (arXiv:2405.15568), May 24, 2024. <a href="https://arxiv.org/abs/2405.15568" class="uri">https://arxiv.org/abs/2405.15568</a></li>
+<li><a id="ref-5"></a>Hao, Shibo, Yi Gu, Haodi Ma, Joshua Jiahua Hong, Zhen Wang, Daisy Zhe Wang, and Zhiting Hu. “Reasoning with Language Model is Planning with World Model.” <em>Conference on Empirical Methods in Natural Language Processing (EMNLP)</em>, 2023. arXiv:2305.14992, May 24, 2023. <a href="https://arxiv.org/abs/2305.14992" class="uri">https://arxiv.org/abs/2305.14992</a></li>
+<li><a id="ref-6"></a><a href="https://ezelikman.com/">Zelikman</a>, Eric, Yuhuai <a href="http://www.cs.toronto.edu/~ywu/">Wu</a>, Jesse <a href="https://cs.stanford.edu/~muj/">Mu</a>, and Noah D. <a href="https://cocolab.stanford.edu/ndg.html">Goodman</a>. “STaR: Bootstrapping Reasoning With Reasoning.” <em>arXiv preprint</em> (arXiv:2203.14465), March 28, 2022. <a href="https://arxiv.org/abs/2203.14465" class="uri">https://arxiv.org/abs/2203.14465</a></li>
+<li><a id="ref-7"></a><a href="https://people.eecs.berkeley.edu/~hendrycks/">Hendrycks, D.</a>, Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D., and Steinhardt, J. “Measuring Massive Multitask Language Understanding.” <em>ICLR 2021</em> (arXiv:2009.03300). <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></li>
+<li><a id="ref-8"></a>Zheng, Lianmin, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric P. Xing, Hao Zhang, Joseph E. Gonzalez, and Ion Stoica. “Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2023. arXiv:2306.05685, June 9, 2023. <a href="https://arxiv.org/abs/2306.05685" class="uri">https://arxiv.org/abs/2306.05685</a></li>
+<li><a id="ref-9"></a><a href="https://noahshinn.com/">Shinn, N.</a>, <a href="https://federico.codes/">Cassano, F.</a>, Berman, E., <a href="https://meche.mit.edu/people/faculty/AGOPI@MIT.EDU">Gopinath, A.</a>, <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a>. “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS 2023</em> (arXiv:2303.11366), March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
+<li><a id="ref-10"></a>Wang, Guanzhi, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar. “Voyager: An Open-Ended Embodied Agent with Large Language Models.” <em>arXiv preprint</em> (arXiv:2305.16291), May 25, 2023. <a href="https://arxiv.org/abs/2305.16291" class="uri">https://arxiv.org/abs/2305.16291</a></li>
+<li><a id="ref-11"></a>Park, Joon Sung, Joseph C. O’Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. “Generative Agents: Interactive Simulacra of Human Behavior.” <em>arXiv preprint</em> (arXiv:2304.03442), April 7, 2023. <a href="https://arxiv.org/abs/2304.03442" class="uri">https://arxiv.org/abs/2304.03442</a></li>
+<li><a id="ref-12"></a><a href="https://yudasong.github.io/">Song</a>, Yuda, Hanlin <a href="https://hanlin-zhang.com/">Zhang</a>, Carson Eisenach, Sham <a href="https://en.wikipedia.org/wiki/Sham_Kakade">Kakade</a>, Dean <a href="https://deanfoster.net/">Foster</a>, and Udaya <a href="https://udaya.github.io/">Ghai</a>. “Mind the Gap: Examining the Self-Improvement Capabilities of Large Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2412.02674, December 3, 2024. <a href="https://arxiv.org/abs/2412.02674" class="uri">https://arxiv.org/abs/2412.02674</a></li>
+<li><a id="ref-13"></a><a href="https://www.linkedin.com/in/zedaxu/">Xu</a>, Zeda, Nikolas <a href="https://nikmart.com/">Martelaro</a>, and Christopher <a href="https://cmccomb.com/">McComb</a>. “Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design.” <em>arXiv preprint</em> (arXiv:2603.24768), March 25, 2026. <a href="https://arxiv.org/abs/2603.24768" class="uri">https://arxiv.org/abs/2603.24768</a></li>
+<li><a id="ref-14"></a><a href="https://ziyuwan.github.io/">Wan</a>, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi <a href="https://leeeeoliu.github.io/">Yang</a>, Mark <a href="https://www.cs.ubc.ca/~schmidtm/">Schmidt</a>, Jun <a href="http://www0.cs.ucl.ac.uk/staff/Jun.Wang/">Wang</a>, Weinan <a href="http://wnzhang.net/">Zhang</a>, Shuyue Hu, and Ying <a href="https://yingwen.io/">Wen</a>. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
+<li><a id="ref-15"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/cover.png" medium="image" type="image/png" height="38" width="144"/>
+</item>
+<item>
+  <title>System Prompt Optimization with Meta-Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Generalization across different domains. Left: MetaSPO’s performance on domains not used for prompt optimization, plotted against their similarity to the training domains. Right: Effect of the number of training domains, with more domains yielding stronger generalization. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>System Prompt Optimization with Meta-Learning</em> (NeurIPS 2025) [1], <a href="https://www.mlai-kaist.com/">Yumin Choi</a>, <a href="https://jinheonbaek.github.io/">Jinheon Baek</a>, and <a href="https://www.mlai-kaist.com/">Sung Ju Hwang</a> (KAIST, DeepAuto.ai) introduce MetaSPO, a bilevel optimization framework that meta-learns a task-agnostic system prompt while simultaneously updating task-specific user prompts in an iterative inner loop.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) have shown remarkable capabilities, with optimizing their input prompts playing a pivotal role in maximizing their performance. However, while LLM prompts consist of both the task-agnostic system prompts and task-specific user prompts, existing work on prompt optimization has focused on user prompts specific to individual queries or tasks, and largely overlooked the system prompt that is, once optimized, applicable across different tasks and domains. Motivated by this, we introduce the novel problem of <em>bilevel system prompt optimization</em>, whose objective is to <em>design system prompts that are robust to diverse user prompts and transferable to unseen tasks</em>. To tackle this problem, we then propose <em>a meta-learning framework, which meta-learns the system prompt by optimizing it over various user prompts across multiple datasets, while simultaneously updating the user prompts in an iterative manner to ensure synergy between them</em>. We conduct experiments on <em>14 unseen datasets spanning 5 different domains</em>, on which we show that our approach produces system prompts that generalize effectively to diverse user prompts. Also, our findings reveal that the optimized system prompt enables <em>rapid adaptation even to unseen tasks, requiring fewer optimization steps for test-time user prompts while achieving improved performance</em>.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>Concept figure. (A) An LLM input has three parts: task-agnostic system prompt, task-specific user prompt, target example. (B) Conventional task-specific optimization tunes the user prompt for one task and generalizes poorly. (C) MetaSPO meta-learns a system prompt that transfers to unseen target tasks. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Against this three-part structure, MetaSPO’s bilevel algorithm runs two nested optimization loops. The outer loop optimizes the task-agnostic system prompt, and the inner loop iteratively refines task-specific user prompts. At each outer step, the current system prompt is paired with candidate user prompts across multiple source tasks. The model’s failures on held-out examples feed an LLM optimizer that proposes refined candidates (user prompts inside the inner loop, system prompts at the outer loop). The meta-learned system prompt transfers to unseen target tasks with no further system-prompt tuning; at test time, only the user prompt is adapted per target task.</p>
+<p>The system prompt starts as “You are a helpful assistant.” (the Default baseline) and is iteratively refined through the outer loop. At each step of either loop, a separate optimizer LLM (GPT-4o mini in the main experiments, distinct from the Llama-3.2 3B base LLM that generates task responses) is prompted with the current prompt and its incorrectly-predicted examples, asked to analyze the failure modes, and then asked for multiple candidate refinements. Candidates are evaluated against held-out task data, and the top-k by performance survive to the next iteration. Both loops follow this same textual-gradient pattern (after Pryzant et al.&nbsp;[4]), applied at different scopes: user prompt per task in the inner loop, system prompt aggregated across source tasks in the outer loop.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>MetaSPO overview. The inner loop refines candidate user prompts via failure analysis on a target task; the outer loop refines the system prompt by aggregating failures across multiple source tasks. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper evaluates on 14 unseen target tasks across 5 domains (Medical, Review Analysis, Reasoning, Safety, Grounding), with each score the average performance of a system prompt paired with ten different user prompts. Within-domain Domain MetaSPO averages 44.5 over the 14 tasks, beating the next-best baseline SPRIG at 37.0 and the no-system-prompt Default at 32.2. The cross-domain Global MetaSPO setting (one system prompt meta-learned across all 5 domains) averages 41.4, still ahead of all baselines but ~3 points behind the within-domain Domain setting. Separately, on test-time efficiency: a MetaSPO-pretrained system prompt reaches Default’s converged performance with 80% fewer optimization iterations and 75% less data during test-time user-prompt adaptation.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/table1.png" class="img-fluid figure-img"></p>
+<figcaption>Main results on 14 unseen target tasks, grouped by 5 domains. Global methods use a single system prompt across all domains; Domain methods use a system prompt meta-learned on the target’s domain. Each cell is the average score across 10 different user prompts on that target task. Domain MetaSPO (bottom row) tops the overall average at 44.5. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 4 tests whether MetaSPO’s lift transfers uniformly across target tasks or depends on source-target task similarity. The paper measures similarity via Bag-of-Words overlap between the source-task training distribution and the target task, then plots per-task improvement against it.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>MetaSPO’s gain over the Default baseline as a function of source-target task similarity (measured by Bag-of-Words overlap). Points above the y=0 line indicate a positive lift over Default; Pearson correlation 0.56 between similarity and improvement. High-similarity target tasks see larger gains; low-similarity tasks see near-neutral gains. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The decomposition is the contribution, more than the method.</strong> Before this paper, “prompt optimization” treated the prompt as one optimization target for one task. DSPy [2], MIPRO [3], Pryzant et al.’s textual gradients [4], and <a href="../../posts/20260430-evoprompt/">EvoPrompt</a> [5] each target a different piece of that setup, but all produce task-specific prompts. The bilevel split (task-agnostic system prompt above, task-specific user prompt below) is the key move; once you make it, the meta-learning structure follows naturally because the outer loop has a natural “across tasks” loss to optimize. The MetaSPO algorithm itself is a structurally familiar inner/outer LLM-as-optimizer loop. What matters here is the decision about what to put in each level.</li>
+<li><strong>The system prompt does most of the transfer work.</strong>
+<ul>
+<li>MetaSPO’s headline wins on unseen tasks come from the system prompt. In Table 1’s Unseen Generalization scenario, user prompts are LLM-sampled per task and held fixed; only the system prompt varies across the methods compared. Domain MetaSPO averages 44.5 over 14 unseen target tasks vs.&nbsp;Default’s 32.2, a +12.3-point lift attributable to the system prompt alone.</li>
+<li>Appendix B.7 tests system-prompt vs user-prompt optimization head-to-head: MetaSPO (system-prompt optimized on source tasks) vs.&nbsp;ProTeGi (user-prompt optimized on source tasks), evaluated on the unseen Reasoning domain. MetaSPO wins across every source-domain starting point; ProTeGi drops below the Default system prompt, indicating user-prompt optimizations don’t transfer past the specific tasks they were tuned on.</li>
+</ul></li>
+<li><strong>Test-time efficiency is the practically relevant finding.</strong> The headline number is the unseen-generalization performance, but the deployment-relevant result is in §4: a MetaSPO-pretrained system prompt reaches the Default baseline’s converged performance with 80% fewer optimization iterations and 75% less data during test-time user-prompt adaptation. That’s a recipe for shipping prompt-optimized agents when each new task gets a small calibration budget rather than full re-optimization.</li>
+<li><strong>Generalization is asymmetric along source-target similarity.</strong> Figure 4 shows MetaSPO’s gain over Default scales with source-target task similarity measured by Bag-of-Words. High similarity, big gain; low similarity, the meta-learned system prompt is closer to neutral. That’s the expected meta-learning failure mode on out-of-distribution tasks, but it also bounds the deployment story: a system prompt meta-learned on Medical+Review+Reasoning will help most on tasks that look like those at the BoW level, and the cross-domain Global setting underperforms the within-domain Domain setting (41.4 vs.&nbsp;44.5 avg). The follow-up question: at what point does the meta-learned prior become a <em>liability</em> on a sufficiently distant task?</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.mlai-kaist.com/">Choi, Y.</a>, <a href="https://jinheonbaek.github.io/">Baek, J.</a>, <a href="https://www.mlai-kaist.com/">Hwang, S. J.</a> “System Prompt Optimization with Meta-Learning.” <em>Conference on Neural Information Processing Systems (NeurIPS)</em>, 2025. arXiv:2505.09666, May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
+<li><a id="ref-2"></a>Khattab, O., Singhvi, A., Maheshwari, P., Zhang, Z., Santhanam, K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., Miller, H., Zaharia, M., Potts, C. “DSPy: Compiling Declarative Language Model Calls into State-of-the-Art Pipelines.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://arxiv.org/abs/2310.03714" class="uri">https://arxiv.org/abs/2310.03714</a></li>
+<li><a id="ref-3"></a>Opsahl-Ong, K., Ryan, M. J., Purtell, J., Broman, D., Potts, C., Zaharia, M., Khattab, O. “Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs.” <em>Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing</em>, 2024. <a href="https://arxiv.org/abs/2406.11695" class="uri">https://arxiv.org/abs/2406.11695</a></li>
+<li><a id="ref-4"></a>Pryzant, R., Iter, D., Li, J., Lee, Y., Zhu, C., Zeng, M. “Automatic Prompt Optimization with ‘Gradient Descent’ and Beam Search.” <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing</em>, 2023. <a href="https://arxiv.org/abs/2305.03495" class="uri">https://arxiv.org/abs/2305.03495</a></li>
+<li><a id="ref-5"></a>Guo, Q., Wang, R., Guo, J., Li, B., Song, K., Tan, X., Liu, G., Bian, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-rema-meta-think/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-rema-meta-think/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-rema-meta-think/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</em> [1], <a href="https://github.com/ziyuwan">Ziyu Wan</a>, <a href="https://www.semanticscholar.org/author/Yunxiang-Li/2296444976">Yunxiang Li</a>, <a href="https://www.semanticscholar.org/author/Ying-Wen/2283887572">Ying Wen</a>, and eight co-authors from Shanghai Jiao Tong University, Shanghai AI Laboratory, UBC, and UCL train two large language model (LLM) agents jointly — a high-level meta-thinking agent that plans, and a low-level reasoning agent that executes — and show the split beats R1-style single-agent reinforcement learning on math and LLM-as-a-judge benchmarks.</p>
+<blockquote class="blockquote">
+<p>Recent research on Reasoning of Large Language Models (LLMs) has sought to further enhance their performance by integrating meta-thinking — enabling models to monitor, evaluate, and control their reasoning processes for more adaptive and effective problem-solving. However, current single-agent work lacks a specialized design for acquiring meta-thinking, resulting in low efficacy. To address this challenge, we introduce <em>Reinforced Meta-thinking Agents (ReMA)</em>, a novel framework that leverages Multi-Agent Reinforcement Learning (MARL) to elicit meta-thinking behaviors, encouraging LLMs to think about thinking. ReMA <em>decouples the reasoning process into two hierarchical agents: a high-level meta-thinking agent responsible for generating strategic oversight and plans, and a low-level reasoning agent</em> for detailed executions. Through <em>iterative reinforcement learning with aligned objectives</em>, these agents explore and learn collaboration, leading to improved generalization and robustness. Empirical results from single-turn experiments demonstrate that ReMA <em>outperforms single-agent RL baselines</em> on complex reasoning tasks, including competitive-level mathematical benchmarks and LLM-as-a-Judge benchmarks. Additionally, we further extend ReMA to <em>multi-turn interaction settings, leveraging turn-level ratio and parameter sharing</em> to improve efficiency. Comprehensive ablation studies further illustrate the evolving dynamics of each distinct agent, providing valuable insights into how the meta-thinking reasoning process enhances the reasoning capabilities of LLMs.</p>
+</blockquote>
+<section id="preliminaries" class="level2">
+<h2 class="anchored" data-anchor-id="preliminaries">Preliminaries</h2>
+<p>The paper builds on a few standard objects:</p>
+<ul>
+<li><strong>Vanilla Reasoning Process (VRP)</strong> — autoregressive decoding from question <img src="https://benjaminhan.net/feed-assets/9c42f1487bf77e29.svg" alt="\mathbf{x}" class="feed-math-inline"/> to a reasoning trajectory <img src="https://benjaminhan.net/feed-assets/d28d15a262627a3b.svg" alt="\mathbf{y} = (y_1,\ldots,y_L)" class="feed-math-inline"/> from which the final answer <img src="https://benjaminhan.net/feed-assets/12b5bc31cae67b9d.svg" alt="\mathbf{a}" class="feed-math-inline"/> is extracted: <img src="https://benjaminhan.net/feed-assets/1db8126d02be7ca0.svg" alt="\pi_\theta(\mathbf{y}\mid\mathbf{x}) = \prod_{l=1}^L \pi_\theta(y_l\mid \mathbf{x}, \mathbf{y}_{&lt;l})" class="feed-math-inline"/>. This is the chain-of-thought (CoT) [2] baseline.</li>
+<li><strong>Meta-thinking Reasoning Process (MRP)</strong> — a single-agent variant that first emits a meta-thought <img src="https://benjaminhan.net/feed-assets/989d77b10d9fab3d.svg" alt="\mathbf{m}" class="feed-math-inline"/>, then conditions reasoning on it: <img src="https://benjaminhan.net/feed-assets/7e9222726743be7d.svg" alt="\mathbf{y} \sim \pi_\theta(\mathbf{y}\mid\mathbf{x},\mathbf{m})\cdot\pi_\theta(\mathbf{m}\mid\mathbf{x})" class="feed-math-inline"/>. “Meta-thinking” means the model’s ability to monitor, evaluate, and control its own reasoning.</li>
+<li><strong>RL objective</strong> — both VRP and MRP optimize <img src="https://benjaminhan.net/feed-assets/5956f0493b3dfb49.svg" alt="\mathcal{J}(\theta) = \mathbb{E}_{(\mathbf{x},\mathbf{y}^*)\sim\mathcal{D},\,\mathbf{y}\sim\pi_\theta}\![R(\mathbf{y},\mathbf{y}^*)]" class="feed-math-inline"/>, where the verifiable reward <img src="https://benjaminhan.net/feed-assets/81214a487edf79ac.svg" alt="R" class="feed-math-inline"/> compares the generated answer to the gold answer <img src="https://benjaminhan.net/feed-assets/127fcaf3170d4305.svg" alt="\mathbf{y}^*" class="feed-math-inline"/>.</li>
+<li><strong>GRPO</strong> — Group Relative Policy Optimization [3], a PPO [4] variant that drops the learned critic. For each prompt, <img src="https://benjaminhan.net/feed-assets/77cb80a49cec1cc8.svg" alt="G" class="feed-math-inline"/> rollouts produce rewards <img src="https://benjaminhan.net/feed-assets/f48cffac951c977c.svg" alt="\{R_i\}" class="feed-math-inline"/>; the group-normalized advantage <img src="https://benjaminhan.net/feed-assets/277836c8fc279d9b.svg" alt="\hat{A}_{i,j} = (R_i - \mathrm{mean}\{R_i\})/\mathrm{std}\{R_i\}" class="feed-math-inline"/> replaces the value baseline, and the clipped surrogate <img src="https://benjaminhan.net/feed-assets/f3172a60f518f535.svg" alt="\min\!\big(r_{i,j}(\theta)\hat{A}_{i,j},\,\mathrm{clip}(r_{i,j}(\theta), 1{-}\epsilon, 1{+}\epsilon)\hat{A}_{i,j}\big)" class="feed-math-inline"/> is applied per token, with <img src="https://benjaminhan.net/feed-assets/fdbccc3c0b8ebbee.svg" alt="r_{i,j}(\theta) = \pi_\theta(y_{i,j}\mid\cdot)/\pi_{\theta_\text{old}}(y_{i,j}\mid\cdot)" class="feed-math-inline"/>.</li>
+</ul>
+<p>ReMA replaces the single policy in MRP with two separately parameterized agents and casts joint training as multi-agent RL.</p>
+<p>Non-conventional notation used in the rest of the post:</p>
+<ul>
+<li><img src="https://benjaminhan.net/feed-assets/989d77b10d9fab3d.svg" alt="\mathbf{m}" class="feed-math-inline"/> — meta-thinking output (a strategic plan or decomposition of <img src="https://benjaminhan.net/feed-assets/9c42f1487bf77e29.svg" alt="\mathbf{x}" class="feed-math-inline"/>); <img src="https://benjaminhan.net/feed-assets/127fcaf3170d4305.svg" alt="\mathbf{y}^*" class="feed-math-inline"/> — gold answer.</li>
+<li><img src="https://benjaminhan.net/feed-assets/6509f36f6baedd1d.svg" alt="\theta_h, \theta_l" class="feed-math-inline"/> — parameters of the high-level (meta-thinking) and low-level (reasoning) agents.</li>
+<li><img src="https://benjaminhan.net/feed-assets/e8ca96f603b9e609.svg" alt="R_h, R_l" class="feed-math-inline"/> — rewards used to update the high-level and low-level agents.</li>
+<li><img src="https://benjaminhan.net/feed-assets/77cb80a49cec1cc8.svg" alt="G" class="feed-math-inline"/> — group size, the number of rollouts sampled per prompt for advantage normalization.</li>
+<li>Indices: <img src="https://benjaminhan.net/feed-assets/fe3599bc03ddee62.svg" alt="i" class="feed-math-inline"/> ranges over rollouts in a group, <img src="https://benjaminhan.net/feed-assets/3deea0e57470887f.svg" alt="j" class="feed-math-inline"/> over tokens within a rollout, <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/> over turns in a multi-turn rollout.</li>
+<li><img src="https://benjaminhan.net/feed-assets/1605d97c1c4a9207.svg" alt="\hat{A}_{i,j}" class="feed-math-inline"/> — group-normalized advantage for token <img src="https://benjaminhan.net/feed-assets/3deea0e57470887f.svg" alt="j" class="feed-math-inline"/> of rollout <img src="https://benjaminhan.net/feed-assets/fe3599bc03ddee62.svg" alt="i" class="feed-math-inline"/>.</li>
+<li><img src="https://benjaminhan.net/feed-assets/50ee39dc7bc5121f.svg" alt="r_{i,j}(\theta)" class="feed-math-inline"/> vs <img src="https://benjaminhan.net/feed-assets/1849083d6733d5ec.svg" alt="r_{i,t}(\theta)" class="feed-math-inline"/> — token-level importance ratio (GRPO) vs turn-averaged ratio (MAMRP).</li>
+</ul>
+</section>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The cover figure positions ReMA against two prior families:</p>
+<ul>
+<li><em>Construction-based methods</em> (left) fine-tune LLMs on rejection-sampled combinations of pre-defined templates — meta-thinking is hardcoded into the data, not learned.</li>
+<li><em>R1-style methods</em> (middle) train a single powerful LLM with reinforcement learning to interleave meta-thinking and detailed reasoning inside one generation.</li>
+<li><em>ReMA</em> (right) splits the two roles into separately parameterized agents — a high-level meta-thinker and a low-level reasoner — and updates both jointly with multi-agent reinforcement learning.</li>
+</ul>
+<p>R1-style here is shorthand for DeepSeek R1 [5]: a single LLM trained with pure RL on verifiable rewards, which learns to produce long traces that mix strategic reflection with step-by-step reasoning in one generation.</p>
+<p>The single-turn formulation factorizes generation into two sequential agent calls:</p>
+<ul>
+<li>High-level agent <img src="https://benjaminhan.net/feed-assets/75c3584d5f478a9f.svg" alt="\pi_{\theta_h}" class="feed-math-inline"/> takes the question <img src="https://benjaminhan.net/feed-assets/9c42f1487bf77e29.svg" alt="\mathbf{x}" class="feed-math-inline"/> and emits meta-thinking <img src="https://benjaminhan.net/feed-assets/989d77b10d9fab3d.svg" alt="\mathbf{m}" class="feed-math-inline"/> — a strategic plan or decomposition.</li>
+<li>Low-level agent <img src="https://benjaminhan.net/feed-assets/c1daa24088844669.svg" alt="\pi_{\theta_l}" class="feed-math-inline"/> takes <img src="https://benjaminhan.net/feed-assets/99ab98a63dee21db.svg" alt="(\mathbf{x}, \mathbf{m})" class="feed-math-inline"/> and emits the detailed reasoning trajectory <img src="https://benjaminhan.net/feed-assets/f6d552c84a12ce99.svg" alt="\mathbf{y}" class="feed-math-inline"/>.</li>
+<li>The joint policy factorizes as <img src="https://benjaminhan.net/feed-assets/c1a5b8d0c261a190.svg" alt="\mathbf{y} \sim \pi_{\theta_h, \theta_l}(\mathbf{y}\mid\mathbf{x}) := \pi_{\theta_l}(\mathbf{y}\mid\mathbf{x}, \mathbf{m}) \cdot \pi_{\theta_h}(\mathbf{m}\mid\mathbf{x})" class="feed-math-inline"/>.</li>
+</ul>
+<p>Each agent is trained iteratively under its own reward, conditioned on the other’s policy:</p>
+<p><img src="https://benjaminhan.net/feed-assets/e6fcf5cbfc1e0f59.svg" alt="\theta_h^* = \arg\max_{\theta_h}\; \mathbb{E}_{(\mathbf{x},\mathbf{y}^*)\sim\mathcal{D},\,\mathbf{m}\sim\pi_{\theta_h},\,\mathbf{y}\sim\pi_{\theta_l^*}}\!\big[R_h(\mathbf{m},\mathbf{y},\mathbf{y}^*)\big]," class="feed-math-inline"/></p>
+<p><img src="https://benjaminhan.net/feed-assets/2d7634bbb1dc6527.svg" alt="\theta_l^*(\theta_h) = \arg\max_{\theta_l}\; \mathbb{E}_{(\mathbf{x},\mathbf{y}^*)\sim\mathcal{D},\,\mathbf{m}\sim\pi_{\theta_h},\,\mathbf{y}\sim\pi_{\theta_l}}\!\big[R_l(\mathbf{m},\mathbf{y},\mathbf{y}^*)\big]." class="feed-math-inline"/></p>
+<p>Training alternates between freezing one agent and updating the other with PPO/GRPO, so each policy improves while its partner is held fixed.</p>
+<p>The training-pipeline figure makes the architectural difference concrete:</p>
+<ul>
+<li><em>Left</em> is single-agent RL — VRP mixes meta-thinking and reasoning in one trace, MRP makes the meta-thinking explicit but still updates one LM end-to-end.</li>
+<li><em>Middle</em> is single-turn ReMA with separately parameterized high-level and low-level agents; alternating freeze/update keeps each gradient on-policy with respect to its partner.</li>
+<li><em>Right</em> is the multi-turn Multi-Agent Meta-thinking Reasoning Process (MAMRP) extension. Both agents share parameters and are distinguished only by system prompts, and stability over long rollouts comes from a turn-level PPO ratio that averages token-level ratios within a turn before clipping, instead of clipping each token independently: <img src="https://benjaminhan.net/feed-assets/7df0423a9a2943ac.svg" alt="r_{i,t}(\theta) = \frac{1}{|\mathbf{y}_{i,t}|}\sum_j \frac{\pi_\theta(\mathbf{y}_{i,t,j}\mid\cdot)}{\pi_{\theta_{\text{old}}}(\mathbf{y}_{i,t,j}\mid\cdot)}." class="feed-math-inline"/></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-rema-meta-think/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<section id="motivating-experiment" class="level3">
+<h3 class="anchored" data-anchor-id="motivating-experiment">Motivating experiment</h3>
+<p>Setup:</p>
+<ul>
+<li>Base model: Qwen2.5-Math-7B.</li>
+<li>Three single-agent training schemes:
+<ol type="1">
+<li>RL from the base model directly on MATH.</li>
+<li>RL after supervised fine-tuning (SFT) on GPT-4o’s step-by-step answers.</li>
+<li>RL after SFT on GPT-4o’s meta-thinking <em>plans</em> (single-agent MRP, not yet the multi-agent ReMA).</li>
+</ol></li>
+<li>Benchmarks: MATH500 (in-distribution), GSM8K (easier in-distribution), AIME24 (out-of-distribution).</li>
+</ul>
+<p>Findings:</p>
+<ul>
+<li>On MATH500 and GSM8K, the SFT-warmed model wins — unsurprising, since it’s been shown the solution format.</li>
+<li>On AIME24, the SFT baseline collapses, RL from base plateaus, and RL under meta-thinking keeps climbing.</li>
+</ul>
+<p>That gap is the argument for decoupling meta-thinking from execution in the first place.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-rema-meta-think/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="main-result" class="level3">
+<h3 class="anchored" data-anchor-id="main-result">Main result</h3>
+<p>Setup:</p>
+<ul>
+<li>Base models: Llama3-8B-Instruct, Llama3.1-8B-Instruct, Qwen2.5-7B-Instruct.</li>
+<li>Baselines compared against ReMA: VRP (basic CoT), VRP<sub>RL</sub> (vanilla RL), and MRP<sub>RL</sub> (single-agent meta-thinking RL).</li>
+<li>Math benchmarks: in-distribution (MATH500, GSM8K) and out-of-distribution (AIME24, AMC23, Gaokao2023en, Minerva Math, Olympiad Bench).</li>
+<li>LLM-as-a-Judge benchmarks: RewardBench970, JudgeBench.</li>
+<li>Each cell reports accuracy plus the improvement or degradation against basic CoT (VRP).</li>
+</ul>
+<p>Findings:</p>
+<ul>
+<li>ReMA wins four of five averages.</li>
+<li>Largest gains on out-of-distribution math (AMC23, AIME24) and on the Llama3.1-8B Judge benchmarks.</li>
+<li>The Qwen2.5-7B Judge average is the one case where single-agent MRP edges ReMA.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-rema-meta-think/table1.jpg" class="img-fluid figure-img" data-lightbox-src="table1-full.jpg"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="other-key-findings" class="level3">
+<h3 class="anchored" data-anchor-id="other-key-findings">Other key findings</h3>
+<ul>
+<li><strong>Multi-turn MAMRP converges and generalizes.</strong> During training, accuracy rises from ~55% to ~70%, and the multi-turn setup yields an average gain of ~5% across the seven test benchmarks.</li>
+<li><strong>Multi-turn is hyperparameter-sensitive.</strong> Some configurations trigger an “Echo Trap” — massive intra-turn repetitions or empty turns after a few rollouts — attributed to long-horizon credit assignment.</li>
+<li><strong>Turn-level ratio improves sample efficiency.</strong> Trajectory-level loss with the turn-averaged ratio reaches higher training rewards with fewer steps than the token-level variant; parameter sharing with simultaneous updates also converges noticeably faster than separate-weight settings.</li>
+<li><strong>Capacity gates format-aware meta-thinking.</strong> With structured JSON actions, smaller LMs collapse to the simplest “EMPTY” action to dodge formatting penalties, while 8B-scale models adapt their meta-thinking strategy to problem difficulty.</li>
+<li><strong>Generalization tracks the meta-thinking split.</strong> ReMA’s lead is largest on harder out-of-distribution problems like AIME24, consistent with the high-level agent surfacing strategic structure that single-agent baselines miss.</li>
+</ul>
+</section>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The split-agent pattern keeps showing up across very different setups.</strong> A year later, a training-free engineering-design paper, <a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum</a> [6], runs a prompted version of the same architecture (one design agent plus a second agent that critiques its metacognition) and gets the same direction of result on a battery-pack optimization task. <a href="../../posts/20260520-adaptive-collaboration-mapo/">Adaptive Collaboration with Humans (HILA)</a> [7] replaces the meta-thinker with a metacognitive routing policy that gates between autonomous solving and human deferral, again as a separately optimized layer. The Metacognitive Harness [8] wires Nelson–Narens feeling-of-knowing and judgment-of-learning signals into a test-time control loop, separating the monitoring layer from the reasoning layer at inference. Cog-Rethinker [9] inserts a metacognitive two-stage rollout on top of zero-RL so weak base models stop spending samples on problems they can’t solve. Different decouplings — separately parameterized vs.&nbsp;prompt-distinguished, training vs.&nbsp;test-time, math vs.&nbsp;engineering vs.&nbsp;human-in-the-loop — but the underlying observation is consistent: when reasoning is hard, putting the meta-level work in its own loop tends to outperform asking one model to do both.</p></li>
+<li><p><strong>The R1 comparison needs compute parity.</strong> ReMA’s headline is that decoupling beats mixing on the same training <em>data</em>, but two models updated with MARL is not the same training <em>budget</em> as one model updated with single-agent RL. A matched-FLOPs comparison against the best available R1-style baseline would decide whether decoupling is a real architectural win or just more effective capacity in a different shape.</p></li>
+<li><p><strong>Parameter sharing in the multi-turn setup blurs the two-agent story.</strong> The multi-turn extension has both agents share identical model weights, with their roles defined by differing system prompts rather than by parameterization. That’s a practical efficiency choice, but it narrows the architectural gap between ReMA’s “two separately parameterized models” and a single-model role-conditioned baseline. If the multi-turn results hold at scale, the decoupling claim becomes more about aligned RL objectives than about model capacity.</p></li>
+<li><p><strong>The multi-turn extension is the result that matters most for agent applications.</strong> Single-turn math is a clean benchmark but a poor proxy for how agents actually run. Real deployment means long rollouts and sparse rewards. The paper’s multi-turn extension (turn-level ratio plus parameter sharing) is where the architecture would actually be exercised in production, and the reported training curves are early evidence. Scaling to longer horizons and richer environments is the experiment that would decide whether this is a math-benchmark result or a default setup for reasoning agents.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Wan, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi Yang, Mark Schmidt, Jun Wang, Weinan Zhang, Shuyue Hu, and Ying Wen. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
+<li><a id="ref-2"></a>Wei, Jason, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.” <em>NeurIPS 2022</em> (arXiv:2201.11903), January 28, 2022. <a href="https://arxiv.org/abs/2201.11903" class="uri">https://arxiv.org/abs/2201.11903</a></li>
+<li><a id="ref-3"></a>Shao, Zhihong, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Mingchuan Zhang, Y. K. Li, Yu Wu, and Daya Guo. “DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.” <em>arXiv preprint</em> (arXiv:2402.03300), February 5, 2024. <a href="https://arxiv.org/abs/2402.03300" class="uri">https://arxiv.org/abs/2402.03300</a></li>
+<li><a id="ref-4"></a>Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. “Proximal Policy Optimization Algorithms.” <em>arXiv preprint</em> (arXiv:1707.06347), July 20, 2017. <a href="https://arxiv.org/abs/1707.06347" class="uri">https://arxiv.org/abs/1707.06347</a></li>
+<li><a id="ref-5"></a>DeepSeek-AI. “DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2501.12948), January 22, 2025. <a href="https://arxiv.org/abs/2501.12948" class="uri">https://arxiv.org/abs/2501.12948</a></li>
+<li><a id="ref-6"></a>Xu, Zeda, Nikolas Martelaro, and Christopher McComb. “Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design.” <em>arXiv preprint</em> (arXiv:2603.24768), March 25, 2026. <a href="https://arxiv.org/abs/2603.24768" class="uri">https://arxiv.org/abs/2603.24768</a></li>
+<li><a id="ref-7"></a>Yang, Wei, Defu Cao, Jiacheng Pang, Muyan Weng, and Yan Liu. “Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning.” <em>International Conference on Learning Representations (ICLR), 2026 (Poster)</em> (arXiv:2603.07972), March 9, 2026. <a href="https://arxiv.org/abs/2603.07972" class="uri">https://arxiv.org/abs/2603.07972</a></li>
+<li><a id="ref-8"></a>Cao, Qi, Yufan Wang, Peijia Qin, Shuhao Zhang, and Pengtao Xie. “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></li>
+<li><a id="ref-9"></a>Sun, Zexu, Yongcheng Zeng, Erxue Min, Heyang Gao, Bokai Ji, and Xu Chen. “Cog-Rethinker: Hierarchical Metacognitive Reinforcement Learning for LLM Reasoning.” <em>arXiv preprint</em> (arXiv:2510.15979), October 13, 2025. <a href="https://arxiv.org/abs/2510.15979" class="uri">https://arxiv.org/abs/2510.15979</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-rema-meta-think/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-rema-meta-think/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</title>
   <dc:creator>synesis </dc:creator>
@@ -1210,123 +1562,6 @@
   <guid>https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/</guid>
   <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How LLMs Actually Work: A Visual Deep Dive</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Screenshot from <a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a> by Y. Narwal is an interactive, scroll-driven walkthrough of the LLM training pipeline, from Common Crawl through pre-training, post-training, RAG, and inference, with live diagrams and inline annotations at every stage. It is based on Andrej Karpathy’s technical deep dive.</p>
-<p>The nine sections mirror the canonical build pipeline:</p>
-<ul>
-<li><strong>Downloading the Internet</strong> — Common Crawl plus the filters that turn web sludge into a training corpus.</li>
-<li><strong>Tokenization</strong> — subword units, with a live BPE demo.</li>
-<li><strong>Training the Neural Network</strong> — the Transformer architecture and what each step updates.</li>
-<li><strong>Inference &amp; Token Sampling</strong> — temperature and top-p, with a sampling demo.</li>
-<li><strong>The Internet Simulator</strong> — what the base model is, before any post-training.</li>
-<li><strong>Building the Assistant</strong> — SFT on conversations, the turn token format, RLHF on top.</li>
-<li><strong>Cognitive Quirks of Language Models</strong> — counting letters, arithmetic, hallucination — and where in the pipeline they originate.</li>
-<li><strong>Retrieval-Augmented Generation</strong> — how retrieved context shifts the prediction distribution.</li>
-<li><strong>From Text to Assistant</strong> — closing recap.</li>
-</ul>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-llm-illustration/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How to Be Anti-Social</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-anti-social/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://nate.leaflet.pub/3mk4xkaxobc2p">Leaflet</a>.</figcaption>
-</figure>
-</div>
-<p>Learn how to sabotage yourself in <a href="https://nate.leaflet.pub/3mk4xkaxobc2p">how to be anti-social</a>:</p>
-<ul>
-<li><strong>Assume bad faith.</strong> When someone confuses or upsets you, assume they have no sane reason for it; when ambiguous, default to malicious, ignorant, or amoral.</li>
-<li><strong>Read intent through your fears.</strong> Trust intuition and feeling, never challenge or even acknowledge the assumptions doing the interpreting.</li>
-<li><strong>Pivot when challenged.</strong> Steer away from questions outside your wheelhouse; treat any display of not-knowing as weakness.</li>
-<li><strong>Word questions to imply you are right.</strong> If you must ask, lead the witness.</li>
-<li><strong>Dig in.</strong> When dissent piles up, hold firm.</li>
-<li><strong>Curate the audience.</strong> Reframe interactions for like-minded supporters so they can rally to crush lingering threats to the narrative.</li>
-<li><strong>Ignore credentials.</strong> Do not research the people you speak with, unless you already agree with them.</li>
-<li><strong>Withhold grace.</strong> Especially from strangers who make mistakes.</li>
-<li><strong>Retreat into self.</strong> When conversation breaks down, do not seek to understand those you do not already understand.</li>
-</ul>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-anti-social/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-anti-social/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>The Global Edtech Boom Is Fading as Investors Look Elsewhere</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-edu-startups-decline/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-edu-startups-decline/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-edu-startups-decline/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Image from <a href="https://restofworld.org/2026/edtech-funding-collapse-k12-startups-ai-workforce/">Rest of World</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://restofworld.org/2026/edtech-funding-collapse-k12-startups-ai-workforce/">Rest of World</a> reports on the global edtech funding collapse: venture capital is leaving K-12 worldwide as investors prioritize AI tools and workforce training with clearer returns [1]. Global edtech investment peaked at $16.7B in 2021 and fell below $3B by 2025; new founders dropped from roughly 10,500 in 2020 to 645 last year [1].</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-edu-startups-decline/funding-decline.png" class="img-fluid figure-img"></p>
-<figcaption>Total edtech funding has cooled significantly post-pandemic; K-12 funding peaked in 2020 and overall edtech funding in 2021. Chart from <a href="https://restofworld.org/2026/edtech-funding-collapse-k12-startups-ai-workforce/">Rest of World</a>, data via Tracxn [1].</figcaption>
-</figure>
-</div>
-<p>Where K-12 AI capacity is actually accumulating gets one sentence in the article and deserves more. Nonprofit Khan Academy launched its AI tutor Khanmigo on March 14, 2023, originally built on GPT-4, with a pilot reaching about 65,000 students across 53 school districts at $4 per month [2]. The product line has since expanded to a Writing Coach in November 2023, then free generative-AI tools for teachers in August 2024 in partnership with Microsoft, and most recently an integration with Google Gemini announced at Bett UK in January 2026 [2]. The pattern that displaced the venture-backed K-12 startup is nonprofit-with-frontier-API-access. Its incentives around pedagogy, pricing, and outcomes look nothing like the ones the $16B in venture capital was chasing.</p>
-<p>The article’s most revealing line is that retention suffered from “murky learning outcomes,” which is to say that after $16.7B and five years, the sector still cannot reliably measure whether AI tutoring helps a child learn [1]. The places where AI capital is now flowing, workforce certification, professional skill prep, and B2B corporate L&amp;D, share two features K-12 lacks: self-motivated learners, and a clearly priced outcome in the form of a job, a credential, or a salary delta. K-12’s bottleneck has never been content delivery, which is what LLMs are good at. It is the social and motivational scaffold around the content, which LLMs do not obviously replace. The collapse may be telling us less about AI than about which problems are tractable to a venture-funded product wedge in the first place.</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Bhattacharya, Ananya. “The Global Edtech Boom Is Fading as Investors Look Elsewhere.” <em>Rest of World</em>, April 23, 2026. <a href="https://restofworld.org/2026/edtech-funding-collapse-k12-startups-ai-workforce/" class="uri">https://restofworld.org/2026/edtech-funding-collapse-k12-startups-ai-workforce/</a></li>
-<li><a id="ref-2"></a>Wikipedia contributors. “Khan Academy: Khanmigo.” <em>Wikipedia</em>. Accessed April 24, 2026. <a href="https://en.wikipedia.org/wiki/Khan_Academy#Khanmigo" class="uri">https://en.wikipedia.org/wiki/Khan_Academy#Khanmigo</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-edu-startups-decline/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-edu-startups-decline/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
