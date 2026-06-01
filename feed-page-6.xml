@@ -23,6 +23,86 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sun, 31 May 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-dspy/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-dspy/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-dspy/cover.png" class="img-fluid figure-img"></p>
+<figcaption>Results with in-context learning on GSM8K math word problems. Each row is a separate pipeline: the module in the Program column is compiled against the examples in the Training set. All programs in this table are expressed by composing two to four DSPy modules and teleprompters. Compiling the correct modules, instead of string prompts, improves different LMs from 4-20% accuracy to 49-88% accuracy. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</em> [1] (ICLR 2024), <a href="https://omarkhattab.com/">Omar Khattab</a> et al.&nbsp;(Stanford and collaborators) introduce a programming model that treats LM pipelines as composable, typed modules and compiles them via teleprompters that bootstrap their own few-shot demonstrations from a small unlabeled training set.</p>
+<blockquote class="blockquote">
+<p>The ML community is rapidly exploring techniques for prompting language models (LMs) and for stacking them into pipelines that solve complex tasks. Unfortunately, existing LM pipelines are typically implemented using hard-coded “prompt templates”, i.e.&nbsp;lengthy strings discovered via trial and error. Toward a more systematic approach for developing and optimizing LM pipelines, we introduce <em>DSPy, a programming model that abstracts LM pipelines as text transformation graphs</em>, or imperative computational graphs where LMs are invoked through declarative modules. <em>DSPy modules are parameterized</em>, meaning they can learn how to apply compositions of prompting, finetuning, augmentation, and reasoning techniques. We design <em>a compiler that will optimize any DSPy pipeline to maximize a given metric, by creating and collecting demonstrations</em>. We conduct two case studies, showing that succinct DSPy programs can express and optimize pipelines that reason about math word problems, tackle multi-hop retrieval, answer complex questions, and control agent loops. Within minutes of compiling, DSPy can automatically produce pipelines that <em>outperform out-of-the-box few-shot prompting as well as expert-created demonstrations for GPT-3.5 and Llama2-13b-chat</em>. On top of that, <em>DSPy programs compiled for relatively small LMs like 770M parameter T5 and Llama2-13b-chat are competitive with many approaches that rely on large and proprietary LMs like GPT-3.5 and on expert-written prompt chains</em>. DSPy is available at https://github.com/stanfordnlp/dspy.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The programming model rests on three abstractions. <strong>Signatures</strong> declare the input/output shape of an LM call as a natural-language type spec (e.g., <code>"question -&gt; answer"</code> or <code>"context, question -&gt; rationale, answer"</code>), which the framework expands into a prompt template. <strong>Modules</strong> implement signatures via specific techniques: <code>Predict</code> runs a single-shot LM call, <code>ChainOfThought</code> adds a rationale step, <code>ReAct</code> interleaves thought/action/observation for tool use. Modules can contain other modules, so a retrieval-augmented QA pipeline is just a Python class that composes <code>Retrieve</code> and <code>ChainOfThought</code>. <strong>Teleprompters</strong> are the compilers: given a program, a metric, and a small training set (inputs only, no intermediate labels), a teleprompter runs the program on the training examples with a “teacher” model, keeps traces where the final output satisfied the metric, and uses those traces as few-shot demonstrations in the compiled program. <code>BootstrapFewShot</code> is the default; variants add random search over candidate demonstrations, compose with a stronger teacher program, or finetune a smaller model on the bootstrapped traces. The human writes the program structure and the metric; the compiler figures out what to put inside each prompt.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper runs two case studies: GSM8K grade-school math (200 train / 300 dev / 1.3k test) and HotPotQA multi-hop retrieval QA. Base models are GPT-3.5 and Llama2-13b-chat; one HotPotQA run uses 770M-parameter T5-Large as the compile target. On GSM8K, the same three-line <code>ChainOfThought</code> program goes from 25.2% test accuracy (vanilla GPT-3.5 with no compilation) to 81.6% with the <code>bootstrap + ensemble</code> teleprompter; Llama2-13b-chat reaches 46.9% with the <code>ThoughtReflection</code> program plus ensemble, versus 9.4% baseline. On HotPotQA, a simple <code>multihop</code> program with <code>bootstrap</code> raises GPT-3.5 test EM from 31.5% (fewshot baseline) to 39.6%, and the ensemble reaches 45.6% on half the test set. The 770M T5-Large compiled from a Llama2-13b-chat teacher hits 39.3% HotPotQA answer EM on the dev set, using only 200 labeled and 800 unlabeled questions. That’s roughly on par with the much larger base models.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-dspy/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Results with in-context learning on HotPotQA for GPT-3.5 and Llama2-13b-chat across four DSPy programs (<code>vanilla</code>, <code>CoT_RAG</code>, <code>react</code>, <code>multihop</code>) and compilers (<code>fewshot</code>, <code>bootstrap</code>, <code>ensemble</code>, <code>bootstrap×2</code>). Answer exact match (Ans) and pair-retrieval accuracy (Psg) are reported for dev and test splits. Ensemble-compiled <code>multihop</code> tops both models; <code>CoT_RAG</code> with <code>bootstrap</code> is the next-best configuration. Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The programming model is the real contribution, and the teleprompters are interchangeable.</strong> Pre-DSPy prompt optimization worked at the string-template level. APE [2] and later <a href="../../posts/20260430-evoprompt/">EvoPrompt</a> [3] searched over isolated prompt strings with LLM-implemented operators. DSPy moves optimization up a layer: because modules have typed signatures and compose into a graph, a teleprompter can treat any pipeline as a black box to optimize end-to-end against a single metric, bootstrapping intermediate demonstrations along the way. Putting composition at the module boundary is what enables pipeline-level search. <a href="../../posts/20260430-multi-agent-system-search/">MASS</a> [4] can search over typed-module topologies because DSPy established the abstraction; its prompt optimization at block and workflow levels uses DSPy’s MIPRO teleprompter directly. The teleprompters themselves (bootstrap + random search) are conventional. The novelty is that they operate on a program rather than a prompt.</p></li>
+<li><p><strong>DSPy-styled distillation works: the 770M T5 result is the demonstration.</strong></p>
+<ul>
+<li>When DSPy compiles, the teacher model runs the program on training inputs; the metric filters complete-pipeline runs where the final output is correct; those good runs’ intermediate steps become demonstrations for the compiled program. No human annotates intermediate hops. Final-output supervision via the metric does that filtering.</li>
+<li>Table 2 shows this in action: a 770M T5-Large, compiled from a Llama2-13b-chat teacher on 200 labeled + 800 unlabeled HotPotQA questions, reaches 39.3% answer EM on dev, within a few points of GPT-3.5 fewshot. The paper calls this “orders of magnitude lower costs for inference”; the stronger read is that for retrieval-heavy tasks with good pipeline structure, most of the capability lives in the pipeline, and the base model just has to execute the compiled prompts competently.</li>
+<li>The distillation analogy is apt, with three caveats on what gets kept, what the student inherits, and what the procedure costs. Both let you train a smaller model without hand-labeled intermediate supervision; the teacher’s outputs stand in.
+<ul>
+<li>Distillation uses every teacher-generated input-output pair as student training data. DSPy uses only per-module steps from traces whose final pipeline output passed the metric; those steps become few-shot demonstrations inside each module’s prompt.</li>
+<li>Distillation compiles the teacher’s capability into a single forward pass of the student; DSPy keeps the pipeline structure intact. The 770M T5 still runs the same multihop program, just with bootstrapped few-shot demos inside each module’s prompt.</li>
+<li>Distillation trains the student via gradient descent over thousands to millions of teacher outputs on GPU clusters, taking days to weeks. DSPy’s default teleprompters do no gradient training; they just insert filtered demonstrations into the student program’s prompts. Even the finetune variant that produced the T5-770M result trains in minutes on 200 + 800 examples, with total compile cost bounded by a few hundred teacher inference calls.</li>
+</ul></li>
+<li>Whether the pipeline gain stays significant as base models mature is an open question.</li>
+</ul></li>
+<li><p><strong>DSPy is a clean instance of extrinsic self-improvement.</strong> Humans design the programming model, pick the modules, write the metric, and choose the teleprompter strategy (bootstrap vs.&nbsp;random search vs.&nbsp;finetune). The LM only generates candidates that the compiler scores and keeps. The <a href="../../posts/20260430-intrinsic-metacognitive-learning/">intrinsic metacognitive learning position paper</a> [5] calls this out as the ceiling case: DSPy won’t decide that the task needs a different module type, or that the metric is misspecified, or that the teleprompter’s search strategy is a poor fit. Every one of those is wired in. In engineering or production settings that explicit control is often a feature. Teams need predictable, auditable behavior more than they need an agent that redesigns its own loop. The ceiling matters only when you measure against intrinsic.</p></li>
+<li><p><strong>DSPy has become a de facto substrate for both research and industrial LLM development.</strong></p>
+<ul>
+<li><strong>Scale signals.</strong> 34K+ GitHub stars since January 2023. The <a href="https://dspy.ai/community/use-cases/">dspy.ai “Community Use Cases” page</a> lists 25+ named company deployments and 15+ published research papers built on DSPy, and is maintained as a growing index.</li>
+<li><strong>Research adoption</strong> runs beyond the cluster we’ve been reviewing: STORM (Wikipedia-article generation), Co-STORM, PATH (IR with 10 gold labels), IReRa (extreme classification with 10K+ labels), ECG-Chat (medical reports via GraphRAG), Palimpzest (declarative AI workload optimization), WangLab @ MEDIQA (Toronto’s competition winner), UMD’s suicide-detection system (beating 20-hour expert prompt engineering by 40%). Within this cluster, <a href="../../posts/20260430-multi-agent-system-search/">MASS</a> uses DSPy’s MIPRO as its prompt-optimizer primitive and <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO</a> cites DSPy as prior art.</li>
+<li><strong>Industry adoption</strong> spans finance (Moody’s), healthcare (STChealth, Infinitus, Raia, Salomatic), legal (Truelaw), travel (JetBlue), semiconductor (Normal Computing), e-commerce (Sephora, Zoro UK), developer tooling (Replit), enterprise AI (Databricks, VMware, RadiantLogic), and security (Haize Labs red-teaming). The Databricks integration is particularly sticky: DSPy co-author Matei Zaharia is Databricks CTO, and DSPy now powers parts of their LM-judge, RAG, and agentic offerings.</li>
+<li><strong>Why the abstraction endured.</strong> Teleprompter algorithms keep evolving (MIPRO → MIPROv2 → GEPA, all listed on dspy.ai), but the programming model (signatures, modules, teleprompters) has stayed stable. New optimizers slot into the same surface.</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://omarkhattab.com/">Khattab</a>, O., Singhvi, A., Maheshwari, P., Zhang, Z., <a href="https://keshav2.me/">Santhanam</a>, K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., <a href="https://heather.miller.am/">Miller</a>, H., <a href="https://en.wikipedia.org/wiki/Matei_Zaharia">Zaharia</a>, M., <a href="https://en.wikipedia.org/wiki/Christopher_Potts">Potts</a>, C. “DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://openreview.net/forum?id=sY5N0zY5Od" class="uri">https://openreview.net/forum?id=sY5N0zY5Od</a>. arXiv preprint arXiv:2310.03714.</li>
+<li><a id="ref-2"></a>Zhou, Y., Muresanu, A. I., Han, Z., <a href="https://keirp.com/">Paster</a>, K., <a href="https://silviupitis.com/">Pitis</a>, S., <a href="https://harris-chan.github.io/">Chan</a>, H., <a href="http://jimmylba.github.io/">Ba</a>, J. “Large Language Models Are Human-Level Prompt Engineers.” <em>International Conference on Learning Representations (ICLR)</em>, 2023. arXiv:2211.01910, November 3, 2022. <a href="https://arxiv.org/abs/2211.01910" class="uri">https://arxiv.org/abs/2211.01910</a></li>
+<li><a id="ref-3"></a><a href="https://lemon0830.github.io/">Guo</a>, Q., Wang, R., Guo, J., <a href="https://libeineu.github.io/">Li</a>, B., <a href="https://www.microsoft.com/en-us/research/people/kaitaosong/">Song</a>, K., <a href="https://www.microsoft.com/en-us/research/people/xuta/">Tan</a>, X., Liu, G., <a href="https://sites.google.com/view/jiangbian">Bian</a>, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532, September 15, 2023. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
+<li><a id="ref-4"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>arXiv preprint</em> (arXiv:2502.02533), February 4, 2025. <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
+<li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, T., <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>arXiv preprint</em> (arXiv:2506.05109), June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-dspy/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-dspy/cover.png" medium="image" type="image/png" height="89" width="144"/>
+</item>
+<item>
   <title>EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260430-evoprompt/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1196,46 +1276,6 @@
   <guid>https://benjaminhan.net/posts/20260423-anthropic-economic-index/</guid>
   <pubDate>Thu, 23 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260423-anthropic-economic-index/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Proof Generation vs Digestion</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Screenshot of the first toot in Terence Tao’s three-part thread. Image from <a href="https://mathstodon.xyz/@tao/116450581967483825">Mastodon</a>.</figcaption>
-</figure>
-</div>
-<p>Terence Tao on Mastodon:</p>
-<blockquote class="blockquote">
-<p>As a crude first approximation, the problem-solving component of mathematical research (which, one should stress, is not the <em>only</em> aspect of such research) can be decomposed into three subcomponents:</p>
-<ol type="1">
-<li>Proof generation (finding a solution to a given problem);</li>
-<li>Proof verification (checking that a proposed solution actually works); and</li>
-<li>Proof digestion (understanding the essence of a solution, placing it in context with previous literature, summarizing and explaining it effectively, and gaining insights on other related problems and topics).</li>
-</ol>
-<p>Until recently, all three of these subtasks were rather difficult and time-intensive to perform; but a human mathematician (or a collaboration between several mathematicians) who had invested the effort to both generate a proof and verify it usually gained enough understanding into the structure of that proof that they could also digest it effectively. Because of this, our community has been generally content to emphasize the proof generation and verification aspect of problem solving, as the proof digestion tended to be created naturally as an organic byproduct of these first two aspects. This was also convenient for assessing proof efforts, as the generation and verification tasks had well-defined objectives, whilst proof digestion was a more subjective and open-ended process. [Though “the ability to present the result at a research conference and take questions” is a rough first approximation of a metric for whether a proof has been digested,]</p>
-<p>However, recent advances in both AI and proof formalization have begun to vastly accelerate and automate the first two components of this process. This is leading to a new type of “impedance mismatch”: problems for which solutions can be rapidly generated and verified in a mostly automated process, but for which no human author has understood the arguments well enough to initiate the (much slower) digestion process. <strong>In fact, with the current cultural incentives that reward the first authors to “solve” the problem, rather than the later authors who “digest” the solution</strong>, one may end up with the perverse situation in which an AI-generated (and formally verified) solution to an problem that is presented to the community without any significant digestion may actually <em>inhibit</em> the progress of the field that the problem lies in, by discouraging any further attempts to work on the problem, simplify and explain the proof, and extract broader insights.</p>
-<p>Perhaps having more refined terminology to describe solutions would help. For instance, a proof that is proposed but unverified should be viewed as 1/3 of a solution at best, while a proof that is both proposed and verified remains only 2/3 of a solution until a proper, well-digested presentation of the results has been made. As a concrete example: I would currently rate the recent progress on Erdos problem #1169 which has created some buzz on social media as currently constituting 2/3 of a solution in this framework: a proof has been generated and verified, but the broader impacts of the argument on the rest of the field are still being assessed. Eventually, I espect a fully satisfactory solution to this problem to be obtained, but this may take more time that one is now accustomed to in this era of rapid proof generation and proof verification.</p>
-</blockquote>
-<p>This post from Terence on math, as always, strikes me as generally applicable to many rigorous intellectual endeavors: research in other fields, software engineering, and even writing and other creative work. Again, this is the consequence of <em>abundance</em>, which will elevate (whether we are ready or not) the importance of understanding, reviewing, discerning, and taste. The question is how we reverse the incentive structure to start appreciating these aspects much more, rather than just focusing on “the first”.</p>
-<hr>
-<p><em>Originally posted on <a href="https://mathstodon.xyz/@tao/116450581967483825">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/</guid>
-  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
