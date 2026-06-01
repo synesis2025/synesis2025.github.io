@@ -21,7 +21,50 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sat, 30 May 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 31 May 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Overzealous Coding Models</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the post — GPT-5.4 rewrites an entire function when the correct fix is changing one number in a <code>range()</code> call. Image from <a href="https://nrehiew.github.io/blog/minimal_editing/">nrehiew’s blog</a>.</figcaption>
+</figure>
+</div>
+<p>In <a href="https://nrehiew.github.io/blog/minimal_editing/">Coding Models Are Doing Too Much</a>, nrehiew puts a number on a frustration anyone using AI coding tools has felt — the model fixes the bug, then quietly rewrites half the function around it.</p>
+<ul>
+<li><strong>The problem.</strong> Ask a model to fix an off-by-one and get a full rewrite — new helpers, renamed variables, added validation. The fix is correct; the diff is enormous and review-hostile. The post calls this <em>over-editing</em>: structural divergence beyond what the minimal fix requires.</li>
+<li><strong>Measurement.</strong> Rather than have an LLM introduce bugs, the author programmatically corrupts 400 BigCodeBench problems (flip an operator, swap a boolean, etc.), so the ground-truth fix is exactly the reversal. Models are scored on Pass@1, token-level Levenshtein vs.&nbsp;the corrupted input, and added cognitive complexity.</li>
+<li><strong>Frontier results.</strong> GPT-5.4 over-edits the most (Levenshtein 0.39, added CC 2.31) while also being one of the weakest at correctness. Claude Opus 4.6 leads on both axes — highest Pass@1 (0.91) and smallest diffs (Levenshtein 0.06).</li>
+<li><strong>Prompting helps.</strong> A single line — <em>“IMPORTANT: Try to preserve the original code and the logic of the original code as much as possible”</em> — improves both Pass@1 and Levenshtein for almost every model. Reasoning models gain the most.</li>
+<li><strong>Reasoning defaults to over-editing.</strong> On samples where both reasoning and non-reasoning variants get the answer correct, the reasoning version edits <em>more</em> by default in most model pairs — extended thinking buys more “improvements” no one asked for. Claude Opus 4.6 is the notable exception, with its reasoning variant editing substantially less. Once instructed, reasoning models match or undercut their non-reasoning siblings in almost every pair.</li>
+<li><strong>Training.</strong> Starting from Qwen3 4B 2507 Instruct (and validated on Qwen3 14B), plain SFT collapses out-of-domain (Pass@1 drops to 0.46) — the model memorizes corruption-reversals rather than the behavior. RL with a reward combining functional correctness and Levenshtein generalizes cleanly, with no LiveCodeBench regression. <em>LoRA at rank 64 nearly matches the full fine-tune.</em></li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The Opus 4.6 gap is not subtle</strong> — highest Pass@1 <em>and</em> smallest diffs, in both reasoning and non-reasoning modes. Anthropic appears to have trained explicitly against this failure mode, and it shows.</li>
+<li><strong>A single sentence of prompt closes most of the gap for everyone else</strong> — over-editing is a default, not a capability ceiling.</li>
+<li><strong>Style problem, not knowledge problem.</strong> That LoRA at rank 64 nearly matches the full fine-tune is the giveaway — a small parameter delta shifts the behavior without touching the underlying capability.</li>
+<li><strong>The tooling implication is bigger than the model implication.</strong> <em>“Preserve the original code”</em> should be wired into every coding tool’s system prompt by default, and diff-review UI should surface a minimality score alongside the patch.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260422-overzealous-coding-models/</guid>
+  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Sequential KV Cache Compression via Probabilistic Language Tries</title>
   <dc:creator>synesis </dc:creator>
@@ -1013,49 +1056,6 @@
   <guid>https://benjaminhan.net/posts/20260330-apple-oral-history/</guid>
   <pubDate>Mon, 30 Mar 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260330-apple-oral-history/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Redmond City Marathon: #30, with a Sprained Ankle</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260329-redmond-city-marathon/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260329-redmond-city-marathon/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/02.jpg" class="img-fluid"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/03.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/04.jpg" class="img-fluid"></p>
-</div>
-</div>
-</div>
-<p>Today I ran my 30th marathon (since 2024) at the Redmond City Marathon race, finishing in 3:38:33 (watch time) with pace 8’20”/mi. It also extended an unusual streak for me: 7 straight weeks of running HM or longer!</p>
-<p>This was my first marathon raced by HR, and that part mostly went to plan: I got avg/max HR of 149/159 bpm. The bigger challenge in the second half was actually not keeping my HR down, but getting it up. My legs were prematurely tired mainly due to a very silly mistake happened early in the race: I stored gels in the shallow part of my vest pockets, and they went flying at ~2.6mi mark! I stepped onto the unpaved edge to retrieve them, and proceeded to spraining my left ankle!</p>
-<p>Running on it didn’t feel too bad and I thought I had cheated disaster. It started to rear its ugly head around the famous mile 20. Well, this is what it is – at least I managed to have a strong-ish finish in the last 2+mi!</p>
-<p>Not the race I originally imagined, but sometimes sh*t happens (okay, most of the times). My next marathon is ~24 weeks out –- a lot of training to do, but I have the time! Onward!</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-marathon-activity-7444201961870077952-Fl0o">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260329-redmond-city-marathon/</guid>
-  <pubDate>Sun, 29 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260329-redmond-city-marathon/01.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
