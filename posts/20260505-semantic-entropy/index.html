@@ -225,8 +225,8 @@ gtag('config', 'G-DSR8394H99', { 'anonymize_ip': true});
 <meta name="apple-mobile-web-app-title" content="synesis">
 <!-- Static loader stub. `_scripts/tag-counts.py` only emits
      `/tag-counts.json`; this file is committed to the repo and never
-     rewritten by the script (see `docs/architecture-build.md` §"Pre-render
-     scripts" + `docs/plan-incremental-render.md` Phase 0 for the rationale —
+     rewritten by the script (see `docs/architecture/architecture-build.md` §"Pre-render
+     scripts" + `docs/plans/20260507-plan-incremental-render.md` Phase 0 for the rationale —
      the move from inline JSON to async fetch is what makes post HTML <head>
      byte-stable across post-set changes, the precondition for incremental
      render). EXPORTS `window.__tagCounts` (async, populated when
@@ -579,7 +579,7 @@ window.__postIndexReady = fetch('/post-index.json?v=3468093eb9')
      depending on header inspection. Sitewide because the tags are
      static and cost nothing. The Atom feed's `rel="alternate"` is
      emitted automatically by Quarto's listing.feed — not duplicated
-     here. See docs/architecture-agents.md §Link response header. -->
+     here. See docs/architecture/architecture-agents.md §Link response header. -->
 <link rel="api-catalog" href="../../.well-known/api-catalog">
 <link rel="sitemap" type="application/xml" href="../../sitemap.xml">
 <link rel="https://llmstxt.org/" type="text/plain" href="../../llms.txt">
@@ -905,7 +905,7 @@ window.Quarto = {
 <section id="my-notes" class="level2">
 <h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
 <ul>
-<li><p><strong>Entailment clustering is the critical step, and the paper does stress-test it.</strong> The meaning-cluster assignment uses a natural-language-inference (NLI) model (DeBERTa-large-MNLI <a href="#ref-6">[6]</a>, or the generator LLM itself in an LLM-as-judge variant). The paper’s ablations show results are stable across NLI backbones and stable when generator and judge share a model, which addresses the obvious circularity worry. The remaining open question is scope-specific: on legal, medical, or evaluative judgments, frontier LLMs disagree about meaning among themselves, so entailment clustering cannot be presumed to converge to ground-truth equivalence. <a href="../../posts/20260505-conformal-factuality/">Conformal factuality</a> relies on a related claim-decomposition premise and hits the same boundary condition.</p></li>
+<li><p><strong>Entailment clustering is the critical step, and the paper does stress-test it.</strong> The meaning-cluster assignment uses a natural-language-inference (NLI) model (DeBERTa-large-MNLI <a href="#ref-6">[6]</a>, or the generator LLM itself in an LLM-as-judge variant). The paper’s ablations show results are stable across NLI backbones and stable when generator and judge share a model, which addresses the obvious circularity worry. The remaining open question is scope-specific: on legal, medical, or evaluative judgments, frontier LLMs disagree about meaning among themselves, so entailment clustering cannot be presumed to converge to ground-truth equivalence. <a href="../../posts/20260505-conformal-factuality/">Conformal factuality</a> <a href="#ref-3">[3]</a> relies on a related claim-decomposition premise and hits the same boundary condition.</p></li>
 <li><p><strong>The OOD-generalization result carries the paper.</strong> Hallucination-detection methods that depend on in-distribution examples (P(True) <a href="#ref-2">[2]</a>’s few-shot priors, and supervised embedding regression) degrade sharply when the test task differs from the calibration task. Semantic entropy needs no calibration set and transfers across the six datasets without loss, which matters because real-world deployment distributions are never exactly the ones used to train a detector. This is a cleaner version of the argument <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.</a> made for self-evaluation, without the extra cost of a second forward pass per sample.</p></li>
 <li><p><strong>Composability with fact-verification pipelines is the natural next step.</strong> Semantic entropy flags <em>which</em> generations to distrust; benchmarks like AVeriTeC <a href="#ref-7">[7]</a> and HoVer <a href="#ref-8">[8]</a> tell you <em>why</em> (what evidence does or doesn’t support the claim), and tools like <a href="../../posts/20231102-fleek-fact-verification/">FLEEK</a> retrieve evidence from knowledge graphs and the web to make that verdict concrete. A pipeline that routes high-semantic-entropy generations into explicit claim-verification against retrieved evidence would give a user both the uncertainty flag and the remediation path. The paper notes this direction in the discussion but doesn’t test it.</p></li>
 <li><p><strong>Part of the “sample <span class="math inline">\(N\)</span>, then aggregate” family, with a structural limit they all share.</strong> Semantic entropy shares the same inference backbone as self-consistency <a href="#ref-9">[9]</a>, <a href="../../posts/20260505-conformal-language-modeling/">CLM</a>, and <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a>: <span class="math inline">\(N\)</span> forward passes per query at temperature &gt; 0. What differs is what each method does with the sample pool.</p>
@@ -5932,7 +5932,7 @@ window.Quarto = {
 // Mastodon needs special handling because the network is federated and
 // there is no universal share URL: first click prompts for the reader's
 // instance and saves it to localStorage['mastodon-share-instance'];
-// subsequent clicks skip the prompt. See docs/architecture-social.md for
+// subsequent clicks skip the prompt. See docs/architecture/architecture-social.md for
 // the design rationale.
 (function () {
   // Posts only (not drafts). Drafts aren't published, so a share intent

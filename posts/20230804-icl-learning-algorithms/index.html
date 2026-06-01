@@ -225,8 +225,8 @@ gtag('config', 'G-DSR8394H99', { 'anonymize_ip': true});
 <meta name="apple-mobile-web-app-title" content="synesis">
 <!-- Static loader stub. `_scripts/tag-counts.py` only emits
      `/tag-counts.json`; this file is committed to the repo and never
-     rewritten by the script (see `docs/architecture-build.md` §"Pre-render
-     scripts" + `docs/plan-incremental-render.md` Phase 0 for the rationale —
+     rewritten by the script (see `docs/architecture/architecture-build.md` §"Pre-render
+     scripts" + `docs/plans/20260507-plan-incremental-render.md` Phase 0 for the rationale —
      the move from inline JSON to async fetch is what makes post HTML <head>
      byte-stable across post-set changes, the precondition for incremental
      render). EXPORTS `window.__tagCounts` (async, populated when
@@ -579,7 +579,7 @@ window.__postIndexReady = fetch('/post-index.json?v=3468093eb9')
      depending on header inspection. Sitewide because the tags are
      static and cost nothing. The Atom feed's `rel="alternate"` is
      emitted automatically by Quarto's listing.feed — not duplicated
-     here. See docs/architecture-agents.md §Link response header. -->
+     here. See docs/architecture/architecture-agents.md §Link response header. -->
 <link rel="api-catalog" href="../../.well-known/api-catalog">
 <link rel="sitemap" type="application/xml" href="../../sitemap.xml">
 <link rel="https://llmstxt.org/" type="text/plain" href="../../llms.txt">
@@ -853,7 +853,7 @@ window.__postIndexReady = fetch('/post-index.json?v=3468093eb9')
 </div>
 <p>On the topic of in-context learning (ICL), the ability of Large Language Models (LLMs) to learn a new task from mere inference-time demonstrations without the need for costly retraining, I previously discussed a paper showing that the demonstrations can be viewed as secretly performing gradient descent <a href="#ref-1">[1]</a> (see post <a href="#ref-2">[2]</a>). However, another paper published on ArXiv barely a month before (and later in ICLR2023) provides an even more thorough explanation on why ICL works <a href="#ref-3">[3]</a>.</p>
 <p>The authors in <a href="#ref-3">[3]</a> first demonstrate, through constructive proofs, that transformers can solve linear regression problems by implementing either a single step of gradient descent (screenshot 1) or the closed-form solution (screenshot 2). They then compare the learning behaviors of ICL to those of various standard learning algorithms using two metrics — SPD (Squared Prediction Difference, screenshot 3) and ILWD (Implicit Linear Weight Difference; screenshot 4) — and conclude that ICL closely matches both predictions and weights to the ordinary least squares learner (screenshot 5). Even more interestingly, they show that transformers exhibit a “phase change” in their learning behaviors with varying model sizes, transitioning from gradient descent to ridge regression to ordinary least squares as model depth and hidden size increase (screenshot 6).</p>
-<p>How do we correlate these findings with the observations that ICL implicitly engages in two tasks: Task Recognition (TR) and Task Learning (TL), where TR recognizes tasks from demonstrations and doesn’t improve as model size and number of demonstrations scale up, and TL learns new input-output mappings and does improve with increasing model size and number of demonstrations [4, discussed in 5]? And can we modify model architecture or the pre-training objectives to further enhance ICL?</p>
+<p>How do we correlate these findings with the observations that ICL implicitly engages in two tasks: Task Recognition (TR) and Task Learning (TL), where TR recognizes tasks from demonstrations and doesn’t improve as model size and number of demonstrations scale up, and TL learns new input-output mappings and does improve with increasing model size and number of demonstrations <a href="#ref-4">[4]</a>, discussed in <a href="#ref-5">[5]</a>? And can we modify model architecture or the pre-training objectives to further enhance ICL?</p>
 <hr>
 <p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llms-iclr2023-mastodon-activity-7093281970792632320-XE87">LinkedIn</a>.</em></p>
 <section id="references" class="level2">
@@ -5864,7 +5864,7 @@ window.__postIndexReady = fetch('/post-index.json?v=3468093eb9')
 // Mastodon needs special handling because the network is federated and
 // there is no universal share URL: first click prompts for the reader's
 // instance and saves it to localStorage['mastodon-share-instance'];
-// subsequent clicks skip the prompt. See docs/architecture-social.md for
+// subsequent clicks skip the prompt. See docs/architecture/architecture-social.md for
 // the design rationale.
 (function () {
   // Posts only (not drafts). Drafts aren't published, so a share intent
