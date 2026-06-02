@@ -1684,6 +1684,30 @@ window.__postIndexReady = fetch('/post-index.json?v=cd2fd5d67a')
     return actualSrc === expected || actualSrc.endsWith('/' + expected);
   }
 
+  // Lock the lightbox <img> to the same final dimensions for both the
+  // display copy and the hi-res copy. Without this, on a wide monitor
+  // the 1600 px display copy paints at its natural size (smaller than
+  // 95vw) while the hi-res copy hits the cap and paints scaled-down to
+  // ~95vw — a visible size jump on the swap. Read the aspect ratio from
+  // the page's inline <img> (always loaded by click time, same source
+  // image so identical ratio) and pick the largest box that fits
+  // 95vw × 90dvh. Keeping the <img> sized to its visible content (no
+  // transparent gutter) preserves click-outside-to-close behavior.
+  function applyFitSize(targetImg, sourceImg) {
+    if (!sourceImg.naturalWidth || !sourceImg.naturalHeight) {
+      targetImg.style.width = '';
+      targetImg.style.height = '';
+      return;
+    }
+    var ratio = sourceImg.naturalWidth / sourceImg.naturalHeight;
+    var maxW = window.innerWidth * 0.95;
+    var maxH = window.innerHeight * 0.90;
+    var w = maxW, h = maxW / ratio;
+    if (h > maxH) { h = maxH; w = maxH * ratio; }
+    targetImg.style.width = w + 'px';
+    targetImg.style.height = h + 'px';
+  }
+
   function scheduleHiResSwap(img, displaySrc, fullSrc, upgrading) {
     // Defer the assignment while the film-strip is mid-animation; even
     // though the decode is already done (via .decode() cache hit or
@@ -1755,6 +1779,10 @@ window.__postIndexReady = fetch('/post-index.json?v=cd2fd5d67a')
     var upgrading = s.querySelector('.lightbox-upgrading');
     var displaySrc = images[imgIdx].getAttribute('src');
     var fullSrc = images[imgIdx].dataset.lightboxSrc;
+
+    // Lock dimensions and remember the source for resize recompute.
+    img._sourceImg = images[imgIdx];
+    applyFitSize(img, images[imgIdx]);
 
     // Caption always refreshes — cheap, and keeps a11y / link text in
     // sync when the same slot is reused with the same image (early
@@ -1978,6 +2006,18 @@ window.__postIndexReady = fetch('/post-index.json?v=cd2fd5d67a')
     if (!document.fullscreenElement && !overlay.hidden) {
       close();
     }
+  });
+
+  // Recompute size-locked dimensions when the viewport changes (window
+  // resize, orientation, iOS Safari chrome show/hide). Without this, the
+  // inline px width/height set by applyFitSize go stale and the image
+  // mis-fits the new viewport.
+  window.addEventListener('resize', function () {
+    if (overlay.hidden) return;
+    slides.forEach(function (s) {
+      var img = s.querySelector('.lightbox-img');
+      if (img._sourceImg) applyFitSize(img, img._sourceImg);
+    });
   });
 
   document.addEventListener('keydown', function (e) {
