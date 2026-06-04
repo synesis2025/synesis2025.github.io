@@ -1,0 +1,70 @@
+---
+title: "Transduction with Confidence and Credibility"
+description: "The 1999 paper that seeded conformal prediction: a transductive support-vector classifier that attaches a p-value-based confidence and credibility to every prediction, scoring how strange a labeled test point looks against the training set."
+author: synesis
+date: "2026-06-03"
+image: cover.jpg
+---
+
+![Three test digits both a standard SVM and the transductive algorithm misclassified, all true class '8'. The predicted label carries 95-99% confidence, but credibility never clears 5%. The second label is firmly rejected, yet even the chosen label is a strange point against the training set. Table 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *Transduction with Confidence and Credibility* [[1]](#ref-1) (IJCAI 1999), [Craig Saunders](https://dblp.org/pid/66/4053), [Alex Gammerman](https://scholar.google.com/citations?user=uoWoR4gAAAAJ), and [Vladimir Vovk](http://www.vovk.net/) at Royal Holloway, University of London build a transductive classifier on top of a Support Vector Machine (SVM) that, for each new example, returns not just a label but two numbers describing how much to trust it. The numbers come from p-values, and the construction is the direct ancestor of [conformal prediction](/posts/20260505-conformal-prediction-primer/).
+
+The paper rests on two quantities, and the rest of it is about how to compute them. Each candidate label $Y$ gets a *p-value* $p(Y) \in [0, 1]$ measuring how strange the test point looks against the training set under the hypothesis that its label is $Y$. The prediction is the label with the largest p-value, $\hat{y} = \arg\max_Y p(Y)$:
+
+- **Confidence** $= 1 - p_{(2)}$, where $p_{(2)}$ is the second-largest p-value across the candidate labels. High confidence means the runner-up label is firmly rejected, so the prediction is unlikely to be wrong at the corresponding error level.
+- **Credibility** $= \max_Y p(Y) = p(\hat{y})$, how well the *best* available label fits the training set at all. Low credibility flags an input unlike anything in the training set: the test point is strange under every hypothesis, regardless of how confident the prediction looks.
+
+The split matters because the two can disagree. A prediction can be 99% confident and 1% credible: every alternative label is rejected, yet the winning label is also a poor fit. The paper's Table 1 shows three such cases: handwritten digits with high-confidence wrong answers that credibility correctly flags as untrustworthy.
+
+## The abstract
+
+> In this paper we follow the same general ideology as in [Gammerman et al., 1998], and describe *a new transductive learning algorithm using Support Vector Machines*. The algorithm presented provides *confidence values for its predicted classifications of new examples*. We also obtain *a measure of "credibility" which serves as an indicator of the reliability of the data* upon which we make our prediction. Experiments compare the new algorithm to a standard Support Vector Machine and other transductive methods which use Support Vector Machines, such as Vapnik's margin transduction. Empirical results show that the new algorithm not only produces confidence and credibility measures, but is *comparable to, and sometimes exceeds the performance of the other algorithms*.
+
+## Method
+
+Induction learns a general rule from the training set and then applies it to any future point. Transduction skips the general rule and reasons straight from the training examples to the specific test point in front of it. The paper's recipe is to fold the test point into the training set under a tentative label, fit an SVM to the combined data, and ask how unusual the test point looks once it is in there.
+
+The measure of "unusual" is the **strangeness** of an example, and it reuses a quantity the SVM already produces. After fitting, every example $i$ in the training set (now including the test point) carries a Lagrange multiplier $\alpha_i \ge 0$. An $\alpha_i$ near zero means the example is on the correct side of the margin and contributes nothing to the boundary. A large $\alpha_i$ means the example is hard to fit: it lands on or inside the margin and influences the boundary. So a large $\alpha$ marks a strange, poorly supported point, and a small $\alpha$ marks an ordinary one.
+
+Strangeness on its own is just a number on an arbitrary scale. To turn it into something comparable across examples, the paper ranks the test point's multiplier against all the others and reads off a p-value. If the training set has $\ell$ examples and the test point's multiplier $\alpha_{\text{new}}$ comes out as the $n$-th largest, the p-value is
+
+$$p = \frac{\#\{i : \alpha_i \ge \alpha_{\text{new}}\}}{\ell + 1}.$$
+
+The justification is **[exchangeability](https://en.wikipedia.org/wiki/Exchangeable_random_variables)**: if the test point really were drawn from the same distribution as the training data, then all $\ell + 1$ multipliers are exchangeable, every ordering is equally likely, and the chance that the test point's multiplier is the single largest is at most $1/(\ell+1)$. A small p-value therefore means the tentative label makes the test point look like an outlier, which is strong evidence the label is wrong. The guarantee rests on exchangeability, a weaker assumption than the independent-and-identically-distributed condition usually invoked.
+
+For a binary problem the SVM is fit twice, once per candidate label, giving two p-values. The algorithm predicts the label with the higher p-value (the one under which the test point looks least strange), and then reports confidence and credibility exactly as defined above. For $k$ test points at once the same idea applies, but every joint labeling has to be tried, so the SVM is refit $2^k$ times, the cost the paper itself calls impractical past $k \approx 7$.
+
+Credibility is the part that earns its keep as a reject mechanism. If a prediction's credibility is low, every label left the test point looking strange, so the safe move is to abstain. The paper notes that the more costly a wrong answer is, the higher the credibility threshold should be set.
+
+## Results
+
+The experiments use the US Postal Service database of handwritten digits with a degree-3 polynomial kernel, comparing the new p-value transduction against Vapnik's margin transduction and a plain SVM. The findings:
+
+- **Credibility flags the errors it should** (Table 1). On a task separating '8' from the other digits, the transductive algorithm and a standard SVM misclassified the same three test examples. For all three, credibility came in at 5% or below (4.6%, 4.5%, 0.8%), even though confidence was 95-99%. The low credibility correctly says the data did not support those predictions, while confidence alone would have looked reassuring.
+
+- **Adding the two measures costs nothing in accuracy** (Table 2). On a 2-versus-7 task over 20,000 runs at training sizes $n = 20, 40, 100, 200$, the p-value transduction's error counts track the margin transduction and the standard SVM closely (for example, 262 errors at $n=100$ versus 272 for the SVM, and 186 at $n=200$ versus 191). At the smallest training size it is somewhat worse (640 versus ~522), but the gap closes as $n$ grows.
+
+![Incorrect classifications over 20,000 runs on a 2-versus-7 digit task, for four training-set sizes. The p-value transduction (top row) stays close to Vapnik's margin transduction and a standard SVM despite also returning confidence and credibility. Table 2 from the paper [[1]](#ref-1).](table2.png){fig-align="center"}
+
+## What came after
+
+The scheme is transductive: to score one test point it refits the SVM under every candidate label, and $2^k$ times for $k$ joint test points. The strangeness signal is tied to the SVM as well. The work that followed loosened both.
+
+- **The general form.** Vovk, Gammerman, and Shafer's *Algorithmic Learning in a Random World* [[2]](#ref-2) consolidated the theory so that any nonconformity score, not just an SVM multiplier, drives the calibration.
+- **[Split conformal prediction](/posts/20260505-conformal-prediction-primer/).** Papadopoulos et al. [[3]](#ref-3) replaced the per-label retraining with a single held-out calibration set, cheap enough to wrap around any pre-trained model. This is the form most practitioners use today.
+- **The deep-learning revival.** Angelopoulos and Bates' tutorial [[4]](#ref-4) repackaged conformal prediction for modern neural networks and drove the recent wave of distribution-free uncertainty work, including the [conformal factuality](/posts/20260505-conformal-factuality/) and [conformal language modeling](/posts/20260505-conformal-language-modeling/) methods built for language models.
+
+## My Notes
+
+- **The ICML paper embeds this construction in theory.** This paper presents the SVM-rank-of-multipliers method as a standalone practical scheme: take the ranks of SVM Lagrange multipliers, read p-values off them, report confidence and credibility. The companion ICML 1999 paper [[5]](#ref-5) by the same three authors keeps the construction unchanged but adds a broader theoretical layer: it casts the multipliers as a computable approximation to non-computable measures of algorithmic randomness, and adds a set of impossibility results that bound what conformal-style validity can deliver under iid alone.
+- **Modern conformal prediction dropped the abstention signal.** Today's work reports a prediction set at a fixed coverage level, not the per-prediction credibility number that flagged strange inputs. Selective-prediction research keeps rediscovering it as a test on conformal p-values.
+- **The reject rule lacks a threshold procedure.** Credibility gives a clean basis for abstention, refusing to predict when no label fits, but the paper sets the cutoff only by appeal to how costly a wrong answer would be, with no procedure for choosing it. Split conformal later inverted the problem: fix the error level $\alpha$ first and let the calibration set determine the prediction, rather than fixing a strangeness threshold and seeing what error rate follows.
+
+## References
+
+1. <a id="ref-1"></a>Saunders, C., Gammerman, A., and Vovk, V. "Transduction with Confidence and Credibility." *Proceedings of the Sixteenth International Joint Conference on Artificial Intelligence* (IJCAI 1999), pp. 722–726. <https://www.ijcai.org/Proceedings/99-2/Papers/010.pdf>
+2. <a id="ref-2"></a>Vovk, V., Gammerman, A., and Shafer, G. *Algorithmic Learning in a Random World.* New York: Springer, 2005.
+3. <a id="ref-3"></a>Papadopoulos, H., Proedrou, K., Vovk, V., and Gammerman, A. "Inductive Confidence Machines for Regression." *European Conference on Machine Learning* (ECML 2002), pp. 345–356.
+4. <a id="ref-4"></a>Angelopoulos, A. N. and Bates, S. "A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification." arXiv:2107.07511, 2021. <https://arxiv.org/abs/2107.07511>
+5. <a id="ref-5"></a>Vovk, V., Gammerman, A., and Saunders, C. "Machine-Learning Applications of Algorithmic Randomness." *Proceedings of the Sixteenth International Conference on Machine Learning* (ICML 1999), pp. 444–453.
