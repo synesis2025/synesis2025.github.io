@@ -21,7 +21,100 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Wed, 03 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 05 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260529-autocodebench/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260529-autocodebench/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-autocodebench/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>AutoCodeBench leaderboard: average Pass@1 of 30+ open-source and proprietary LLMs, in reasoning and non-reasoning modes. No model clears 53. Figure 7 from the paper [1]. Image from <a href="https://arxiv.org/abs/2508.09101">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>In <em>AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators</em> [1], Chou et al.&nbsp;(Tencent) introduce AutoCodeGen, an automated pipeline that turns existing code snippets into a 3,920-problem benchmark spanning 20 programming languages — and find that even the strongest LLMs top out below 53% Pass@1.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) have demonstrated remarkable capabilities across various domains, with code generation emerging as a key area of focus. While numerous benchmarks have been proposed to evaluate their code generation abilities, these benchmarks face several critical limitations. First, they often rely on manual annotations, which are time-consuming and difficult to scale across different programming languages and problem complexities. Second, most existing benchmarks focus primarily on Python, while the few multilingual benchmarks suffer from limited difficulty and uneven language distribution. To address these challenges, we propose AutoCodeGen, <em>an automated method for generating high-difficulty multilingual code generation datasets without manual annotations</em>. AutoCodeGen ensures the correctness and completeness of test cases by generating test inputs with LLMs and obtaining test outputs through a multilingual sandbox, while achieving high data quality through <em>reverse-order problem generation</em> and multiple filtering steps. Using this novel method, we introduce AutoCodeBench, <em>a large-scale code generation benchmark comprising 3,920 problems evenly distributed across 20 programming languages</em>. It is specifically designed to evaluate LLMs on challenging, diverse, and practical multilingual tasks. We evaluate over 30 leading open-source and proprietary LLMs on AutoCodeBench and its simplified version AutoCodeBench-Lite. The results show that <em>even the most advanced LLMs struggle with the complexity, diversity, and multilingual nature of these tasks</em>. Besides, we introduce AutoCodeBench-Complete, specifically designed for base models to assess their few-shot code generation capabilities. We hope the AutoCodeBench series will serve as a valuable resource and inspire the community to focus on more challenging and practical multilingual code generation scenarios.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The core trick in AutoCodeGen is that it builds each problem <strong>backwards</strong>. Conventional benchmarks start from a hand-written problem statement and then attach a reference solution and tests; AutoCodeGen starts from working code and only writes the problem last, so every item ships with a verified solution and executable tests by construction. The pipeline runs in four stages over an LLM and a multilingual sandbox:</p>
+<ul>
+<li><strong>Solution and test inputs.</strong> Seeded with real multilingual code snippets, an LLM writes a code solution plus public and private test-input functions for it.</li>
+<li><strong>Ground-truth outputs.</strong> The solution and test inputs are concatenated and run in a multilingual sandbox; the captured outputs are assembled by the LLM into complete, executable test functions.</li>
+<li><strong>Reverse-order problem generation.</strong> Only now — given a working solution and its tests — does the LLM write the natural-language programming problem, which guarantees the problem is solvable and checkable.</li>
+<li><strong>Three-stage filtering.</strong> Multiple sampling drops problems that are too easy; an LLM-as-Critic discards low-quality items; and diversity-based tagging balances the distribution across task categories.</li>
+</ul>
+<p>The result is AutoCodeBench: 3,920 problems evenly spread over 20 languages (Python, C++, Java, JavaScript, Go, Shell, C#, Dart, Elixir, Julia, Kotlin, Perl, PHP, Racket, R, Ruby, Rust, Scala, Swift, TypeScript), with over 60% rated hard, averaging 498 characters and 9.6 test cases per problem, and spanning 14 practical task categories. Two derivatives accompany it: <strong>AutoCodeBench-Lite</strong>, roughly 1,500 of the hardest problems (those solved at least twice but by few models) selected to amplify model differences, and <strong>AutoCodeBench-Complete</strong>, a few-shot completion variant aimed at base models.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-autocodebench/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>AutoCodeGen builds each problem from working code: an LLM drafts a solution and test-input functions (①), the sandbox produces ground-truth outputs that are assembled into test functions (②–④), the problem statement is written last (⑤), and three filters remove easy, low-quality, and redundant items (⑥–⑧). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>One design choice runs through every stage: each LLM role — solution writer, test assembler, problem author, and quality critic — is filled by a DeepSeek-series model. Because models used as generators or judges tend to recognize and reward outputs in their own style [2], mixing families into the construction would hand a quiet home-field advantage to whichever families helped build the benchmark. Confining the loop to one family keeps that bias from tilting the comparison toward any of the other 30-plus models under evaluation — though, as the authors acknowledge, it cannot rule out a residual tilt toward what DeepSeek itself finds natural to write and to accept.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The authors evaluate more than 30 models — open-source checkpoints from 1.5B to 1T parameters plus leading proprietary systems (OpenAI o3/o4-mini/GPT-4.1, Claude Opus 4 and Sonnet 4, Gemini 2.5 Pro/Flash, DeepSeek-R1/V3, the Qwen and Qwen-Coder series, GLM-4.5, Kimi-K2, and others) — using Pass@1 as the metric. Beyond the aggregate score, they split languages into four popular (Python, C++, Java, C#) and four low-resource (Racket, Shell, Elixir, TS) sets by <a href="https://www.tiobe.com/tiobe-index/">TIOBE</a> rank, isolate a 1,622-problem multi-logic subset (problems requiring several coordinated functions or classes, identified with DeepSeek-V3), and run a six-language manual audit with six professional annotators.</p>
+<p>The headline is a low ceiling and a wide field:</p>
+<ul>
+<li><strong>No model clears 53 average Pass@1 on AutoCodeBench.</strong> Claude Opus 4 ranks first in both reasoning and non-reasoning modes; the benchmark is hard enough that the whole field clusters below the bar.</li>
+<li><strong>The combined upper bound reaches 74.8</strong> — far above any single model — so models are complementary rather than uniformly strong, and no single system dominates across languages.</li>
+<li><strong>AutoCodeBench-Lite widens the gaps</strong>, yet the best model still reaches only 64.5 Pass@1 on it.</li>
+<li><strong>Popular languages barely separate models</strong> (50.4–53.8), while <strong>low-resource languages spread them wide</strong> (45.3–62.0), with Claude Opus 4 leading by a clear margin — evidence that low-resource languages get short-changed in most models’ training.</li>
+<li><strong>Niche languages top the per-language ranking.</strong> On Table 4’s per-language upper bound [1] — the share of each language’s problems solved by at least one of the 30+ models — Elixir (97.5), Kotlin (89.5), C# (88.4), and Racket (88.3) lead, while the mainstream languages trail: Python 63.3, JavaScript 59.2, TypeScript 61.3, Go 69.1, PHP 52.8 (Java at 78.7 and C++ at 74.7 fall in between). <em>The paper attributes the inversion to its difficulty filter</em>: the easy-problem remover (DeepSeek-Coder-V2-Lite) is strongest on popular languages, so it stripped proportionally more of their easy problems and left the survivors harder. These per-language numbers feature in the debate over whether to favor low-variance “boring” languages for coding agents, covered in <a href="../../posts/20260529-use-boring-languages-with-llms/">Use Boring Languages with LLMs</a>.</li>
+<li><strong>Multi-logic problems hurt everyone.</strong> Every model drops on the multi-logic subset; Claude Opus 4 declines least, while several frontier models fall hardest.</li>
+<li><strong>The benchmark itself audits clean:</strong> across six languages, annotators judged 87.6% of items valid, well above the models’ own 66.9 upper bound and 44.6 Claude-Opus-4 score on the same slice.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-autocodebench/table4.webp" class="img-fluid figure-img" data-lightbox-src="table4-full.png"></p>
+<figcaption>Per-language Pass@1 (%) for every model in reasoning and non-reasoning modes. The italicized <em>Current Upper Bound</em> row is the union of problems solved by at least one model — the per-language ceiling discussed above, where Elixir, Kotlin, and C# top the mainstream languages. Table 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-autocodebench/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>Every model loses ground on the 1,622 multi-logic problems relative to the full set; the hatched bars are the drop. Claude Opus 4 (Thinking) declines least (−3.4), while Gemini 2.5 Pro and the DeepSeek series fall further. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Synthesis over translation</strong> — multilingual code benchmarks usually buy breadth one of two ways, and AutoCodeGen takes neither. MultiPL-E [3] machine-translates Python problems like <a href="https://github.com/openai/human-eval">HumanEval</a> into other languages, which inherits Python-shaped structure and can yield unidiomatic targets; McEval [4] hand-annotates 40 languages natively, which is faithful but bounded by what human annotators can label. Generating problems directly from native target-language code is the third path: it keeps per-language idiom while shedding the annotation cost, which is what lets the benchmark span 20 languages at 60%+ hard difficulty without a large labeling team.</li>
+<li><strong>Contamination, attacked from the other side</strong> — the central threat to any code benchmark is leakage of test problems into training data. LiveCodeBench [5] fights this temporally, harvesting fresh contest problems published after a model’s training cutoff. AutoCodeGen fights it generatively, synthesizing problems that never existed publicly. The trade is real but unresolved: a synthesized problem has no public origin to leak, yet it is still drawn from the distribution of code the generator was trained on, so distributional contamination remains an open question for synthetic benchmarks rather than a solved one.</li>
+<li><strong>Multi-function tasks below repo scale</strong> — single-function benchmarks (HumanEval-style) and repo-level agentic ones like SWE-bench [6] and <a href="../../posts/20260526-programbench-rebuild-from-scratch/">ProgramBench</a> bracket a middle ground: tasks that need several coordinated functions but no repository to navigate. The 1,622-problem multi-logic subset targets that middle ground, and the across-the-board drop on it [1] is a concrete sign that single-function fluency overstates how ready these models are for the multi-component work real coding agents actually do.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://scholar.google.com/scholar?q=Jason+Chou+AutoCodeBench">Chou</a>, Jason, Ao Liu, Yuchi Deng, Zhiying Zeng, Tao Zhang, Haotian Zhu, Jianwei Cai, Yue Mao, Chenchen Zhang, Lingyun Tan, Ziyan Xu, Bohui Zhai, Hengyi Liu, Speed Zhu, <a href="https://scholar.google.com/scholar?q=Wiggin+Zhou+Tencent">Wiggin Zhou</a>, and <a href="https://scholar.google.com/scholar?q=Fengzong+Lian+Tencent">Fengzong Lian</a> (Hunyuan Team, Tencent). “AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators.” <em>arXiv preprint</em> (arXiv:2508.09101), August 12, 2025. <a href="https://arxiv.org/abs/2508.09101" class="uri">https://arxiv.org/abs/2508.09101</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://scholar.google.com/scholar?q=Arjun+Panickssery">Panickssery, Arjun</a>, <a href="https://scholar.google.com/scholar?q=Samuel+R.+Bowman">Samuel R. Bowman</a>, and <a href="https://scholar.google.com/scholar?q=Shi+Feng+George+Washington">Shi Feng</a>. “LLM Evaluators Recognize and Favor Their Own Generations.” <em>NeurIPS 2024</em> (arXiv:2404.13076), April 19, 2024. <a href="https://arxiv.org/abs/2404.13076" class="uri">https://arxiv.org/abs/2404.13076</a></p></li>
+<li><p><a id="ref-3"></a><a href="https://federico.codes/">Cassano, Federico</a>, John Gouwar, Daniel Nguyen, Sydney Nguyen, Luna Phipps-Costin, Donald Pinckney, Ming-Ho Yee, Yangtian Zi, Carolyn Jane Anderson, Molly Q. Feldman, <a href="https://www.khoury.northeastern.edu/home/arjunguha/">Arjun Guha</a>, Michael Greenberg, and Abhinav Jangda. “MultiPL-E: A Scalable and Extensible Approach to Benchmarking Neural Code Generation.” <em>IEEE TSE</em> (arXiv:2208.08227), August 17, 2022. <a href="https://arxiv.org/abs/2208.08227" class="uri">https://arxiv.org/abs/2208.08227</a></p></li>
+<li><p><a id="ref-4"></a><a href="https://scholar.google.com/scholar?q=Linzheng+Chai+McEval">Chai, Linzheng</a>, Shukai Liu, Jian Yang, Yuwei Yin, Ke Jin, Jiaheng Liu, Tao Sun, Ge Zhang, Changyu Ren, Hongcheng Guo, Zekun Wang, Boyang Wang, Xianjie Wu, Bing Wang, Tongliang Li, Liqun Yang, Sufeng Duan, and Zhoujun Li. “McEval: Massively Multilingual Code Evaluation.” <em>arXiv preprint</em> (arXiv:2406.07436), June 11, 2024. <a href="https://arxiv.org/abs/2406.07436" class="uri">https://arxiv.org/abs/2406.07436</a></p></li>
+<li><p><a id="ref-5"></a><a href="https://naman-ntc.github.io/">Jain, Naman</a>, King Han, <a href="https://minimario.github.io/">Alex Gu</a>, Wen-Ding Li, Fanjia Yan, Tianjun Zhang, Sida Wang, <a href="https://people.csail.mit.edu/asolar/">Armando Solar-Lezama</a>, <a href="https://people.eecs.berkeley.edu/~ksen/">Koushik Sen</a>, and <a href="https://people.eecs.berkeley.edu/~istoica/">Ion Stoica</a>. “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>ICLR 2025</em> (arXiv:2403.07974), March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></p></li>
+<li><p><a id="ref-6"></a><a href="https://carlosejimenez.com/">Jimenez, Carlos E.</a>, <a href="https://john-b-yang.github.io/">John Yang</a>, Alexander Wettig, Shunyu Yao, Kexin Pei, <a href="https://ofir.io/">Ofir Press</a>, and <a href="https://karthikncode.github.io/">Karthik Narasimhan</a>. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>ICLR 2024</em> (arXiv:2310.06770), October 10, 2023. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></p></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260529-autocodebench/</guid>
+  <pubDate>Fri, 29 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260529-autocodebench/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Disclosure Day Final Trailer Features Spielberg Himself</title>
   <dc:creator>synesis </dc:creator>
@@ -2385,33 +2478,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/</guid>
   <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>My #100 Parkrun, Redmond Central Connector Trail’s First Anniversary</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>So I did it! I ran my 100th parkrun today, and it happened to be the one-year anniversary of the Redmond Central Connector Trail Parkrun!</p>
-<p>Still far away from my prime days of Parkrun racing, but at least I’m faster than last week, and I finally made it back to sub-8’ this time!</p>
-<p><img src="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116628280333438528">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/</guid>
-  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260523-my-100-parkrun-redmond-anniversary/image-3.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
