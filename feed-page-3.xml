@@ -21,7 +21,124 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 05 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 06 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>TRIAGE: Evaluating Prospective Metacognitive Control in LLMs Under Resource Constraints</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260523-triage-metacognitive-control/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Triage efficiency across models and benchmarks at moderate budget (<img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>). Figure 1 from the paper [1]. Image from <a href="https://arxiv.org/abs/2605.13414">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>In <em>TRIAGE: Evaluating Prospective Metacognitive Control in LLMs under Resource Constraints</em> [1], <a href="https://scholar.google.com/citations?user=Fd1-G4YAAAAJ">Zabir Al Nazi</a> (UC Riverside) and <a href="https://scholar.google.com/citations?user=j2ElsNIAAAAJ">Shubhashis Roy Dipta</a> (UMBC) introduce a benchmark that scores 20 frontier and open-source models on whether they can plan <em>token-budget allocation</em> across a queue of problems before any of them is attempted, and find that most cannot.</p>
+<blockquote class="blockquote">
+<p>Deploying language models as autonomous agents requires more than per-task accuracy: when an agent faces a queue of problems under a finite token budget, it must decide which to attempt, in what order, and how much compute to commit to each, all before any execution feedback is available. This is the prospective form of metacognitive control studied for decades in human cognition, yet whether language models possess it remains untested. We introduce <em>TRIAGE</em>, an evaluation framework in which a model receives a task pool and a token budget calibrated to its own baseline cost, and <em>commits to a single ordered plan that jointly encodes selection, sequencing, and per-problem allocation</em>. Plans are scored against an oracle with full knowledge of the model’s solvability and cost on each problem, yielding a triage efficiency ratio on a common scale. We evaluate frontier and open-source models, with and without reasoning enabled, across competition mathematics, graduate-level science, code generation, and expert multidisciplinary knowledge, and find that <em>current language models exhibit substantial gaps in prospective metacognitive control</em>, revealing a previously unmeasured capability dimension with direct implications for resource-efficient agent deployment.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>TRIAGE operationalizes the <a href="https://en.wikipedia.org/wiki/Metamemory#Nelson_and_Narens'_metamemory_framework">Nelson &amp; Narens (1990)</a> distinction between metacognitive monitoring (judging whether a problem is solvable) and metacognitive control (acting on those judgments to allocate effort), focusing on the prospective form: every decision is committed before any task is attempted. The harness has two stages.</p>
+<p>Intuitively, the setup is a competition-style budget allocation. The model sees a list of problems with point values and a shared token budget; without trying any of them, it must choose which to attempt, in what order, and how many tokens to spend on each. The plan is then executed and scored against an oracle that knew in advance which problems were solvable for <em>this</em> model and how expensive each would be. A model that’s good at planning skips the items it can’t solve and pours its budget into the ones it can; a model that’s bad at planning chases unsolvable problems and runs out of tokens.</p>
+<p>Scoring uses a triage efficiency ratio. Let <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> be the model’s plan and <img src="https://benjaminhan.net/feed-assets/7365b8651c9bc387.svg" alt="V(\pi)" class="feed-math-inline"/> the achieved value — the sum of point values <img src="https://benjaminhan.net/feed-assets/20ab901f1c796c36.svg" alt="v_i" class="feed-math-inline"/> over problems <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> actually solved within budget. The main protocol fixes <img src="https://benjaminhan.net/feed-assets/0118800d2c7d0f60.svg" alt="v_i = 1" class="feed-math-inline"/> for every problem — uniform by design, so the planner cannot read difficulty off the point values and must infer it from problem text alone. The ratio normalizes <img src="https://benjaminhan.net/feed-assets/7365b8651c9bc387.svg" alt="V(\pi)" class="feed-math-inline"/> against two references:</p>
+<p><img src="https://benjaminhan.net/feed-assets/ff9313cc24a25835.svg" alt="\eta = \frac{V(\pi) - V_{\text{random}}}{V_{\text{oracle}} - V_{\text{random}}}" class="feed-math-inline"/></p>
+<p>where <img src="https://benjaminhan.net/feed-assets/af31c6e476458381.svg" alt="V_{\text{oracle}}" class="feed-math-inline"/> is the best feasible plan with full knowledge of each problem’s solvability and cost, and <img src="https://benjaminhan.net/feed-assets/e089d81557e05599.svg" alt="V_{\text{random}}" class="feed-math-inline"/> is the expected value of a budget-feasible plan drawn uniformly. So <img src="https://benjaminhan.net/feed-assets/1be1120c657e14f0.svg" alt="\eta = 1" class="feed-math-inline"/> matches the oracle, <img src="https://benjaminhan.net/feed-assets/dd34cc072e8a22b9.svg" alt="\eta = 0" class="feed-math-inline"/> matches uninformed random selection, and <img src="https://benjaminhan.net/feed-assets/739fda5c1ba1295c.svg" alt="\eta &lt; 0" class="feed-math-inline"/> is worse than random.</p>
+<ul>
+<li><strong>Plan.</strong> The shared budget is <img src="https://benjaminhan.net/feed-assets/fc8b8c77176cc923.svg" alt="B = \alpha \cdot B_{\text{baseline}}" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/4317422e65c3c884.svg" alt="B_{\text{baseline}}" class="feed-math-inline"/> is the model’s own measured cost on a prior baseline run and <img src="https://benjaminhan.net/feed-assets/6393857280e718e9.svg" alt="\alpha \in \{0.25, 0.5, 0.75, 1.0\}" class="feed-math-inline"/> is the budget pressure — <img src="https://benjaminhan.net/feed-assets/dc7b57c17ce0e9b7.svg" alt="\alpha = 1.0" class="feed-math-inline"/> supplies the full baseline budget (every item fits, in principle); <img src="https://benjaminhan.net/feed-assets/562919ffe9ec1521.svg" alt="\alpha = 0.25" class="feed-math-inline"/> supplies a quarter of it, forcing the planner to skip most items.</li>
+<li><strong>Execute.</strong> The plan <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> is run in plan order under one of two regimes, yielding two scores:
+<ul>
+<li><em>Advisory</em> — each problem runs to its natural completion; the queue stops once the next item’s true cost would exceed the remaining <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>. Yields <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>.</li>
+<li><em>Enforced</em> — each problem is hard-capped at its declared <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> (over-budget attempts score zero, and <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> is still spent from <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>); the queue stops once the next item’s <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> would exceed the remaining <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>. Yields <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>.</li>
+</ul></li>
+</ul>
+<p>To diagnose the source of bad plans, the framework decomposes them along two axes:</p>
+<ul>
+<li><strong>Detection</strong> asks: did the planner correctly skip the unsolvables? <em>Higher is better.</em> Formally: <img src="https://benjaminhan.net/feed-assets/414a1282c07a05ce.svg" alt="D = |U \setminus S| / |U|" class="feed-math-inline"/>, the fraction of unsolvable problems correctly excluded from the plan, where <img src="https://benjaminhan.net/feed-assets/2f90ffabbf86aaab.svg" alt="S = \{i : a_i &gt; 0\}" class="feed-math-inline"/> is the planned set and <img src="https://benjaminhan.net/feed-assets/3676ddf98403b5ad.svg" alt="U" class="feed-math-inline"/> is the set of unsolvable items.</li>
+<li><strong>Waste</strong> asks: of the tokens it did spend, how many went to lost causes? <em>Lower is better.</em> Formally: <img src="https://benjaminhan.net/feed-assets/63424a6e033ef9f7.svg" alt="W = \sum_{i \in S \cap U} a_i / \sum_{i \in S} a_i" class="feed-math-inline"/>, the fraction of allocated tokens spent on unsolvable items.</li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The evaluation covers 20 model architectures: 4 standard LLMs and 16 reasoning-augmented LLMs, with each reasoning-augmented model run twice — once with extended reasoning enabled (marked <code>[ext]</code> in the heatmaps) and once without (<code>[std]</code>). Benchmarks: <a href="https://artofproblemsolving.com/wiki/index.php/AIME">AIME</a> 2024–2025, <a href="https://arxiv.org/abs/2311.12022">GPQA Diamond</a> [2], <a href="https://livecodebench.github.io/">LiveCodeBench</a> [3], and <a href="https://lastexam.ai/">Humanity’s Last Exam</a> (HLE) [4]. The cover figure at the top of the post (Figure 1 in the paper) summarizes the headline finding at <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>: solid bars are advisory <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>, hatched bars are enforced <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, and red dashed lines mark baseline accuracy. Three findings across budgets and benchmarks:</p>
+<ul>
+<li><strong>Most models plan worse than random.</strong> Both <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> are widely negative; only a handful of (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset) combinations reach positive <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> at all.</li>
+<li><strong>The advisory-vs-enforced gap is large.</strong> Models routinely declare per-problem budgets they then ignore — when allocations are merely advisory, planning skill (<img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>) is meaningfully higher than under enforcement (<img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>).</li>
+<li><strong>Reasoning-augmented modes often plan worse than standard.</strong> The <code>[ext]</code> rows in the heatmap below are systematically below the matching <code>[std]</code> rows, consistent with prior findings that reasoning training does not improve abstention behavior.</li>
+</ul>
+<p>The two heatmaps below show <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> across the full (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset) grid. The <img src="https://benjaminhan.net/feed-assets/dc7b57c17ce0e9b7.svg" alt="\alpha = 1.0" class="feed-math-inline"/> column should be read with caution: η loses resolution there because the oracle-random gap collapses (every item fits, so both oracle and random plans attempt nearly everything). The paper recommends its alternative <em>normalized regret</em> <img src="https://benjaminhan.net/feed-assets/4e7892edc9b101af.svg" alt="\tilde{R} = (V_{\text{oracle}} - V) / V_{\text{oracle}}" class="feed-math-inline"/> for that regime — bounded in <img src="https://benjaminhan.net/feed-assets/96fc4f656a64e575.svg" alt="[0, 1]" class="feed-math-inline"/> (<img src="https://benjaminhan.net/feed-assets/e404e936a6872228.svg" alt="\tilde{R} = 0" class="feed-math-inline"/> matches the oracle, <img src="https://benjaminhan.net/feed-assets/2060a3361b13d16f.svg" alt="\tilde{R} = 1" class="feed-math-inline"/> captures no value), so it stays stable when η doesn’t. Treat α=1.0 cells in the heatmaps as “metric saturated,” not “model planned well.”</p>
+<p>Figure 2 below is the <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> companion to the cover Figure 1 at the same <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/> anchor — solid bars are <img src="https://benjaminhan.net/feed-assets/6aed2e04a7e4b9f5.svg" alt="\tilde{R}_U" class="feed-math-inline"/> (advisory), hatched are <img src="https://benjaminhan.net/feed-assets/fb57592a36a60062.svg" alt="\tilde{R}_E" class="feed-math-inline"/> (enforced), red dashed lines mark baseline accuracy. The same configurations that lead in η lead in <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> (lower is better here); the bounded scale also lets you see how close models come to capturing zero value in the enforced regime, where many <img src="https://benjaminhan.net/feed-assets/fb57592a36a60062.svg" alt="\tilde{R}_E" class="feed-math-inline"/> values land near 1.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Normalized triage regret <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> across models and benchmarks at moderate budget (<img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Returning to η in heatmap form, Figure 5 shows the advisory regime (<img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>) across all four α values:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure5.webp" class="img-fluid figure-img" data-lightbox-src="figure5-full.png"></p>
+<figcaption>Triage skill in the advisory-budget regime, <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>, per (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset). Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 6 shows the same grid for the enforced regime, <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, where per-problem allocations are binding. The pattern is markedly worse: <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> is negative for the large majority of configurations at <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>, with most cells deep into anti-skill territory. Across all 30 configurations tested, only Gemini 2.5 Flash (standard) achieves positive <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> on every benchmark, and only it and Qwen 3.5 27B (standard) achieve usable enforced-regime performance on more than one.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure6.webp" class="img-fluid figure-img" data-lightbox-src="figure6-full.png"></p>
+<figcaption>Triage skill in the enforced-budget regime, <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, per (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset); color encoding identical to Figure 5. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>A focused detection experiment traces four models — Gemini 2.5 Flash (think), Qwen 2.5 32B, Qwen 3 32B (think), and GPT-OSS 20B (think) — through <img src="https://benjaminhan.net/feed-assets/09a33a403e620604.svg" alt="(D, W)" class="feed-math-inline"/> space on two benchmarks (GPQA-Abstain, MMLU-Math-Abstain) as the injection ratio <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/> — the fraction of the pool replaced by guaranteed-unsolvable problems drawn from <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> [7], with pool size held constant — varies from 0.25 to 1.0 (marker size grows with <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/>). Three findings:</p>
+<ul>
+<li><strong>Cluster split.</strong> Gemini 2.5 Flash and standard Qwen 2.5 32B stay near the high-<img src="https://benjaminhan.net/feed-assets/a247d4edb2cf86f8.svg" alt="D" class="feed-math-inline"/>, low-<img src="https://benjaminhan.net/feed-assets/25ad314822ebb606.svg" alt="W" class="feed-math-inline"/> corner; the two reasoning-trained models drift away from it.</li>
+<li><strong>Within-family probe.</strong> The Qwen pair is the cleanest test: at <img src="https://benjaminhan.net/feed-assets/5acec64972bb35ba.svg" alt="r = 0.25" class="feed-math-inline"/> the standard 32B detects most unsolvables (<img src="https://benjaminhan.net/feed-assets/5235c6118e6d5dd5.svg" alt="D = 0.67" class="feed-math-inline"/> on GPQA, <img src="https://benjaminhan.net/feed-assets/3f5f6965784330e3.svg" alt="D = 0.88" class="feed-math-inline"/> on MMLU-Math), while the reasoning-trained 32B at the same ratio detects far fewer (<img src="https://benjaminhan.net/feed-assets/b23f7376b819cd80.svg" alt="D = 0.08" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/5030049e6958eff9.svg" alt="D = 0.54" class="feed-math-inline"/>) — reproducing the AbstentionBench finding inside a single architecture family.</li>
+<li><strong>Mechanism gap.</strong> The paper documents the pattern but does not propose a mechanism, and explicitly hedges that the effect isn’t uniform across families (Gemini 2.5 Flash is also reasoning-augmented and retains detection across the range). The same shape — reasoning-trained models doing worse on a metacognitive task than non-reasoning siblings — also surfaces in the <a href="../../posts/20260522-compliance-trap/">Compliance Trap</a>’s “capability inversion” result (more-capable reasoning models suffer the worst degradation under compliance-forcing prompts), suggesting it isn’t an artifact of one benchmark family. A plausible mechanism appears in My Notes below.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Trajectories through <img src="https://benjaminhan.net/feed-assets/09a33a403e620604.svg" alt="(D, W)" class="feed-math-inline"/> space across four models and two benchmarks; marker size grows with <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/>, and the star marks the ideal corner. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>A separate budget-aware re-solve experiment probes the planning failure’s deeper layer: when the model is shown its own per-problem budget in the prompt and re-attempts the problem, accuracy lifts modestly across three tested models (Gemini 2.5 Flash +1.9pp, Kimi K2.5 +4.9pp, GLM 5.1 +8.3pp) — but compliance is poor (37%, 6%, 16% respectively). The paper’s interpretation: stating the budget in the prompt functions not as a respected constraint but as length pressure that prompts earlier commitment.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Measures the control axis, not just monitoring.</strong> <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar’s position paper</a> [5] named three components of metacognitive learning (knowledge, planning, evaluation) and argued that today’s self-improving agents lean on hand-designed extrinsic loops rather than intrinsic ones. TRIAGE doesn’t directly fill that gap (it uses the Nelson-Narens <em>monitoring vs.&nbsp;control</em> split rather than the Liu/vdSchaar terminology), but the design is in the same spirit: scoring what the model <em>does</em> under resource constraints, not what it verbally claims to know. Within that split, <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.’s “Mostly Know”</a> [6] sits on the monitoring side (predicting per-question correctness) and <a href="../../posts/20260522-metacognitive-harness/">Cao et al.’s metacognitive harness</a> [8] sits on the test-time control side (gating retry, stop, and aggregate decisions during inference); TRIAGE adds the prospective-control corner that neither covers.</li>
+<li><strong>Pre-commitment is what makes control measurable.</strong> Retrospective measures (post-hoc confidence, abstention after a partial attempt) collapse monitoring and control because the model can adjust mid-stream. By committing the plan ex ante — before any execution feedback — TRIAGE removes that mid-stream channel and forces the model to act on its prior estimate of its own cost and solvability. The same logic generalizes: only when self-assessment is locked in <em>before</em> observing partial output can it be cleanly separated from in-stream adjustment.</li>
+<li><strong>Why do reasoning models fare worse?</strong> <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">Kirichenko et al.’s AbstentionBench</a> [7] reports the upstream finding: reasoning fine-tuning degrades abstention by roughly 24% across 20 unanswerable-question datasets. The mechanism is plausible: RLHF/RLVR rewards arriving at <em>some</em> answer, so the trained policy learns to spend tokens rather than skip. A useful follow-up would isolate whether the gap closes when the reward function explicitly prices abstention, e.g.&nbsp;by training on the TRIAGE objective itself rather than per-problem accuracy.</li>
+<li><strong>Models lack a reliable internal token-counter.</strong> Length-controlled generation has been studied for instruction-following, but those benchmarks measure verbalized length compliance for human-readable outputs, not self-imposed compute budgets. The compliance numbers above suggest the gap runs deeper: no plan can survive an executor that ignores its own allocations, and the compliance failure deepens the planning failure rather than replacing it.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=Fd1-G4YAAAAJ">Nazi, Z. A.</a>, &amp; <a href="https://scholar.google.com/citations?user=j2ElsNIAAAAJ">Roy Dipta, S.</a> “TRIAGE: Evaluating Prospective Metacognitive Control in LLMs under Resource Constraints.” <em>arXiv preprint</em> (arXiv:2605.13414), May 13, 2026. <a href="https://arxiv.org/abs/2605.13414" class="uri">https://arxiv.org/abs/2605.13414</a></p></li>
+<li><p><a id="ref-2"></a>Rein, D., Hou, B. L., Stickland, A. C., Petty, J., Pang, R. Y., Dirani, J., Michael, J., &amp; Bowman, S. R. “GPQA: A Graduate-Level Google-Proof Q&amp;A Benchmark.” <em>arXiv preprint</em> (arXiv:2311.12022), November 20, 2023. <a href="https://arxiv.org/abs/2311.12022" class="uri">https://arxiv.org/abs/2311.12022</a></p></li>
+<li><p><a id="ref-3"></a>Jain, N., Han, K., Gu, A., Li, W.-D., Yan, F., Zhang, T., Wang, S., Solar-Lezama, A., Sen, K., &amp; Stoica, I. “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>arXiv preprint</em> (arXiv:2403.07974), March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></p></li>
+<li><p><a id="ref-4"></a>Phan, L., Gatti, A., Han, Z., Li, N., et al.&nbsp;“Humanity’s Last Exam.” <em>arXiv preprint</em> (arXiv:2501.14249), January 24, 2025. <a href="https://arxiv.org/abs/2501.14249" class="uri">https://arxiv.org/abs/2501.14249</a></p></li>
+<li><p><a id="ref-5"></a>Liu, T., &amp; van der Schaar, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>ICML 2025</em> (arXiv:2506.05109). <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></p></li>
+<li><p><a id="ref-6"></a>Kadavath, S., Conerly, T., Askell, A., Henighan, T., Drain, D., Perez, E., Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></p></li>
+<li><p><a id="ref-7"></a>Kirichenko, P., Ibrahim, M., Chaudhuri, K., &amp; Bell, S. J. “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038), June 10, 2025. <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></p></li>
+<li><p><a id="ref-8"></a><a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Cao, Q.</a>, <a href="https://www.semanticscholar.org/author/2108111686">Wang, Y.</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Qin, P.</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Zhang, S.</a>, and <a href="https://pengtaoxie.github.io/">Xie, P.</a> “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></p></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260523-triage-metacognitive-control/</guid>
+  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</title>
   <dc:creator>synesis </dc:creator>
@@ -1263,104 +1380,6 @@
   <guid>https://benjaminhan.net/posts/20260516-reflexion/</guid>
   <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260516-reflexion/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Large Language Models Cannot Self-Correct Reasoning Yet</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260516-cannot-self-correct/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-cannot-self-correct/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Analysis of the changes in answers after two rounds of self-correction. <em>No Change</em>: The answer remains unchanged; <em>Correct <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Incorrect</em>: A correct answer is changed to an incorrect one; <em>Incorrect <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Correct</em>: An incorrect answer is revised to a correct one; <em>Incorrect <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Incorrect</em>: An incorrect answer is altered but remains incorrect. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Large Language Models Cannot Self-Correct Reasoning Yet</em> [1] (<a href="https://iclr.cc/Conferences/2024">ICLR 2024</a>), <a href="https://jeffhj.github.io/">Jie Huang</a>, <a href="https://xinyun-chen.github.io/">Xinyun Chen</a>, <a href="https://swarooprm.github.io/">Swaroop Mishra</a>, <a href="https://stevenzheng.github.io/">Huaixiu Steven Zheng</a>, <a href="https://www.adamsyu.com/">Adams Wei Yu</a>, Xinying Song, and <a href="https://dennyzhou.github.io/">Denny Zhou</a> (Google DeepMind + UIUC) argue that <em>intrinsic self-correction</em> — where a model revises its own reasoning answer with no external signal about correctness — does not improve and often degrades performance on reasoning benchmarks.</p>
-<blockquote class="blockquote">
-<p>Large Language Models (LLMs) have emerged as a groundbreaking technology with their unparalleled text generation capabilities across various applications. Nevertheless, concerns persist regarding the accuracy and appropriateness of their generated content. A contemporary methodology, self-correction, has been proposed as a remedy to these issues. Building upon this premise, this paper critically examines the role and efficacy of self-correction within LLMs, shedding light on its true potential and limitations. Central to our investigation is the notion of <em>intrinsic self-correction, whereby an LLM attempts to correct its initial responses based solely on its inherent capabilities, without the crutch of external feedback</em>. In the context of reasoning, our research indicates that <em>LLMs struggle to self-correct their responses without external feedback, and at times, their performance even degrades after self-correction</em>. Drawing from these insights, we offer suggestions for future research and practical applications in this field.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>The paper isolates <em>intrinsic</em> self-correction by stripping out the external verifier that prior self-correction work relied on. In the <strong>oracle setting</strong> (used by RCI [2] and Reflexion [3] in their reported evaluations), the loop has access to the gold-label answer:</p>
-<ol type="1">
-<li>Model generates an answer.</li>
-<li>Compare it to the ground truth (the oracle).</li>
-<li>If correct, stop. If wrong, prompt the model for a critique, generate a revision, return to step 2.</li>
-</ol>
-<p>The oracle is doing two jobs at once: it’s a stopping condition (don’t keep revising correct answers) and a trigger for revision (only revise when wrong). In the <strong>intrinsic setting</strong>, both jobs go away. The same model produces the initial answer, then is prompted to review and revise it without any external check, and has to decide on its own whether the answer needs further work. The evaluation runs on three reasoning datasets — GSM8K [10] (grade-school math), CommonSenseQA [11] (multiple-choice commonsense), and HotpotQA [12] (multi-hop QA) — across GPT-3.5-Turbo (<code>gpt-3.5-turbo-0613</code>), GPT-4, GPT-4-Turbo (<code>gpt-4-1106-preview</code>), and <code>Llama-2-70b-chat</code> [4]. Each round of self-correction costs two additional model calls (review, then revision), so two rounds bring the total per question to five.</p>
-<p>The paper then re-examines two related claims from prior work:</p>
-<ul>
-<li><strong>Section 4</strong> revisits multi-agent debate [5], where several LLM agents propose answers and critique each other across rounds until they converge on a consensus. The paper reproduces Du et al.&nbsp;[5]’s setup on GSM8K and compares it against self-consistency [6] [6] — generating multiple independent samples and majority-voting — at the <em>same total response budget</em>.</li>
-<li><strong>Section 5</strong> revisits Self-Refine [7] [7] <!-- crosslink-todo: /posts/20260503-self-refine/ -->, where the same LLM generates an output, critiques it, and refines based on its own critique over multiple iterations. The paper attributes Self-Refine’s reported gains on constrained generation to a sub-optimal initial prompt that the refinement loop is largely just patching.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
-<figcaption>Two GSM8K examples with GPT-3.5: a successful correction on the left, a failed one on the right where the model revises a correct answer into an incorrect one. The failure mode dominates the data. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<ul>
-<li><strong>Intrinsic self-correction degrades accuracy across every model tested.</strong> With oracle labels (Table 2 of the paper), self-correction improves modestly — GPT-3.5 on GSM8K rises from 75.9 to 84.3, GPT-4 on HotpotQA from 49.0 to 59.0. Without oracle labels, the same prompts and models <em>lose</em> accuracy. After two rounds of intrinsic self-correction, GPT-3.5 on GSM8K drops from 75.9 to 74.7. On CommonSenseQA the drop is sharper, 75.8 to 41.8. GPT-4 holds up better but still loses 6.5 points on GSM8K (95.5 → 89.0). Llama-2-70b-chat collapses, halving from 62.0 to 36.5 on GSM8K. The cover image’s Figure 1 decomposition shows why: correct → incorrect transitions outnumber incorrect → correct ones, so the loop is on average destructive.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/table2-3.png" class="img-fluid figure-img"></p>
-<figcaption><em>Table 2</em> (top): Results of GPT-3.5 and GPT-4 on reasoning benchmarks with oracle labels. <em>Table 3</em> (bottom): Results of GPT-3.5 and GPT-4 on reasoning benchmarks with intrinsic self-correction. Tables 2 and 3 from the paper [1].</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>Multi-agent debate underperforms self-consistency at matched budget.</strong> With three agents over two rounds of debate, the system uses nine total responses and reaches 83.0 on GSM8K. Self-consistency with nine responses reaches 88.2 with the same model. At every matched budget, simple majority voting beats the debate protocol. The paper concludes that what looks like critique is in practice a noisier form of consensus.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/table7.png" class="img-fluid figure-img"></p>
-<figcaption><em>Table 7</em>: Results of multi-agent debate and self-consistency. Table 7 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The RL follow-up.</strong> Two follow-ups from this same group at Google DeepMind reframe the negative result rather than overturn it. <a href="../../posts/20260512-score/">SCoRe</a> [8] trains Gemini 1.0 Pro and 1.5 Flash via multi-turn RL to actually self-correct on MATH, gaining 15.6 points on top of the base model — explicitly citing this paper as the problem statement. The o1-style training paradigm builds correction into the chain-of-thought RL signal itself. The conclusion of <em>Cannot Self-Correct Reasoning Yet</em> is essentially that prompting alone cannot induce self-correction in models that were not trained for it; the field has since shown that the right RL objective can.</li>
-<li><strong>The oracle-label confound is the methodological core.</strong> The paper’s most reusable contribution is naming the evaluation issue: RCI [2] [2] and Reflexion [3] [3] <!-- crosslink-todo: /posts/20260503-reflexion/ --> let the loop terminate based on whether the answer was correct, which leaks ground truth into the evaluation. Once you remove that signal, the loop runs without a stop condition and tends to drift. This generalizes: any test-time loop that uses the gold answer to decide when to halt is implicitly conditioning on it. The same issue surfaces in <a href="../../posts/20260512-lets-verify-step-by-step/">process reward model evaluation</a>, where a strong external verifier carries most of the signal that gets attributed to the generator.</li>
-<li><strong>Production loops have implicit signals.</strong> Real systems usually carry external signals that the paper’s “no oracle” definition excludes: format checks, runnable code, type errors, schema violations, factual lookups against retrieval. Reflexion [3] [3] <!-- crosslink-todo: /posts/20260503-reflexion/ -->, for instance, uses an environment reward (test pass/fail, task success). The paper’s negative result is for the strict version where the model has nothing to go on but its own prior; that is the version closest to “talking to yourself,” which is also the version least likely to converge.</li>
-<li><strong>Multi-agent debate as ensembling.</strong> Section 4’s finding that multi-agent debate underperforms self-consistency at matched response budget [5][6] has been replicated repeatedly since, across the multi-agent literature, including <a href="../../posts/20250802-mast-multi-agent-failures/">the MAST taxonomy of multi-agent failure modes</a> [9]. Stripped of training, much of what looks like agent collaboration reduces to weighted voting on independent samples. What matters is the sampling budget, not the protocol.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://jeffhj.github.io/">Huang, J.</a>, <a href="https://xinyun-chen.github.io/">Chen, X.</a>, <a href="https://swarooprm.github.io/">Mishra, S.</a>, <a href="https://stevenzheng.github.io/">Zheng, H. S.</a>, <a href="https://www.adamsyu.com/">Yu, A. W.</a>, Song, X., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em>, arXiv:2310.01798, October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-<li><a id="ref-2"></a>Kim, G., <a href="https://www.ics.uci.edu/~pfbaldi/">Baldi, P.</a>, and <a href="https://www.andrew.cmu.edu/user/smcaleer/">McAleer, S.</a> “Language Models can Solve Computer Tasks.” <em>NeurIPS</em>, arXiv:2303.17491, March 30, 2023. <a href="https://arxiv.org/abs/2303.17491" class="uri">https://arxiv.org/abs/2303.17491</a></li>
-<li><a id="ref-3"></a><a href="https://noahshinn.com/">Shinn, N.</a>, Cassano, F., Berman, E., Gopinath, A., <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a> “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS</em>, arXiv:2303.11366, March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
-<li><a id="ref-4"></a>Touvron, H., Martin, L., Stone, K., et al.&nbsp;“Llama 2: Open Foundation and Fine-Tuned Chat Models.” <em>arXiv preprint</em> (arXiv:2307.09288), July 18, 2023. <a href="https://arxiv.org/abs/2307.09288" class="uri">https://arxiv.org/abs/2307.09288</a></li>
-<li><a id="ref-5"></a><a href="https://yilundu.github.io/">Du, Y.</a>, <a href="https://people.csail.mit.edu/lishuang/">Li, S.</a>, <a href="https://groups.csail.mit.edu/vision/torralbalab/">Torralba, A.</a>, <a href="https://web.mit.edu/cocosci/josh.html">Tenenbaum, J. B.</a>, and <a href="https://www.mordatch.com/">Mordatch, I.</a> “Improving Factuality and Reasoning in Language Models through Multiagent Debate.” <em>arXiv preprint</em> (arXiv:2305.14325), May 23, 2023. <a href="https://arxiv.org/abs/2305.14325" class="uri">https://arxiv.org/abs/2305.14325</a></li>
-<li><a id="ref-6"></a><a href="https://xuezhiwang.github.io/">Wang, X.</a>, Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR</em>, arXiv:2203.11171, March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
-<li><a id="ref-7"></a><a href="https://madaan.github.io/">Madaan, A.</a>, <a href="https://niket.tandon.info/">Tandon, N.</a>, Gupta, P., Hallinan, S., <a href="https://luyug.github.io/">Gao, L.</a>, <a href="https://sarahwie.github.io/">Wiegreffe, S.</a>, <a href="https://urialon.cswp.cs.technion.ac.il/">Alon, U.</a>, <a href="https://nouhadziri.github.io/">Dziri, N.</a>, Prabhumoye, S., <a href="https://www.cs.cmu.edu/~yiming/">Yang, Y.</a>, Gupta, S., Majumder, B. P., Hermann, K., <a href="https://wellecks.com/">Welleck, S.</a>, Yazdanbakhsh, A., and <a href="https://allenai.org/team/peterc">Clark, P.</a> “Self-Refine: Iterative Refinement with Self-Feedback.” <em>NeurIPS</em>, arXiv:2303.17651, May 25, 2023. <a href="https://arxiv.org/abs/2303.17651" class="uri">https://arxiv.org/abs/2303.17651</a></li>
-<li><a id="ref-8"></a><a href="https://aviralkumar2907.github.io/">Kumar, A.</a>, <a href="https://vincentzhuang.github.io/">Zhuang, V.</a>, <a href="https://agarwl.github.io/">Agarwal, R.</a>, Su, Y., et al.&nbsp;“Training Language Models to Self-Correct via Reinforcement Learning.” <em>ICLR</em>, arXiv:2409.12917, September 19, 2024. <a href="https://arxiv.org/abs/2409.12917" class="uri">https://arxiv.org/abs/2409.12917</a></li>
-<li><a id="ref-9"></a>Cemri, M., Pan, M., Yang, S., Agrawal, L. A., Chopra, B., Tiwari, R., <a href="https://people.eecs.berkeley.edu/~keutzer/">Keutzer, K.</a>, Parameswaran, A., <a href="https://people.eecs.berkeley.edu/~klein/">Klein, D.</a>, Ramchandran, K., <a href="https://cs.stanford.edu/~matei/">Zaharia, M.</a>, <a href="https://people.eecs.berkeley.edu/~jegonzal/">Gonzalez, J.</a>, and <a href="https://people.eecs.berkeley.edu/~istoica/">Stoica, I.</a> “Why Do Multi-Agent LLM Systems Fail?” <em>arXiv preprint</em> (arXiv:2503.13657), March 17, 2025. <a href="https://arxiv.org/abs/2503.13657" class="uri">https://arxiv.org/abs/2503.13657</a></li>
-<li><a id="ref-10"></a>Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., and Schulman, J. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
-<li><a id="ref-11"></a>Talmor, A., Herzig, J., Lourie, N., and Berant, J. “CommonsenseQA: A Question Answering Challenge Targeting Commonsense Knowledge.” <em>NAACL 2019</em> (arXiv:1811.00937), November 2, 2018. <a href="https://arxiv.org/abs/1811.00937" class="uri">https://arxiv.org/abs/1811.00937</a></li>
-<li><a id="ref-12"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W. W., Salakhutdinov, R., and Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600), September 25, 2018. <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260516-cannot-self-correct/</guid>
-  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260516-cannot-self-correct/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
