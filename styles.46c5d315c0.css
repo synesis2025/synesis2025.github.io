@@ -3192,6 +3192,27 @@ html[data-font-palette="reader"] samp {
    so they apply on the `default` palette and override Bootswatch's
    theme fonts; non-default palettes win via higher selector
    specificity (html[data-font-palette="<slug>"] ...). */
+
+/* Pin Bootstrap's sans-serif font vars to the system stack so NEITHER
+   the light↔dark toggle NOR the runtime theme cycler can shift the
+   font. The vendored Bootswatch themes formerly `@import`ed Google
+   Fonts (flatly→Lato, cosmo→Source Sans, …) while others (slate, etc.)
+   shipped a pure system stack — so dark→light visibly changed the font
+   for any element reading the var directly (Bootstrap sets it on
+   `body`, value boxes, …), most obviously in long post prose on iOS
+   Safari, where a cycler-injected stylesheet wins the source-order tie
+   against the `body` override below. Those @imports are now stripped
+   from vendor/bootswatch/*, and this rule is the belt-and-suspenders:
+   `html[data-bootswatch]` (set by the cycler) out-specifies a theme's
+   own `:root` declaration, so the system stack wins regardless of
+   cascade order and a future re-vendor can't reintroduce the shift.
+   The font-palette feature is unaffected — palettes set explicit
+   font-family on their own selectors, not via this var. */
+:root,
+html[data-bootswatch] {
+  --bs-font-sans-serif: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --bs-body-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
 body,
 p,
 li,
