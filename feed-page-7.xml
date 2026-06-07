@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-7.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-23.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-24.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-6.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-8.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -22,6 +22,564 @@
 </image>
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 06 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-multi-agent-system-search/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-multi-agent-system-search/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-multi-agent-system-search/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Performance of different topologies with Gemini 1.5 Pro on HotpotQA (left) and LiveCodeBench (right), each topology optimized with automatic prompt optimization (APO). Sum. (Summarize) and Exe. (Executor) are task-specific topologies. Prompt-level optimization dominates over topology choice on most tasks. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</em> (ICLR 2026) [1], Han Zhou et al.&nbsp;(Google, University of Cambridge) introduce MASS, a multi-stage search framework that interleaves prompt optimization and topology optimization to discover effective multi-agent system designs.</p>
+<blockquote class="blockquote">
+<p>Large language models, employed as multiple agents that interact and collaborate with each other, have excelled at solving complex tasks. The agents are programmed with prompts that declare their functionality, along with the topologies that orchestrate interactions across agents. Designing prompts and topologies for multi-agent systems (MAS) is inherently complex. To automate the entire design process, we first conduct an in-depth analysis of the design space aiming to understand the factors behind building effective MAS. We reveal that prompts together with topologies play critical roles in enabling more effective MAS design. Based on the insights, we propose <em>Multi-Agent System Search (MASS)</em>, a MAS optimization framework that efficiently exploits the complex MAS design space by interleaving its optimization stages, from local to global, from prompts to topologies, over three stages: 1) <em>block-level (local) prompt optimization</em>; 2) <em>workflow topology optimization</em>; 3) <em>workflow-level (global) prompt optimization</em>, where each stage is conditioned on the iteratively optimized prompts/topologies from former stages. We show that <em>MASS-optimized multi-agent systems outperform a spectrum of existing alternatives by a substantial margin</em>. Based on the MASS-found systems, we finally propose design principles behind building effective multi-agent systems.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>MASS is a three-stage search, local-to-global and prompts-to-topology-to-prompts. Stage 1 runs block-level prompt optimization (MIPRO from DSPy [5]) on each candidate building block individually and keeps the best-performing one. A <em>block</em> here is the paper’s term for a small pattern of agents collaborating on one function. The paper enumerates five: Aggregate (e.g., self-consistency), Reflect (e.g., self-refine), Debate, Summarize, and Tool-use. Stage 2 samples from an influence-weighted design space of topologies, fusing in Stage 1’s optimized prompts at each candidate. The paper prunes the topology search space so rejection sampling doesn’t waste compute on topologies unlikely to help. Stage 3 runs MIPRO again, this time over the winning topology’s full workflow-level prompt set. Each stage is conditioned on the iteratively optimized prompts and topologies from the prior stages.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-multi-agent-system-search/figure1.png" class="img-fluid figure-img"></p>
+<figcaption>The MASS framework discovers effective multi-agent system designs (right: optimized topology and prompts) via interleaved prompt and topology optimization in a customizable design space (left). Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>MASS is evaluated on eight benchmarks spanning reasoning (MATH), multi-hop QA (DROP, HotpotQA, MuSiQue, 2WikiMQA), and coding (MBPP, HumanEval, and LiveCodeBench’s test-output-prediction subtask). On Gemini 1.5 Pro, MASS averages 78.79 across the eight tasks, well above multi-agent debate (70.26), ADAS (69.72), and single-agent CoT (65.28). The Gemini 1.5 Flash ordering is the same; the table below has the full numbers. Figure 5 decomposes the Gemini 1.5 Pro gain into its three stages: block-level prompt optimization contributes roughly 6%, topology search another 3%, and workflow-level prompt optimization a final 2%.</p>
+<table class="caption-top table">
+<caption>Average across the 8 evaluation tasks (accuracy for MATH and LiveCodeBench, F1 for DROP / HotpotQA / MuSiQue / 2WikiMQA, pass@1 for MBPP / HumanEval). Table 1 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Gemini 1.5 Pro Avg.</th>
+<th>Gemini 1.5 Flash Avg.</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CoT</td>
+<td>65.28</td>
+<td>60.87</td>
+</tr>
+<tr class="even">
+<td>Self-Consistency</td>
+<td>68.18</td>
+<td>63.50</td>
+</tr>
+<tr class="odd">
+<td>Self-Refine</td>
+<td>66.90</td>
+<td>63.46</td>
+</tr>
+<tr class="even">
+<td>Multi-Agent Debate</td>
+<td>70.26</td>
+<td>65.91</td>
+</tr>
+<tr class="odd">
+<td>ADAS</td>
+<td>69.72</td>
+<td>64.75</td>
+</tr>
+<tr class="even">
+<td><strong>MASS</strong></td>
+<td><strong>78.79</strong></td>
+<td><strong>74.30</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-multi-agent-system-search/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Average performance per MASS optimization stage across 8 evaluation tasks on Gemini 1.5 Pro, compared to a single-agent CoT baseline and an automatic prompt-optimization (APO) baseline using MIPROv2. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Topology gets quietly demoted.</strong> The paper’s stage-wise ablation shows roughly 6% gain from block-level prompt optimization, 3% from topology search, and 2% from workflow-level prompt optimization on Gemini 1.5 Pro. Prompts at both ends of the pipeline dominate, and topology contributes the least. That contradicts the implicit thesis of the topology-first generation (ADAS [2], AFlow [3]), which spent its complexity budget on what the agents look like rather than how they’re individually instructed. The paper’s own related-work section acknowledges this: “the importance of prompt designs has been relatively under-studied in these prior works.” It’s a stronger claim than the paper presents it as.</p></li>
+<li><p><strong>MASS layers a staged search around MIPRO.</strong> Stage 1 and Stage 3 both run MIPRO [4], the prompt-optimizer from the DSPy [5] ecosystem. Stage 2 does rejection sampling over a pruned topology space. MASS’s contribution is the staging discipline and the search-space pruning. The prompt-optimization workhorse is plug-and-play, and MIPRO is what MASS happens to use. <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO</a> [6] works the same way: the staging (bilevel meta-learning) is the contribution, and the prompt-optimization primitive it builds on (textual gradients) is off-the-shelf. <a href="../../posts/20260430-evoprompt/">EvoPrompt</a> [7] inverts it: the primitive is the contribution (using an LLM to implement crossover and mutation), while the staging is borrowed from classical evolutionary algorithms. All three combine an LLM-as-optimizer primitive with a staging wrapper, but they differ in which piece is novel: MASS and MetaSPO add staging on top of a known optimizer, while EvoPrompt swaps the primitive into a known staging scheme.</p></li>
+<li><p><strong>AFlow’s competitive showing deserves attention.</strong> AFlow has no explicit prompt-optimization stage but stays close to MASS on 2WikiMQA and HumanEval. The paper attributes this to AFlow’s “expansion” phase, which uses error-log gradients à la Pryzant et al.: implicit prompt updating disguised as topology search. Where MASS pulls ahead most (MATH, MuSiQue) is where that error-log signal is weak. One-pass error-driven updates don’t make up for the lack of a dedicated optimization phase. The follow-up worth running: an explicit Stage 1 prompt opt fed into AFlow’s MCTS, to test whether the staging or the optimizer choice is doing the work.</p></li>
+<li><p><strong>Generalization beyond the eight benchmarks is open.</strong> Tasks span MATH, DROP, HotpotQA, 2WikiMQA, MuSiQue, HumanEval, MBPP, and LiveCodeBench, all static evaluation sets. The MASS-discovered topologies (debate-then-aggregate on MATH; summarize-then-execute on coding) are presented as design principles, but whether a topology learned on MATH transfers to RAG, agentic web tasks, or interactive embodied tasks is untested. This is also where the <a href="../../posts/20250802-mast-multi-agent-failures/">MAST taxonomy of multi-agent failures</a> gets relevant: design-side optimization assumes the failure modes you’ll hit at deployment look like the ones you optimized against.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2502.02533, February 4, 2025 (v2: January 31, 2026). <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
+<li><a id="ref-2"></a><a href="https://shengranhu.com/">Hu</a>, S., <a href="https://www.conglu.co.uk/">Lu</a>, C., <a href="https://en.wikipedia.org/wiki/Jeff_Clune">Clune</a>, J. “Automated Design of Agentic Systems.” <em>arXiv preprint</em> (arXiv:2408.08435), 2024. <a href="https://arxiv.org/abs/2408.08435" class="uri">https://arxiv.org/abs/2408.08435</a></li>
+<li><a id="ref-3"></a>Zhang, J., Xiang, J., Yu, Z., Teng, F., Chen, X., Chen, J., <a href="https://metauto.ai/">Zhuge</a>, M., Cheng, X., Hong, S., Wang, J., et al.&nbsp;“AFlow: Automating Agentic Workflow Generation.” <em>arXiv preprint</em> (arXiv:2410.10762), 2024. <a href="https://arxiv.org/abs/2410.10762" class="uri">https://arxiv.org/abs/2410.10762</a></li>
+<li><a id="ref-4"></a>Opsahl-Ong, K., <a href="https://michryan.com/">Ryan</a>, M. J., Purtell, J., <a href="https://www.kth.se/profile/dbro">Broman</a>, D., <a href="https://en.wikipedia.org/wiki/Christopher_Potts">Potts</a>, C., <a href="https://en.wikipedia.org/wiki/Matei_Zaharia">Zaharia</a>, M., <a href="https://omarkhattab.com/">Khattab</a>, O. “Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs.” <em>Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing</em>, 2024. <a href="https://arxiv.org/abs/2406.11695" class="uri">https://arxiv.org/abs/2406.11695</a></li>
+<li><a id="ref-5"></a><a href="https://omarkhattab.com/">Khattab</a>, O., Singhvi, A., Maheshwari, P., Zhang, Z., <a href="https://keshav2.me/">Santhanam</a>, K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., <a href="https://heather.miller.am/">Miller</a>, H., <a href="https://en.wikipedia.org/wiki/Matei_Zaharia">Zaharia</a>, M., <a href="https://en.wikipedia.org/wiki/Christopher_Potts">Potts</a>, C. “DSPy: Compiling Declarative Language Model Calls into State-of-the-Art Pipelines.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://arxiv.org/abs/2310.03714" class="uri">https://arxiv.org/abs/2310.03714</a></li>
+<li><a id="ref-6"></a>Choi, Y., <a href="https://jinheonbaek.github.io/">Baek</a>, J., <a href="https://www.mlai-kaist.com/">Hwang</a>, S. J. “System Prompt Optimization with Meta-Learning.” <em>arXiv preprint</em> (arXiv:2505.09666), May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
+<li><a id="ref-7"></a><a href="https://lemon0830.github.io/">Guo</a>, Q., Wang, R., Guo, J., <a href="https://libeineu.github.io/">Li</a>, B., <a href="https://www.microsoft.com/en-us/research/people/kaitaosong/">Song</a>, K., <a href="https://www.microsoft.com/en-us/research/people/xuta/">Tan</a>, X., Liu, G., <a href="https://sites.google.com/view/jiangbian">Bian</a>, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-multi-agent-system-search/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-multi-agent-system-search/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-dspy/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-dspy/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-dspy/cover.png" class="img-fluid figure-img"></p>
+<figcaption>Results with in-context learning on GSM8K math word problems. Each row is a separate pipeline: the module in the Program column is compiled against the examples in the Training set. All programs in this table are expressed by composing two to four DSPy modules and teleprompters. Compiling the correct modules, instead of string prompts, improves different LMs from 4-20% accuracy to 49-88% accuracy. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</em> [1] (ICLR 2024), <a href="https://omarkhattab.com/">Omar Khattab</a> et al.&nbsp;(Stanford and collaborators) introduce a programming model that treats LM pipelines as composable, typed modules and compiles them via teleprompters that bootstrap their own few-shot demonstrations from a small unlabeled training set.</p>
+<blockquote class="blockquote">
+<p>The ML community is rapidly exploring techniques for prompting language models (LMs) and for stacking them into pipelines that solve complex tasks. Unfortunately, existing LM pipelines are typically implemented using hard-coded “prompt templates”, i.e.&nbsp;lengthy strings discovered via trial and error. Toward a more systematic approach for developing and optimizing LM pipelines, we introduce <em>DSPy, a programming model that abstracts LM pipelines as text transformation graphs</em>, or imperative computational graphs where LMs are invoked through declarative modules. <em>DSPy modules are parameterized</em>, meaning they can learn how to apply compositions of prompting, finetuning, augmentation, and reasoning techniques. We design <em>a compiler that will optimize any DSPy pipeline to maximize a given metric, by creating and collecting demonstrations</em>. We conduct two case studies, showing that succinct DSPy programs can express and optimize pipelines that reason about math word problems, tackle multi-hop retrieval, answer complex questions, and control agent loops. Within minutes of compiling, DSPy can automatically produce pipelines that <em>outperform out-of-the-box few-shot prompting as well as expert-created demonstrations for GPT-3.5 and Llama2-13b-chat</em>. On top of that, <em>DSPy programs compiled for relatively small LMs like 770M parameter T5 and Llama2-13b-chat are competitive with many approaches that rely on large and proprietary LMs like GPT-3.5 and on expert-written prompt chains</em>. DSPy is available at https://github.com/stanfordnlp/dspy.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The programming model rests on three abstractions. <strong>Signatures</strong> declare the input/output shape of an LM call as a natural-language type spec (e.g., <code>"question -&gt; answer"</code> or <code>"context, question -&gt; rationale, answer"</code>), which the framework expands into a prompt template. <strong>Modules</strong> implement signatures via specific techniques: <code>Predict</code> runs a single-shot LM call, <code>ChainOfThought</code> adds a rationale step, <code>ReAct</code> interleaves thought/action/observation for tool use. Modules can contain other modules, so a retrieval-augmented QA pipeline is just a Python class that composes <code>Retrieve</code> and <code>ChainOfThought</code>. <strong>Teleprompters</strong> are the compilers: given a program, a metric, and a small training set (inputs only, no intermediate labels), a teleprompter runs the program on the training examples with a “teacher” model, keeps traces where the final output satisfied the metric, and uses those traces as few-shot demonstrations in the compiled program. <code>BootstrapFewShot</code> is the default; variants add random search over candidate demonstrations, compose with a stronger teacher program, or finetune a smaller model on the bootstrapped traces. The human writes the program structure and the metric; the compiler figures out what to put inside each prompt.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper runs two case studies: GSM8K grade-school math (200 train / 300 dev / 1.3k test) and HotPotQA multi-hop retrieval QA. Base models are GPT-3.5 and Llama2-13b-chat; one HotPotQA run uses 770M-parameter T5-Large as the compile target. On GSM8K, the same three-line <code>ChainOfThought</code> program goes from 25.2% test accuracy (vanilla GPT-3.5 with no compilation) to 81.6% with the <code>bootstrap + ensemble</code> teleprompter; Llama2-13b-chat reaches 46.9% with the <code>ThoughtReflection</code> program plus ensemble, versus 9.4% baseline. On HotPotQA, a simple <code>multihop</code> program with <code>bootstrap</code> raises GPT-3.5 test EM from 31.5% (fewshot baseline) to 39.6%, and the ensemble reaches 45.6% on half the test set. The 770M T5-Large compiled from a Llama2-13b-chat teacher hits 39.3% HotPotQA answer EM on the dev set, using only 200 labeled and 800 unlabeled questions. That’s roughly on par with the much larger base models.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-dspy/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Results with in-context learning on HotPotQA for GPT-3.5 and Llama2-13b-chat across four DSPy programs (<code>vanilla</code>, <code>CoT_RAG</code>, <code>react</code>, <code>multihop</code>) and compilers (<code>fewshot</code>, <code>bootstrap</code>, <code>ensemble</code>, <code>bootstrap×2</code>). Answer exact match (Ans) and pair-retrieval accuracy (Psg) are reported for dev and test splits. Ensemble-compiled <code>multihop</code> tops both models; <code>CoT_RAG</code> with <code>bootstrap</code> is the next-best configuration. Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The programming model is the real contribution, and the teleprompters are interchangeable.</strong> Pre-DSPy prompt optimization worked at the string-template level. APE [2] and later <a href="../../posts/20260430-evoprompt/">EvoPrompt</a> [3] searched over isolated prompt strings with LLM-implemented operators. DSPy moves optimization up a layer: because modules have typed signatures and compose into a graph, a teleprompter can treat any pipeline as a black box to optimize end-to-end against a single metric, bootstrapping intermediate demonstrations along the way. Putting composition at the module boundary is what enables pipeline-level search. <a href="../../posts/20260430-multi-agent-system-search/">MASS</a> [4] can search over typed-module topologies because DSPy established the abstraction; its prompt optimization at block and workflow levels uses DSPy’s MIPRO teleprompter directly. The teleprompters themselves (bootstrap + random search) are conventional. The novelty is that they operate on a program rather than a prompt.</p></li>
+<li><p><strong>DSPy-styled distillation works: the 770M T5 result is the demonstration.</strong></p>
+<ul>
+<li>When DSPy compiles, the teacher model runs the program on training inputs; the metric filters complete-pipeline runs where the final output is correct; those good runs’ intermediate steps become demonstrations for the compiled program. No human annotates intermediate hops. Final-output supervision via the metric does that filtering.</li>
+<li>Table 2 shows this in action: a 770M T5-Large, compiled from a Llama2-13b-chat teacher on 200 labeled + 800 unlabeled HotPotQA questions, reaches 39.3% answer EM on dev, within a few points of GPT-3.5 fewshot. The paper calls this “orders of magnitude lower costs for inference”; the stronger read is that for retrieval-heavy tasks with good pipeline structure, most of the capability lives in the pipeline, and the base model just has to execute the compiled prompts competently.</li>
+<li>The distillation analogy is apt, with three caveats on what gets kept, what the student inherits, and what the procedure costs. Both let you train a smaller model without hand-labeled intermediate supervision; the teacher’s outputs stand in.
+<ul>
+<li>Distillation uses every teacher-generated input-output pair as student training data. DSPy uses only per-module steps from traces whose final pipeline output passed the metric; those steps become few-shot demonstrations inside each module’s prompt.</li>
+<li>Distillation compiles the teacher’s capability into a single forward pass of the student; DSPy keeps the pipeline structure intact. The 770M T5 still runs the same multihop program, just with bootstrapped few-shot demos inside each module’s prompt.</li>
+<li>Distillation trains the student via gradient descent over thousands to millions of teacher outputs on GPU clusters, taking days to weeks. DSPy’s default teleprompters do no gradient training; they just insert filtered demonstrations into the student program’s prompts. Even the finetune variant that produced the T5-770M result trains in minutes on 200 + 800 examples, with total compile cost bounded by a few hundred teacher inference calls.</li>
+</ul></li>
+<li>Whether the pipeline gain stays significant as base models mature is an open question.</li>
+</ul></li>
+<li><p><strong>DSPy is a clean instance of extrinsic self-improvement.</strong> Humans design the programming model, pick the modules, write the metric, and choose the teleprompter strategy (bootstrap vs.&nbsp;random search vs.&nbsp;finetune). The LM only generates candidates that the compiler scores and keeps. The <a href="../../posts/20260430-intrinsic-metacognitive-learning/">intrinsic metacognitive learning position paper</a> [5] calls this out as the ceiling case: DSPy won’t decide that the task needs a different module type, or that the metric is misspecified, or that the teleprompter’s search strategy is a poor fit. Every one of those is wired in. In engineering or production settings that explicit control is often a feature. Teams need predictable, auditable behavior more than they need an agent that redesigns its own loop. The ceiling matters only when you measure against intrinsic.</p></li>
+<li><p><strong>DSPy has become a de facto substrate for both research and industrial LLM development.</strong></p>
+<ul>
+<li><strong>Scale signals.</strong> 34K+ GitHub stars since January 2023. The <a href="https://dspy.ai/community/use-cases/">dspy.ai “Community Use Cases” page</a> lists 25+ named company deployments and 15+ published research papers built on DSPy, and is maintained as a growing index.</li>
+<li><strong>Research adoption</strong> runs beyond the cluster we’ve been reviewing: STORM (Wikipedia-article generation), Co-STORM, PATH (IR with 10 gold labels), IReRa (extreme classification with 10K+ labels), ECG-Chat (medical reports via GraphRAG), Palimpzest (declarative AI workload optimization), WangLab @ MEDIQA (Toronto’s competition winner), UMD’s suicide-detection system (beating 20-hour expert prompt engineering by 40%). Within this cluster, <a href="../../posts/20260430-multi-agent-system-search/">MASS</a> uses DSPy’s MIPRO as its prompt-optimizer primitive and <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO</a> cites DSPy as prior art.</li>
+<li><strong>Industry adoption</strong> spans finance (Moody’s), healthcare (STChealth, Infinitus, Raia, Salomatic), legal (Truelaw), travel (JetBlue), semiconductor (Normal Computing), e-commerce (Sephora, Zoro UK), developer tooling (Replit), enterprise AI (Databricks, VMware, RadiantLogic), and security (Haize Labs red-teaming). The Databricks integration is particularly sticky: DSPy co-author Matei Zaharia is Databricks CTO, and DSPy now powers parts of their LM-judge, RAG, and agentic offerings.</li>
+<li><strong>Why the abstraction endured.</strong> Teleprompter algorithms keep evolving (MIPRO → MIPROv2 → GEPA, all listed on dspy.ai), but the programming model (signatures, modules, teleprompters) has stayed stable. New optimizers slot into the same surface.</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://omarkhattab.com/">Khattab</a>, O., Singhvi, A., Maheshwari, P., Zhang, Z., <a href="https://keshav2.me/">Santhanam</a>, K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., <a href="https://heather.miller.am/">Miller</a>, H., <a href="https://en.wikipedia.org/wiki/Matei_Zaharia">Zaharia</a>, M., <a href="https://en.wikipedia.org/wiki/Christopher_Potts">Potts</a>, C. “DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://openreview.net/forum?id=sY5N0zY5Od" class="uri">https://openreview.net/forum?id=sY5N0zY5Od</a>. arXiv preprint arXiv:2310.03714.</li>
+<li><a id="ref-2"></a>Zhou, Y., Muresanu, A. I., Han, Z., <a href="https://keirp.com/">Paster</a>, K., <a href="https://silviupitis.com/">Pitis</a>, S., <a href="https://harris-chan.github.io/">Chan</a>, H., <a href="http://jimmylba.github.io/">Ba</a>, J. “Large Language Models Are Human-Level Prompt Engineers.” <em>International Conference on Learning Representations (ICLR)</em>, 2023. arXiv:2211.01910, November 3, 2022. <a href="https://arxiv.org/abs/2211.01910" class="uri">https://arxiv.org/abs/2211.01910</a></li>
+<li><a id="ref-3"></a><a href="https://lemon0830.github.io/">Guo</a>, Q., Wang, R., Guo, J., <a href="https://libeineu.github.io/">Li</a>, B., <a href="https://www.microsoft.com/en-us/research/people/kaitaosong/">Song</a>, K., <a href="https://www.microsoft.com/en-us/research/people/xuta/">Tan</a>, X., Liu, G., <a href="https://sites.google.com/view/jiangbian">Bian</a>, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532, September 15, 2023. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
+<li><a id="ref-4"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>arXiv preprint</em> (arXiv:2502.02533), February 4, 2025. <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
+<li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, T., <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>arXiv preprint</em> (arXiv:2506.05109), June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-dspy/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-dspy/cover.png" medium="image" type="image/png" height="89" width="144"/>
+</item>
+<item>
+  <title>EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-evoprompt/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-evoprompt/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Normalized per-task scores on 22 BBH tasks comparing APE against EvoPrompt (GA) and EvoPrompt (DE). Each bar is the gain over the baseline on one task; EvoPrompt’s two variants beat APE on most tasks, with DE topping the list. Figure 8 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</em> [1] (ICLR 2024), Qingyan Guo et al.&nbsp;(Tsinghua University, Microsoft Research) propose using LLMs to implement the crossover and mutation operators of evolutionary algorithms over a population of discrete prompts, gradient-free.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) excel in various tasks, but they rely on carefully crafted prompts that often demand substantial human effort. To automate this process, in this paper, we propose a novel framework for discrete prompt optimization, called <em>EvoPrompt</em>, which borrows the idea of evolutionary algorithms (EAs) as they exhibit good performance and fast convergence. To enable EAs to work on discrete prompts, which are natural language expressions that need to be coherent and human-readable, we <em>connect LLMs with EAs</em>. This approach allows us to simultaneously leverage the powerful language processing capabilities of LLMs and the efficient optimization performance of EAs. Specifically, <em>abstaining from any gradients or parameters</em>, EvoPrompt starts from a population of prompts and iteratively generates new prompts with LLMs based on the evolutionary operators, improving the population based on the development set. We optimize prompts for both closed- and open-source LLMs including GPT-3.5 and Alpaca, on 31 datasets covering language understanding, generation tasks, as well as BIG-Bench Hard (BBH) tasks. <em>EvoPrompt significantly outperforms human-engineered prompts and existing methods for automatic prompt generation (e.g., up to 25% on BBH)</em>. Furthermore, EvoPrompt demonstrates that <em>connecting LLMs with EAs creates synergies</em>, which could inspire further research on the combination of LLMs and conventional algorithms.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The setup is an evolutionary search over natural-language prompts. Maintain a population of N prompts (N = 10 in most experiments), run for T iterations, and at each step: sample parent prompts, call an LLM to produce a child via an evolutionary operator, score the child on a held-out development set, and keep the top N. The non-standard piece is the operator. Instead of a token-level rewriting rule, the operator is itself an LLM prompt. The paper compares two variants. The genetic-algorithm (GA) variant asks the LLM to perform crossover and mutation on two parent prompts. The differential-evolution (DE) variant asks the LLM to identify the difference between two parents and apply that difference on top of a third base prompt, borrowing the structure of classical differential evolution.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/figure1.png" class="img-fluid figure-img"></p>
+<figcaption>Genetic-algorithm process implemented by an LLM. Step 1: the LLM performs crossover on two parent prompts (orange and blue words inherited from each). Step 2: the LLM mutates the resulting child. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>Differential-evolution process implemented by an LLM. Step 1: the LLM identifies the differing words between two prompts (the “<img src="https://benjaminhan.net/feed-assets/098c89f219e509c7.svg" alt="\mathbf{b - c}" class="feed-math-inline"/>” diff in DE terms). Step 2: the LLM applies a mutation that combines the diff with a third base prompt. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>EvoPrompt is evaluated across 31 datasets: seven language-understanding classification tasks (SST-2, CR, MR, SST-5, AG’s News, TREC, Subj), one dialogue-summarization task (SAMSum), one simplification task (ASSET), and 23 Big-Bench Hard (BBH) reasoning tasks. Alpaca-7B is the base model for classification and generation; GPT-3.5 is the base for BBH. On the seven classification tasks (Alpaca-7B), EvoPrompt (DE) averages 77.05 accuracy versus APE’s (Zhou et al., 2022) 73.80. On the 23 BBH tasks (GPT-3.5), EvoPrompt (DE) averages 75.03 versus APE’s 71.85 and the no-optimization baseline’s 71.49. The peak per-task improvement on BBH is around 25%, visible in Figure 3 as the tallest bar at the right.</p>
+<table class="caption-top table">
+<caption>Average BBH accuracy across 23 tasks. Table 12 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Avg. accuracy on 23 BBH tasks (GPT-3.5)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Baseline (manual)</td>
+<td>71.49</td>
+</tr>
+<tr class="even">
+<td>APE (Zhou et al., 2022)</td>
+<td>71.85</td>
+</tr>
+<tr class="odd">
+<td>EvoPrompt (GA)</td>
+<td>74.18</td>
+</tr>
+<tr class="even">
+<td>EvoPrompt (DE)</td>
+<td><strong>75.03</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Per-task normalized scores on 23 BBH tasks for EvoPrompt (GA) and EvoPrompt (DE). Each bar is the gain over the baseline on one task. The peak on the right is where the “up to 25%” headline comes from. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Beyond the main results, the paper ablates population size. Figure 6 sweeps population size from 4 to 12 on three datasets: SST-5 (five-way sentiment classification), Subj (subjectivity classification), and ASSET (simplification). The three curves have noticeably different shapes.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/figure6.png" class="img-fluid figure-img"></p>
+<figcaption>Effect of population size on SST-5 (left), Subj (middle), and ASSET (right). The simple generation task (ASSET) plateaus early; the harder classification task (Subj) keeps benefiting from larger populations. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>One of the earliest clean instances of “LLM as optimization operator.”</strong> EvoPrompt (September 2023) is among the cleanest early examples of using an LLM not as the <em>thing being optimized</em> but as the <em>operator that performs the optimization step</em>. Token-level random mutation produces incoherent prompts; an LLM mutation operator preserves semantics. Pryzant et al.’s APO [2] (textual gradients, EMNLP 2023) makes a parallel move from the gradient-descent direction. The same pattern then shows up across the prompt-and-agent-design literature: <a href="../../posts/20260430-multi-agent-system-search/">MASS’s prompt + topology stages</a> [3] and <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO’s bilevel meta-learning loop</a> [4] are LLM-as-optimizer with different staging.</p></li>
+<li><p><strong>Why DE vs GA matters for prompts specifically.</strong> The paper compares Genetic Algorithm (GA) and Differential Evolution (DE) variants, and DE wins on most BBH tasks. Both operators are implemented by the LLM, so the contrast is semantic rather than tokenwise: GA’s LLM-prompt asks for a child that inherits from two parents, while DE’s LLM-prompt asks the model to apply the <em>difference</em> between two parent prompts on top of a third base. DE’s “find what’s distinctive and graft it onto the current best” maps more cleanly onto prompt refinement than GA’s “combine bits of each.” Subsequent prompt-optimization papers tend to describe everything as “evolutionary” without specifying which operator.</p></li>
+<li><p><strong>DE’s advantage reverses on simple generation tasks.</strong> On ASSET (a sentence-simplification benchmark: rewrite a sentence more accessibly while preserving meaning, scored by SARI against human references), Figure 6 shows GA matching or edging out DE across several population sizes. The mechanism is consistent with the rest of the paper: DE’s “apply the difference” move pays off only when the population encodes meaningful task-specific variation. ASSET’s good-prompt space is narrow (the useful phrasings all look like “simplify this while preserving meaning”), so the differences between parents are small or noisy, and applying that noise on top of a base destabilizes a prompt that was already near-optimal. GA’s conservative interpolation stays inside the narrow good-prompt band. Practical takeaway: if the task has a narrow good-prompt manifold (simple generation, canonical phrasings), default to GA; DE is the better fit when prompt diversity carries real signal (hard classification, reasoning).</p></li>
+<li><p><strong>The 25% headline is a single-task peak; the average is closer to 3.5%.</strong> The “up to 25% on BBH” claim in the abstract is EvoPrompt (DE)’s best per-task improvement across 23 BBH tasks; the average gain over the baseline is closer to 3.5% (Table 12). BBH in this paper is run on GPT-3.5, not Alpaca-7B. Alpaca is used only for classification and generation tasks. That raises a question this paper does not answer: as base-model capability rises, do prompt-optimization gains shrink, and does this whole direction have diminishing returns at GPT-4-class capability?</p></li>
+<li><p><strong>Population size depends on task complexity.</strong> Figure 6 sweeps population sizes from 4 to 12 on SST-5, Subj, and ASSET. For the simple generation task (ASSET), population 6 matches population 10 at roughly 2.5× less compute; for the harder classification task (Subj), larger populations with more diversity keep helping. Most LLM-as-optimizer papers default to population sizes of 10 to 30 without an ablation. Practical takeaway: tune population to task complexity rather than defaulting upward.</p></li>
+<li><p><strong>All of this is extrinsic by Liu and van der Schaar’s definition.</strong> The <a href="../../posts/20260430-intrinsic-metacognitive-learning/">position paper on intrinsic metacognitive learning</a> [5] argues that today’s “self-improving” pipelines rely on hand-designed loops: the search algorithm, what to optimize, against what objective, in what order, all wired in by the system designer. EvoPrompt is a clean instance. Humans pick the population structure, the GA-vs-DE operator, the development-set scoring, the termination criterion. The agent only generates candidates; it doesn’t choose what’s being optimized. None of this makes the result wrong, but it bounds the long-term claim: whatever the strongest extrinsic prompt-optimizer turns out to be, the position-paper bet is that an architecture which lets the agent decide how to optimize itself will eventually overtake it.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://lemon0830.github.io/">Guo</a>, Q., Wang, R., Guo, J., <a href="https://libeineu.github.io/">Li</a>, B., <a href="https://www.microsoft.com/en-us/research/people/kaitaosong/">Song</a>, K., <a href="https://www.microsoft.com/en-us/research/people/xuta/">Tan</a>, X., Liu, G., <a href="https://sites.google.com/view/jiangbian">Bian</a>, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532, September 15, 2023. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
+<li><a id="ref-2"></a><a href="https://cs.stanford.edu/people/rpryzant/">Pryzant</a>, R., <a href="https://daniter-cu.github.io/">Iter</a>, D., <a href="https://jerryzli.github.io/">Li</a>, J., <a href="https://yintat.com/">Lee</a>, Y., <a href="https://cs.stanford.edu/~cgzhu/">Zhu</a>, C., Zeng, M. “Automatic Prompt Optimization with ‘Gradient Descent’ and Beam Search.” <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing</em>, 2023. <a href="https://arxiv.org/abs/2305.03495" class="uri">https://arxiv.org/abs/2305.03495</a></li>
+<li><a id="ref-3"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>arXiv preprint</em> (arXiv:2502.02533), February 4, 2025. <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
+<li><a id="ref-4"></a>Choi, Y., <a href="https://jinheonbaek.github.io/">Baek</a>, J., <a href="https://www.mlai-kaist.com/">Hwang</a>, S. J. “System Prompt Optimization with Meta-Learning.” <em>arXiv preprint</em> (arXiv:2505.09666), May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
+<li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, T., <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>arXiv preprint</em> (arXiv:2506.05109), June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-evoprompt/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-evoprompt/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/cover.png" class="img-fluid figure-img"></p>
+<figcaption>LLMs have internal answer distributions about user queries. Rather than just sampling one output (possibly combined with a percentage or a verbalized hedge), an LLM should generate a string that is self-reflective of its internal distribution, summarizing all plausible answers and their relative likelihoods. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</em> (ICLR 2026) [1], <a href="https://mkirchhof.github.io/">Michael Kirchhof</a> et al.&nbsp;at Apple and the Tübingen AI Center introduce an information-theoretic metric for evaluating whether a single text summary a large language model (LLM) writes about its own uncertainty actually matches the distribution of answers the same model would produce if sampled many times.</p>
+<blockquote class="blockquote">
+<p>The common approach to communicate a large language model’s (LLM) uncertainty is to add a percentage number or a hedging word to its response. But is this all we can do? Instead of generating a single answer and then hedging it, an LLM that is fully transparent to the user needs to be able to reflect on its internal belief distribution and output a summary of all options it deems possible, and how likely they are. To test whether LLMs possess this capability, we develop the <strong><em>SelfReflect metric</em>, an information-theoretic distance between a given summary and a distribution over answers<em>. In interventional and human studies, we find that </em>SelfReflect indicates even slight deviations<em>, yielding a fine measure of faithfulness between a summary string and an LLM’s actual internal distribution over answers. With SelfReflect, we make a resounding negative observation: </em>modern LLMs are, across the board, incapable of revealing what they are uncertain about, neither through reasoning, nor chains-of-thoughts, nor explicit finetuning<em>. However, we do find that </em>LLMs are able to generate faithful summaries of their uncertainties if we help them by sampling multiple outputs and feeding them back into the context</strong>. This simple approach shines a light at the universal way of communicating LLM uncertainties whose future development the SelfReflect score enables. To support the development of this universal form of LLM uncertainties, we publish the code that implements our metric for arbitrary LLMs under <a href="https://github.com/apple/ml-selfreflect" class="uri">https://github.com/apple/ml-selfreflect</a>.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>How the metric works. <em>Input:</em> a candidate summary string <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/>, a query <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/>, and sampling access to the model <img src="https://benjaminhan.net/feed-assets/9cc225b783095a97.svg" alt="p_\theta" class="feed-math-inline"/>. <em>Output:</em> a scalar distance, lower meaning the summary is more faithful to the model’s answer distribution. The paper defines a good summary <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/> as one that is <em>predictively sufficient</em> of the answer distribution <img src="https://benjaminhan.net/feed-assets/68ded88ee1140bd5.svg" alt="p_\theta(A \mid q)" class="feed-math-inline"/>. Intuitively, if you’ve read <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/>, you shouldn’t gain much by also reading a fresh sample from the model. Operationally, the paper turns this into a Cloze-style test. Sample <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> answers <img src="https://benjaminhan.net/feed-assets/f17f8180caedd2e9.svg" alt="a_{(1:N)}" class="feed-math-inline"/> from the model for query <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/>, then take a separate sample <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/> and mask a word in it. Ask a judge LLM to predict the masked word twice: once given the candidate summary <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/> as context, once given the concatenated samples <img src="https://benjaminhan.net/feed-assets/f17f8180caedd2e9.svg" alt="a_{(1:N)}" class="feed-math-inline"/> as context. Each prediction is a distribution over the vocabulary. The SelfReflect score is the <strong>1-Wasserstein distance</strong> between those two distributions, averaged over many masked words and queries. A summary that truly captures the answer distribution produces the same predictions as the samples do; a summary that misses facts or misweights them shifts the predicted distribution.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
+<figcaption>How the SelfReflect metric is computed. The judge LLM is prompted twice (once with the candidate summary as context, once with the concatenated samples) and predicts a masked-out word in each case. The two predicted token distributions are compared via 1-Wasserstein distance. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Across 20 modern LLMs tested with prompting, chain-of-thought reasoning, supervised fine-tuning (SFT), and direct preference optimization (DPO), none produce summary strings that faithfully reflect their internal answer distribution. Summaries look right in form (they list possibilities and assign relative likelihoods), but the listed possibilities are not the ones the model actually samples. The fix that does work is mechanical: sample <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> outputs from the model, feed them back as context, and ask the model to summarize <em>those</em>. The resulting summary is faithful.</p>
+<p>In the benchmark’s interventional study (taking 3 × 1,000 open-ended questions and generating known-good, known-bad, and “almost-good” summaries with Gemini 2.0 Flash), SelfReflect cleanly separates near-misses where other metrics cannot:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
+<figcaption>Discrimination accuracy of SelfReflect and alternative benchmark metrics on pairs of good and bad summaries, across six comparison types. Higher is better (chance = 50%). SelfReflect (bottom row) achieves the highest Good-vs-almost-good accuracy at 93.2%, while traditional baselines (LM Judge, Embedding) sit near or only modestly above chance. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Discriminating an almost-good summary from a good one is the setting that matters for “did the LLM really convey its uncertainty?”, and that is the column where the LM-judge baseline drops near chance (47.3%) and other traditional baselines do only modestly better.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The negative result matters more than the metric.</strong> The literature on LLM self-reports has been accumulating evidence in one direction for a few years now: chain-of-thought explanations don’t necessarily reflect the actual computation [2], verbalized confidence is systematically overconfident across five widely-used LLMs [3], and now text self-summaries of internal answer distributions don’t match those distributions either. Each result is locally about a different self-report channel, but the pattern across them converges: when an LLM tells you something about itself, the right prior is that the statement is shaped by self-report patterns picked up from training data, not by introspection on the actual generative process. <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar’s position paper on intrinsic metacognitive learning</a> [5] argues that genuine self-improving agents need intrinsic metacognitive capabilities, with the ingredients at least partly present in current LLMs. SelfReflect’s negative result is a direct empirical bound on one facet of the metacognitive-knowledge ingredient: the ability to faithfully describe one’s own answer distribution.</p></li>
+<li><p><strong>The “sample-then-summarize” workaround is the practical bottom line and it has pipeline implications.</strong> The paper shows that LLMs can write faithful uncertainty summaries. They just need the samples in context first. That makes the missing capability not summary-writing but introspection on their own answer distribution without sampling it. For agent and product designers: if you want a calibrated multi-option response, use i.i.d. sampling plus a summarization pass. A clever prompt asking the model to “be honest about your uncertainty” won’t substitute for the samples. The cost is <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> forward passes; the upside is a summary the SelfReflect metric scores as faithful.</p></li>
+<li><p><strong>The metric is more discriminating than the alternatives.</strong> Most evaluation work in this area has leaned on either LM-judge metrics (which have known failure modes) or coarse calibration scores (which discard structure). An information-theoretic distance between a string and a distribution (predictive sufficiency, scored against the empirical answer distribution) discriminates good from almost-good summaries where LM judges and embedding distances do not. Whether downstream work picks it up is the open question; if so, future “LLMs reveal their uncertainties” claims will need to clear a real bar rather than a vibes check.</p></li>
+<li><p><strong>Three deployment uses beyond benchmarking.</strong> The same score plugs into several runtime loops the paper doesn’t explore. As a training reward it targets the property SFT and DPO miss under naive objectives: optimize against the metric directly and you train for faithful self-summary rather than a proxy. As an ops-time ablation signal it answers “given my model and my query distribution, which prompting regime yields the most faithful uncertainty reports?”, narrower than the paper’s capability ranking and closer to production tuning. As a sampled monitoring signal it audits a cheaper production path (e.g., direct verbalized uncertainty) on a subset of traffic: large divergence on the sampled queries means the cheaper path has drifted, and the operator should fall back to sample-then-summarize or route to human review. Per-query routing is not a sensible use because computing SelfReflect for a query already costs the <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> samples that sample-then-summarize would need anyway.</p></li>
+<li><p><strong>Part of a broader push to ascertain a model’s epistemic status.</strong> Whether an LLM knows a fact, and whether it can accurately describe its own uncertainty, are both aspects of what the model actually knows versus what it claims. <a href="../../posts/20260430-kglens-knowledge-probing/">KGLens</a> [4] targets factual knowledge by turning a knowledge graph into natural-language questions and comparing model answers to the graph’s facts. SelfReflect targets self-knowledge of uncertainty by comparing a written summary to the distribution the model actually samples. Both route around the problem that LLMs produce fluent output regardless of whether they know the answer, by grounding the measurement in a signal the model can’t game by sounding confident.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+<li><a id="ref-2"></a><a href="https://milesaturpin.github.io/">Turpin</a>, Miles, Julian <a href="https://julianmichael.org/">Michael</a>, Ethan <a href="https://ethanperez.net/">Perez</a>, and Samuel R. <a href="https://cims.nyu.edu/~sbowman/">Bowman</a>. “Language Models Don’t Always Say What They Think: Unfaithful Explanations in Chain-of-Thought Prompting.” <em>Conference on Neural Information Processing Systems (NeurIPS)</em>, 2023. arXiv:2305.04388, May 7, 2023. <a href="https://arxiv.org/abs/2305.04388" class="uri">https://arxiv.org/abs/2305.04388</a></li>
+<li><a id="ref-3"></a><a href="https://miaoxiongzju.github.io/">Xiong</a>, Miao, Zhiyuan Hu, Xinyang Lu, Yifei Li, Jie <a href="https://bigaidream.github.io/">Fu</a>, Junxian <a href="https://jxhe.github.io/">He</a>, and Bryan <a href="https://bhooi.github.io/">Hooi</a>. “Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2306.13063, June 22, 2023. <a href="https://arxiv.org/abs/2306.13063" class="uri">https://arxiv.org/abs/2306.13063</a></li>
+<li><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Zheng</a>, Shangshang, He <a href="https://hbkkk.github.io/">Bai</a>, Yizhe <a href="https://dreasysnail.github.io/">Zhang</a>, Yi Su, Xiaochuan Niu, and Navdeep <a href="https://www.cs.toronto.edu/~ndjaitly/">Jaitly</a>. “KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs.” <em>ACL 2024 Workshop on Knowledgeable Language Models</em>, 2024. arXiv:2312.11539, December 15, 2023. <a href="https://arxiv.org/abs/2312.11539" class="uri">https://arxiv.org/abs/2312.11539</a></li>
+<li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/cover.png" medium="image" type="image/png" height="74" width="144"/>
+</item>
+<item>
+  <title>KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Parameterized knowledge graph. Each edge carries an estimate of how often the LLM gets the associated fact wrong; edge color encodes the LLM’s deficiency on that fact. An example question-answer pair about driving in Tonga shows how KGLens turns a graph edge into a natural-language probe. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs</em> (ACL 2024 Workshop Towards Knowledgeable Language Models) [1], <a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Shangshang Zheng</a> et al.&nbsp;at Apple tackle a practical problem: large language models confidently state wrong facts, and checking every fact by hand is impossibly expensive.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) might hallucinate facts, while curated Knowledge Graph (KGs) are typically factually reliable especially with domain-specific knowledge. Measuring the alignment between KGs and LLMs can effectively probe the factualness and identify the knowledge blind spots of LLMs. However, verifying the LLMs over extensive KGs can be expensive. In this paper, we present <em>KGLens, a Thompson-sampling-inspired framework aimed at effectively and efficiently measuring the alignment between KGs and LLMs</em>. KGLens features a <em>graph-guided question generator for converting KGs into natural language</em>, along with a <em>carefully designed importance sampling strategy based on parameterized KG structure to expedite KG traversal</em>. Our simulation experiment compares the brute force method with KGLens under six different sampling methods, demonstrating that our approach achieves superior probing efficiency. Leveraging KGLens, we conducted in-depth analyses of the factual accuracy of <em>ten LLMs across three large domain-specific KGs from Wikidata, composing over 19K edges, 700 relations, and 21K entities</em>. Human evaluation results indicate that KGLens can assess LLMs with a level of accuracy nearly equivalent to that of human annotators, <em>achieving 95.7% of the accuracy rate</em>.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>Their approach pairs the model with a <em>knowledge graph</em>, a structured database of facts, each written as a subject-relation-object triple like “Paris — capital of — France.” Each such fact is called an <em>edge</em> in the graph. KGLens turns those edges into test questions and asks the model. A smart sampling strategy, inspired by a classical technique called Thompson sampling [4], keeps track of which facts the model seems to be weakest on and concentrates future questions there. The result: the team can map out a model’s factual blind spots in far fewer questions than asking about every fact one by one.</p>
+<p>What makes Thompson sampling special is that it doesn’t always test what looks worst right now; it samples from its current belief about each fact, so facts it is unsure about still get tried and the estimates keep improving. Those beliefs are stored as a <em>beta distribution</em> per fact, a compact shape that captures both “how often does the model get this fact wrong” and “how sure are we about that estimate” in one object, and updates naturally every time a question is answered.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>How KGLens works. The system starts with a knowledge graph where every fact (edge) carries a running estimate of how often the model gets it wrong. Each round, it picks a batch of facts (preferring the ones the model seems weakest on), turns them into natural-language questions, asks the model, and updates each fact’s failure estimate based on the answer. Over time the sampler zeroes in on the model’s weakest facts. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Across three knowledge graphs built from Wikidata (covering countries, movies, and the NBA, with more than 19,000 facts and 21,000 entities between them), KGLens tested ten LLMs and produced two kinds of result.</p>
+<p>The first is evidence that the smart sampling actually saves questions. Figure 3 runs a simulation on the NBA graph. Each fact is given a hidden true “failure probability” (how often the model would get it wrong if asked repeatedly), and KGLens has to recover those probabilities from as few test questions as possible. On the hardest 200 and 600 facts, Thompson sampling and a related strategy called epsilon-greedy (both of which preferentially test the facts they think the model is weakest on) get closer to the true probabilities sooner than the brute-force approach of cycling through every fact in turn. The gap is largest when the question budget is small, which is exactly when it matters most.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Estimation error on the hardest NBA facts as a function of how many questions the model was asked. Thompson sampling and epsilon-greedy (two strategies that preferentially test likely-wrong facts) reach the same error as a brute-force scan with fewer questions, especially early on. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The second result is a map of what the model actually knows. Once KGLens has probed enough facts, it can group the results by the <em>kind</em> of relation being asked about (“spouse of”, “country of citizenship”, “position played”, and so on) and by the kind of entity involved. The output isn’t “the model is X% accurate overall”; it’s “the model is reliable on these kinds of facts and unreliable on those.” Figure 6 shows this breakdown for GPT-4 on the hardest difficulty setting.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure6.webp" class="img-fluid figure-img" data-lightbox-src="figure6-full.png"></p>
+<figcaption>Per-relation proficiency map for GPT-4 on HARD mode. Color encodes the <em>zero-sense rate</em>: the fraction of facts of that type the model never got right, even across repeated trials. Darker means more reliable. Dot size reflects how many facts of that type were in the graph. A map like this, showing exactly where a frontier model is and isn’t reliable, is the kind of artifact KGLens makes cheap to produce. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>To check that the automated grading was reliable, the authors compared KGLens’s verdicts against human judges. The system agreed with humans 95.7% of the time.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>A per-relation map is a better output shape for deployment decisions than a single score.</strong> Most factuality benchmarks (TruthfulQA [2], HaluEval, FActScore) produce a single number: the model is X% accurate on some fixed test set. KGLens produces a <em>map</em> instead: a breakdown of which kinds of facts the model handles well and which it doesn’t, against a knowledge graph the team can pick to match their actual deployment. For a team deciding whether to trust a model on, say, NBA player facts before shipping a sports product, that map is what they actually need; a single TruthfulQA number doesn’t help.</p></li>
+<li><p><strong>The sampling idea is the part most likely to matter beyond this paper.</strong> Every LLM evaluation hits the same wall: there are too many things to test and each test costs money. KGLens’s move (track a running estimate of how often the model fails each test, then preferentially retest the ones it seems worst at) is a standard strategy from classical machine learning applied to LLM evaluation. Figure 3 shows it meaningfully cuts the number of questions needed to find a model’s weakest facts. The same idea should plug into other expensive evaluations: red-teaming (searching for harmful outputs), jailbreak coverage (finding prompts that bypass safety rules), or capability probing (checking whether a model can do a specific task).</p></li>
+<li><p><strong>It pairs naturally with <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [3].</strong> Both are Apple papers about measuring what LLMs actually know versus what they claim, and they answer adjacent questions. KGLens tells you <em>which facts</em> the model has internalized: which kinds of questions it can answer reliably. SelfReflect tells you whether the model can <em>honestly summarize its own uncertainty</em> about a given question. A pipeline that uses KGLens to find a model’s weak areas and SelfReflect to check whether the model can admit to those weaknesses would be a stronger evaluation than either alone.</p></li>
+<li><p><strong>The 95.7% agreement with human judges deserves close scrutiny.</strong> Deciding automatically whether a model’s answer is correct is hard. Models paraphrase, give partial answers, or say something that is technically right but not the exact wording in the knowledge graph. The 95.7% figure is high, but the relevant question is whether the 4.3% disagreement concentrates on a particular kind of fact (time-sensitive ones, ambiguous relations, facts with multiple valid answers). If it does, those cases are where the automated grader is systematically off, and the team can either adjust or route them to a human reviewer.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Zheng</a>, Shangshang, He <a href="https://hbkkk.github.io/">Bai</a>, Yizhe <a href="https://dreasysnail.github.io/">Zhang</a>, Yi Su, Xiaochuan Niu, and Navdeep <a href="https://www.cs.toronto.edu/~ndjaitly/">Jaitly</a>. “KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs.” <em>ACL 2024 Workshop Towards Knowledgeable Language Models</em>, 2024. arXiv:2312.11539, December 15, 2023. <a href="https://arxiv.org/abs/2312.11539" class="uri">https://arxiv.org/abs/2312.11539</a></li>
+<li><a id="ref-2"></a>Lin, Stephanie, Jacob <a href="https://www.jacobh.co.uk/">Hilton</a>, and Owain <a href="https://en.wikipedia.org/wiki/Owain_Evans">Evans</a>. “TruthfulQA: Measuring How Models Mimic Human Falsehoods.” <em>arXiv preprint</em> (arXiv:2109.07958), September 8, 2021. <a href="https://arxiv.org/abs/2109.07958" class="uri">https://arxiv.org/abs/2109.07958</a></li>
+<li><a id="ref-3"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>arXiv preprint</em> (arXiv:2505.20295), May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+<li><a id="ref-4"></a><a href="https://djrusso.github.io/">Russo</a>, Daniel J., Benjamin <a href="https://web.stanford.edu/~bvr/">Van Roy</a>, Abbas Kazerouni, Ian <a href="https://iosband.github.io/">Osband</a>, and Zheng Wen. “A Tutorial on Thompson Sampling.” <em>Foundations and Trends in Machine Learning</em> 11, no. 1 (2018): 1–96. arXiv:1707.02038. <a href="https://arxiv.org/abs/1707.02038" class="uri">https://arxiv.org/abs/1707.02038</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Frontier Model, Lower Bill: The Triager Pattern</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Hero card for Mendral’s blog post on frontier-model cost savings. Image from <a href="https://www.mendral.com/blog/frontier-model-lower-costs">Mendral</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://github.com/aluzzardi">Andrea Luzzardi</a> at Mendral <a href="https://www.mendral.com/blog/frontier-model-lower-costs">reports</a> that they now run Opus 4.6 across their CI-triage agent and pay less than they did when everything ran on Sonnet 4.0, because most failures never reach the frontier model at all.</p>
+<p>What the article reports:</p>
+<ul>
+<li><strong>A Haiku “triager” agent fronts the system.</strong> It reads each new CI failure, runs exact-match plus pgvector semantic search against known issues, and decides whether to escalate. Roughly 4 in 5 failures match a known issue and stop there; a triager match costs about 25× less than a full investigation.</li>
+<li><strong>Opus 4.6 is the orchestrator, not the reader.</strong> It forms hypotheses, then spawns Haiku 4.5 sub-agents with tight prompts (“fetch the exact error from the pnpm install step, return the last 50–100 lines”). Sub-agents are capped at one level deep so fan-out doesn’t run away. Haiku absorbs about 65% of input tokens but only ~36% of spend; the input/output ratio is 86:1 for Haiku vs 50:1 for the orchestrator.</li>
+<li><strong>Logs are pulled, not pushed.</strong> The agent has a SQL interface to ClickHouse and a set of pre-aggregated materialized views; it queries for what it needs rather than receiving 200K-line dumps in the prompt. The authors argue pushing logs front-loads a relevance judgement before you know the cause, and biases the investigation.</li>
+<li><strong>The pattern only works because both tiers got better.</strong> Six months ago, Sonnet 4.0 wrote bad ClickHouse queries and Haiku 4.0 was useful only for yes/no classification. Opus 4.6 plans well enough to write precise sub-agent prompts; Haiku 4.5 executes narrow scoped tasks reliably. The savings come from the architecture. Both tiers getting good enough made the new shape possible.</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The headline reads as a model-pricing claim, but the savings are architectural.</strong> “We upgraded and our bill went down” invites the reading that newer models are simply cheaper. They aren’t, on a per-token basis. Mendral is running Opus 4.6, priced identically to 4.5; if anything, the trend runs the other way, since <a href="../../posts/20260420-opus-47-token-count/">Opus 4.7’s new tokenizer raised effective cost ~40% at unchanged sticker pricing</a>. What changed at Mendral is that the expensive model now sees a small fraction of the input. Anyone reading this as “just upgrade” will not see the same bill.</li>
+<li><strong>The 86:1 input/output ratio is a useful diagnostic for whether your agent has the right shape.</strong> A worker that reads 86 tokens for every 1 it returns is doing what cheap models are good at: absorbing data, returning a focused extract. An orchestrator running closer to 50:1 is synthesizing. If both your tiers come out with similar ratios, you probably haven’t actually separated the planning role from the reading role. You’re paying frontier prices for token absorption.</li>
+<li><strong>Capping sub-agents at one level deep is the unglamorous decision that makes the bill predictable.</strong> Recursive agent spawning is the easy default and the easy way to a $40K weekend. The piece notes this in passing, but it’s worth pulling out: bounded fan-out is what keeps the cost ceiling in place, and most published multi-agent designs don’t impose it.</li>
+<li><strong>One thing the article doesn’t quantify: how much of the win came from the triager vs the better models.</strong> They tell us the triager handles 80% of cases at 25× less cost, and they tell us the upgrade enabled the architecture, but the counterfactual (“Sonnet 4.0 + the same triager pattern”) isn’t in the post. It would be a useful ablation, especially for teams trying to justify the migration.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/</guid>
+  <pubDate>Wed, 29 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>OpenAI’s Five Principles for AGI</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260428-openai-agi-principles/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260428-openai-agi-principles/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260428-openai-agi-principles/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The hero graphic for OpenAI’s “Our principles” post. Image from <a href="https://openai.com/index/our-principles/">OpenAI</a>.</figcaption>
+</figure>
+</div>
+<p>OpenAI has posted <em>Our principles</em> [1] on its blog, laying out five principles for its work on AGI:</p>
+<ol type="1">
+<li><strong>Democratization.</strong> “We will resist the potential of this technology to consolidate power in the hands of the few.” Key decisions about AI should run through democratic processes, not be settled inside AI labs.</li>
+<li><strong>Empowerment.</strong> “We believe AI can empower everyone to achieve their goals, learn more, be happier and more fulfilled, and pursue their dreams.” Users get very broad latitude in how they use OpenAI’s services, balanced against a responsibility to minimise local, catastrophic, and “potential corrosive societal effects.” Under uncertainty OpenAI will err on the side of caution, relaxing constraints as evidence accumulates.</li>
+<li><strong>Universal prosperity.</strong> “We want a future where everyone can have an excellent life.” OpenAI says its compute and infrastructure build-out is driven by this goal: “buying huge amounts of compute while our revenue is relatively small, vertically integrating to lower costs and make our technology easier to use, pushing to build datacenters all around the world.” The post says governments may need to consider “new economic models” so everyone can participate in the value being created.</li>
+<li><strong>Resilience.</strong> “AI will introduce new risks, and we will work with other companies, ecosystems, governments, and society to solve them.” OpenAI takes a society-wide approach: pathogen-agnostic countermeasures for bioweapons, rapid use of AI to secure open-source software and critical infrastructure, backed by the OpenAI Foundation. The post commits to “collaborate with governments, international agencies, and other AGI efforts” and, if needed, to wait before proceeding further.</li>
+<li><strong>Adaptability.</strong> “We continue to believe the only way to meet the challenges of a very unpredictable future is to be prepared to update our positions as we learn more.” OpenAI commits to be “transparent about when, how, and why” those positions change. The concrete example in the post: future scenarios where OpenAI may need to “trade off some empowerment for more resilience.”</li>
+</ol>
+<p>Other notable moves in the post:</p>
+<ul>
+<li>The post acknowledges that “OpenAI is a much larger force in the world than it was a few years ago.”</li>
+<li>The 2019 staged release of GPT-2 weights, originally paused out of concern about societal impact, is recast as a “misplaced worry” whose main legacy is the discovery of iterative deployment, the release strategy the company has used ever since.</li>
+<li>Near the close: “We deserve an enormous amount of scrutiny given the weight of what we are doing. We will not get everything right, but we will learn quickly and course-correct.”</li>
+</ul>
+<section id="my-notes-how-this-compares-to-other-frontier-labs" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes-how-this-compares-to-other-frontier-labs">My Notes: How this compares to other frontier labs</h2>
+<p>The other major frontier labs all pair a values-level statement with an operational, capability-gate document. They differ in how explicit the operational document is about what actually blocks deployment.</p>
+<ul>
+<li><strong>Anthropic</strong> publishes <em>Core Views on AI Safety</em> [2] at the values layer, paired with a <em>Responsible Scaling Policy</em> [3] at the operational layer. The RSP (currently at v3.1, April 2026) defines named Capability Thresholds in domains including CBRN (chemical, biological, radiological, nuclear) and AI R&amp;D, each paired with ASL (AI Safety Level) security standards. Under v3, Anthropic also publishes Frontier Safety Roadmaps and Risk Reports. When a model crosses a threshold, Anthropic commits to meet the corresponding safeguards before further training or deployment can proceed. Anthropic’s RSP has the most-revised public history among the four labs, with published redlines for prior versions and a separate RSP Noncompliance Reporting and Anti-Retaliation Policy.</li>
+<li><strong>Google DeepMind</strong> publishes the <em>Frontier Safety Framework</em> [4], which defines Critical Capability Levels in four domains — autonomy, biosecurity, cybersecurity, and machine learning R&amp;D — each paired with security and deployment mitigations that scale with the level. Structurally similar to Anthropic’s RSP; its emphasis is on “detect and mitigate” rather than an explicit pause commitment.</li>
+<li><strong>Meta</strong> publishes the <em>Advanced AI Scaling Framework</em> [5], an April 2026 update to the original Frontier AI Framework. Models are evaluated for cybersecurity, chemical and biological, and loss-of-control risks, both before and after safeguards are applied, and the framework is paired with per-model <em>Safety &amp; Preparedness Reports</em>, the first of which was published for Muse Spark. Meta’s commitment: “only deploying models when they meet the standards set by our Framework.”</li>
+</ul>
+<p>OpenAI’s operational counterpart is its separately-published <em>Preparedness Framework</em>, currently at v2 (April 2025) [6]. The Framework names three Tracked Categories — Biological and Chemical, Cybersecurity, AI Self-improvement — and five Research Categories: Long-range Autonomy, Sandbagging, Autonomous Replication and Adaptation, Undermining Safeguards, and Nuclear and Radiological. It distinguishes High and Critical capability thresholds, governed internally by a Safety Advisory Group, and commits that OpenAI “will not deploy these very capable models until we’ve built safeguards to sufficiently minimize the associated risks of severe harm.”</p>
+<p>OpenAI’s new <em>Our principles</em> is the values half of that pair; the capability-gate work remains in the Preparedness Framework v2. What’s new in this post is adaptability: a values-level commitment to revise OpenAI’s positions as evidence accumulates, and to be transparent about those revisions.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“Our principles.” <em>OpenAI</em>. <a href="https://openai.com/index/our-principles/" class="uri">https://openai.com/index/our-principles/</a></li>
+<li><a id="ref-2"></a>“Core Views on AI Safety: When, Why, What, and How.” <em>Anthropic</em>. <a href="https://www.anthropic.com/news/core-views-on-ai-safety" class="uri">https://www.anthropic.com/news/core-views-on-ai-safety</a></li>
+<li><a id="ref-3"></a>“Responsible Scaling Policy.” <em>Anthropic</em>. <a href="https://www.anthropic.com/rsp" class="uri">https://www.anthropic.com/rsp</a></li>
+<li><a id="ref-4"></a>“Introducing the Frontier Safety Framework.” <em>Google DeepMind</em>. <a href="https://deepmind.google/discover/blog/introducing-the-frontier-safety-framework/" class="uri">https://deepmind.google/discover/blog/introducing-the-frontier-safety-framework/</a></li>
+<li><a id="ref-5"></a>“Scaling How We Build and Test Our Most Advanced AI.” <em>Meta</em>. <a href="https://ai.meta.com/blog/scaling-how-we-build-test-advanced-ai/" class="uri">https://ai.meta.com/blog/scaling-how-we-build-test-advanced-ai/</a></li>
+<li><a id="ref-6"></a>“Our updated Preparedness Framework” (v2, April 15, 2025). <em>OpenAI</em>. <a href="https://openai.com/index/updating-our-preparedness-framework/" class="uri">https://openai.com/index/updating-our-preparedness-framework/</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260428-openai-agi-principles/</guid>
+  <pubDate>Tue, 28 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260428-openai-agi-principles/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Prompt Injections in the Wild: What Google Found in Common Crawl</title>
   <dc:creator>synesis </dc:creator>
@@ -769,389 +1327,6 @@
   <guid>https://benjaminhan.net/posts/20260424-edu-startups-decline/</guid>
   <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260424-edu-startups-decline/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Anthropic Economic Index</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260423-anthropic-economic-index/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260423-anthropic-economic-index/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260423-anthropic-economic-index/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Illustration from <a href="https://www.anthropic.com/research/economic-index-primitives">Anthropic</a>.</figcaption>
-</figure>
-</div>
-<p>Anthropic’s <a href="https://www.anthropic.com/research/economic-index-primitives">fourth Economic Index report</a> (Jan 15, 2026) introduces <em>economic primitives</em> — a set of five foundational measurements Claude extracts from every sampled conversation — and uses them to revisit earlier findings about AI’s impact on work.</p>
-<p>The primitives:</p>
-<ul>
-<li><strong>Task complexity</strong> — estimated human time to complete without AI, time with AI, and whether a conversation bundles multiple tasks.</li>
-<li><strong>Human and AI skills</strong> — years of education needed to understand prompts and responses; whether the user could have done the task alone.</li>
-<li><strong>Use case</strong> — work, education, or personal.</li>
-<li><strong>AI autonomy</strong> — from active collaboration to full delegation.</li>
-<li><strong>Task success</strong> — Claude’s own assessment of completion.</li>
-</ul>
-<p>What the November 2025 sample (1M Claude.ai conversations + 1M first-party API transcripts, mostly Sonnet 4.5) shows:</p>
-<ul>
-<li><strong>Complex tasks get the biggest speedup.</strong> High-school-level prompts: 9× on Claude.ai. College-level: 12×. API speedups are higher still.</li>
-<li><strong>Success drops only modestly with complexity.</strong> 70% success on sub-high-school tasks vs.&nbsp;66% on college-level — not enough to offset the speedup gradient.</li>
-<li><strong>Time horizons are longer than METR suggests.</strong> Claude hits 50% success at ~3.5h tasks on the API and ~19h on Claude.ai, vs.&nbsp;METR’s 2h. Attributed to users decomposing tasks and selecting ones they expect to work.</li>
-<li><strong>Country patterns follow an adoption curve.</strong> Lower-income countries skew toward educational coursework; higher-income countries toward work and personal use.</li>
-<li><strong>Occupation coverage is up but uneven.</strong> 49% of jobs saw Claude used for ≥25% of tasks (vs.&nbsp;36% in January 2025). Adjusted for success rates, data entry keyers and radiologists are more affected than raw coverage suggests; teachers and software developers less so.</li>
-<li><strong>Claude covers the higher-skill tasks within a job.</strong> Claude-covered tasks require 14.4 years of education on average, vs.&nbsp;13.2 for the economy overall — implying a first-order deskilling effect if those tasks were fully automated.</li>
-<li><strong>Productivity estimate revised down.</strong> The earlier 1.8 pp/year US labor-productivity boost falls to 1.2 pp (Claude.ai) or 1.0 pp (API) once task reliability is factored in. Still roughly late-1990s/early-2000s rates.</li>
-<li><strong>Usage is concentrating.</strong> The top-10 work tasks now account for 24% of Claude.ai traffic (up from 21% in January). Computer and math tasks are ~⅓ of Claude.ai and nearly half of API.</li>
-<li><strong>Augmentation has overtaken automation.</strong> 52% vs.&nbsp;45% on Claude.ai in November, reversing the August split. (Empirical confirmation of what <a href="../../posts/20230203-ai-job-automation-augmentation/#ch-augmentation-vs-automation">Steve Miller</a> argued in 2022 — every one of the 29 case studies in <em>Working with AI</em> was augmentation, not automation.)</li>
-<li><strong>US state distribution is flattening.</strong> On current trends, Claude use would be geographically equalized across US states within 2–5 years.</li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<p>“Time horizon” in this report borrows <a href="https://metr.org/">METR</a>’s framing: the longest task, measured in human-equivalent hours, that a model can complete with at least 50% success. The metric is designed to track AI progress without saturating the way fixed benchmarks do, since as models improve, the horizon stretches.</p>
-<p>Which brings a caveat about what is actually being measured in Anthropic’s report. They didn’t actually measure the time from actual humans from what I can tell. They asked Claude:</p>
-<blockquote class="blockquote">
-<p>We derive these primitives from asking Claude to answer a common set of questions about every conversation in our sample for this report.</p>
-</blockquote>
-<p>And in a footnote:</p>
-<blockquote class="blockquote">
-<p>We measure complexity through estimated human time to complete tasks without AI, time spent completing tasks with AI, and whether users handle multiple tasks within a single conversation.</p>
-</blockquote>
-<p>So while METR’s 2h figure is grounded in actual humans on the clock, Anthropic’s 3.5h and 19h are model-generated estimates of human time. The two methodologies are not exactly the same.</p>
-<p>Assuming the two sides are comparable, the differences in time horizon between METR and Anthropic come from differences in experimental conditions, not from differences in what the model can do (because they were all measured on the same model). Two things vary across the setups: whether a human steers the model mid-task, and whether the task was pre-selected as something the model could plausibly handle. METR has neither: an autonomous agent runs a fixed benchmark, with no steering and no pre-selection. The API sample has pre-selection but no steering: developers send Claude tasks they have already validated will work, and the calls then run on their own. Claude.ai has both: the human steers and decomposes the work as it goes, and the human only brings tasks they expect will succeed. The result? Pre-selection alone moves the horizon from METR’s 2h to the API’s 3.5h, a modest 1.75×. Human steering on top moves it from there to Claude.ai’s 19h, a much bigger 5× jump.</p>
-<p>This is less a story about what Claude can do today than about how humans and AI work together. The 5× multiplier from human steering shows that the most productive AI work right now happens in the human-AI pair, not in autonomous agents. The complement is the point: humans bring task decomposition, judgment about what to attempt, and verification of what comes back; the model brings speed, breadth, and stamina. The 19-hour result on Claude.ai is what that pairing makes possible, on tasks neither side would have completed as quickly alone. As models get better, the kinds of work that fit this pairing keep expanding, and so does the range of jobs where the most useful human skill is steering the model well rather than competing with it.</p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260423-anthropic-economic-index/</guid>
-  <pubDate>Thu, 23 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260423-anthropic-economic-index/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Proof Generation vs Digestion</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Screenshot of the first toot in Terence Tao’s three-part thread. Image from <a href="https://mathstodon.xyz/@tao/116450581967483825">Mastodon</a>.</figcaption>
-</figure>
-</div>
-<p>Terence Tao on Mastodon:</p>
-<blockquote class="blockquote">
-<p>As a crude first approximation, the problem-solving component of mathematical research (which, one should stress, is not the <em>only</em> aspect of such research) can be decomposed into three subcomponents:</p>
-<ol type="1">
-<li>Proof generation (finding a solution to a given problem);</li>
-<li>Proof verification (checking that a proposed solution actually works); and</li>
-<li>Proof digestion (understanding the essence of a solution, placing it in context with previous literature, summarizing and explaining it effectively, and gaining insights on other related problems and topics).</li>
-</ol>
-<p>Until recently, all three of these subtasks were rather difficult and time-intensive to perform; but a human mathematician (or a collaboration between several mathematicians) who had invested the effort to both generate a proof and verify it usually gained enough understanding into the structure of that proof that they could also digest it effectively. Because of this, our community has been generally content to emphasize the proof generation and verification aspect of problem solving, as the proof digestion tended to be created naturally as an organic byproduct of these first two aspects. This was also convenient for assessing proof efforts, as the generation and verification tasks had well-defined objectives, whilst proof digestion was a more subjective and open-ended process. [Though “the ability to present the result at a research conference and take questions” is a rough first approximation of a metric for whether a proof has been digested,]</p>
-<p>However, recent advances in both AI and proof formalization have begun to vastly accelerate and automate the first two components of this process. This is leading to a new type of “impedance mismatch”: problems for which solutions can be rapidly generated and verified in a mostly automated process, but for which no human author has understood the arguments well enough to initiate the (much slower) digestion process. <strong>In fact, with the current cultural incentives that reward the first authors to “solve” the problem, rather than the later authors who “digest” the solution</strong>, one may end up with the perverse situation in which an AI-generated (and formally verified) solution to an problem that is presented to the community without any significant digestion may actually <em>inhibit</em> the progress of the field that the problem lies in, by discouraging any further attempts to work on the problem, simplify and explain the proof, and extract broader insights.</p>
-<p>Perhaps having more refined terminology to describe solutions would help. For instance, a proof that is proposed but unverified should be viewed as 1/3 of a solution at best, while a proof that is both proposed and verified remains only 2/3 of a solution until a proper, well-digested presentation of the results has been made. As a concrete example: I would currently rate the recent progress on Erdos problem #1169 which has created some buzz on social media as currently constituting 2/3 of a solution in this framework: a proof has been generated and verified, but the broader impacts of the argument on the rest of the field are still being assessed. Eventually, I espect a fully satisfactory solution to this problem to be obtained, but this may take more time that one is now accustomed to in this era of rapid proof generation and proof verification.</p>
-</blockquote>
-<p>This post from Terence on math, as always, strikes me as generally applicable to many rigorous intellectual endeavors: research in other fields, software engineering, and even writing and other creative work. Again, this is the consequence of <em>abundance</em>, which will elevate (whether we are ready or not) the importance of understanding, reviewing, discerning, and taste. The question is how we reverse the incentive structure to start appreciating these aspects much more, rather than just focusing on “the first”.</p>
-<hr>
-<p><em>Originally posted on <a href="https://mathstodon.xyz/@tao/116450581967483825">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/</guid>
-  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Overzealous Coding Models</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 1 from the post — GPT-5.4 rewrites an entire function when the correct fix is changing one number in a <code>range()</code> call. Image from <a href="https://nrehiew.github.io/blog/minimal_editing/">nrehiew’s blog</a>.</figcaption>
-</figure>
-</div>
-<p>In <a href="https://nrehiew.github.io/blog/minimal_editing/">Coding Models Are Doing Too Much</a>, nrehiew puts a number on a frustration anyone using AI coding tools has felt — the model fixes the bug, then quietly rewrites half the function around it.</p>
-<ul>
-<li><strong>The problem.</strong> Ask a model to fix an off-by-one and get a full rewrite — new helpers, renamed variables, added validation. The fix is correct; the diff is enormous and review-hostile. The post calls this <em>over-editing</em>: structural divergence beyond what the minimal fix requires.</li>
-<li><strong>Measurement.</strong> Rather than have an LLM introduce bugs, the author programmatically corrupts 400 BigCodeBench problems (flip an operator, swap a boolean, etc.), so the ground-truth fix is exactly the reversal. Models are scored on Pass@1, token-level Levenshtein vs.&nbsp;the corrupted input, and added cognitive complexity.</li>
-<li><strong>Frontier results.</strong> GPT-5.4 over-edits the most (Levenshtein 0.39, added CC 2.31) while also being one of the weakest at correctness. Claude Opus 4.6 leads on both axes — highest Pass@1 (0.91) and smallest diffs (Levenshtein 0.06).</li>
-<li><strong>Prompting helps.</strong> A single line — <em>“IMPORTANT: Try to preserve the original code and the logic of the original code as much as possible”</em> — improves both Pass@1 and Levenshtein for almost every model. Reasoning models gain the most.</li>
-<li><strong>Reasoning defaults to over-editing.</strong> On samples where both reasoning and non-reasoning variants get the answer correct, the reasoning version edits <em>more</em> by default in most model pairs — extended thinking buys more “improvements” no one asked for. Claude Opus 4.6 is the notable exception, with its reasoning variant editing substantially less. Once instructed, reasoning models match or undercut their non-reasoning siblings in almost every pair.</li>
-<li><strong>Training.</strong> Starting from Qwen3 4B 2507 Instruct (and validated on Qwen3 14B), plain SFT collapses out-of-domain (Pass@1 drops to 0.46) — the model memorizes corruption-reversals rather than the behavior. RL with a reward combining functional correctness and Levenshtein generalizes cleanly, with no LiveCodeBench regression. <em>LoRA at rank 64 nearly matches the full fine-tune.</em></li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The Opus 4.6 gap is not subtle</strong> — highest Pass@1 <em>and</em> smallest diffs, in both reasoning and non-reasoning modes. Anthropic appears to have trained explicitly against this failure mode, and it shows.</li>
-<li><strong>A single sentence of prompt closes most of the gap for everyone else</strong> — over-editing is a default, not a capability ceiling.</li>
-<li><strong>Style problem, not knowledge problem.</strong> That LoRA at rank 64 nearly matches the full fine-tune is the giveaway — a small parameter delta shifts the behavior without touching the underlying capability.</li>
-<li><strong>The tooling implication is bigger than the model implication.</strong> <em>“Preserve the original code”</em> should be wired into every coding tool’s system prompt by default, and diff-review UI should surface a minimality score alongside the patch.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260422-overzealous-coding-models/</guid>
-  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Sequential KV Cache Compression via Probabilistic Language Tries</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260422-kv-cache-compression/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-kv-cache-compression/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>First page of the paper. Image from <a href="https://arxiv.org/abs/2604.15356">arXiv</a>.</figcaption>
-</figure>
-</div>
-<p>The paper argues that per-vector KV cache compression (TurboQuant et al.) optimises the wrong objective. KV vectors are samples from the language the model already predicts, so the right unit of compression is the <em>sequence</em>, not the vector [1]:</p>
-<blockquote class="blockquote">
-<p>Recent work on KV cache quantization, culminating in TurboQuant, has approached the Shannon entropy limit for per-vector compression of transformer key-value caches. We observe that this limit applies to a strictly weaker problem than the one that actually matters: <em>compressing the KV cache as a sequence</em>. The tokens stored in a KV cache are not arbitrary floating-point data — they are samples from the exact formal language the model was trained on, and the model is by construction a near-optimal predictor of that language. We introduce <em>sequential KV compression</em>, a two-layer architecture that exploits this structure. The first layer, <em>probabilistic prefix deduplication</em>, identifies semantically equivalent shared prefixes across sessions using the trie metric <img src="https://benjaminhan.net/feed-assets/2ca4121b35f43fac.svg" alt="d_T(s, s&#x27;) = -\log_2 P_M(s \wedge s&#x27;)" class="feed-math-inline"/> from Probabilistic Language Tries (PLTs). The second layer, <em>predictive delta coding</em>, stores only the residual of each new KV vector from the model’s own prediction of it, achieving a per-token entropy bound of <img src="https://benjaminhan.net/feed-assets/c5a6986396e83e08.svg" alt="H(KV_{i+1} \mid KV_{\le i}) \le H(\text{token}_{i+1} \mid \text{token}_{\le i})" class="feed-math-inline"/>. We prove that at typical language model perplexity — approximately 10–20 for fluent English text — this bound is 3.3–4.3 bits on average per token position, compared to TurboQuant’s 3 bits per vector component (with typical attention heads having 64–128 components). <em>The theoretical compression ratio over TurboQuant is approximately 914,000× at the Shannon limit.</em> Even at 1000× above the entropy floor — a deliberately pessimistic worst-case overhead, two orders of magnitude above the 2–5× typical of practical source coders — the ratio remains approximately 914× over TurboQuant, with compression improving rather than degrading as context length grows. The two layers are orthogonal and compose with existing per-vector quantization methods including TurboQuant.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>When a chatbot generates a reply token by token, the model stashes the intermediate state for every previous token in something called the KV (key-value) cache, so it doesn’t have to recompute the whole context on each new word. That cache is now the dominant memory cost of serving large language models. Long conversations and many concurrent users will eat GPU memory long before the model weights do. So a small industry has grown up around squeezing the cache: the latest, TurboQuant [2], gets close to the theoretical limit of how few bits you need per cached vector.</p>
-<p>The paper’s observation: those cached vectors aren’t arbitrary data. They’re things the model can already predict, because the model just generated the tokens they came from. So why not let the model’s own predictions do the compression work? The first layer notices when a new conversation starts with the same prefix as a previous one and reuses the cached state. The second layer stores only the gap between each new cached vector and what the model would have predicted. Both layers stack on top of per-vector compressors like TurboQuant, which is why the theoretical headline ratio gets to six orders of magnitude.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper’s headline numbers are theoretical, not empirical. At the Shannon limit and typical English perplexity (10–20), predictive delta coding bounds per-token entropy at 3.3–4.3 bits, against TurboQuant’s 3 bits per vector component across 64–128 components per head, a 914,000× ratio. Even with a 1000× overhead above the entropy floor (two orders worse than practical source coders typically achieve), the gap stays at ~914× over TurboQuant, and grows rather than shrinks with context length.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<p>The scheme adds a robustness issue that per-vector methods don’t have. The same forward pass on a GPU doesn’t always return identical numbers. What else is in the batch alongside your request can shift the result slightly. Thinking Machines’ <a href="https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/"><em>Defeating Nondeterminism in LLM Inference</em></a> documented exactly this: Qwen-235B at temperature 0 produced 80 unique completions over 1000 identical requests, all from non-batch-invariant kernels in the forward pass. Per-vector compression is immune: recovery is a fixed formula on stored bits, no model rerun. Schemes whose decode is pure arithmetic are similarly safe. The issue only appears when the model itself sits on the recovery path. Here, the model rerun <em>is</em> the recovery, so any drift between the original prediction and the regenerated one shows up as reconstruction error. Usually the TurboQuant layer underneath is noisier than the drift and absorbs it, but at positions where the model is highly confident and the stored gap is tiny, the same prompt could reconstruct slightly differently depending on how it got batched.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“Sequential KV Cache Compression via Probabilistic Language Tries.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2604.15356" class="uri">https://arxiv.org/abs/2604.15356</a></li>
-<li><a id="ref-2"></a>Aamand, A., Mousavifar, S., Singhi, R., Indyk, P., Wagner, T. “TurboQuant: Online Vector Quantization.” <em>arXiv preprint</em> (arXiv:2504.19874), 2025. <a href="https://arxiv.org/abs/2504.19874" class="uri">https://arxiv.org/abs/2504.19874</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260422-kv-cache-compression/</guid>
-  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Civilization’s Three Stages, Applied to Mathematics</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260421-civilizations-three-stages/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260421-civilizations-three-stages/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260421-civilizations-three-stages/cover.jpg" class="img-fluid figure-img" width="192"></p>
-<figcaption>Terence Tao. (<a href="https://mathstodon.xyz/@tao/116438112449752681">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Terence Tao quoting Douglas Adams to frame what AI is doing to mathematics:</p>
-<blockquote class="blockquote">
-<p>“The history of every major galactic civilization tends to pass through three distinct and recognizable phases, those of Survival, Inquiry and Sophistication, otherwise known as the How, Why, and Where phases. For instance, the first phase is characterized by the question ‘How can we eat?’, the second by the question ‘Why do we eat?’ and the third by the question, ‘Where shall we have lunch?’” (Douglas Adams, “The Hitchhiker’s Guide to the Galaxy”)</p>
-<p>Adams’ quote, whie humorous in intent, seems like a prescient description of the current evolution of cognitive disciplines such as mathematics. To use Adams’ framing, most of the history of mathematics has existed in the “Survival” phase, in which proofs were scarce and we were willing to obtain them by whatever means necessary (as long as they were verified to be correct), analogously to how a human in an era of caloric scarcity would accept food from virtually any source, so long as they were verified to be edible.</p>
-<p>But we are now entering an era where generative cognitive tasks, such as finding a proof to a given problem, are becoming cheap (as measured per user, rather than through overall capital investment) and relatively plentiful, analogously to how the Green Revolution dramatically increased crop yields and significantly reduced the occurrence of famine. As such, we are beginning to experience Adams’ somewhat turbulent “Inquiry” phase, in which fundamental questions, such as why mathematicians even seek proofs in the first place, and what qualities besides correctness do we want from such proofs, are now being seriously discussed not just by philosophers of mathematics, but by practicing mathematicians as well.</p>
-<p>However, at the other end of this transitional period is the “Sophistication” phase, in which our community has fully transitioned from a scarcity mindset to an abundance mindset. The objective will no longer be to accumulate as many proofs (of varying levels of quality) as possible, but to create more sophisticated experiences <em>around</em> curated collections of proofs: enjoyable conversations over lunch, rather than to scavenging for all available edible food sources. This will require the mathematicians of the future to prioritize a different set of skills than the ones we promote currently: “culinary” skills, such as mathematical exposition and construction of “big picture” narratives, may become at least as important as the “food gathering” skills of locating proofs.</p>
-</blockquote>
-<p>The transition from scarcity to abundance triggers the question of selection, and selection requires wisdom and taste. This applies to many human pursuits other than math.</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Terence Tao. <em>Mastodon</em>, 2026-04-20. <a href="https://mathstodon.xyz/@tao/116438112449752681" class="uri">https://mathstodon.xyz/@tao/116438112449752681</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260421-civilizations-three-stages/</guid>
-  <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260421-civilizations-three-stages/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Prompt Repetition Improves Non-Reasoning LLMs</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>First page of Leviathan, Kalman, and Matias 2025. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
-</figure>
-</div>
-<p>Another inference-time trick for getting more out of an LLM without touching its weights [1].</p>
-<blockquote class="blockquote">
-<p><em>When not using reasoning</em>, <em>repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek)</em> <em>without increasing the number of generated tokens or latency</em>.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>The trick is one line: prepend a copy of the user’s prompt before the model generates. No fine-tuning, no extra decoding tokens, no latency hit at generation time — just a longer prefill.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper sweeps 70 benchmark-model combinations across Gemini, GPT, Claude, and Deepseek:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/figure1.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 1 from the paper: prompt repetition vs baseline accuracy across Gemini, GPT, Claude, and Deepseek on multiple benchmarks. Repetition wins 47/70 benchmark-model combinations, with 0 losses. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<p>Why does this work? Causal attention. The autoregressive LLMs we’re talking about — Gemini, GPT, Claude, Deepseek — read left-to-right: each token can only attend to tokens that came before it. So when a model is given <code>&lt;context&gt; &lt;question&gt;</code>, it has to encode every word of the context before it ever sees the question. This is the opposite of how “good” students prepare for exams: they look at past questions first, then read the texts with those questions in mind, focusing attention on what’s likely to be asked. Repeating the prompt gives the model the same second pass — by the time it encodes the second copy, the question is already in view, so the context can be processed in light of what’s being asked. Because prefill is parallelizable, doubling the prompt doesn’t slow generation down.</p>
-<p>The paper itself names the root cause:</p>
-<blockquote class="blockquote">
-<p>LLMs are often trained as causal language models, i.e.&nbsp;past tokens cannot attend to future tokens. Therefore, the order of the tokens in a user’s query can affect prediction performance.</p>
-</blockquote>
-<p>Bidirectional attention over the prefix would fix this natively — every prompt token attending to every other, no repetition needed. Encoder-decoder models (T5, BART) do this in their encoder; Prefix-LM variants (UL2) bidirectionally attend over the prompt and switch to causal only at generation. The paper flags “Explore interactions with techniques such as Prefix LM” as a future direction. But decoder-only causal architectures won the scaling battle: simpler training at scale, more efficient KV-caching for sequential serving, more natural in-context learning. Prompt repetition is a runtime patch that buys back some of what bidirectional attention would natively provide — without retraining the frontier models we already have.</p>
-<p>Compare to the <a href="../20260324-llm-neuroanatomy/">LLM Neuroanatomy</a> post: there, the trick was duplicating a block of middle transformer layers and running them twice. Here, the trick is simpler still: duplicate the input itself. The intuition is the same in both cases — give the model another pass over the same information.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Yaniv Leviathan, Matan Kalman, and Yossi Matias. “Prompt Repetition Improves Non-Reasoning LLMs.” <em>arXiv</em>. 2025-12-17. <a href="https://arxiv.org/abs/2512.14982" class="uri">https://arxiv.org/abs/2512.14982</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260421-prompt-repetition/</guid>
-  <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>A Rube Goldberg Pipeline for Sharing Links</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Rube Goldberg’s <em>Self-Operating Napkin</em>, the canonical absurd contraption (Professor Butts, 1931). Image via <a href="https://commons.wikimedia.org/wiki/File:Self-operating_napkin_(Rube_Goldberg_cartoon_with_caption).jpg">Wikimedia Commons (public domain)</a>.</figcaption>
-</figure>
-</div>
-<p>Most posts here start as a link or a paragraph I read on my phone, in Mastodon or RSS or an article. By the time I’m back at my Mac, the thread is usually gone: the link buried under three days of tabs, the half-formed reaction long since dissolved.</p>
-<p>What I wanted, in three steps:</p>
-<ol type="1">
-<li><strong>I capture on my phone</strong> in seconds, with whatever sliver of a thought I have at the moment.</li>
-<li><strong>I finish on my Mac</strong> at leisure, with VSCode and Claude Code.</li>
-<li><strong>I publish to the blog</strong> in one motion, with the cover image and <code>llms.txt</code> entry following along.</li>
-</ol>
-<p>What it took: half a dozen different systems chained together. It starts when a scaffolded draft lands in my repo within seconds of a phone tap. Hours or days later, when I’m back at my Mac and have written my commentary, running the <code>publish</code> command takes about three minutes to put the post live on <code>benjaminhan.net</code>. For quick reshares where I have nothing to add, a <code>Capture+publish:</code> variant skips the Mac loop entirely and lets CI promote the draft on its own. The systems involved are the iOS share sheet, a <a href="http://omz-software.com/pythonista/">Pythonista</a> script, GitHub’s Contents API, GitHub Actions, and GitHub Pages. Two adjacent stages aren’t covered here: the Cloudflare CDN + feed-analytics Worker in front of GitHub Pages, and the optional Mastodon cross-post that can fire after deploy.</p>
-<p>The result is more engineering than bookmarking really needs. Below is the contraption, and the spots where it tends to stick.</p>
-<section id="the-pipeline" class="level2">
-<h2 class="anchored" data-anchor-id="the-pipeline">The pipeline</h2>
-<div class="cell" data-layout-align="default">
-<div class="cell-output-display">
-<div>
-<p></p><figure class="figure"><p></p>
-<div>
-<img src="https://benjaminhan.net/feed-assets/83217d89111c9164.svg" alt="flowchart TB
-    subgraph capture [&quot; &quot;]
-        direction LR
-        A[iOS Share Sheet] --&gt; B[Pythonista]
-        B --&gt;|GitHub Contents API| C[draft .qmd in repo]
-        C --&gt;|git pull + /expand-draft| D[Expanded draft]
-        D --&gt; M[Manual edit&lt;br/&gt;VSCode + Claude Code]
-    end
-    subgraph depl" class="feed-diagram"/>
-</div>
-<p></p></figure><p></p>
-</div>
-</div>
-</div>
-</section>
-<section id="what-each-stage-actually-does" class="level2">
-<h2 class="anchored" data-anchor-id="what-each-stage-actually-does">What each stage actually does</h2>
-<ul>
-<li><strong>iOS Pythonista</strong> captures the URL plus a handful of prompts (title, slug, optional one-liner, “Notes to Claude,” “is the post mine?”), auto-detects the source platform (Mastodon, YouTube, arxiv, Substack, GitHub, etc.) from the URL host, and <code>PUT</code>s a stub <code>.qmd</code> to the repo via GitHub’s Contents API. The platform tag tells the next stage how to dispatch.</li>
-<li><strong>Auto-publish</strong> is the Mac-less shortcut for a link I want to reshare verbatim. The iOS capture sets <code>auto-publish: true</code> and commits with <code>Capture+publish:</code> (no <code>[skip ci]</code>), so the workflow runs. An early step pulls the source toot via Mastodon’s public API, downloads its image attachments, maps its hashtags against the existing tag vocabulary, fills in missing required frontmatter, and <code>git mv</code>s the draft to <code>posts/</code> before <code>quarto render</code>. Mastodon-only today. Other platforms raise a hard <code>SystemExit</code>, so a malformed capture fails CI rather than shipping a broken post.</li>
-<li><strong><code>/expand-draft</code> skill</strong> runs on the Mac in Claude Code. It reads the stub’s <code>source-url</code> and <code>source-platform</code>, fetches the page, extracts <code>og:image</code> / <code>og:description</code>, suggests categories from the existing tag set, downloads the cover image (with a citation in the figcaption), and writes a STYLE.md-compliant draft. If <code>notes-for-claude</code> is set, the skill follows it as per-draft direction. If <code>source-mine: true</code>, it skips the framing-commentary scaffolding. A <code>/review-draft</code> pass then fact-checks against the source, flags voice and logic issues, and applies safe fixes before the expansion is committed.</li>
-<li><strong>Manual editing</strong> happens between expand and publish. I open the draft in VSCode and write or polish my commentary with Claude Code at hand. Quick link shares take minutes. Essays can take days. The expanded scaffolding stays deliberately minimal.</li>
-<li><strong><code>/publish-draft</code> skill</strong> validates the draft against the style guide, strips scaffolding, <code>git mv</code>s to <code>posts/</code>, commits, pushes.</li>
-<li><strong>GitHub Actions</strong> implements <em>incremental rendering</em>. A classifier (<code>_scripts/render_diff.py</code>) diffs the working tree against the last successful build’s cached <code>_site/</code> and picks one of <code>full</code>, <code>incremental</code>, or <code>skip-render</code>. A post edit typically routes to <code>incremental</code> and renders in ~20 s instead of ~4 min. Pre-render scripts then emit the tag histogram, the external <code>post-index.json</code> that hydrates the home + archive listings, the bucket-paginated home and archive pages, and <code>llms.txt</code>. Quarto renders the <code>.qmd</code> files. Post-render, <code>feed-render.py</code> rasterizes Mermaid diagrams and MathJax expressions to SVG so the RSS feed carries real images, <code>feed-utm.py</code> UTM-tags the feed item URLs (so GA4 can attribute RSS click-throughs back to the feed channel) and prepends a “Read on benjaminhan.net” back-link to each item’s body, and <code>feed-paginate.py</code> slices the feed into RFC 5005 paged archives so the index file stays small while subscribers can still walk back through history. Three more scripts run before deploy to strip redundant listing H1s, prune inline asset blobs from pages that don’t need them, and fingerprint <code>styles.css</code> for cache-busting.</li>
-</ul>
-</section>
-<section id="gotchas" class="level2">
-<h2 class="anchored" data-anchor-id="gotchas">Gotchas</h2>
-<p>The pipeline above looks clean in a flowchart. It is not. Here are the bumps I hit, in roughly the order they showed up.</p>
-<ul>
-<li><strong><code>dialogs.input_alert</code> doesn’t block in Pythonista’s share extension.</strong> The dialog works fine when I tap ▶ inside the Pythonista app. From the share sheet, it races through every prompt with empty inputs. Symptom: nothing happens, no error, the script finishes silently. Fix: switch to <code>console.input_alert</code>. Same signature, behaves correctly in the extension sandbox.</li>
-<li><strong>GitHub Contents API needs <code>sha</code> to update an existing file.</strong> I hit this on a slug collision (HTTP 422, “sha wasn’t supplied”). The script now <code>GET</code>s the path first. If the file exists, it offers Replace (passing the existing <code>sha</code> so the <code>PUT</code> is treated as an update) or Cancel.</li>
-<li><strong>Quarto’s <code>draft-mode: gone</code> strips draft pages to empty HTML.</strong> Local <code>quarto preview</code> shows blank pages for files in <code>drafts/</code>. Workaround: a <code>_quarto-preview.yml</code> profile that flips <code>draft-mode: unlinked</code> for previews. Production CI builds without the <code>--profile=preview</code> flag, so the deployed site never includes drafts.</li>
-<li><strong>VSCode’s Quarto extension doesn’t inherit <code>terminal.integrated.env.osx</code>.</strong> Setting <code>QUARTO_PROFILE=preview</code> in workspace settings only affects the integrated terminal. The extension spawns Quarto in a separate process tree with its own inherited env. Real fix: <code>export QUARTO_PROFILE=preview</code> in <code>~/.zshrc</code>, then <code>Cmd-Q</code> and relaunch VSCode from the terminal so the extension inherits it.</li>
-<li><strong><code>image:</code> frontmatter is metadata, not body content.</strong> Quarto uses <code>image:</code> only for <code>og:image</code> meta tags and listing thumbnails. It does not render an inline cover image on the post page itself. The body needs an explicit <code>![](cover.jpg){fig-align="center"}</code> for the cover to actually appear.</li>
-<li><strong><code>.claude/</code> was gitignored, hiding the per-project skills.</strong> The first commit of <code>expand-draft.md</code> and <code>publish-draft.md</code> resulted in zero tracked files. The directory was excluded entirely. Git’s rule is that a re-include cannot reach a file under an already-excluded parent directory, so <code>!.claude/skills/</code> does not work against <code>.claude/</code>. The fix is to widen the exclusion to <code>.claude/*</code> first, then re-include <code>.claude/skills/</code>.</li>
-</ul>
-</section>
-<section id="why-bother" class="level2">
-<h2 class="anchored" data-anchor-id="why-bother">Why bother</h2>
-<p>Two reasons:</p>
-<ul>
-<li><strong>The iOS-to-Mac handoff matches how I actually find good links.</strong> On a phone, in an RSS or Mastodon reader, away from a keyboard. Capturing them as scaffolded drafts means I don’t lose the thread between “I should put more thought to it” and “I’m back at the Mac.” The drafts queue up. I work on them when I have time.</li>
-<li><strong>The pipeline keeps a human in the loop.</strong> The phone capture is mine. The commentary is mine. The publish command is a manual step, not a webhook. Automation handles plumbing. Editorial calls stay with me.</li>
-</ul>
-<p>The pipeline is elaborate, fragile, and a little excessive. For a workflow that runs every few days, that is also fine.</p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/</guid>
-  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-8.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-23.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-24.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-7.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-9.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -22,6 +22,389 @@
 </image>
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 06 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Anthropic Economic Index</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260423-anthropic-economic-index/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260423-anthropic-economic-index/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260423-anthropic-economic-index/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Illustration from <a href="https://www.anthropic.com/research/economic-index-primitives">Anthropic</a>.</figcaption>
+</figure>
+</div>
+<p>Anthropic’s <a href="https://www.anthropic.com/research/economic-index-primitives">fourth Economic Index report</a> (Jan 15, 2026) introduces <em>economic primitives</em> — a set of five foundational measurements Claude extracts from every sampled conversation — and uses them to revisit earlier findings about AI’s impact on work.</p>
+<p>The primitives:</p>
+<ul>
+<li><strong>Task complexity</strong> — estimated human time to complete without AI, time with AI, and whether a conversation bundles multiple tasks.</li>
+<li><strong>Human and AI skills</strong> — years of education needed to understand prompts and responses; whether the user could have done the task alone.</li>
+<li><strong>Use case</strong> — work, education, or personal.</li>
+<li><strong>AI autonomy</strong> — from active collaboration to full delegation.</li>
+<li><strong>Task success</strong> — Claude’s own assessment of completion.</li>
+</ul>
+<p>What the November 2025 sample (1M Claude.ai conversations + 1M first-party API transcripts, mostly Sonnet 4.5) shows:</p>
+<ul>
+<li><strong>Complex tasks get the biggest speedup.</strong> High-school-level prompts: 9× on Claude.ai. College-level: 12×. API speedups are higher still.</li>
+<li><strong>Success drops only modestly with complexity.</strong> 70% success on sub-high-school tasks vs.&nbsp;66% on college-level — not enough to offset the speedup gradient.</li>
+<li><strong>Time horizons are longer than METR suggests.</strong> Claude hits 50% success at ~3.5h tasks on the API and ~19h on Claude.ai, vs.&nbsp;METR’s 2h. Attributed to users decomposing tasks and selecting ones they expect to work.</li>
+<li><strong>Country patterns follow an adoption curve.</strong> Lower-income countries skew toward educational coursework; higher-income countries toward work and personal use.</li>
+<li><strong>Occupation coverage is up but uneven.</strong> 49% of jobs saw Claude used for ≥25% of tasks (vs.&nbsp;36% in January 2025). Adjusted for success rates, data entry keyers and radiologists are more affected than raw coverage suggests; teachers and software developers less so.</li>
+<li><strong>Claude covers the higher-skill tasks within a job.</strong> Claude-covered tasks require 14.4 years of education on average, vs.&nbsp;13.2 for the economy overall — implying a first-order deskilling effect if those tasks were fully automated.</li>
+<li><strong>Productivity estimate revised down.</strong> The earlier 1.8 pp/year US labor-productivity boost falls to 1.2 pp (Claude.ai) or 1.0 pp (API) once task reliability is factored in. Still roughly late-1990s/early-2000s rates.</li>
+<li><strong>Usage is concentrating.</strong> The top-10 work tasks now account for 24% of Claude.ai traffic (up from 21% in January). Computer and math tasks are ~⅓ of Claude.ai and nearly half of API.</li>
+<li><strong>Augmentation has overtaken automation.</strong> 52% vs.&nbsp;45% on Claude.ai in November, reversing the August split. (Empirical confirmation of what <a href="../../posts/20230203-ai-job-automation-augmentation/#ch-augmentation-vs-automation">Steve Miller</a> argued in 2022 — every one of the 29 case studies in <em>Working with AI</em> was augmentation, not automation.)</li>
+<li><strong>US state distribution is flattening.</strong> On current trends, Claude use would be geographically equalized across US states within 2–5 years.</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>“Time horizon” in this report borrows <a href="https://metr.org/">METR</a>’s framing: the longest task, measured in human-equivalent hours, that a model can complete with at least 50% success. The metric is designed to track AI progress without saturating the way fixed benchmarks do, since as models improve, the horizon stretches.</p>
+<p>Which brings a caveat about what is actually being measured in Anthropic’s report. They didn’t actually measure the time from actual humans from what I can tell. They asked Claude:</p>
+<blockquote class="blockquote">
+<p>We derive these primitives from asking Claude to answer a common set of questions about every conversation in our sample for this report.</p>
+</blockquote>
+<p>And in a footnote:</p>
+<blockquote class="blockquote">
+<p>We measure complexity through estimated human time to complete tasks without AI, time spent completing tasks with AI, and whether users handle multiple tasks within a single conversation.</p>
+</blockquote>
+<p>So while METR’s 2h figure is grounded in actual humans on the clock, Anthropic’s 3.5h and 19h are model-generated estimates of human time. The two methodologies are not exactly the same.</p>
+<p>Assuming the two sides are comparable, the differences in time horizon between METR and Anthropic come from differences in experimental conditions, not from differences in what the model can do (because they were all measured on the same model). Two things vary across the setups: whether a human steers the model mid-task, and whether the task was pre-selected as something the model could plausibly handle. METR has neither: an autonomous agent runs a fixed benchmark, with no steering and no pre-selection. The API sample has pre-selection but no steering: developers send Claude tasks they have already validated will work, and the calls then run on their own. Claude.ai has both: the human steers and decomposes the work as it goes, and the human only brings tasks they expect will succeed. The result? Pre-selection alone moves the horizon from METR’s 2h to the API’s 3.5h, a modest 1.75×. Human steering on top moves it from there to Claude.ai’s 19h, a much bigger 5× jump.</p>
+<p>This is less a story about what Claude can do today than about how humans and AI work together. The 5× multiplier from human steering shows that the most productive AI work right now happens in the human-AI pair, not in autonomous agents. The complement is the point: humans bring task decomposition, judgment about what to attempt, and verification of what comes back; the model brings speed, breadth, and stamina. The 19-hour result on Claude.ai is what that pairing makes possible, on tasks neither side would have completed as quickly alone. As models get better, the kinds of work that fit this pairing keep expanding, and so does the range of jobs where the most useful human skill is steering the model well rather than competing with it.</p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260423-anthropic-economic-index/</guid>
+  <pubDate>Thu, 23 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260423-anthropic-economic-index/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Proof Generation vs Digestion</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Screenshot of the first toot in Terence Tao’s three-part thread. Image from <a href="https://mathstodon.xyz/@tao/116450581967483825">Mastodon</a>.</figcaption>
+</figure>
+</div>
+<p>Terence Tao on Mastodon:</p>
+<blockquote class="blockquote">
+<p>As a crude first approximation, the problem-solving component of mathematical research (which, one should stress, is not the <em>only</em> aspect of such research) can be decomposed into three subcomponents:</p>
+<ol type="1">
+<li>Proof generation (finding a solution to a given problem);</li>
+<li>Proof verification (checking that a proposed solution actually works); and</li>
+<li>Proof digestion (understanding the essence of a solution, placing it in context with previous literature, summarizing and explaining it effectively, and gaining insights on other related problems and topics).</li>
+</ol>
+<p>Until recently, all three of these subtasks were rather difficult and time-intensive to perform; but a human mathematician (or a collaboration between several mathematicians) who had invested the effort to both generate a proof and verify it usually gained enough understanding into the structure of that proof that they could also digest it effectively. Because of this, our community has been generally content to emphasize the proof generation and verification aspect of problem solving, as the proof digestion tended to be created naturally as an organic byproduct of these first two aspects. This was also convenient for assessing proof efforts, as the generation and verification tasks had well-defined objectives, whilst proof digestion was a more subjective and open-ended process. [Though “the ability to present the result at a research conference and take questions” is a rough first approximation of a metric for whether a proof has been digested,]</p>
+<p>However, recent advances in both AI and proof formalization have begun to vastly accelerate and automate the first two components of this process. This is leading to a new type of “impedance mismatch”: problems for which solutions can be rapidly generated and verified in a mostly automated process, but for which no human author has understood the arguments well enough to initiate the (much slower) digestion process. <strong>In fact, with the current cultural incentives that reward the first authors to “solve” the problem, rather than the later authors who “digest” the solution</strong>, one may end up with the perverse situation in which an AI-generated (and formally verified) solution to an problem that is presented to the community without any significant digestion may actually <em>inhibit</em> the progress of the field that the problem lies in, by discouraging any further attempts to work on the problem, simplify and explain the proof, and extract broader insights.</p>
+<p>Perhaps having more refined terminology to describe solutions would help. For instance, a proof that is proposed but unverified should be viewed as 1/3 of a solution at best, while a proof that is both proposed and verified remains only 2/3 of a solution until a proper, well-digested presentation of the results has been made. As a concrete example: I would currently rate the recent progress on Erdos problem #1169 which has created some buzz on social media as currently constituting 2/3 of a solution in this framework: a proof has been generated and verified, but the broader impacts of the argument on the rest of the field are still being assessed. Eventually, I espect a fully satisfactory solution to this problem to be obtained, but this may take more time that one is now accustomed to in this era of rapid proof generation and proof verification.</p>
+</blockquote>
+<p>This post from Terence on math, as always, strikes me as generally applicable to many rigorous intellectual endeavors: research in other fields, software engineering, and even writing and other creative work. Again, this is the consequence of <em>abundance</em>, which will elevate (whether we are ready or not) the importance of understanding, reviewing, discerning, and taste. The question is how we reverse the incentive structure to start appreciating these aspects much more, rather than just focusing on “the first”.</p>
+<hr>
+<p><em>Originally posted on <a href="https://mathstodon.xyz/@tao/116450581967483825">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/</guid>
+  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Overzealous Coding Models</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the post — GPT-5.4 rewrites an entire function when the correct fix is changing one number in a <code>range()</code> call. Image from <a href="https://nrehiew.github.io/blog/minimal_editing/">nrehiew’s blog</a>.</figcaption>
+</figure>
+</div>
+<p>In <a href="https://nrehiew.github.io/blog/minimal_editing/">Coding Models Are Doing Too Much</a>, nrehiew puts a number on a frustration anyone using AI coding tools has felt — the model fixes the bug, then quietly rewrites half the function around it.</p>
+<ul>
+<li><strong>The problem.</strong> Ask a model to fix an off-by-one and get a full rewrite — new helpers, renamed variables, added validation. The fix is correct; the diff is enormous and review-hostile. The post calls this <em>over-editing</em>: structural divergence beyond what the minimal fix requires.</li>
+<li><strong>Measurement.</strong> Rather than have an LLM introduce bugs, the author programmatically corrupts 400 BigCodeBench problems (flip an operator, swap a boolean, etc.), so the ground-truth fix is exactly the reversal. Models are scored on Pass@1, token-level Levenshtein vs.&nbsp;the corrupted input, and added cognitive complexity.</li>
+<li><strong>Frontier results.</strong> GPT-5.4 over-edits the most (Levenshtein 0.39, added CC 2.31) while also being one of the weakest at correctness. Claude Opus 4.6 leads on both axes — highest Pass@1 (0.91) and smallest diffs (Levenshtein 0.06).</li>
+<li><strong>Prompting helps.</strong> A single line — <em>“IMPORTANT: Try to preserve the original code and the logic of the original code as much as possible”</em> — improves both Pass@1 and Levenshtein for almost every model. Reasoning models gain the most.</li>
+<li><strong>Reasoning defaults to over-editing.</strong> On samples where both reasoning and non-reasoning variants get the answer correct, the reasoning version edits <em>more</em> by default in most model pairs — extended thinking buys more “improvements” no one asked for. Claude Opus 4.6 is the notable exception, with its reasoning variant editing substantially less. Once instructed, reasoning models match or undercut their non-reasoning siblings in almost every pair.</li>
+<li><strong>Training.</strong> Starting from Qwen3 4B 2507 Instruct (and validated on Qwen3 14B), plain SFT collapses out-of-domain (Pass@1 drops to 0.46) — the model memorizes corruption-reversals rather than the behavior. RL with a reward combining functional correctness and Levenshtein generalizes cleanly, with no LiveCodeBench regression. <em>LoRA at rank 64 nearly matches the full fine-tune.</em></li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The Opus 4.6 gap is not subtle</strong> — highest Pass@1 <em>and</em> smallest diffs, in both reasoning and non-reasoning modes. Anthropic appears to have trained explicitly against this failure mode, and it shows.</li>
+<li><strong>A single sentence of prompt closes most of the gap for everyone else</strong> — over-editing is a default, not a capability ceiling.</li>
+<li><strong>Style problem, not knowledge problem.</strong> That LoRA at rank 64 nearly matches the full fine-tune is the giveaway — a small parameter delta shifts the behavior without touching the underlying capability.</li>
+<li><strong>The tooling implication is bigger than the model implication.</strong> <em>“Preserve the original code”</em> should be wired into every coding tool’s system prompt by default, and diff-review UI should surface a minimality score alongside the patch.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260422-overzealous-coding-models/</guid>
+  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Sequential KV Cache Compression via Probabilistic Language Tries</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260422-kv-cache-compression/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-kv-cache-compression/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>First page of the paper. Image from <a href="https://arxiv.org/abs/2604.15356">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>The paper argues that per-vector KV cache compression (TurboQuant et al.) optimises the wrong objective. KV vectors are samples from the language the model already predicts, so the right unit of compression is the <em>sequence</em>, not the vector [1]:</p>
+<blockquote class="blockquote">
+<p>Recent work on KV cache quantization, culminating in TurboQuant, has approached the Shannon entropy limit for per-vector compression of transformer key-value caches. We observe that this limit applies to a strictly weaker problem than the one that actually matters: <em>compressing the KV cache as a sequence</em>. The tokens stored in a KV cache are not arbitrary floating-point data — they are samples from the exact formal language the model was trained on, and the model is by construction a near-optimal predictor of that language. We introduce <em>sequential KV compression</em>, a two-layer architecture that exploits this structure. The first layer, <em>probabilistic prefix deduplication</em>, identifies semantically equivalent shared prefixes across sessions using the trie metric <img src="https://benjaminhan.net/feed-assets/2ca4121b35f43fac.svg" alt="d_T(s, s&#x27;) = -\log_2 P_M(s \wedge s&#x27;)" class="feed-math-inline"/> from Probabilistic Language Tries (PLTs). The second layer, <em>predictive delta coding</em>, stores only the residual of each new KV vector from the model’s own prediction of it, achieving a per-token entropy bound of <img src="https://benjaminhan.net/feed-assets/c5a6986396e83e08.svg" alt="H(KV_{i+1} \mid KV_{\le i}) \le H(\text{token}_{i+1} \mid \text{token}_{\le i})" class="feed-math-inline"/>. We prove that at typical language model perplexity — approximately 10–20 for fluent English text — this bound is 3.3–4.3 bits on average per token position, compared to TurboQuant’s 3 bits per vector component (with typical attention heads having 64–128 components). <em>The theoretical compression ratio over TurboQuant is approximately 914,000× at the Shannon limit.</em> Even at 1000× above the entropy floor — a deliberately pessimistic worst-case overhead, two orders of magnitude above the 2–5× typical of practical source coders — the ratio remains approximately 914× over TurboQuant, with compression improving rather than degrading as context length grows. The two layers are orthogonal and compose with existing per-vector quantization methods including TurboQuant.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>When a chatbot generates a reply token by token, the model stashes the intermediate state for every previous token in something called the KV (key-value) cache, so it doesn’t have to recompute the whole context on each new word. That cache is now the dominant memory cost of serving large language models. Long conversations and many concurrent users will eat GPU memory long before the model weights do. So a small industry has grown up around squeezing the cache: the latest, TurboQuant [2], gets close to the theoretical limit of how few bits you need per cached vector.</p>
+<p>The paper’s observation: those cached vectors aren’t arbitrary data. They’re things the model can already predict, because the model just generated the tokens they came from. So why not let the model’s own predictions do the compression work? The first layer notices when a new conversation starts with the same prefix as a previous one and reuses the cached state. The second layer stores only the gap between each new cached vector and what the model would have predicted. Both layers stack on top of per-vector compressors like TurboQuant, which is why the theoretical headline ratio gets to six orders of magnitude.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper’s headline numbers are theoretical, not empirical. At the Shannon limit and typical English perplexity (10–20), predictive delta coding bounds per-token entropy at 3.3–4.3 bits, against TurboQuant’s 3 bits per vector component across 64–128 components per head, a 914,000× ratio. Even with a 1000× overhead above the entropy floor (two orders worse than practical source coders typically achieve), the gap stays at ~914× over TurboQuant, and grows rather than shrinks with context length.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>The scheme adds a robustness issue that per-vector methods don’t have. The same forward pass on a GPU doesn’t always return identical numbers. What else is in the batch alongside your request can shift the result slightly. Thinking Machines’ <a href="https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/"><em>Defeating Nondeterminism in LLM Inference</em></a> documented exactly this: Qwen-235B at temperature 0 produced 80 unique completions over 1000 identical requests, all from non-batch-invariant kernels in the forward pass. Per-vector compression is immune: recovery is a fixed formula on stored bits, no model rerun. Schemes whose decode is pure arithmetic are similarly safe. The issue only appears when the model itself sits on the recovery path. Here, the model rerun <em>is</em> the recovery, so any drift between the original prediction and the regenerated one shows up as reconstruction error. Usually the TurboQuant layer underneath is noisier than the drift and absorbs it, but at positions where the model is highly confident and the stored gap is tiny, the same prompt could reconstruct slightly differently depending on how it got batched.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“Sequential KV Cache Compression via Probabilistic Language Tries.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2604.15356" class="uri">https://arxiv.org/abs/2604.15356</a></li>
+<li><a id="ref-2"></a>Aamand, A., Mousavifar, S., Singhi, R., Indyk, P., Wagner, T. “TurboQuant: Online Vector Quantization.” <em>arXiv preprint</em> (arXiv:2504.19874), 2025. <a href="https://arxiv.org/abs/2504.19874" class="uri">https://arxiv.org/abs/2504.19874</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260422-kv-cache-compression/</guid>
+  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Civilization’s Three Stages, Applied to Mathematics</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260421-civilizations-three-stages/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260421-civilizations-three-stages/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260421-civilizations-three-stages/cover.jpg" class="img-fluid figure-img" width="192"></p>
+<figcaption>Terence Tao. (<a href="https://mathstodon.xyz/@tao/116438112449752681">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Terence Tao quoting Douglas Adams to frame what AI is doing to mathematics:</p>
+<blockquote class="blockquote">
+<p>“The history of every major galactic civilization tends to pass through three distinct and recognizable phases, those of Survival, Inquiry and Sophistication, otherwise known as the How, Why, and Where phases. For instance, the first phase is characterized by the question ‘How can we eat?’, the second by the question ‘Why do we eat?’ and the third by the question, ‘Where shall we have lunch?’” (Douglas Adams, “The Hitchhiker’s Guide to the Galaxy”)</p>
+<p>Adams’ quote, whie humorous in intent, seems like a prescient description of the current evolution of cognitive disciplines such as mathematics. To use Adams’ framing, most of the history of mathematics has existed in the “Survival” phase, in which proofs were scarce and we were willing to obtain them by whatever means necessary (as long as they were verified to be correct), analogously to how a human in an era of caloric scarcity would accept food from virtually any source, so long as they were verified to be edible.</p>
+<p>But we are now entering an era where generative cognitive tasks, such as finding a proof to a given problem, are becoming cheap (as measured per user, rather than through overall capital investment) and relatively plentiful, analogously to how the Green Revolution dramatically increased crop yields and significantly reduced the occurrence of famine. As such, we are beginning to experience Adams’ somewhat turbulent “Inquiry” phase, in which fundamental questions, such as why mathematicians even seek proofs in the first place, and what qualities besides correctness do we want from such proofs, are now being seriously discussed not just by philosophers of mathematics, but by practicing mathematicians as well.</p>
+<p>However, at the other end of this transitional period is the “Sophistication” phase, in which our community has fully transitioned from a scarcity mindset to an abundance mindset. The objective will no longer be to accumulate as many proofs (of varying levels of quality) as possible, but to create more sophisticated experiences <em>around</em> curated collections of proofs: enjoyable conversations over lunch, rather than to scavenging for all available edible food sources. This will require the mathematicians of the future to prioritize a different set of skills than the ones we promote currently: “culinary” skills, such as mathematical exposition and construction of “big picture” narratives, may become at least as important as the “food gathering” skills of locating proofs.</p>
+</blockquote>
+<p>The transition from scarcity to abundance triggers the question of selection, and selection requires wisdom and taste. This applies to many human pursuits other than math.</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Terence Tao. <em>Mastodon</em>, 2026-04-20. <a href="https://mathstodon.xyz/@tao/116438112449752681" class="uri">https://mathstodon.xyz/@tao/116438112449752681</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260421-civilizations-three-stages/</guid>
+  <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260421-civilizations-three-stages/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Prompt Repetition Improves Non-Reasoning LLMs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>First page of Leviathan, Kalman, and Matias 2025. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>Another inference-time trick for getting more out of an LLM without touching its weights [1].</p>
+<blockquote class="blockquote">
+<p><em>When not using reasoning</em>, <em>repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek)</em> <em>without increasing the number of generated tokens or latency</em>.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<p>The trick is one line: prepend a copy of the user’s prompt before the model generates. No fine-tuning, no extra decoding tokens, no latency hit at generation time — just a longer prefill.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper sweeps 70 benchmark-model combinations across Gemini, GPT, Claude, and Deepseek:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/figure1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the paper: prompt repetition vs baseline accuracy across Gemini, GPT, Claude, and Deepseek on multiple benchmarks. Repetition wins 47/70 benchmark-model combinations, with 0 losses. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>Why does this work? Causal attention. The autoregressive LLMs we’re talking about — Gemini, GPT, Claude, Deepseek — read left-to-right: each token can only attend to tokens that came before it. So when a model is given <code>&lt;context&gt; &lt;question&gt;</code>, it has to encode every word of the context before it ever sees the question. This is the opposite of how “good” students prepare for exams: they look at past questions first, then read the texts with those questions in mind, focusing attention on what’s likely to be asked. Repeating the prompt gives the model the same second pass — by the time it encodes the second copy, the question is already in view, so the context can be processed in light of what’s being asked. Because prefill is parallelizable, doubling the prompt doesn’t slow generation down.</p>
+<p>The paper itself names the root cause:</p>
+<blockquote class="blockquote">
+<p>LLMs are often trained as causal language models, i.e.&nbsp;past tokens cannot attend to future tokens. Therefore, the order of the tokens in a user’s query can affect prediction performance.</p>
+</blockquote>
+<p>Bidirectional attention over the prefix would fix this natively — every prompt token attending to every other, no repetition needed. Encoder-decoder models (T5, BART) do this in their encoder; Prefix-LM variants (UL2) bidirectionally attend over the prompt and switch to causal only at generation. The paper flags “Explore interactions with techniques such as Prefix LM” as a future direction. But decoder-only causal architectures won the scaling battle: simpler training at scale, more efficient KV-caching for sequential serving, more natural in-context learning. Prompt repetition is a runtime patch that buys back some of what bidirectional attention would natively provide — without retraining the frontier models we already have.</p>
+<p>Compare to the <a href="../20260324-llm-neuroanatomy/">LLM Neuroanatomy</a> post: there, the trick was duplicating a block of middle transformer layers and running them twice. Here, the trick is simpler still: duplicate the input itself. The intuition is the same in both cases — give the model another pass over the same information.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Yaniv Leviathan, Matan Kalman, and Yossi Matias. “Prompt Repetition Improves Non-Reasoning LLMs.” <em>arXiv</em>. 2025-12-17. <a href="https://arxiv.org/abs/2512.14982" class="uri">https://arxiv.org/abs/2512.14982</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260421-prompt-repetition/</guid>
+  <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>A Rube Goldberg Pipeline for Sharing Links</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Rube Goldberg’s <em>Self-Operating Napkin</em>, the canonical absurd contraption (Professor Butts, 1931). Image via <a href="https://commons.wikimedia.org/wiki/File:Self-operating_napkin_(Rube_Goldberg_cartoon_with_caption).jpg">Wikimedia Commons (public domain)</a>.</figcaption>
+</figure>
+</div>
+<p>Most posts here start as a link or a paragraph I read on my phone, in Mastodon or RSS or an article. By the time I’m back at my Mac, the thread is usually gone: the link buried under three days of tabs, the half-formed reaction long since dissolved.</p>
+<p>What I wanted, in three steps:</p>
+<ol type="1">
+<li><strong>I capture on my phone</strong> in seconds, with whatever sliver of a thought I have at the moment.</li>
+<li><strong>I finish on my Mac</strong> at leisure, with VSCode and Claude Code.</li>
+<li><strong>I publish to the blog</strong> in one motion, with the cover image and <code>llms.txt</code> entry following along.</li>
+</ol>
+<p>What it took: half a dozen different systems chained together. It starts when a scaffolded draft lands in my repo within seconds of a phone tap. Hours or days later, when I’m back at my Mac and have written my commentary, running the <code>publish</code> command takes about three minutes to put the post live on <code>benjaminhan.net</code>. For quick reshares where I have nothing to add, a <code>Capture+publish:</code> variant skips the Mac loop entirely and lets CI promote the draft on its own. The systems involved are the iOS share sheet, a <a href="http://omz-software.com/pythonista/">Pythonista</a> script, GitHub’s Contents API, GitHub Actions, and GitHub Pages. Two adjacent stages aren’t covered here: the Cloudflare CDN + feed-analytics Worker in front of GitHub Pages, and the optional Mastodon cross-post that can fire after deploy.</p>
+<p>The result is more engineering than bookmarking really needs. Below is the contraption, and the spots where it tends to stick.</p>
+<section id="the-pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="the-pipeline">The pipeline</h2>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/83217d89111c9164.svg" alt="flowchart TB
+    subgraph capture [&quot; &quot;]
+        direction LR
+        A[iOS Share Sheet] --&gt; B[Pythonista]
+        B --&gt;|GitHub Contents API| C[draft .qmd in repo]
+        C --&gt;|git pull + /expand-draft| D[Expanded draft]
+        D --&gt; M[Manual edit&lt;br/&gt;VSCode + Claude Code]
+    end
+    subgraph depl" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+</section>
+<section id="what-each-stage-actually-does" class="level2">
+<h2 class="anchored" data-anchor-id="what-each-stage-actually-does">What each stage actually does</h2>
+<ul>
+<li><strong>iOS Pythonista</strong> captures the URL plus a handful of prompts (title, slug, optional one-liner, “Notes to Claude,” “is the post mine?”), auto-detects the source platform (Mastodon, YouTube, arxiv, Substack, GitHub, etc.) from the URL host, and <code>PUT</code>s a stub <code>.qmd</code> to the repo via GitHub’s Contents API. The platform tag tells the next stage how to dispatch.</li>
+<li><strong>Auto-publish</strong> is the Mac-less shortcut for a link I want to reshare verbatim. The iOS capture sets <code>auto-publish: true</code> and commits with <code>Capture+publish:</code> (no <code>[skip ci]</code>), so the workflow runs. An early step pulls the source toot via Mastodon’s public API, downloads its image attachments, maps its hashtags against the existing tag vocabulary, fills in missing required frontmatter, and <code>git mv</code>s the draft to <code>posts/</code> before <code>quarto render</code>. Mastodon-only today. Other platforms raise a hard <code>SystemExit</code>, so a malformed capture fails CI rather than shipping a broken post.</li>
+<li><strong><code>/expand-draft</code> skill</strong> runs on the Mac in Claude Code. It reads the stub’s <code>source-url</code> and <code>source-platform</code>, fetches the page, extracts <code>og:image</code> / <code>og:description</code>, suggests categories from the existing tag set, downloads the cover image (with a citation in the figcaption), and writes a STYLE.md-compliant draft. If <code>notes-for-claude</code> is set, the skill follows it as per-draft direction. If <code>source-mine: true</code>, it skips the framing-commentary scaffolding. A <code>/review-draft</code> pass then fact-checks against the source, flags voice and logic issues, and applies safe fixes before the expansion is committed.</li>
+<li><strong>Manual editing</strong> happens between expand and publish. I open the draft in VSCode and write or polish my commentary with Claude Code at hand. Quick link shares take minutes. Essays can take days. The expanded scaffolding stays deliberately minimal.</li>
+<li><strong><code>/publish-draft</code> skill</strong> validates the draft against the style guide, strips scaffolding, <code>git mv</code>s to <code>posts/</code>, commits, pushes.</li>
+<li><strong>GitHub Actions</strong> implements <em>incremental rendering</em>. A classifier (<code>_scripts/render_diff.py</code>) diffs the working tree against the last successful build’s cached <code>_site/</code> and picks one of <code>full</code>, <code>incremental</code>, or <code>skip-render</code>. A post edit typically routes to <code>incremental</code> and renders in ~20 s instead of ~4 min. Pre-render scripts then emit the tag histogram, the external <code>post-index.json</code> that hydrates the home + archive listings, the bucket-paginated home and archive pages, and <code>llms.txt</code>. Quarto renders the <code>.qmd</code> files. Post-render, <code>feed-render.py</code> rasterizes Mermaid diagrams and MathJax expressions to SVG so the RSS feed carries real images, <code>feed-utm.py</code> UTM-tags the feed item URLs (so GA4 can attribute RSS click-throughs back to the feed channel) and prepends a “Read on benjaminhan.net” back-link to each item’s body, and <code>feed-paginate.py</code> slices the feed into RFC 5005 paged archives so the index file stays small while subscribers can still walk back through history. Three more scripts run before deploy to strip redundant listing H1s, prune inline asset blobs from pages that don’t need them, and fingerprint <code>styles.css</code> for cache-busting.</li>
+</ul>
+</section>
+<section id="gotchas" class="level2">
+<h2 class="anchored" data-anchor-id="gotchas">Gotchas</h2>
+<p>The pipeline above looks clean in a flowchart. It is not. Here are the bumps I hit, in roughly the order they showed up.</p>
+<ul>
+<li><strong><code>dialogs.input_alert</code> doesn’t block in Pythonista’s share extension.</strong> The dialog works fine when I tap ▶ inside the Pythonista app. From the share sheet, it races through every prompt with empty inputs. Symptom: nothing happens, no error, the script finishes silently. Fix: switch to <code>console.input_alert</code>. Same signature, behaves correctly in the extension sandbox.</li>
+<li><strong>GitHub Contents API needs <code>sha</code> to update an existing file.</strong> I hit this on a slug collision (HTTP 422, “sha wasn’t supplied”). The script now <code>GET</code>s the path first. If the file exists, it offers Replace (passing the existing <code>sha</code> so the <code>PUT</code> is treated as an update) or Cancel.</li>
+<li><strong>Quarto’s <code>draft-mode: gone</code> strips draft pages to empty HTML.</strong> Local <code>quarto preview</code> shows blank pages for files in <code>drafts/</code>. Workaround: a <code>_quarto-preview.yml</code> profile that flips <code>draft-mode: unlinked</code> for previews. Production CI builds without the <code>--profile=preview</code> flag, so the deployed site never includes drafts.</li>
+<li><strong>VSCode’s Quarto extension doesn’t inherit <code>terminal.integrated.env.osx</code>.</strong> Setting <code>QUARTO_PROFILE=preview</code> in workspace settings only affects the integrated terminal. The extension spawns Quarto in a separate process tree with its own inherited env. Real fix: <code>export QUARTO_PROFILE=preview</code> in <code>~/.zshrc</code>, then <code>Cmd-Q</code> and relaunch VSCode from the terminal so the extension inherits it.</li>
+<li><strong><code>image:</code> frontmatter is metadata, not body content.</strong> Quarto uses <code>image:</code> only for <code>og:image</code> meta tags and listing thumbnails. It does not render an inline cover image on the post page itself. The body needs an explicit <code>![](cover.jpg){fig-align="center"}</code> for the cover to actually appear.</li>
+<li><strong><code>.claude/</code> was gitignored, hiding the per-project skills.</strong> The first commit of <code>expand-draft.md</code> and <code>publish-draft.md</code> resulted in zero tracked files. The directory was excluded entirely. Git’s rule is that a re-include cannot reach a file under an already-excluded parent directory, so <code>!.claude/skills/</code> does not work against <code>.claude/</code>. The fix is to widen the exclusion to <code>.claude/*</code> first, then re-include <code>.claude/skills/</code>.</li>
+</ul>
+</section>
+<section id="why-bother" class="level2">
+<h2 class="anchored" data-anchor-id="why-bother">Why bother</h2>
+<p>Two reasons:</p>
+<ul>
+<li><strong>The iOS-to-Mac handoff matches how I actually find good links.</strong> On a phone, in an RSS or Mastodon reader, away from a keyboard. Capturing them as scaffolded drafts means I don’t lose the thread between “I should put more thought to it” and “I’m back at the Mac.” The drafts queue up. I work on them when I have time.</li>
+<li><strong>The pipeline keeps a human in the loop.</strong> The phone capture is mine. The commentary is mine. The publish command is a manual step, not a webhook. Automation handles plumbing. Editorial calls stay with me.</li>
+</ul>
+<p>The pipeline is elaborate, fragile, and a little excessive. For a workflow that runs every few days, that is also fine.</p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/</guid>
+  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260420-rube-goldberg-publishing/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Sounds of Joy</title>
   <dc:creator>synesis </dc:creator>
@@ -700,290 +1083,6 @@
   <guid>https://benjaminhan.net/posts/20260402-artemis-launch/</guid>
   <pubDate>Thu, 02 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260402-artemis-launch/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Learning to Reason in 13 Parameters</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260331-tinylora/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260331-tinylora/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260331-tinylora/figure1.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 1 from the TinyLoRA paper. (<a href="https://arxiv.org/abs/2602.04118">Source</a>)</figcaption>
-</figure>
-</div>
-<p>TinyLoRA pushes low-rank adaptation down to almost nothing [1].</p>
-<ul>
-<li>They report that an 8B-parameter Qwen2.5 model reaches 91% on GSM8K with only 13 trained bf16 parameters, which they note is just 26 bytes of learned weights.</li>
-<li>For RL-based post-training, the effective update needed to unlock better reasoning may live in a very low-dimensional subspace.</li>
-<li>This works well with RL, but not nearly as well with SFT, where they say SFT needs 100–1000x larger updates to match the same gains.</li>
-</ul>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“Learning to Reason in 13 Parameters.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2602.04118" class="uri">https://arxiv.org/abs/2602.04118</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_learning-to-reason-in-13-parameters-activity-7444959168408559616-psHg">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260331-tinylora/</guid>
-  <pubDate>Tue, 31 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260331-tinylora/figure1.png" medium="image" type="image/png" height="113" width="144"/>
-</item>
-<item>
-  <title>How Apple Became Apple</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260330-apple-oral-history/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260330-apple-oral-history/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260330-apple-oral-history/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Apple I, on display. Photo: Wikimedia Commons. (<a href="https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak">Source</a>)</figcaption>
-</figure>
-</div>
-<blockquote class="blockquote">
-<p>“Today, as Apple turns 50, its presence in our lives is so pervasive—2.5 billion of the company’s devices are in active use—that its unlikely origin story is more resonant than ever. To tell it, I turned to the people who lived it…” [1]</p>
-</blockquote>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“How Apple became Apple: The definitive oral history of the company’s earliest days.” <em>Fast Company</em>. <a href="https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak" class="uri">https://www.fastcompany.com/91514404/apple-founding-50th-anniversary-apple-1-apple-ii-jobs-wozniak</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_how-apple-became-apple-the-definitive-oral-activity-7444423672158851072-bLk-">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260330-apple-oral-history/</guid>
-  <pubDate>Mon, 30 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260330-apple-oral-history/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Redmond City Marathon: #30, with a Sprained Ankle</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260329-redmond-city-marathon/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260329-redmond-city-marathon/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/02.jpg" class="img-fluid"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/03.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/04.jpg" class="img-fluid"></p>
-</div>
-</div>
-</div>
-<p>Today I ran my 30th marathon (since 2024) at the Redmond City Marathon race, finishing in 3:38:33 (watch time) with pace 8’20”/mi. It also extended an unusual streak for me: 7 straight weeks of running HM or longer!</p>
-<p>This was my first marathon raced by HR, and that part mostly went to plan: I got avg/max HR of 149/159 bpm. The bigger challenge in the second half was actually not keeping my HR down, but getting it up. My legs were prematurely tired mainly due to a very silly mistake happened early in the race: I stored gels in the shallow part of my vest pockets, and they went flying at ~2.6mi mark! I stepped onto the unpaved edge to retrieve them, and proceeded to spraining my left ankle!</p>
-<p>Running on it didn’t feel too bad and I thought I had cheated disaster. It started to rear its ugly head around the famous mile 20. Well, this is what it is – at least I managed to have a strong-ish finish in the last 2+mi!</p>
-<p>Not the race I originally imagined, but sometimes sh*t happens (okay, most of the times). My next marathon is ~24 weeks out –- a lot of training to do, but I have the time! Onward!</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-marathon-activity-7444201961870077952-Fl0o">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260329-redmond-city-marathon/</guid>
-  <pubDate>Sun, 29 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260329-redmond-city-marathon/01.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>LLM Neuroanatomy: Topping the Leaderboard Without Changing a Weight</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260324-llm-neuroanatomy/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/duplicated-layers.png" class="img-fluid figure-img"></p>
-<figcaption>Diagram from the dnhkng.github.io post showing the duplicated middle-layer block. (<a href="https://dnhkng.github.io/posts/rys/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Improve an LLM without training by duplicating a specific block of middle transformer layers and running them twice during inference. The power of thinking it over twice [1].</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“LLM Neuroanatomy: How I Topped the LLM Leaderboard Without Changing a Single Weight.” <em>dnhkng.github.io</em>. <a href="https://dnhkng.github.io/posts/rys/" class="uri">https://dnhkng.github.io/posts/rys/</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llm-neuroanatomy-how-i-topped-the-llm-leaderboard-activity-7442232550196117504-bASa">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260324-llm-neuroanatomy/</guid>
-  <pubDate>Tue, 24 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/duplicated-layers.png" medium="image" type="image/png" height="129" width="144"/>
-</item>
-<item>
-  <title>Snowflake Cortex AI Escapes Sandbox and Executes Malware</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/cover.png" class="img-fluid figure-img" data-lightbox-src="cover-full.png"></p>
-<figcaption>Cover image from the PromptArmor write-up. (<a href="https://www.promptarmor.com/resources/snowflake-ai-escapes-sandbox-and-executes-malware">Source</a>)</figcaption>
-</figure>
-</div>
-<p>A good reminder that agent safety is not just about having a sandbox.</p>
-<p>Snowflake’s Cortex Code CLI recently patched an indirect prompt injection flaw where untrusted content, such as a repo README, could trigger malicious shell commands, bypass user approval, and run outside the sandbox [1].</p>
-<p>The deeper lesson is that safety can fail in two places at once: incomplete command validation and weak observability across agent layers. If a lower-level agent can act while the top-level agent thinks it only detected risk, the system is not actually in control.</p>
-<p>Multi-agent systems need recursive validation, strong isolation, and end-to-end action visibility.</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“Snowflake Cortex AI Escapes Sandbox and Executes Malware.” <em>PromptArmor</em>. <a href="https://www.promptarmor.com/resources/snowflake-ai-escapes-sandbox-and-executes-malware" class="uri">https://www.promptarmor.com/resources/snowflake-ai-escapes-sandbox-and-executes-malware</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_snowflake-cortex-ai-escapes-sandbox-and-executes-activity-7440421921609048064-U2Pp">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/</guid>
-  <pubDate>Thu, 19 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/cover.png" medium="image" type="image/png" height="75" width="144"/>
-</item>
-<item>
-  <title>Language Puzzles, NACLO, and a Note of Thanks</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260319-language-puzzles/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260319-language-puzzles/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260319-language-puzzles/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Cover image from the Scientific American article. (<a href="https://www.scientificamerican.com/article/try-these-language-puzzles-north-americas-biggest-linguistics-competition/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>This&nbsp;Scientific American&nbsp;article on the North American Computational Linguistics Open Competition (NACLO) highlighted both the people behind it and the impact it has had over the years [1]. Deep appreciation to Lori Levin, Dragomir Radev, Tom Payne, James Pustejovsky, and Tanya Korelsky, whose founding work helped create a competition that has introduced so many students to linguistics, AI, and language preservation through the joy of solving language puzzles. Lori in particular helped guide me into the wonderful world of linguistics back in my grad school days, and her class inspired me to write my first computational linguistics paper [2], motivated by the idea that field linguists should not have to rely on shoeboxes full of note cards and lexical slips to collect and analyze language data!</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“Try These Language Puzzles from North America’s Biggest Linguistics Competition.” <em>Scientific American</em>. <a href="https://www.scientificamerican.com/article/try-these-language-puzzles-north-americas-biggest-linguistics-competition/" class="uri">https://www.scientificamerican.com/article/try-these-language-puzzles-north-americas-biggest-linguistics-competition/</a></li>
-<li><a id="ref-2"></a>Han, Benjamin. “Building a Bilingual Dictionary with Scarce Resources: A Genetic Algorithm Approach.” <em>Proceedings of the Student Research Workshop, Second Meeting of the North American Chapter of the Association for Computational Linguistics (NAACL 2001)</em>. <a href="https://www.cs.cmu.edu/~benhdj/Publications/Published/bhan_naccl_2001.pdf" class="uri">https://www.cs.cmu.edu/~benhdj/Publications/Published/bhan_naccl_2001.pdf</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_can-you-solve-these-language-puzzles-test-activity-7440446106678796288-QERC">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260319-language-puzzles/</guid>
-  <pubDate>Thu, 19 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260319-language-puzzles/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Journey into Coding with AI [3/4]: Decision-Bound Programming</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/post-attachment.jpg" class="img-fluid figure-img"></p>
-<figcaption>Illustration from the original post. (<a href="https://www.linkedin.com/posts/benjaminhan_ai-coding-programming-activity-7439035461278482433-see_">Source</a>)</figcaption>
-</figure>
-</div>
-<p>AI is shifting programming from execution-bound work to decision-bound work.</p>
-<section id="generation-is-cheap-evaluation-is-not" class="level3">
-<h3 class="anchored" data-anchor-id="generation-is-cheap-evaluation-is-not">Generation Is Cheap, Evaluation Is Not</h3>
-<p>Many developers describe AI coding tools as both powerful and exhausting. Recent empirical work offers a plausible explanation. In a randomized controlled experiment, METR asked experienced developers to solve issues in familiar repositories, with and without AI tools [1]. On average, developers took about 19% longer when AI assistance was allowed, even though they believed they were faster. Reuters’ coverage notes that much of the extra time went into prompting, reviewing generated code, and correcting partially correct outputs [2]. These findings suggest that AI lowers the cost of producing candidate code while increasing the effort required to evaluate it.</p>
-<p>Once generation becomes cheap, the structure of development changes. Developers can quickly produce implementations, refactorings, or architectural variations. Not every developer will explore every branch, but the number of plausible alternatives grows. Each candidate must then be interpreted, validated, and compared before it can be trusted. Programming becomes less about executing a plan and more about evaluating possibilities.</p>
-</section>
-<section id="heuristics-and-context-switching" class="level3">
-<h3 class="anchored" data-anchor-id="heuristics-and-context-switching">Heuristics and Context Switching</h3>
-<p>The theory of bounded rationality [3] suggests that as the number of alternatives grows, people can no longer evaluate every option fully and instead rely on heuristics to reach satisfactory decisions. AI-assisted coding can increase the number of candidate solutions that must be screened and compared, helping explain why developers may perceive higher mental effort even when code is generated faster.</p>
-<p>A second burden is context switching. Research on programming interruptions has long shown that rebuilding context is expensive [4]. More recent AI-specific work strengthens this point. The 2026 EditFlow paper reports that 68.81% of code-edit recommendations disrupted developers’ mental flow [5]. A separate five-day field study found that proactive AI suggestions worked better after commits than mid-task [6].</p>
-<p>Recent studies also report higher perceived cognitive load during AI-assisted development [7]. Related work on user mental models in AI-driven code completion found that developers want better timing, display, granularity, and explanation [8].</p>
-</section>
-<section id="toward-decision-support" class="level3">
-<h3 class="anchored" data-anchor-id="toward-decision-support">Toward Decision Support</h3>
-<p>Taken together, the evidence suggests a broader pattern: AI accelerates code generation, but it can also increase interpretation, comparison, judgment, and context management during development. The bottleneck does not disappear. It moves. This means programming environments should evolve beyond code generation toward decision support. They should reduce unnecessary branching, summarize differences between alternatives, surface trade-offs, highlight risks, and make the implications of choices explicit.</p>
-<p>In other words, the next generation of programming tools should be decision support systems, not just code generators.</p>
-<p>(Part 2: <a href="../20250906-coding-with-ai-2-shifting-gears/">Shifting Gears</a>)</p>
-<hr>
-<p><strong>Continue the series:</strong> <a href="../20250905-coding-with-ai-1-running-back-to-code/">← Part 1: Running Back to Code</a> · <a href="../20250906-coding-with-ai-2-shifting-gears/">← Part 2: Shifting Gears</a></p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>METR. “Early-2025 AI on OSS Dev Productivity.” 2025. <a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/" class="uri">https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/</a></li>
-<li><a id="ref-2"></a>“AI slows down some experienced software developers, study finds.” <em>Reuters</em>, 2025. <a href="https://www.reuters.com/business/ai-slows-down-some-experienced-software-developers-study-finds-2025-07-10/" class="uri">https://www.reuters.com/business/ai-slows-down-some-experienced-software-developers-study-finds-2025-07-10/</a></li>
-<li><a id="ref-3"></a>Simon, Herbert A. <em>Models of Man</em>. 1957. (See also Klahr, 2004: <a href="https://www.cmu.edu/dietrich/psychology/pdf/klahr/PDFs/klahr%202004.pdf" class="uri">https://www.cmu.edu/dietrich/psychology/pdf/klahr/PDFs/klahr%202004.pdf</a>)</li>
-<li><a id="ref-4"></a>Parnin, Chris, and Spencer Rugaber. “Resumption Strategies for Interrupted Programming Tasks.” <em>Software Quality Journal</em>, 2011. <a href="https://chrisparnin.me/pdf/parnin-sqj11.pdf" class="uri">https://chrisparnin.me/pdf/parnin-sqj11.pdf</a></li>
-<li><a id="ref-5"></a>Liu, et al.&nbsp;“EditFlow.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2602.21697" class="uri">https://arxiv.org/abs/2602.21697</a></li>
-<li><a id="ref-6"></a>Kuo, et al.&nbsp;“Proactive AI Field Study.” <em>arXiv</em>, 2026. <a href="https://arxiv.org/abs/2601.10253" class="uri">https://arxiv.org/abs/2601.10253</a></li>
-<li><a id="ref-7"></a>Brandebusemeyer, et al.&nbsp;“GenAI Mixed-Methods Field Study.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2512.19926" class="uri">https://arxiv.org/abs/2512.19926</a></li>
-<li><a id="ref-8"></a>Desolda, et al.&nbsp;“Mental Models in AI Code Completion.” <em>arXiv</em>, 2025. <a href="https://arxiv.org/abs/2502.02194" class="uri">https://arxiv.org/abs/2502.02194</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_ai-coding-programming-activity-7439035461278482433-see_">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/</guid>
-  <pubDate>Sun, 15 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260315-ai-coding-decision-bound/post-attachment.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

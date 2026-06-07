@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-12.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-23.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-24.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-11.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-13.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -22,6 +22,329 @@
 </image>
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 06 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>How Well Can Transformers Build World Models?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20241108-transformers-world-models/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20241108-transformers-world-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20241108-transformers-world-models/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Cover image from the LinkedIn article. (<a href="https://www.linkedin.com/pulse/how-well-can-transformers-build-world-models-benjamin-han-eoqzc/">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Large Language Models (LLMs) are statistical in nature. By learning from enormous corpora, do they actually learn “world models” latent behind the texts? Can next-token prediction really learn the principles governing the environment it operates in?</p>
+<p>One recent work from colleagues in Apple gives negative results on math reasoning [1]. They show on GSM8K benchmark — a test set on grade-school-level math questions — SOTA transformer models perform significantly worse when they simply change the names, numbers, or both in the problems (picture 1). This clearly demonstrates these models don’t really learn the math principles behind the problems.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20241108-transformers-world-models/picture-1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Picture 1: GSM-symbolic results showing accuracy drops when names/numbers are perturbed.</figcaption>
+</figure>
+</div>
+<p>Another interesting work to test if transformers really build world models is by reducing problems into Deterministic Finite Automata (DFA) — graphs depicting possible states and transitions among them when consuming input — and see if these models really learn them [2]. The authors introduce two new metrics: compression precision and distinction precision (picture 2). The compression precision measures how well a model can conclude that the same state, no matter what input sequences are used to reach it, should lead to the same accepted sequences. The distinction precision, on the other hand, measures how well a model can recognize input sequences that lead to different states.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20241108-transformers-world-models/picture-2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Picture 2: Compression and distinction precision metrics.</figcaption>
+</figure>
+</div>
+<p>The authors then tested two instances of DFA: navigating streets in New York City and playing the board game Othello. They found big gaps both between the conventional metrics (next-token test and current state probe) and the new metrics (picture 3 and 4), and model performance (measured by the new metrics) when the “world” changes, e.g., randomly increasing cost on certain roads in the city (“noisy shortest paths” in picture 3). Another interesting find is that random walks actually yield far better performance, because the models get to explore all corners of the world, albeit at a much higher cost.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20241108-transformers-world-models/picture-3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Picture 3: Big gaps between conventional and new metrics; “noisy shortest paths” performance.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20241108-transformers-world-models/picture-4.jpg" class="img-fluid figure-img"></p>
+<figcaption>Picture 4: Othello DFA results.</figcaption>
+</figure>
+</div>
+<p>There are many interesting questions to be explored from here: are these new metrics sufficient to capture models’ ability to learn world models? What about the problems that can’t be reduced to DFA? How can we map next-token prediction to learning the deeper and more holistic representation of the world, or should we find new ways?</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Mirzadeh, Iman, Keivan Alizadeh-Vahid, Hooman Shahrokhi, Oncel Tuzel, Samy Bengio, and Mehrdad Farajtabar. “GSM-Symbolic: Understanding the Limitations of Mathematical Reasoning in Large Language Models.” 2024. <a href="https://arxiv.org/abs/2410.05229" class="uri">https://arxiv.org/abs/2410.05229</a></li>
+<li><a id="ref-2"></a>Vafa, Keyon, Justin Y. Chen, Jon Kleinberg, Sendhil Mullainathan, and Ashesh Rambachan. “Evaluating the World Model Implicit in a Generative Model.” 2024. <a href="https://arxiv.org/abs/2406.03689" class="uri">https://arxiv.org/abs/2406.03689</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/how-well-can-transformers-build-world-models-benjamin-han-eoqzc/">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20241108-transformers-world-models/</guid>
+  <pubDate>Fri, 08 Nov 2024 08:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20241108-transformers-world-models/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Snohomish River Run 2024: Marathon PR by 7 Minutes</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20241013-snohomish-marathon-pr/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20241013-snohomish-marathon-pr/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241013-snohomish-marathon-pr/01.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241013-snohomish-marathon-pr/02.jpg" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241013-snohomish-marathon-pr/03.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241013-snohomish-marathon-pr/04.jpg" class="img-fluid"></p>
+</div>
+</div>
+</div>
+<p>Running milestone: Snohomish marathon today – I got up at 4:30am, left home at 6, and started running at 7:30. My watch/Strava reports time was 3:31:15 pace 8’03”/mi, and the official time was 3:31:22 pace 8’04”/mi. Both are my PR (7 minutes faster)!</p>
+<p>Sharing what may have helped in this PR:</p>
+<ol type="1">
+<li>Training: slower slow runs and NO skipping of interval/speed training! +Yoga!</li>
+<li>Better pre-race diet and in-race fueling: carb loading w/ low fiber pre-race, and one liquid gel per 4 miles during the race (love it!).</li>
+<li>Pace management: I followed decent runners for the first ~8 miles then judiciously sped up. At 14-mile realizing I was slowing down, I put on 180-bpm playlist and it worked like magic!</li>
+<li>When time is tough, remember: THIS IS EXACTLY WHERE I WANT TO BE!</li>
+</ol>
+<p>This is my 4th marathon race this year (or ever) – one more to go!</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-marathon-activity-7251383496181522432-Qp9v">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20241013-snohomish-marathon-pr/</guid>
+  <pubDate>Sun, 13 Oct 2024 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20241013-snohomish-marathon-pr/01.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>6th Parkrun PR + 2024 Stretch Goals Done</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/01.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/02.jpg" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/03.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/04.jpg" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/05.jpg" class="img-fluid"></p>
+</div>
+</div>
+</div>
+<p>Running update: I finally nailed my 6th PR this year in Parkrun 5K: 21:16 — 21 seconds off of my last PR! We also switched to the winter course here, so it’s a tad shorter, but watch/Strava reported 21:33 pace 6’56”/mi, also a PR for me!</p>
+<p>This completed my 3 stretch goals for 2024:</p>
+<ol type="1">
+<li>✅ Sub-7’ pace in Parkrun 5K: 4 out 20 runs reached sub-7’/mi pace.</li>
+<li>✅ 6 Parkrun 5K PRs: 6 as of October 5.</li>
+<li>✅ 3 full marathon race: 3 as of October (2 more coming).</li>
+</ol>
+<p>Those are on top of my original 2024 goals:</p>
+<ol type="1">
+<li>👍 40 miles/week: 45.24 miles/week as of week 40.</li>
+<li>👍 160 miles/month: 197.99 miles/month as of September.</li>
+<li>✅ 3 Parkrun 5K PRs: 6 as of October 5.</li>
+<li>✅ 1+ half marathon race: 1 as of October (Redmond Harvest Half).</li>
+<li>✅ 1 full marathon race: 3 as of October (Mill Town, Drumheller, Tunnel Vision)</li>
+</ol>
+<p>Feeling proud!</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-parkrun-strava-activity-7248418527387230208-mxBH">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/</guid>
+  <pubDate>Sat, 05 Oct 2024 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20241005-parkrun-strava-pr-2024-goals/01.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Around Lake Sammamish: A 27.71-Mile Run</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20240922-lake-sammamish-27mi-loop/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240922-lake-sammamish-27mi-loop/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20240922-lake-sammamish-27mi-loop/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Lake Sammamish loop run. Image: YouTube. <a href="https://youtu.be/-kSZNQNsqIA">Watch on YouTube</a></figcaption>
+</figure>
+</div>
+<p>Running update: for my 13th marathon run this Sunday, I decided to run around Lake Sammamish.</p>
+<p>I actually planned for a 31-mile scenic run, aiming at hitting <em>every</em> park along the way, then Weowna Park happened at the 12-mile mark, and my road running suddenly became trail running, with 187ft EG in 0.5 mile! I had to walk on parts of it!</p>
+<p>Video recap: <a href="https://youtu.be/-kSZNQNsqIA" class="uri">https://youtu.be/-kSZNQNsqIA</a></p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-around-lake-sammamish-a-2771-mile-activity-7243838398380081152-exiV">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20240922-lake-sammamish-27mi-loop/</guid>
+  <pubDate>Sun, 22 Sep 2024 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20240922-lake-sammamish-27mi-loop/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Crossing Lake Washington: A 33.01-Mile Run</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20240915-lake-washington-33mi-crossing/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240915-lake-washington-33mi-crossing/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20240915-lake-washington-33mi-crossing/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Crossing Lake Washington — a 33.01-mile run. Image: YouTube. <a href="https://youtu.be/QNRhW_o5SLA">Watch on YouTube</a></figcaption>
+</figure>
+</div>
+<p>Running update: my 33.01-mile run today crossing Lake Washington. Moving time 5:21:26, pace 9’44”/mi. This is my second 50+k run, and my longest run too.</p>
+<p>Route: Sammamish River Trail -&gt; Burke-Gillman Trail -&gt; SR 520 Trail -&gt; Cross Kirkland Corridor -&gt; East Trail -&gt; Woodinville Trail -&gt; Sammamish River Trail.</p>
+<p>Video recap: <a href="https://youtu.be/QNRhW_o5SLA" class="uri">https://youtu.be/QNRhW_o5SLA</a></p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_crossing-lake-washington-a-3301-mile-run-activity-7241332891325005825-gbGr">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20240915-lake-washington-33mi-crossing/</guid>
+  <pubDate>Sun, 15 Sep 2024 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20240915-lake-washington-33mi-crossing/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Redmond Harvest Half 2024: 1:45:24 After Flu Recovery</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20240902-redmond-harvest-half-2024/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240902-redmond-harvest-half-2024/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20240902-redmond-harvest-half-2024/01.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20240902-redmond-harvest-half-2024/02.jpg" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20240902-redmond-harvest-half-2024/03.jpg" class="img-fluid"></p>
+</div>
+</div>
+</div>
+<p>Running update: done with Redmond Harvest Half Marathon today (Labor Day in US)!</p>
+<p>This was much better than I expected, given that in August I had to recover from that horrible but PR-making marathon, and a flu just a few days ago. I was aiming just under 1:50.00, but the official chip time was 1:45:24 pace 8’03”/mi, and Strava recorded 1:45:08 pace 8’01”/mi. This is no PR, but is 12 minutes faster than the last year when I ran this same race!</p>
+<p>Most importantly is I felt <em>great</em> throughout the run! The last 4 miles were all sub-8’, and I even felt “runner’s high” at ~ 11-mile mark! Thinking back I could’ve run a bit faster from the get go!</p>
+<p>I feel there’s another “phase change” for me coming up. Here is to my last two marathon races in 2024!</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-redmond-marathon-activity-7236512413917847552-lLcR">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20240902-redmond-harvest-half-2024/</guid>
+  <pubDate>Mon, 02 Sep 2024 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20240902-redmond-harvest-half-2024/01.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Tunnel Vision Marathon 2024: Bathroom, Bad Shoes, OOD</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20240811-tunnel-vision-marathon-2024/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240811-tunnel-vision-marathon-2024/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20240811-tunnel-vision-marathon-2024/01.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20240811-tunnel-vision-marathon-2024/02.jpg" class="img-fluid"></p>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20240811-tunnel-vision-marathon-2024/03.jpg" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="https://benjaminhan.net/posts/20240811-tunnel-vision-marathon-2024/04.jpg" class="img-fluid"></p>
+</div>
+</div>
+</div>
+<p>Running update: today is the day for Tunnel Vision marathon race! I got up at 4:30am, left home at 5:30, arrived at the starting point 6:45 at Snoqualmie Pass, and started running 7:10 sharp! Official results are not out yet, but here are the ones according to Strava:</p>
+<ul>
+<li>I got PRs on 10K (47:13), 15K (1:11:24) and half marathon (1:41:57).</li>
+<li>But I only made it to my 2nd fastest marathon: time 3:46:13 pace 8’38”/mi. Obviously this is way slower than the BQ time for me (3:25:00).</li>
+</ul>
+<p>Three things went wrong after I crossed the midpoint:</p>
+<ol type="1">
+<li>Bathroom emergency. :-(</li>
+<li>My slightly larger shoes revealed their evil past this point, and started to wreck my toes as they repeatedly hit the front of the shoes in this all-downhill course.</li>
+<li>My quads were spent, starting at mile-16, and especially in the last 2 miles, to the point I could only walk-run to finish the course.</li>
+</ol>
+<p>Moral of the story: too much of good things (downhill) is actually bad for you, especially if you haven’t trained adequately for them! To use machine learning concepts: I’m essentially suffering from OOD (out-of-domain) testing: my training and testing conditions do not exactly match, and when the “good things” repeatedly hammered my less well-trained parts (shoes and leg muscles), they failed.</p>
+<p>But hey — I finished it! This also completes two of my three 2024 running goals: earn at least 3 PRs in the weekly Parkrun 5K (got 4), and run 3 marathon races (this is the third)! But there are more fun this year: one half marathon race in September, and two marathon races in October and December are waiting!</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-marathon-strava-activity-7228594820154372096-7eMR">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20240811-tunnel-vision-marathon-2024/</guid>
+  <pubDate>Sun, 11 Aug 2024 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20240811-tunnel-vision-marathon-2024/01.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Time-Sensitive Knowledge Editing via Efficient Fine-Tuning (ACL 2024)</title>
   <dc:creator>synesis </dc:creator>
@@ -649,263 +972,6 @@
   <guid>https://benjaminhan.net/posts/20240331-snoqualmie-valley-trail-easter/</guid>
   <pubDate>Sun, 31 Mar 2024 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20240331-snoqualmie-valley-trail-easter/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Generative AI Seeped into Research Peer Reviews</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20240327-generative-ai-peer-reviews/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240327-generative-ai-peer-reviews/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>A while ago Wired wrote about how ChatGPT and the other similar GenerativeAI tools are now deployed to mass-produce scammy books flooding online book markets [1]. The story seems straightforward: there’s a profit motive and there’s a tool enabling it, voila.</p>
-<p>But that can never happen to ethics-conscious, integrity-driven researchers, can it? It turns out it absolutely can, albeit as of this writing, probably at a smaller scale (?) [2].</p>
-<p>But if authors of research papers do it, the group that should hold them accountable, aka the reviewers, surely would not take the shorcuts? Well, according to a recent paper [3], 10.6% of ICLR2024 and 16.9% of EMNLP2023 reviews are significantly modified by AI — even though conferences like ACL have published explicit policies on AI writing assistance and peer review [4], [5].</p>
-<p>(see article)</p>
-<p>REFERENCES</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_generativeai-iclr2024-emnlp2023-activity-7178800104579952640-DJZj">LinkedIn</a>.</em></p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Kate Knibbs. “Scammy AI-Generated Book Rewrites Are Flooding Amazon.” <em>Wired</em>, January 10, 2024. <a href="https://www.wired.com/story/scammy-ai-generated-books-flooding-amazon/" class="uri">https://www.wired.com/story/scammy-ai-generated-books-flooding-amazon/</a></li>
-<li><a id="ref-2"></a>Benjamin Han. “Research Papers Claiming ‘I Am an AI Language Model.’” LinkedIn, 2024. <a href="https://www.linkedin.com/posts/benjaminhan_elen-le-foll-elenlefoll-activity-7174624268310261760-eW0M" class="uri">https://www.linkedin.com/posts/benjaminhan_elen-le-foll-elenlefoll-activity-7174624268310261760-eW0M</a></li>
-<li><a id="ref-3"></a>Weixin Liang, Zachary Izzo, Yaohui Zhang, Haley Lepp, Hancheng Cao, Xuandong Zhao, Lingjiao Chen, Haotian Ye, Sheng Liu, Zhi Huang, Daniel McFarland, and James Zou. “Monitoring AI-Modified Content at Scale: A Case Study on the Impact of ChatGPT on AI Conference Peer Reviews.” 2024. <a href="https://arxiv.org/abs/2403.07183" class="uri">https://arxiv.org/abs/2403.07183</a></li>
-<li><a id="ref-4"></a>Jordan Boyd-Graber, Naoaki Okazaki, Anna Rogers. “ACL 2023 Policy on AI Writing Assistance.” 2023. <a href="https://2023.aclweb.org/blog/ACL-2023-policy/" class="uri">https://2023.aclweb.org/blog/ACL-2023-policy/</a></li>
-<li><a id="ref-5"></a>Anna Rogers, Jordan Boyd-Graber, Naoaki Okazaki. “ACL’23 Peer Review Policies.” 2023. <a href="https://2023.aclweb.org/blog/ACL-2023-policy/" class="uri">https://2023.aclweb.org/blog/ACL-2023-policy/</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20240327-generative-ai-peer-reviews/</guid>
-  <pubDate>Wed, 27 Mar 2024 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20240327-generative-ai-peer-reviews/cover.png" medium="image" type="image/png" height="127" width="144"/>
-</item>
-<item>
-  <title>First Marathon Race: 3:51:39 with Three Wrong Turns</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20240324-first-marathon-race/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240324-first-marathon-race/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240324-first-marathon-race/01.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240324-first-marathon-race/02.jpg" class="img-fluid" data-lightbox-src="02-full.jpg"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240324-first-marathon-race/03.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240324-first-marathon-race/04.jpg" class="img-fluid"></p>
-</div>
-</div>
-</div>
-<p>My first marathon race, done! Official result was 3:51:39.8, pace 8’50”/mile. I was ranked overall 50/167, in males 40/102, or in my age group 5/9. This is slightly slower than my PR in practice (3:50:33, pace 8’48”).</p>
-<p>But the official time didn’t account for the three times I was lost (!) and had to either backtrack or ask people (I was not the only one). According to my watch I earned PR on marathon: 3:44:58, pace 8’35”, and half marathon: 1:45:19, pace 8’02”.</p>
-<p>The course can be best described as “a thousand paper cuts” as there are many ups/downs – super challenging for me! I actually walked in two occasions: one was climbing a long bridge (we had 6 bridges each way!), and the other was towards the end, out of fatigue and frustration that the route was not clearly marked. But otherwise I kept my pace pretty steady except after mile 19. Weather was super nice though: cloudy and felt like 43F.</p>
-<p>One of my goals in 2024 is now done!</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_marathon-halfmarathon-running-activity-7177820420312633345-FuDJ">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20240324-first-marathon-race/</guid>
-  <pubDate>Sun, 24 Mar 2024 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20240324-first-marathon-race/01.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Jasmin Paris: First Woman to Finish Barkley Marathons</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20240322-jasmin-paris-barkley/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240322-jasmin-paris-barkley/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20240322-jasmin-paris-barkley/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Jasmin Paris finishes the Barkley Marathons. Image: Outside / LinkedIn. (<a href="https://run.outsideonline.com/news/barkley-marathons-2024-results/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Jasmin Paris, 40-year-old scientist from University of Edinburgh and mother of two, becomes the first woman to finish one of the most grueling ultramarathons, Barkley Marathons 100 Miles, in its 38-year history. Her time was 59:58:21.</p>
-<p><a href="https://run.outsideonline.com/news/barkley-marathons-2024-results/" class="uri">https://run.outsideonline.com/news/barkley-marathons-2024-results/</a></p>
-<p>(only 22 runners finished the race in its entire history)</p>
-<p>From <a href="https://apple.news/AjmdCUjSIS-6rI5rckKbY6w" class="uri">https://apple.news/AjmdCUjSIS-6rI5rckKbY6w</a> about Barkley Marathons:</p>
-<p>“… the Frozen Head course forms a savage roller-coaster ride, with an average elevation change of 3,280 feet every six miles. This amounts to a total elevation gain of 65,616 feet—more than twice the height of Mount Everest—over the 124-mile course. The ceaseless climbing and descending, combined with the navigational maze, make Barkley so difficult, …”</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_jasmin-paris-becomes-first-woman-to-finish-activity-7177163584047575041-t2Mu">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20240322-jasmin-paris-barkley/</guid>
-  <pubDate>Fri, 22 Mar 2024 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20240322-jasmin-paris-barkley/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>St Patrick’s Day at Parkrun</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20240316-parkrun-st-patricks-day/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240316-parkrun-st-patricks-day/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20240316-parkrun-st-patricks-day/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Parkrun, St Patrick’s Day.</figcaption>
-</figure>
-</div>
-<p>We had a laugh in today’s Parkrun – happy St Patrick’s Day!</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_parkrun-stpatricksday-running-activity-7174898260501811200-zg8y">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20240316-parkrun-st-patricks-day/</guid>
-  <pubDate>Sat, 16 Mar 2024 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20240316-parkrun-st-patricks-day/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Who Bears the Blame for AI in Peer Reviews?</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20240315-elen-le-foll-llm-peer-reviews/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240315-elen-le-foll-llm-peer-reviews/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20240315-elen-le-foll-llm-peer-reviews/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Elen Le Foll on Mastodon. Image: LinkedIn / fediscience.org. (<a href="https://fediscience.org/@ElenLeFoll/112101044743733580">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Should we blame the authors, or should we blame the reviewers/publications?</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_elen-le-foll-elenlefoll-activity-7174624268310261760-eW0M">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20240315-elen-le-foll-llm-peer-reviews/</guid>
-  <pubDate>Fri, 15 Mar 2024 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20240315-elen-le-foll-llm-peer-reviews/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Hot Chocolate 15K: Top 10% Finish</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20240303-hot-chocolate-15k/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/01.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/02.jpg" class="img-fluid"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/03.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/04.jpg" class="img-fluid"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/05.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/06.jpg" class="img-fluid"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/07.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/08.jpg" class="img-fluid"></p>
-</div>
-</div>
-</div>
-<p>Woke up 5:30am and got my Hot Chocolate Run 15K done! Going in, my expectation was 1:20:00 and my practice PR was 1:17:51, and I beat both of them: time was 1:15:22 (pace 8’06”/mile)! I also made my 10k PR at 50:49 (funny the pace was slower than my 15k)!</p>
-<p>I’m at 93rd out 958 runners – first time to be within the top 10%! According to runninglevel.com, I’m now squarely between “Intermediate” and “Advanced” level in my age group.</p>
-<p>The course was challenging for me: right off the bat at 1~2 mile there was ~130ft climb, and once we’re on 99 towards Aurora Bridge there were two long stretches of climbs ~170ft each until summit. Weather-wise it was 35F feels like 29F (-1.67C) with wind 7.5 mph SSE. In the second half it started raining – but I was trained for this (even with wet shoes)!</p>
-<p>The encouraging sign: I felt I could’ve run another continuous 15K after the finish line! Next 15K goal: get my pace under 8 minutes!</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_hotchocolaterun-running-race-activity-7170186999276953600-nd3r">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20240303-hot-chocolate-15k/</guid>
-  <pubDate>Sun, 03 Mar 2024 08:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20240303-hot-chocolate-15k/01.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>KnowledgeableLMs Workshop @ ACL 2024 — CFP</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20240227-knowledgeable-lms-acl2024-workshop/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20240227-knowledgeable-lms-acl2024-workshop/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20240227-knowledgeable-lms-acl2024-workshop/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Towards Knowledgeable Foundation Models. Image from <a href="https://knowledgeable-lm.github.io/">KnowledgeableLMs Workshop</a>.</figcaption>
-</figure>
-</div>
-<p>Knowledgeable LMs workshop @ ACL 2024 is open for submissions: deadline May 20.</p>
-<p>“We welcome long (8 page) and short (4 page) paper submissions on all topics related to knowledgable LMs, including:</p>
-<p>Analysis of knowledge within LMs: how much they know and where that knowledge is from. Enhancing LMs with existing knowledge sources (knowledge graphs, domain-specific databases, manuals, and rules, etc, either during training or inference). Analyzing and improving RAG (retrieval-augmented generation) systems Updating and editing knowledge in LMs. Knowledge extraction and generation using LMs Evaluation of knowledge utilization (faithfulness, truthfulness) by LMs. Identification and mitigation of LM hallucinations, factual error correction.”</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_knowledgeablelms-acl-2024-activity-7168356822049902592-v1DS">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20240227-knowledgeable-lms-acl2024-workshop/</guid>
-  <pubDate>Tue, 27 Feb 2024 08:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20240227-knowledgeable-lms-acl2024-workshop/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

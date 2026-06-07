@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-4.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-23.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-24.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-3.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-5.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -22,6 +22,455 @@
 </image>
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 06 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260519-memskill/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260519-memskill/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260519-memskill/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Comparison between (a) prior turn-level handcrafted operations interleaved with LLM calls, and (b) MemSkill’s span-level skill-conditioned generation, where a controller selects a Top-<img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> subset of skills from a shared skill bank and the LLM applies them in one pass. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents</em> [1] (arXiv, February 2, 2026), Haozhen Zhang et al.&nbsp;(Nanyang Technological University, University of Illinois Urbana-Champaign, University of Illinois Chicago, and Tsinghua University) reframe LLM-agent memory operations as a learnable, evolving skill bank. An RL-trained <em>controller</em> selects skills for the current <em>span</em> — a contiguous segment of the interaction trace, typically covering multiple turns, that the <em>executor</em> consumes as input to a single LLM call. An LLM <em>designer</em> then periodically rewrites the bank from hard training cases.</p>
+<blockquote class="blockquote">
+<p>Most Large Language Model (LLM) agent memory systems rely on a small set of static, hand-designed operations for extracting memory. These fixed procedures hard-code human priors about what to store and how to revise memory, making them rigid under diverse interaction patterns and inefficient on long histories. To this end, we present <em>MemSkill</em>, which reframes these operations as learnable and evolvable memory skills, structured and reusable routines for extracting, consolidating, and pruning information from interaction traces. Inspired by the design philosophy of agent skills, MemSkill employs a <em>controller</em> that learns to select a small set of relevant skills, paired with an LLM-based <em>executor</em> that produces skill-guided memories. Beyond learning skill selection, MemSkill introduces a <em>designer</em> that periodically reviews hard cases where selected skills yield incorrect or incomplete memories, and evolves the skill set by proposing refinements and new skills. Together, MemSkill forms a closed-loop procedure that improves both the skill-selection policy and the skill set itself. Experiments on LoCoMo, LongMemEval, HotpotQA, and ALFWorld demonstrate that MemSkill improves task performance over strong baselines and generalizes well across settings. Further analyses shed light on how skills evolve, offering insights toward more adaptive, self-evolving memory management for LLM agents.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<ul>
+<li>Two banks anchor the system, with three components alternating around them.
+<ul>
+<li><strong>Skill bank</strong> — a shared, slowly evolving library of memory <em>skills</em>: structured templates, each with a short description, a “when to use” condition, a “how to apply” procedure, and constraints. The executor consumes a selected subset as guidance for one LLM call over a text span. It starts from four primitives (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>SKIP</code>) and grows as training proceeds.</li>
+<li><strong>Memory bank</strong> — per-trace: the running set of extracted memories the executor accumulates and rewrites for a single interaction. Updated every span.</li>
+</ul></li>
+<li>The <strong>controller</strong> (a lightweight multilayer perceptron over a shared encoder) scores each skill in the current skill bank by dot-product between a state embedding <img src="https://benjaminhan.net/feed-assets/1386b6d08a438193.svg" alt="h_t = f_{ctx}(x_t, M_t)" class="feed-math-inline"/> and a per-skill embedding <img src="https://benjaminhan.net/feed-assets/1072433fc96b60f4.svg" alt="u_i = f_{skill}(\text{desc}(s_i))" class="feed-math-inline"/>, then selects an ordered Top-<img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> set without replacement. Here <img src="https://benjaminhan.net/feed-assets/039a472bbc9a381c.svg" alt="x_t" class="feed-math-inline"/> is the current span, <img src="https://benjaminhan.net/feed-assets/45ca0b55ca3945f0.svg" alt="M_t" class="feed-math-inline"/> the memories retrieved from the trace’s memory bank, <img src="https://benjaminhan.net/feed-assets/954dda87117d7bca.svg" alt="\text{desc}(s_i)" class="feed-math-inline"/> the natural-language description of skill <img src="https://benjaminhan.net/feed-assets/32185f76d4915ca3.svg" alt="s_i" class="feed-math-inline"/> in the skill bank, and <img src="https://benjaminhan.net/feed-assets/ec2d6526f3322333.svg" alt="f_{ctx}" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/c8a1be2ecf0e63a2.svg" alt="f_{skill}" class="feed-math-inline"/> are the two heads sharing an encoder backbone.</li>
+<li>The <strong>executor</strong> (a frozen LLM) applies the selected skills in one pass to update the trace’s memory bank.</li>
+<li>The <strong>designer</strong> (also a frozen LLM) periodically mines a sliding hard-case buffer, clusters the failures, and proposes refinements to existing skills or new skills — edits that land in the skill bank, not the memory bank.</li>
+<li>Controller training:
+<ul>
+<li><strong>Algorithm.</strong> PPO [2] with downstream task reward (F1, success rate, etc.) as the optimization signal.</li>
+<li><strong>Top-<img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> sampling.</strong> Selecting an ordered Top-<img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> set without replacement factorizes the joint log-probability via the standard sequential rule, so PPO can score the whole subset selection.</li>
+<li><strong>Rollback on regression.</strong> Snapshots roll back if a skill-bank update degrades training reward, so a bad designer edit can’t poison the policy.</li>
+<li><strong>Exploration bias.</strong> After each evolution step, exploration is briefly biased toward newly introduced skills, giving them a fair chance at being selected before low scores filter them out.</li>
+</ul></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260519-memskill/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>MemSkill architecture: the controller selects a Top-<img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> skill subset from the shared skill bank conditioned on the current span and memories retrieved from the trace’s memory bank; the executor applies them in one LLM call to update that memory bank. Task reward optimizes the controller, while query-centric failures feed a sliding hard-case buffer that the designer periodically uses to refine and propose skills (edits that land in the skill bank). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<ul>
+<li><strong>Setup.</strong> Four benchmarks — LoCoMo [3] and LongMemEval [4] for conversational memory, ALFWorld [5] for embodied tasks, and HotpotQA [6] for cross-distribution skill transfer. Two base LLMs: LLaMA-3.3-70B-Instruct and Qwen3-Next-80B-A3B-Instruct. MemSkill is trained only on LLaMA; Qwen and LongMemEval results are zero-shot transfers of the learned skill bank.</li>
+<li><strong>Main comparison (Table 1 below).</strong> Across the two base-model blocks, MemSkill leads every benchmark; ▲ marks settings evaluated by pure transfer (no training on that base model or dataset), and bold marks the best score within each block.
+<ul>
+<li>LLaMA block: LLM-judge average 55.19 against the strongest baseline at 42.23 (A-MEM), with ALFWorld success rates of 47.86 / 47.01 on seen / unseen splits versus 40.71 / 38.06 for the runners-up. (LLM-judge: a separate LLM scores each predicted answer against the gold answer for semantic match — the headline metric for open-ended conversational QA, where token-level F1 misses semantic equivalence.)</li>
+<li>Qwen transfer (zero-shot): ALFWorld 60.00 / 64.18 success rates without any retraining, against ~57 / 54 for CoN.</li>
+</ul></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260519-memskill/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Component ablations (Table 2 below).</strong> On LoCoMo (LLM-judge), removing the controller drops LLaMA from 50.96 to 45.86 and Qwen from 52.07 to 41.24; removing the designer drops them to 44.11 and 34.71. The Qwen gap is bigger, suggesting the evolved skill bank carries most of the cross-model transfer benefit; the controller policy alone doesn’t transfer as well.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260519-memskill/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Distribution-shift transfer (Figure 3 below).</strong> The LoCoMo-trained skill bank is ported to long-document QA on HotpotQA at three concatenation budgets — no HotpotQA-specific training; the controller scores from the LoCoMo-trained bank with <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> varied at test time. MemSkill at <img src="https://benjaminhan.net/feed-assets/eda9bce2781cb7b8.svg" alt="K=7" class="feed-math-inline"/> holds the lead at every budget, but the gap to lower <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> widens as documents pile up — at 200 docs, <img src="https://benjaminhan.net/feed-assets/eda9bce2781cb7b8.svg" alt="K=7" class="feed-math-inline"/> scores 66.80 while <img src="https://benjaminhan.net/feed-assets/bac6337c61237616.svg" alt="K=3" class="feed-math-inline"/> drops to 58.20.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260519-memskill/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Operator-level evolution.</strong> The closest learning-based siblings, Memory-R1 [7] and Mem-α [8], both RL-train memory management against downstream task signals, but with a fixed primitive set (add/update/delete/skip and friends). MemSkill’s contribution is that the <strong>skill bank itself is learnable</strong>: the four primitives (<code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>SKIP</code>) serve as starter templates rather than a frozen action set. The designer can refine those starting templates <em>and</em> add brand-new skills written from scratch as natural-language templates for failure modes the bank doesn’t yet cover. The controller adapts because skills are scored by description-embedding rather than a fixed action head. The cross-model transfer ablation supports the reading: most of the Qwen-side gain (52.07 → 34.71 without designer) comes from the evolved bank rather than the controller policy.</li>
+<li><strong>The “skill” abstraction here is not a callable.</strong> In the <a href="../../posts/20251124-skills-not-software-engineering/">Anthropic Skills</a> sense, a skill is a packaged routine the agent invokes with explicit arguments and a return value; the <a href="../../posts/20260414-api-mcp-tool-skill/">API/Tool/Skill ladder</a> treats it as the layer where judgment and sequencing live. MemSkill’s “skills” don’t take per-skill arguments. They all share the same implicit context (the current span and retrieved memories), and the executor combines the selected <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> as joint guidance for a single LLM call. They’re closer to selection priors and prompt fragments than to callable routines. The gains here come from learning over a discrete library of prompt fragments under shared context, rather than from a calling protocol.</li>
+<li><strong>LLM-as-designer is a recurring outer-loop pattern.</strong> The closed-loop alternation between (a) RL-training a learner and (b) using a frozen LLM to rewrite the design space from clustered failure cases is the same recipe as ADAS [9] <!-- crosslink-todo: /posts/20260503-adas/ --> for agent scaffolds and AlphaEvolve [10] for algorithms. MemSkill is the operator-level instance of that pattern. By the framework in <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>, this is still extrinsic metacognition: the loop’s structure (when to evolve, how to cluster, what counts as a hard case) is human-defined, and only the operators inside it adapt. A genuine intrinsic version would let the agent decide when its skill bank needs rewriting, instead of running on a fixed schedule.</li>
+<li><strong>“Self-evolving” overstates test-time behavior.</strong> Both the controller and the skill bank are trained <strong>offline</strong> and <strong>frozen at deployment</strong>; only the per-trace memory content updates online during interaction. The evolution described in the title refers to a training-phase alternation between controller updates and designer rewrites, rather than test-time adaptation.</li>
+<li><strong>Memory items aren’t shown directly.</strong> The paper describes the memory bank abstractly as <img src="https://benjaminhan.net/feed-assets/45ca0b55ca3945f0.svg" alt="M_t" class="feed-math-inline"/> (up to 20 retrieved per span via Contriever, so text-based) but never includes a worked example of an actual stored item. The shape has to be reverse-engineered from the skill case studies in Appendix B: dialogue skills produce short factual sentences (“who did what, where, when”), while ALFWorld skills produce structured tuples like (action, constraint) or (object, location, state). Each skill writes items in its own shape, so the bank ends up as a heterogeneous text store with no central schema. The framing of “evolving memory operations” is harder to picture concretely without seeing what those operations produce. Figure 4’s case study (below) shows evolved <em>skills</em> rather than the <em>memory bank</em> they generate.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260519-memskill/figure4.webp" class="img-fluid figure-img" data-lightbox-src="figure4-full.png"></p>
+<figcaption>Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Skill transfer has a budget-sensitive ceiling.</strong> HotpotQA complicates the generalization story: the LoCoMo-trained bank does port to long-document QA, but the gap between <img src="https://benjaminhan.net/feed-assets/eda9bce2781cb7b8.svg" alt="K=7" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/bac6337c61237616.svg" alt="K=3" class="feed-math-inline"/> widens sharply at 200 docs (66.80 vs 58.20). At 50 and 100 docs the two are within ~3 points, while the dialogue benchmarks were fine at <img src="https://benjaminhan.net/feed-assets/bac6337c61237616.svg" alt="K=3" class="feed-math-inline"/>. Skills evolved on dialogue traces don’t cover long-document QA well at low <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/>. At 200 docs concatenated, you need to fire a larger fraction of the bank to find enough applicable skills. The “reusable skills” claim is more conditional than the headline reads: portable when the inference-time budget matches, less so under shift.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=dqOYStwAAAAJ">Zhang</a>, H., <a href="https://scholar.google.com/citations?user=l61TCPAAAAAJ">Long</a>, Q., <a href="https://scholar.google.com/citations?user=BS2kdskAAAAJ">Bao</a>, J., <a href="https://scholar.google.com/citations?user=3xK6SlIAAAAJ">Feng</a>, T., <a href="https://scholar.google.com/citations?user=TazcjBIAAAAJ">Zhang</a>, W., Yue, H., and <a href="https://personal.ntu.edu.sg/wangwy/">Wang</a>, W. “MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents.” <em>arXiv preprint</em> (arXiv:2602.02474), February 2, 2026. <a href="https://arxiv.org/abs/2602.02474" class="uri">https://arxiv.org/abs/2602.02474</a></li>
+<li><a id="ref-2"></a>Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. “Proximal Policy Optimization Algorithms.” <em>arXiv preprint</em> (arXiv:1707.06347), July 20, 2017. <a href="https://arxiv.org/abs/1707.06347" class="uri">https://arxiv.org/abs/1707.06347</a></li>
+<li><a id="ref-3"></a>Maharana, A., Lee, D.-H., Tulyakov, S., Bansal, M., Barbieri, F., and Fang, Y. “Evaluating Very Long-Term Conversational Memory of LLM Agents.” <em>ACL 2024</em> (arXiv:2402.17753), February 27, 2024. <a href="https://arxiv.org/abs/2402.17753" class="uri">https://arxiv.org/abs/2402.17753</a></li>
+<li><a id="ref-4"></a>Wu, D., Wang, H., Yu, W., Zhang, Y., Chang, K.-W., and Yu, D. “LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory.” <em>ICLR 2025</em> (arXiv:2410.10813), October 14, 2024. <a href="https://arxiv.org/abs/2410.10813" class="uri">https://arxiv.org/abs/2410.10813</a></li>
+<li><a id="ref-5"></a>Shridhar, M., Yuan, X., Côté, M.-A., Bisk, Y., Trischler, A., and Hausknecht, M. “ALFWorld: Aligning Text and Embodied Environments for Interactive Learning.” <em>ICLR 2021</em> (arXiv:2010.03768), October 8, 2020. <a href="https://arxiv.org/abs/2010.03768" class="uri">https://arxiv.org/abs/2010.03768</a></li>
+<li><a id="ref-6"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W. W., Salakhutdinov, R., and Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600), September 25, 2018. <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
+<li><a id="ref-7"></a>Yan, S., Yang, X., Huang, Z., Nie, E., Ding, Z., Li, Z., Ma, X., Kersting, K., Pan, J. Z., Schütze, H., et al.&nbsp;“Memory-R1: Enhancing Large Language Model Agents to Manage and Utilize Memories via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2508.19828), 2025. <a href="https://arxiv.org/abs/2508.19828" class="uri">https://arxiv.org/abs/2508.19828</a></li>
+<li><a id="ref-8"></a>Wang, Y., Takanobu, R., Liang, Z., Mao, Y., Hu, Y., McAuley, J., and Wu, X. “Mem-α: Learning Memory Construction via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2509.25911), 2025. <a href="https://arxiv.org/abs/2509.25911" class="uri">https://arxiv.org/abs/2509.25911</a></li>
+<li><a id="ref-9"></a>Hu, S., Lu, C., and Clune, J. “Automated Design of Agentic Systems.” <em>arXiv preprint</em> (arXiv:2408.08435), 2024. <a href="https://arxiv.org/abs/2408.08435" class="uri">https://arxiv.org/abs/2408.08435</a></li>
+<li><a id="ref-10"></a>Novikov, A., Vũ, N., Eisenberger, M., Dupont, E., Huang, P.-S., Wagner, A. Z., Shirobokov, S., Kozlovskii, B., Ruiz, F. J., Mehrabian, A., et al.&nbsp;“AlphaEvolve: A Coding Agent for Scientific and Algorithmic Discovery.” <em>arXiv preprint</em> (arXiv:2506.13131), 2025. <a href="https://arxiv.org/abs/2506.13131" class="uri">https://arxiv.org/abs/2506.13131</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260519-memskill/</guid>
+  <pubDate>Tue, 19 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260519-memskill/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>TIOBE May 2026: A Statistical-Language Consolidation</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260519-tiobe-statistical-consolidation/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260519-tiobe-statistical-consolidation/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260519-tiobe-statistical-consolidation/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Top 20 of the May 2026 <a href="https://www.tiobe.com/tiobe-index/">TIOBE Programming Community Index</a>. Image from <a href="https://www.tiobe.com/tiobe-index/">TIOBE</a>.</figcaption>
+</figure>
+</div>
+<p>The May 2026 <a href="https://www.tiobe.com/tiobe-index/">TIOBE Programming Community Index</a> is out. R has matched its all-time high at #8, while <a href="https://www.mathworks.com/products/matlab.html">MATLAB</a>, <a href="https://www.sas.com/">SAS</a>, <a href="https://www.ibm.com/products/spss-statistics">SPSS</a>, <a href="https://www.wolfram.com/mathematica/">Wolfram/Mathematica</a>, and <a href="https://www.stata.com/">Stata</a> keep losing ground — the statistical-computing stack is consolidating around two ecosystems.</p>
+<p>What the index reports this month:</p>
+<ul>
+<li><strong>R rises to #8</strong> (from #12 a year ago, +0.31% rating change), matching its historical peak.</li>
+<li><strong>Several long-established statistical languages decline.</strong> MATLAB is near dropping out of the top 20; SAS is about to leave the top 30 for the first time; SPSS dropped out of the top 100 last month; Stata sits at #124.</li>
+<li><strong><a href="https://julialang.org/">Julia</a> remains stuck below the top 30</strong> despite “strong technical merits and growing academic interest.”</li>
+<li><strong><a href="https://mc-stan.org/">Stan</a> is expected to debut next month</strong>, which TIOBE attributes to the rising importance of probabilistic programming and Bayesian statistics.</li>
+<li>Java and C++ swap (#3 and #4) after Java 26’s release, and <a href="https://ziglang.org/">Zig</a> is approaching the top 30 for the first time.</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Python’s drop may be a ceiling effect.</strong> TIOBE ratings are roughly zero-sum share of search, course, and vendor attention. Python sits at 19.98% this month, down from ~25% a year ago. From that height, even small simultaneous gains across many competitors mathematically pull from the leader, so the YoY drop doesn’t require a Python-specific story. An AI-assistant suppressant is also plausible (fewer “how do I do X in Python” searches per unit of code written), but it would dampen all languages, not just the leader.</li>
+<li><strong>C’s rise is harder to attribute.</strong> +1.84% YoY at #2 is consistent with the lower-level half of the AI stack (CUDA, kernels, embedded inference, where Python wrappers eventually bottom out into C), but TIOBE doesn’t break down its rating sources, so any specific driver is speculation. C# +1.19% may reflect a similar refresh from the .NET 9/10 release cycle and Unity’s continued grip on game dev.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260519-tiobe-statistical-consolidation/</guid>
+  <pubDate>Tue, 19 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260519-tiobe-statistical-consolidation/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Long Run Sunday on the Snoqualmie Valley Trail</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
+<p>And, this Long Run Sunday I’m finally back on track, after the disastrous April. I ran 15K on the beautiful Snoqualmie Valley Trail from Duvall!</p>
+<p>First 6mi was easy, but then I was spooked by a lady runner shadowing me and sped up in the last 3.3mi. Thank you unnamed fellow runner to get me off my lazy a*s!</p>
+<p>Also cut a video recap — haven’t done so in a while now.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/youtube-thumb.jpg" class="img-fluid figure-img"></p>
+<figcaption><a href="https://www.youtube.com/watch?v=BhR7rklmc8k">Watch on YouTube</a></figcaption>
+</figure>
+</div>
+<p><img src="https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116592749952225551">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/</guid>
+  <pubDate>Sun, 17 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260517-long-run-15k-snoqualmie/cover.jpeg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>10K Trail Run with Some Hail</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260517-trail-run-10k-hail/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260517-trail-run-10k-hail/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>This weekend in addition to my <a href="../../posts/20260516-my-99-parkrun-perrigo-300/">99th parkrun</a>, I also made a 2nd run afternoon on the trails: a solid 10K run with a bit of hail raining down on me at some point!</p>
+<p><img src="https://benjaminhan.net/posts/20260517-trail-run-10k-hail/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260517-trail-run-10k-hail/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260517-trail-run-10k-hail/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116592738153775167">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260517-trail-run-10k-hail/</guid>
+  <pubDate>Sun, 17 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260517-trail-run-10k-hail/cover.jpeg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>[Q&amp;A] Self-Correction After the Reasoning-Model Era</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260517-self-correction-after-reasoning-models/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260517-self-correction-after-reasoning-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>This is a follow-up to a <a href="../../posts/20260516-llm-self-correction-arc/">3-paper arc on self-correction in LLMs</a> that walks through Self-Refine, Cannot-Self-Correct, and Reflexion. On <a href="https://sigmoid.social/@pbloem/116589236043054768">Mastodon</a>, Professor <a href="https://peterbloem.nl">Peter Bloem</a> (Learning &amp; Reasoning Group, Vrije Universiteit Amsterdam) asked:</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Reader question — Peter Bloem, Mastodon">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Reader question — Peter Bloem, Mastodon
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This is before reasoning models, though, isn’t it? I’d suspect that this all changed after RL training on reasoning traces came in.</p>
+</div>
+</div>
+<p>Yes: all three papers in the original arc predate the reasoning-model era. None of them are evaluated on o1, DeepSeek-R1 [1] [1], or any model whose self-correcting behavior was shaped by RL on verifiable rewards. The implicit question is whether the arc’s conclusions still hold once that training signal enters the picture.</p>
+<section id="internalizing-the-evaluator" class="level2">
+<h2 class="anchored" data-anchor-id="internalizing-the-evaluator">Internalizing the Evaluator</h2>
+<p>Reasoning-model training moves what used to be inference-time external scaffolding into training-time signal that the policy internalizes.</p>
+<p>R1’s “aha moments” are emergent self-correction at inference time, with no Evaluator in the loop. The Reflexion-style Evaluator that used to gate self-correction at every inference step has been compiled into the weights. Whether R1 technically aligns with Cannot-Self-Correct’s strict definition becomes a definitional argument that misses what is actually new.</p>
+<p>Even before R1, <a href="../../posts/20260512-score/">SCoRe</a> showed one way to build this internalization deliberately. It trains on a two-turn structure where each attempt is rewarded against a ground-truth answer. The verifier’s correctness check is exactly the external signal Reflexion put in the loop, just moved from inference time to training time. SCoRe says “no teacher model and no oracle feedback,” but that refers to narrower things (no separate teacher LLM and no step-level oracle), and does not change the picture: the outcome reward is still external. R1 then demonstrated the same idea at a coarser grain, with the self-correction emerging within a single long reasoning trace rather than across explicit turns.</p>
+</section>
+<section id="how-far-can-it-go-and-is-internalization-the-right-path" class="level2">
+<h2 class="anchored" data-anchor-id="how-far-can-it-go-and-is-internalization-the-right-path">How far can it go, and is internalization the right path?</h2>
+<p>The substantive question is how far this internalization can go. Can any external verifier or evaluator that worked at inference time be moved into training-time signal that produces the same behavior at inference?</p>
+<p>Or are there structural limits — task families where verifiable rewards cannot reach (long-form writing, open-ended dialogue, novel domains), evaluators that resist internalization because they require open-ended judgment that itself drifts? Early evidence [2][3] is that internalization works well within the verifiable-reward distribution and degrades sharply outside it, but we do not yet have a clean characterization of the boundary.</p>
+<p>A separate question is whether internalization is the <em>right</em> path even where it works. Training is expensive, and pushing more verifiers into the policy carries the usual risks of catastrophic forgetting and capacity trade-offs against other tasks. Even within the regions where internalization works in principle, the practical question is what is worth pushing into the weights, and what is better kept as a domain-specific external verifier called at inference time.</p>
+<p>I suspect domain-specific external verification stays essential even where internalization works in principle. An inference-time scaffold can be swapped, audited, or updated when the domain shifts. An internalized one cannot, short of retraining the model. That asymmetry alone argues for keeping the verifier external in any setting where the verification target itself moves.</p>
+</section>
+<section id="what-the-original-arc-still-teaches" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-original-arc-still-teaches">What the original arc still teaches</h2>
+<p>Viewed through this lens, the three papers in the original arc still illuminate what is important for instilling self-correction in a model. Self-Refine showed that prompt-only intrinsic feedback does not reliably work. Cannot-Self-Correct showed <em>why</em> — without an external signal about correctness, the model’s confidence carries the initial answer through into the revision and the loop drifts. Reflexion showed that gating self-correction on a reliable external signal works. Whether that gate sits at inference time, the way Reflexion put it, or at training time, the way RL on verifiable rewards puts it, the structural ingredient is the same: reliable external signal. The original arc identified the ingredient; the post-2024 work shows it can be compiled into the weights for some classes of problems and not others.</p>
+</section>
+<section id="related-recent-work" class="level2">
+<h2 class="anchored" data-anchor-id="related-recent-work">Related recent work</h2>
+<p>Several recent papers approach the internalization question from different angles. The list below is partial — pointers to other work along these lines (especially generalization audits of o1/R1-style models or post-2024 process-reward-model successors) are welcome.</p>
+<ul>
+<li>Cognitive Behaviors that Enable Self-Improving Reasoners [4] [4] looks at <em>what</em> RL training actually internalizes — which trained behaviors let the policy self-improve. The answer is a small set: verification, backtracking, subgoal-setting, and backward chaining. It is the empirical follow-up to “what is actually in the policy” after RL.</li>
+<li>How Reasoning Evolves from Post-Training Data: An Empirical Study Using Chess [5] [5] (ICML 2026) extends that question into <em>how far</em> internalized reasoning carries. Using chess as a clean probe outside the math/code distribution most reasoning models are trained on, it tracks which capabilities transfer from post-training data and which decay.</li>
+<li>Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters [6] [6] tightens our understanding of when inference-time scaffolding is worth the compute. Revision helps when the verifier is reliable and helps less when it is not, and a small verifier-guided model can outperform a larger one without scaffolding. The same verifier-quality dependence shows up whether the scaffolding is at inference time or compiled into the weights.</li>
+<li>The Stechly–Kambhampati line is the running argument for limits. On the Self-Verification Limitations of LLMs on Reasoning and Planning Tasks [2] [2] shows that GPT-4 still cannot reliably verify its own outputs even on simple planning tasks, and Chain of Thoughtlessness? [3] [3] (NeurIPS 2024) questions whether chain-of-thought reasoning generalizes outside its training distribution. Both push back on the idea that internalization is general: outside the training distribution, the policy’s self-judgment falls apart.</li>
+<li>Chain-of-Thought Degrades Visual Spatial Reasoning Capabilities of Multimodal LLMs [7] [7] extends that skepticism into the multimodal era. Across 17 models and 13 spatial benchmarks, CoT prompting consistently <em>degrades</em> visual-spatial accuracy, with shortcut-learning from textual priors that hallucinate visual details when the image is absent. Reasoning trained on text does not transfer cleanly to vision.</li>
+<li>Can Large Language Models Self-Correct in Medical Question Answering? An Exploratory Study [8] [8] audits self-correction in a non-verifiable-reward domain. Self-reflective prompting on MedQA, HeadQA, and PubMedQA does not consistently improve accuracy, with effects highly dataset- and model-dependent. A direct datapoint for the boundary where internalization stops paying.</li>
+<li>Self-Rewarding Language Models [9] [9] (ICML 2024) tests whether internalization can happen without any external verifier at all. The model acts as its own LLM-as-judge during DPO training, bootstrapping. Promising results on AlpacaEval, but the approach inherits the question of whether the model’s own judgment is good enough to bootstrap from in the first place.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>DeepSeek-AI, Guo, D., Yang, D., Zhang, H., et al.&nbsp;“DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2501.12948), January 22, 2025. <a href="https://arxiv.org/abs/2501.12948" class="uri">https://arxiv.org/abs/2501.12948</a></li>
+<li><a id="ref-2"></a>Stechly, K., Valmeekam, K., Kambhampati, S. “On the Self-Verification Limitations of Large Language Models on Reasoning and Planning Tasks.” <em>arXiv preprint</em> (arXiv:2402.08115), February 12, 2024. <a href="https://arxiv.org/abs/2402.08115" class="uri">https://arxiv.org/abs/2402.08115</a></li>
+<li><a id="ref-3"></a>Stechly, K., Valmeekam, K., Kambhampati, S. “Chain of Thoughtlessness? An Analysis of CoT in Planning.” <em>NeurIPS 2024</em> (arXiv:2405.04776), May 8, 2024. <a href="https://arxiv.org/abs/2405.04776" class="uri">https://arxiv.org/abs/2405.04776</a></li>
+<li><a id="ref-4"></a>Gandhi, K., Chakravarthy, A., Singh, A., Lile, N., Goodman, N. D. “Cognitive Behaviors that Enable Self-Improving Reasoners, or, Four Habits of Highly Effective STaRs.” <em>arXiv preprint</em> (arXiv:2503.01307), March 3, 2025. <a href="https://arxiv.org/abs/2503.01307" class="uri">https://arxiv.org/abs/2503.01307</a></li>
+<li><a id="ref-5"></a>Dionisopoulos, L., Majamaki, N., Ammanabrolu, P. “How Reasoning Evolves from Post-Training Data: An Empirical Study Using Chess.” <em>ICML 2026</em> (also NeurIPS 2025 FoRLM Workshop Oral; arXiv:2604.05134), April 6, 2026. <a href="https://arxiv.org/abs/2604.05134" class="uri">https://arxiv.org/abs/2604.05134</a></li>
+<li><a id="ref-6"></a>Snell, C., Lee, J., Xu, K., Kumar, A. “Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters.” <em>arXiv preprint</em> (arXiv:2408.03314), August 6, 2024. <a href="https://arxiv.org/abs/2408.03314" class="uri">https://arxiv.org/abs/2408.03314</a></li>
+<li><a id="ref-7"></a>Kancheti, S. S., Kanade, A. S., Balasubramanian, V. N., Ganu, T. “Chain-of-Thought Degrades Visual Spatial Reasoning Capabilities of Multimodal LLMs.” <em>arXiv preprint</em> (arXiv:2604.16060), April 17, 2026. <a href="https://arxiv.org/abs/2604.16060" class="uri">https://arxiv.org/abs/2604.16060</a></li>
+<li><a id="ref-8"></a>Zhan, Z., Cui, M., Zhang, R. “Can Large Language Models Self-Correct in Medical Question Answering? An Exploratory Study.” <em>arXiv preprint</em> (arXiv:2604.00261), March 31, 2026. <a href="https://arxiv.org/abs/2604.00261" class="uri">https://arxiv.org/abs/2604.00261</a></li>
+<li><a id="ref-9"></a>Yuan, W., Pang, R. Y., Cho, K., Li, X., Sukhbaatar, S., Xu, J., Weston, J. “Self-Rewarding Language Models.” <em>ICML 2024</em> (arXiv:2401.10020), January 18, 2024. <a href="https://arxiv.org/abs/2401.10020" class="uri">https://arxiv.org/abs/2401.10020</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260517-self-correction-after-reasoning-models/</guid>
+  <pubDate>Sun, 17 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
+</item>
+<item>
+  <title>Can LLMs Reliably Self-Correct Their Own Reasoning?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260516-llm-self-correction-arc/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-llm-self-correction-arc/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>Can LLMs reliably self-correct their own reasoning? 3 papers walk us through their discoveries.</p>
+<p><a href="../../posts/20260516-self-refine/">Self-Refine</a> proposes a naive intrinsic-feedback loop: a single frozen LLM acts as generator, critic, and rewriter inside a prompt-only loop. The paper reports about 20 percentage points of average lift across seven tasks, claiming that no training, RL, or external signal is needed. The gains vary widely by task — large where “good” is hard to define from a one-line critique, but very small on math reasoning, where the feedback model fails to catch subtle errors.</p>
+<p>But <a href="../../posts/20260516-cannot-self-correct/">Cannot-Self-Correct</a> tests the strong claim head-on: can LLMs revise their own reasoning answers without any external signal about correctness? Across three benchmarks (GSM8K, CommonSenseQA, HotPotQA), the answer is NO. The model’s confidence carries over from the initial answer into the revision, and the self-correction loop tends to degrade rather than improve performance. The result refutes the class of approach Self-Refine belongs to.</p>
+<p>Then we have <a href="../../posts/20260516-reflexion/">Reflexion</a> that threads the needle by splitting self-correction into two LLM steps. An Evaluator detects success or failure. A Self-Reflection model diagnoses what went wrong. The Evaluator’s external signal — a hand-written heuristic, exact-match grading, or test execution — gates whether the diagnosis fires at all. The ablations found however when the signal misfires, as on MBPP Python’s high false-negative rate, Self-Reflection rewrites correct code into wrong code, which is exactly the failure mode Cannot-Self-Correct documented. So Reflexion can be read as a positive existence result for self-correction with a reliable external signal, not as a refutation to Cannot-Self-Correct.</p>
+<p><em>All three papers predate the reasoning-model era. A follow-up — <a href="../../posts/20260517-self-correction-after-reasoning-models/">Self-Correction After the Reasoning-Model Era</a> — engages Peter Bloem’s question on whether the arc still holds for o1- and R1-style models trained with RL on verifiable rewards.</em></p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_reflexion-language-agents-with-verbal-reinforcement-activity-7461647681141096448-Fhjd">LinkedIn</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260516-llm-self-correction-arc/</guid>
+  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
+</item>
+<item>
+  <title>Reflexion: Language Agents with Verbal Reinforcement Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260516-reflexion/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-reflexion/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-reflexion/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Reflexion across three task types: decision-making (AlfWorld), programming (HumanEval), and reasoning (HotPotQA). For each task, the agent takes a trajectory, receives an evaluation signal (rule-based heuristic, self-generated unit tests, or exact-match grading on the final answer), reflects on what went wrong in natural language, and stores that reflection in memory for the next attempt. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Reflexion: Language Agents with Verbal Reinforcement Learning</em> [1] (<a href="https://neurips.cc/Conferences/2023">NeurIPS 2023</a>), <a href="https://noahshinn.com/">Noah Shinn</a> et al.&nbsp;(Northeastern, MIT, Princeton) introduce an agent architecture that “learns” across episodes purely by writing natural-language reflections to an episodic memory, without gradient updates or weight changes.</p>
+<blockquote class="blockquote">
+<p>Large language models (LLMs) have been increasingly used to interact with external environments (e.g., games, compilers, APIs) as goal-driven agents. However, it remains challenging for these language agents to quickly and efficiently learn from trial-and-error as traditional reinforcement learning methods require extensive training samples and expensive model fine-tuning. We propose <em>Reflexion</em>, a novel framework to <em>reinforce language agents not by updating weights, but instead through linguistic feedback</em>. Concretely, Reflexion agents verbally reflect on task feedback signals, then maintain their own reflective text in an episodic memory buffer to induce better decision-making in subsequent trials. Reflexion is flexible enough to incorporate various types (scalar values or free-form language) and sources (external or internally simulated) of feedback signals, and obtains significant improvements over a baseline agent across diverse tasks (sequential decision-making, coding, language reasoning). For example, <em>Reflexion achieves a 91% pass@1 accuracy on the HumanEval coding benchmark</em>, surpassing the previous state-of-the-art GPT-4 that achieves 80%.</p>
+</blockquote>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-reflexion/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>(a) Diagram of Reflexion. (b) Reflexion reinforcement algorithm. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The agent operates by interaction: at each step it emits an <em>action</em> — a tool call, environment command, or free-form answer — and the environment returns an observation. A single attempt at the task is an <em>episode</em> (also called a <em>trial</em>), and the action-observation sequence within one episode is the <em>trajectory</em> (<img src="https://benjaminhan.net/feed-assets/c22f4f7100921e0c.svg" alt="\tau" class="feed-math-inline"/>) — the agent’s short-term memory.</p>
+<p>The Reflexion framework factors the agent into three roles. The Self-Reflection model is always an LLM. The Actor is always an LLM, and in most setups <em>the same</em> LLM as the Self-Reflection model, with different prompts. The Evaluator can be an LLM but is often a non-LLM signal: a hand-written heuristic, exact-match grading, or the pass/fail of a generated test suite.</p>
+<ul>
+<li><strong>Actor</strong> (<img src="https://benjaminhan.net/feed-assets/8f80dfb78b3e0cdc.svg" alt="M_a" class="feed-math-inline"/>) — an LLM whose weights, together with the current experience buffer, jointly parameterize the policy <img src="https://benjaminhan.net/feed-assets/a5f2016b0fbbffff.svg" alt="\pi_\theta(a_i \mid s_i)" class="feed-math-inline"/> from which each next action is sampled (<img src="https://benjaminhan.net/feed-assets/3880f5ad6cad0b7c.svg" alt="\theta = \{M_a,\ \text{experience}\}" class="feed-math-inline"/>).</li>
+<li><strong>Evaluator</strong> (<img src="https://benjaminhan.net/feed-assets/d90d45283aea085e.svg" alt="M_e" class="feed-math-inline"/>) — scores the resulting trajectory: a hand-written heuristic (or an LLM-as-judge variant) on AlfWorld, the pass/fail of self-generated unit tests on HumanEval, exact-match grading on HotPotQA’s final answer.</li>
+<li><strong>Self-Reflection</strong> (<img src="https://benjaminhan.net/feed-assets/7a4e1c76e59205e9.svg" alt="M_{sr}" class="feed-math-inline"/>) — takes the trajectory plus the evaluator’s signal and produces a short natural-language reflection (e.g.&nbsp;“I failed because I assumed they both had the same professions”), appended to the <em>experience</em> buffer — the agent’s long-term memory that persists across episodes.</li>
+</ul>
+<p>On the next episode, the Actor is conditioned on the accumulated experience and attempts the task again. The LLM weights stay fixed; the only thing that updates between episodes is the experience text. The “reinforcement signal” is literally the reflection text the Self-Reflection model writes after each failure.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper evaluates Reflexion on three task families:</p>
+<ul>
+<li><strong>AlfWorld [2] [2]</strong> (sequential decision-making, 134 task instances) — Reflexion adds 22 percentage points absolute over a ReAct [3] [3] baseline within 12 iterative learning steps, and the best variant solves 130 of 134 tasks. Figure 3(a) tracks cumulative tasks solved by trial number under both self-evaluation modes (a hand-written heuristic and a GPT-as-judge classifier); 3(b) decomposes the residual failures into hallucination and inefficient planning — both decay steadily under Reflexion, while the ReAct-only baseline plateaus.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-reflexion/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
+<figcaption>AlfWorld learning curves and failure-mode decomposition (Figure 3 [1]).</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>HotPotQA [4] [4]</strong> <!-- crosslink-todo: /posts/20260503-hotpotqa/ --> (multi-hop reasoning) — Reflexion improves accuracy by 20 points on a 100-question subset. Figure 4 separates the contribution: (a) Reflexion benefits both ReAct and Chain-of-Thought actors; (b) the gain holds even when the actor is given the ground-truth context, so it isn’t just better retrieval; (c) decomposes the lift between including past trajectories (episodic memory) and the verbal Self-Reflection step. Episodic memory carries most of the gain, and Self-Reflection adds an 8-point boost on top.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-reflexion/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>HotPotQA results across actor variants and the episodic-memory ablation (Figure 4 [1]).</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>HumanEval [5] [5]</strong> (Python coding, GPT-4 as Actor) — Reflexion reaches 91% pass@1 versus the reported 80% GPT-4 baseline (11-point gain). Table 1 shows the gain is consistent across languages and benchmarks: HumanEval Rust 60 → 68, MBPP [6] [6] (Mostly Basic Programming Problems) Rust 71 → 75. The paper also introduces <strong>LeetcodeHardGym</strong>, a benchmark of 40 hard-rated Leetcode problems with scaffolding across 19 programming languages, but only reports results on the Python subset (7.5 → 15); the multi-language scope is released as an artifact, not used in any reported experiment. The exception to the across-the-board gains is MBPP Python, where Reflexion (77.1) underperforms the GPT-4 baseline (80.1) — see the test-generation table below.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-reflexion/table1.png" class="img-fluid figure-img"></p>
+<figcaption>Pass@1 across code-generation benchmarks and languages (Table 1 [1]).</figcaption>
+</figure>
+</div>
+<p>The paper’s ablations compare self-generated unit tests vs ground-truth tests as the evaluation signal, examine memory-length effects, and separate the contribution of the Evaluator from the Self-Reflection step. Two things to flag about Table 2 before reading. First, the test suites used as the Evaluator’s signal are all LLM-generated: Reflexion’s procedure is the same on every code benchmark — the Actor writes tests from the problem description (with chain-of-thought prompting), filters for syntactic validity, and uses those tests’ pass/fail as the signal. MBPP ships with its own curated tests, but Reflexion doesn’t use them; the model generates fresh tests from the prompt. Second, the four diagnostic columns are conditional probabilities: TP and FP are conditional on tests passing (TP + FP = 1), FN and TN on tests failing (FN + TN = 1).</p>
+<p>The <strong>Base</strong> and <strong>Reflexion</strong> columns are pass@1 — the approach’s headline accuracy with and without the Reflexion loop. The <strong>TP / FN / FP / TN</strong> columns rate the LLM-generated tests as a classifier of solution correctness, and they predict approach performance directly. HumanEval Python’s tests are clean — TP=0.99, FP=0.01 — and Reflexion lifts 0.80 → 0.91. MBPP Python’s tests are noisy on both sides: FP=0.16 lets buggy code through, FN=0.59 means most “test failures” were actually correct solutions the loop then rewrites, and Reflexion drops to 0.77.</p>
+<p>The paper doesn’t diagnose <em>why</em> MBPP’s LLM-generated tests are noisier, but the prompt structure of the two benchmarks is a plausible explanation: HumanEval prompts are docstrings that often include doctest-style I/O examples (the LLM can crib from those when writing tests), while MBPP prompts are bare natural-language sentences (“Write a function to remove duplicates…”) with no I/O examples, so the LLM has to invent both inputs and expected outputs from scratch.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-reflexion/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Self-generated test accuracy on HumanEval and MBPP, broken into TP/FN/FP/TN. Rust columns use the hardest 50 HumanEval problems translated via MultiPL-E (Table 2 [1]).</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Verbal feedback as policy state.</strong> Reflexion is the paper that established natural-language reflection as a first-class component of agent design, and the lineage is visible across 2024 agentic frameworks — from AutoGen [7] [7] to <a href="https://langchain-ai.github.io/langgraph/">LangGraph</a> to the critic-refiner loops in Anthropic’s computer-use agents. What’s distinctive here is keeping the reflections as long-term memory across trials rather than compressing them into the immediate context the way <a href="../../posts/20260516-self-refine/">Self-Refine</a> [8] does.</li>
+<li><strong>The 91% HumanEval caveat.</strong> Later reproductions found Reflexion’s gain is bottlenecked by test-generation quality rather than by the repair step itself: Olausson et al.&nbsp;(2024) [9] [9] studied iterative self-repair on HumanEval and APPS and argued that “self-repair is bottlenecked by the model’s ability to provide feedback on its own code” — substituting a stronger feedback model lifts the gains substantially. Reflexion’s own ablation (Table 3 on HumanEval Rust) tells the same story: removing test generation drops Reflexion from 0.68 to 0.52, while removing the self-reflection step alone barely moves the number (0.68 → 0.60). CodeT [10] [10] makes the self-generated-test mechanism explicit; Reflexion adds a reflection step on top but inherits CodeT’s dependence on test-generation quality.</li>
+<li><strong>Reflexion vs Cannot-Self-Correct.</strong> Reflexion’s headline claim — that verbal reinforcement lifts an LLM agent — sits next to a result by <a href="../../posts/20260516-cannot-self-correct/">Huang et al.</a> [11] that LLMs <em>cannot</em> reliably self-correct. The two don’t contradict.
+<ul>
+<li>Huang et al.&nbsp;define <em>intrinsic</em> self-correction as a model revising its own answer with no external signal, and show it degrades reasoning. Reflexion always supplies an external signal via the Evaluator — a heuristic on AlfWorld, exact-match on HotPotQA, test execution on HumanEval.</li>
+<li>The structural overlap is Reflexion’s Self-Reflection step. Diagnosing what went wrong over the model’s own trajectory is exactly what Huang et al.&nbsp;studied. The Evaluator is upstream: it gates whether Self-Reflection fires at all.</li>
+<li>Table 2 backs this up with the FN column: MBPP Python’s FN is 0.59 vs HumanEval Python’s 0.40, meaning MBPP’s tests fail on already-correct solutions much more often. Reflexion then “corrects” those correct solutions and ends up below the GPT-4 baseline on MBPP Python — 80.1 (baseline) vs 77.1 (Reflexion).</li>
+<li>So Reflexion is best read as a positive existence result for <em>self-correction with reliable external signal</em>, not a refutation of the intrinsic-failure result.</li>
+</ul></li>
+<li><strong>Memory-as-parameters has a context budget.</strong> The paper writes the policy as <img src="https://benjaminhan.net/feed-assets/943b9fa201c5a103.svg" alt="\pi_\theta" class="feed-math-inline"/> with <img src="https://benjaminhan.net/feed-assets/78fb84a948ad2623.svg" alt="\theta = \{M_a, \text{mem}\}" class="feed-math-inline"/> — the memory is part of the parameter set. The interesting question is what learning in token space gives up. First, the experience is task-specific and doesn’t transfer: every new task starts with an empty buffer. Second, as the buffer grows across trials, the Actor’s context budget becomes the bottleneck, so the effective “learning rate” is bounded by how much context the system can spend per inference. Later work on extending effective context (MemGPT [12] [12]) and agent-specific long-context finetuning is partly a response to this limit.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://noahshinn.com/">Shinn, N.</a>, <a href="https://federico.codes/">Cassano, F.</a>, Berman, E., <a href="https://meche.mit.edu/people/faculty/AGOPI@MIT.EDU">Gopinath, A.</a>, <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, <a href="https://ysymyth.github.io/">Yao, S.</a> “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS 2023</em> (arXiv:2303.11366), March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
+<li><a id="ref-2"></a>Shridhar, M., Yuan, X., Côté, M.-A., Bisk, Y., Trischler, A., Hausknecht, M. “ALFWorld: Aligning Text and Embodied Environments for Interactive Learning.” <em>ICLR 2021</em> (arXiv:2010.03768), October 8, 2020. <a href="https://arxiv.org/abs/2010.03768" class="uri">https://arxiv.org/abs/2010.03768</a></li>
+<li><a id="ref-3"></a>Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., Cao, Y. “ReAct: Synergizing Reasoning and Acting in Language Models.” <em>ICLR 2023</em> (arXiv:2210.03629), October 6, 2022. <a href="https://arxiv.org/abs/2210.03629" class="uri">https://arxiv.org/abs/2210.03629</a></li>
+<li><a id="ref-4"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W., Salakhutdinov, R., Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600), September 25, 2018. <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
+<li><a id="ref-5"></a>Chen, M., Tworek, J., Jun, H., Yuan, Q., Pinto, H. P. d.&nbsp;O., Kaplan, J., et al.&nbsp;“Evaluating Large Language Models Trained on Code.” <em>arXiv preprint</em> (arXiv:2107.03374), July 7, 2021. <a href="https://arxiv.org/abs/2107.03374" class="uri">https://arxiv.org/abs/2107.03374</a></li>
+<li><a id="ref-6"></a>Austin, J., Odena, A., Nye, M., Bosma, M., Michalewski, H., Dohan, D., Jiang, E., Cai, C., Terry, M., Le, Q., Sutton, C. “Program Synthesis with Large Language Models.” <em>arXiv preprint</em> (arXiv:2108.07732), August 16, 2021. <a href="https://arxiv.org/abs/2108.07732" class="uri">https://arxiv.org/abs/2108.07732</a></li>
+<li><a id="ref-7"></a>Wu, Q., Bansal, G., Zhang, J., Wu, Y., Li, B., Zhu, E., Jiang, L., Zhang, X., Zhang, S., Liu, J., Awadallah, A. H., White, R. W., Burger, D., Wang, C. “AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation.” <em>arXiv preprint</em> (arXiv:2308.08155), August 16, 2023. <a href="https://arxiv.org/abs/2308.08155" class="uri">https://arxiv.org/abs/2308.08155</a></li>
+<li><a id="ref-8"></a>Madaan, A., Tandon, N., Gupta, P., Hallinan, S., Gao, L., Wiegreffe, S., Alon, U., Dziri, N., Prabhumoye, S., Yang, Y., Gupta, S., Majumder, B. P., Hermann, K., Welleck, S., Yazdanbakhsh, A., Clark, P. “Self-Refine: Iterative Refinement with Self-Feedback.” <em>NeurIPS 2023</em> (arXiv:2303.17651), March 30, 2023. <a href="https://arxiv.org/abs/2303.17651" class="uri">https://arxiv.org/abs/2303.17651</a></li>
+<li><a id="ref-9"></a>Olausson, T. X., Inala, J. P., Wang, C., Gao, J., Solar-Lezama, A. “Is Self-Repair a Silver Bullet for Code Generation?” <em>ICLR 2024</em> (arXiv:2306.09896), June 16, 2023. <a href="https://arxiv.org/abs/2306.09896" class="uri">https://arxiv.org/abs/2306.09896</a></li>
+<li><a id="ref-10"></a>Chen, B., Zhang, F., Nguyen, A., Zan, D., Lin, Z., Lou, J.-G., Chen, W. “CodeT: Code Generation with Generated Tests.” <em>ICLR 2023</em> (arXiv:2207.10397), July 21, 2022. <a href="https://arxiv.org/abs/2207.10397" class="uri">https://arxiv.org/abs/2207.10397</a></li>
+<li><a id="ref-11"></a>Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X., Zhou, D. “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em> (arXiv:2310.01798), October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
+<li><a id="ref-12"></a>Packer, C., Wooders, S., Lin, K., Fang, V., Patil, S. G., Stoica, I., Gonzalez, J. E. “MemGPT: Towards LLMs as Operating Systems.” <em>arXiv preprint</em> (arXiv:2310.08560), October 12, 2023. <a href="https://arxiv.org/abs/2310.08560" class="uri">https://arxiv.org/abs/2310.08560</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260516-reflexion/</guid>
+  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260516-reflexion/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Large Language Models Cannot Self-Correct Reasoning Yet</title>
   <dc:creator>synesis </dc:creator>
@@ -1546,583 +1995,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260512-interaction-models/</guid>
   <pubDate>Tue, 12 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260512-interaction-models/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Pointing for AI</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260512-pointing-for-ai/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260512-pointing-for-ai/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>An interesting mode of interacting with our computers that humans long use naturally.</p>
-<p>DeepMind: Reimagining the mouse pointer for the AI era <a href="https://deepmind.google/blog/ai-pointer/">https://deepmind.google/blog/ai-pointer/</a></p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-pointing-for-ai/cover.webp" class="img-fluid figure-img"></p>
-<figcaption>Shaping the future of AI interaction by reimagining the mouse pointer</figcaption>
-</figure>
-</div>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116563547804178932">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260512-pointing-for-ai/</guid>
-  <pubDate>Tue, 12 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260512-pointing-for-ai/cover.webp" medium="image" type="image/webp"/>
-</item>
-<item>
-  <title>Training Language Models to Self-Correct via Reinforcement Learning (SCoRe)</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260512-score/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260512-score/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-score/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 1 from the paper: Left, SCoRe lifts Gemini 1.5 Flash on MATH by +4.4% over direct generation at the second turn, while the base model loses 11.2% and standard fine-tuning is near-flat. Right, spending inference compute on sequential self-correction beats parallel sampling at matched budgets. Figure from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Training Language Models to Self-Correct via Reinforcement Learning</em> [1] (<a href="https://openreview.net/forum?id=CjwERcAU7w">ICLR 2025 Oral</a>; arXiv preprint September 2024), <a href="https://aviralkumar2907.github.io/">Aviral Kumar</a>, <a href="https://vincentzhuang.github.io/">Vincent Zhuang</a>, <a href="https://agarwl.github.io/">Rishabh Agarwal</a>, <a href="https://scholar.google.com/citations?user=zWpXSB4AAAAJ">Yi Su</a>, and 14 co-authors at Google DeepMind train a single model to revise its own answers using only self-generated data, with no teacher model and no oracle feedback.</p>
-<blockquote class="blockquote">
-<p>Self-correction is a highly desirable capability of large language models (LLMs), yet it has consistently been found to be largely ineffective in modern LLMs. Current methods for training self-correction typically depend on either multiple models, a more advanced model, or additional forms of supervision. To address these shortcomings, we develop a multi-turn online reinforcement learning (RL) approach, SCoRe, that significantly improves an LLM’s self-correction ability using entirely self-generated data. To build SCoRe, we first show that variants of supervised fine-tuning (SFT) on offline model-generated correction traces are often insufficient for instilling self-correction behavior. In particular, we observe that training via SFT falls prey to either a <em>distribution mismatch</em> between mistakes made by the data-collection policy and the model’s own responses, or to <em>behavior collapse</em>, where learning implicitly prefers only a certain mode of correction behavior that is often not effective at self-correction on test problems. SCoRe addresses these challenges by training under the model’s own distribution of self-generated correction traces and using appropriate regularization to steer the learning process into learning a self-correction behavior that is effective at test time as opposed to fitting high-reward responses for a given prompt. This regularization process includes an initial phase of <em>multi-turn RL on a base model</em> to generate a policy initialization that is less susceptible to collapse, followed by using a <em>reward bonus to amplify self-correction</em>. With Gemini 1.0 Pro and 1.5 Flash models, we find that SCoRe achieves state-of-the-art self-correction performance, improving the base models’ self-correction by <em>15.6% and 9.1% respectively on MATH and HumanEval</em>.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<section id="problem-setting" class="level3">
-<h3 class="anchored" data-anchor-id="problem-setting">Problem setting</h3>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-score/figure3.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 3 from the paper: the problem setting. Standard training (left) optimizes the loss on a single response <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/> given prompt <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/>. SCoRe (right) instead rolls out two turns — a first attempt <img src="https://benjaminhan.net/feed-assets/3c2720e068e6c3aa.svg" alt="y_1" class="feed-math-inline"/>, then an improved response <img src="https://benjaminhan.net/feed-assets/57f66012dbd55145.svg" alt="y_2" class="feed-math-inline"/> conditioned on <img src="https://benjaminhan.net/feed-assets/4280bf63996732ff.svg" alt="(x, y_1)" class="feed-math-inline"/> and an optional external instruction <img src="https://benjaminhan.net/feed-assets/8e304a1c8b691111.svg" alt="p" class="feed-math-inline"/> to self-correct — and places the loss on the <em>second</em> attempt. The training objective is the quality of the final answer, not the first one. Figure from the paper [1].</figcaption>
-</figure>
-</div>
-<p>This change in problem setup matters because it changes what the model is incentivized to do. A one-turn model trained to minimize loss on <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/> learns to commit to its best guess. A two-turn model trained to minimize loss on <img src="https://benjaminhan.net/feed-assets/57f66012dbd55145.svg" alt="y_2" class="feed-math-inline"/> is free to produce an exploratory first attempt and use the second turn to fix it, as long as the training signal actually rewards that behavior. That training-signal design is the problem the rest of the paper solves.</p>
-<p>Formally, the paper states the training objective as Equation 1:</p>
-<p><img src="https://benjaminhan.net/feed-assets/ad43b6aeb55fb703.svg" alt="\max_{\pi_\theta} \; \mathbb{E}_{\mathbf{x}, \mathbf{y}^* \sim \mathcal{D}, \; \hat{\mathbf{y}}_{1:l+1} \sim \pi_\theta(\cdot \mid [\mathbf{x}, \hat{\mathbf{y}}_{1:l}, p_{1:l}])} \left[\sum_{i=1}^{l+1} \hat{r}(\hat{\mathbf{y}}_i, \mathbf{y}^*)\right] \tag{1}" class="feed-math-inline"/></p>
-<p>where <img src="https://benjaminhan.net/feed-assets/943b9fa201c5a103.svg" alt="\pi_\theta" class="feed-math-inline"/> is the policy (the LLM) with parameters <img src="https://benjaminhan.net/feed-assets/7e0f741a935b0293.svg" alt="\theta" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/9c42f1487bf77e29.svg" alt="\mathbf{x}" class="feed-math-inline"/> is the input prompt drawn with its ground-truth answer <img src="https://benjaminhan.net/feed-assets/127fcaf3170d4305.svg" alt="\mathbf{y}^*" class="feed-math-inline"/> from dataset <img src="https://benjaminhan.net/feed-assets/5e31c33c109f20ce.svg" alt="\mathcal{D}" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/a8449506c8048938.svg" alt="\hat{\mathbf{y}}_i" class="feed-math-inline"/> is the model’s attempt at turn <img src="https://benjaminhan.net/feed-assets/fe3599bc03ddee62.svg" alt="i" class="feed-math-inline"/> conditioned on all prior attempts and optional external inputs <img src="https://benjaminhan.net/feed-assets/ea99a15cd47d8710.svg" alt="p_{1:l}" class="feed-math-inline"/> (e.g., an instruction to “try again”), and <img src="https://benjaminhan.net/feed-assets/82841d94d3665f02.svg" alt="\hat{r}" class="feed-math-inline"/> is the verifier’s correctness reward. The paper sets <img src="https://benjaminhan.net/feed-assets/c5133d136ed6645f.svg" alt="l = 1" class="feed-math-inline"/>, giving two turns and rewarding the sum <img src="https://benjaminhan.net/feed-assets/ab5976c0b442cc57.svg" alt="\hat{r}(\hat{\mathbf{y}}_1, \mathbf{y}^*) + \hat{r}(\hat{\mathbf{y}}_2, \mathbf{y}^*)" class="feed-math-inline"/>.</p>
-<p>Two subtleties: first, unlike single-turn SFT or RLHF — which directly supervise the policy to produce <img src="https://benjaminhan.net/feed-assets/127fcaf3170d4305.svg" alt="\mathbf{y}^*" class="feed-math-inline"/> — Equation 1 supervises each turn only <em>indirectly</em>, through its contribution to the sum. Second, summing the per-turn rewards means the idealized objective pays equally for a correct first attempt and a correct second attempt. The paper later argues this is exactly why naive RL on Equation 1 <strong>behavior-collapses</strong>: the policy finds it easier to maximize the sum by producing the best possible <img src="https://benjaminhan.net/feed-assets/1645bef50dd4b06c.svg" alt="\hat{\mathbf{y}}_1" class="feed-math-inline"/> and echoing it as <img src="https://benjaminhan.net/feed-assets/c748d2379b5d0d99.svg" alt="\hat{\mathbf{y}}_2" class="feed-math-inline"/> than by learning genuine revision. SCoRe’s Stage I <em>regularization</em> and Stage II <em>progress bonus</em> are then introduced as modifications that break this degenerate solution.</p>
-</section>
-<section id="the-two-stage-recipe" class="level3">
-<h3 class="anchored" data-anchor-id="the-two-stage-recipe">The two-stage recipe</h3>
-<p>The method is a two-stage multi-turn online Reinforcement Learning (RL) recipe. Figure 7 sketches the overall approach:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-score/figure7.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 7 from the paper: an overview of SCoRe. <strong>Stage I</strong> (left) trains an initialization for self-correction — instead of running SFT (which produces pathological amplification of biases), the policy is constrained via KL penalty to keep the first attempt <img src="https://benjaminhan.net/feed-assets/3c2720e068e6c3aa.svg" alt="y_1" class="feed-math-inline"/> close to the base model while maximizing reward at the second attempt <img src="https://benjaminhan.net/feed-assets/57f66012dbd55145.svg" alt="y_2" class="feed-math-inline"/>, so that the two turns are decoupled. <strong>Stage II</strong> (right) jointly optimizes both attempts with multi-turn RL, where the second-turn reward is augmented by a <em>shaped</em> bonus that explicitly pays for correctness gains from <img src="https://benjaminhan.net/feed-assets/3c2720e068e6c3aa.svg" alt="y_1" class="feed-math-inline"/> to <img src="https://benjaminhan.net/feed-assets/57f66012dbd55145.svg" alt="y_2" class="feed-math-inline"/>, incentivizing genuine self-correction rather than the trivial strategy of producing the best possible first response and echoing it. Figure from the paper [1].</figcaption>
-</figure>
-</div>
-<p><strong>Stage I</strong> optimizes only the second-turn reward while holding the first-turn policy close to the base model via a strict KL penalty:</p>
-<p><img src="https://benjaminhan.net/feed-assets/d3ea63f18e238faa.svg" alt="\max_{\pi_\theta} \; \mathbb{E}_{\mathbf{x}_1,\, \mathbf{y}_1 \sim \pi_\theta(\cdot \mid \mathbf{x}),\, \mathbf{y}_2 \sim \pi_\theta(\cdot \mid [\mathbf{x}_1, p_1])} \left[\hat{r}(\mathbf{y}_2, \mathbf{y}^*) \;-\; \beta_2 \, D_{KL}\!\left(\pi_\theta(\cdot \mid \mathbf{x}_1) \,\|\, \pi_{\text{ref}}(\" class="feed-math-inline"/></p>
-<p>Here <img src="https://benjaminhan.net/feed-assets/ff5e06d2d49c0dbe.svg" alt="\beta_2" class="feed-math-inline"/> is a large KL coefficient that applies <em>only</em> to the first attempt, preventing the policy from collapsing the two attempts into a single distribution. The result is an initialization where <img src="https://benjaminhan.net/feed-assets/982ea114b63ee115.svg" alt="\mathbf{y}_1" class="feed-math-inline"/> remains base-model-like — so any gain at <img src="https://benjaminhan.net/feed-assets/5e34f8ea5a20097e.svg" alt="\mathbf{y}_2" class="feed-math-inline"/> must come from real revision — while the revision head has started to learn what useful corrections look like. This blocks the dominant failure mode of naive RL on this task, which the paper calls <em>behavior collapse</em>: the model learns to produce a near-optimal first answer and then make no meaningful second-turn revision.</p>
-<p><strong>Stage II</strong> then jointly optimizes both turns with standard multi-turn RL, initialized from Stage I:</p>
-<p><img src="https://benjaminhan.net/feed-assets/f832ebdb405f4d5a.svg" alt="\max_{\pi_\theta} \; \mathbb{E}_{\mathbf{x}_1,\, \mathbf{y}_1 \sim \pi_\theta(\cdot \mid \mathbf{x}),\, \mathbf{y}_2 \sim \pi_\theta(\cdot \mid [\mathbf{x}_1, p_1])} \left[\sum_{i=1}^{2} \hat{r}(\mathbf{y}_i, \mathbf{y}^*) \;-\; \beta_1 \, D_{KL}\!\left(\pi_\theta(\cdot \mid \mathbf{x}_i) \,\|\, \pi" class="feed-math-inline"/></p>
-<p>Equation 4 on its own would still permit behavior collapse: the policy can maximize the sum by producing the best possible <img src="https://benjaminhan.net/feed-assets/1645bef50dd4b06c.svg" alt="\hat{\mathbf{y}}_1" class="feed-math-inline"/> and echoing it as <img src="https://benjaminhan.net/feed-assets/c748d2379b5d0d99.svg" alt="\hat{\mathbf{y}}_2" class="feed-math-inline"/>. SCoRe prevents this by adding a <em>progress bonus</em> to the second-turn reward:</p>
-<p><img src="https://benjaminhan.net/feed-assets/1c899a4fb6993656.svg" alt="b(\mathbf{y}_2 \mid \mathbf{y}_1, \mathbf{y}^*) \;:=\; \alpha \cdot \left(\hat{r}(\mathbf{y}_2, \mathbf{y}^*) - \hat{r}(\mathbf{y}_1, \mathbf{y}^*)\right), \qquad \alpha &gt; 1" class="feed-math-inline"/></p>
-<p>The bonus is positive only when the second attempt flips an incorrect response to correct, and sharply negative when it corrupts a correct response into an incorrect one. Revisions that <em>make progress</em> get more reward than revisions that <em>preserve an already-correct answer</em>, biasing the policy toward genuine self-correction.</p>
-</section>
-<section id="why-sft-baselines-fall-short" class="level3">
-<h3 class="anchored" data-anchor-id="why-sft-baselines-fall-short">Why SFT baselines fall short</h3>
-<p>Supervised Fine-Tuning (SFT) on model-generated correction traces is shown to fail for a separate reason: distribution shift between the mistakes in the off-policy data and the mistakes the trained model actually makes at test time.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-score/table1.png" class="img-fluid figure-img"></p>
-<figcaption>Table 1 from the paper: self-correction performance after training on <img src="https://benjaminhan.net/feed-assets/906d3b2cf851a396.svg" alt="\mathcal{D}_{\text{StaR}}" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/0f32167429cced92.svg" alt="\mathcal{D}_{\text{SFT}}" class="feed-math-inline"/>. The gap between the second and first attempts Δ(t1, t2) is either negative or small across all SFT/STaR variants, and both approaches erroneously modify correct responses to incorrect at high rates (high <img src="https://benjaminhan.net/feed-assets/176c9f9b41803d9e.svg" alt="\Delta^{c \to \neg c}" class="feed-math-inline"/>, low <img src="https://benjaminhan.net/feed-assets/4aad29f53ffa28db.svg" alt="\Delta^{\neg c \to c}" class="feed-math-inline"/>). Table from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>On MATH [2] with Gemini 1.5 Flash, the base model <em>loses</em> 11.2% at the second turn (intrinsic self-correction is net negative), SFT and STaR [3] are near-zero gain, and SCoRe gains +4.4%. The top-line 15.6-point gain on MATH and 9.1-point gain on HumanEval [4] are reported as improvements in the self-correction delta Δ(t1, t2) relative to the base model’s Δ(t1, t2). At matched inference-sample budgets, sequential self-correction with SCoRe outperforms parallel sampling under self-consistency up to <img src="https://benjaminhan.net/feed-assets/cb59c731ae131254.svg" alt="K = 2^5 = 32" class="feed-math-inline"/> samples.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-score/table2.png" class="img-fluid figure-img"></p>
-<figcaption>Table 2 from the paper: performance of SCoRe on MATH. SCoRe not only attains a higher accuracy at both attempts, but also provides the most positive self-correction performance Δ(t1, t2). Table from the paper [1].</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-score/table3.png" class="img-fluid figure-img"></p>
-<figcaption>Table 3 from the paper: performance of SCoRe on HumanEval. SCoRe attains the highest self-correction performance (Accuracy@t2, Δ(t1, t2)), and also outperforms other methods at offline correction (MBPP-R). Table from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The SFT failure here is teacher-forcing exposure bias, one level up.</strong> Teacher forcing mismatches at the token level: training feeds the gold previous token as input, inference feeds the model’s own previous token. SCoRe’s offline SFT mismatches at the turn level: training’s “first answer” is a frozen sample from the data-collection policy, inference’s “first answer” comes from an updated model whose error distribution has drifted. Same structural problem one level up. The remedies parallel too. Scheduled sampling [5] and DAgger [6] feed the model’s own predictions back into the training loop. SCoRe uses online multi-turn RL to re-sample traces from the current policy each step. The principle is “put the model’s own distribution inside the training loop,” and any self-correction recipe that stops at offline SFT reproduces the exposure-bias pitfall at a coarser granularity.</li>
-<li><strong>Behavior collapse is not <a href="../../posts/20230618-model-collapse-llm-annotations/">model collapse</a> [7], but the remedies parallel.</strong> Shumailov et al.’s model-collapse result describes how <em>recursive</em> training on model-generated text erodes distribution tails across generations — finite-sample statistical error compounds into irreversible drift. SCoRe’s <em>behavior collapse</em> is a different pathology on a single training run: the policy converges to a degenerate solution where the second attempt echoes the first. Both failure modes arise from training on self-generated data without an external anchor. SCoRe’s defenses (a KL penalty against the base model in both stages, plus a ground-truth verifier reward) play the same structural role as the model-collapse literature’s call to keep real data in the loop: they tether the policy to a distribution the policy itself did not produce. The paper never describes the Stage I KL constraint as collapse insurance, but structurally that is what it is.</li>
-<li><strong>Sequential vs.&nbsp;parallel scaling is the practical implication.</strong> Figure 1 right shows that spending <img src="https://benjaminhan.net/feed-assets/75e983dbcd38a400.svg" alt="2^5 = 32" class="feed-math-inline"/> samples on sequential self-correction beats the same budget spent on parallel independent samples under self-consistency. That shifts the usual test-time-compute scaling picture [8]: when the model can reliably fix its own mistakes, sequential samples dominate. Practitioners running agent loops will take this as evidence for investing in multi-turn policies rather than larger parallel fan-outs.</li>
-<li><strong>No PRMs here.</strong> Prior work on <a href="../../posts/20260512-lets-verify-step-by-step/">Let’s Verify Step by Step</a> [9] and later step-level RL pipelines use process-reward models (PRMs) as a source of dense intra-step feedback. SCoRe instead uses only outcome reward plus a turn-level progress bonus, avoiding PRMs entirely. Whether PRM supervision would stack additively with SCoRe, or overlap with the same failure mode the progress bonus already addresses, remains open. Both mechanisms densify a sparse outcome signal, and the paper does not run the controlled comparison between a PRM-based recipe and SCoRe’s ORM+progress-bonus at matched compute.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://aviralkumar2907.github.io/">Kumar, A.</a>, <a href="https://vincentzhuang.github.io/">Zhuang, V.</a>, <a href="https://agarwl.github.io/">Agarwal, R.</a>, <a href="https://scholar.google.com/citations?user=zWpXSB4AAAAJ">Su, Y.</a>, Co-Reyes, J. D., Singh, A., Baumli, K., Iqbal, S., Bishop, C., Roelofs, R., Zhang, L. M., McKinney, K., Shrivastava, D., Paduraru, C., Tucker, G., <a href="https://www.cs.mcgill.ca/~dprecup/">Precup, D.</a>, Behbahani, F., &amp; Faust, A. “Training Language Models to Self-Correct via Reinforcement Learning.” <em>ICLR 2025 Oral</em>. arXiv preprint arXiv:2409.12917, September 19, 2024. <a href="https://arxiv.org/abs/2409.12917" class="uri">https://arxiv.org/abs/2409.12917</a></li>
-<li><a id="ref-2"></a>Hendrycks, D., Burns, C., Kadavath, S., Arora, A., Basart, S., Tang, E., Song, D., &amp; Steinhardt, J. “Measuring Mathematical Problem Solving With the MATH Dataset.” <em>NeurIPS Datasets and Benchmarks Track</em>, 2021. <a href="https://arxiv.org/abs/2103.03874" class="uri">https://arxiv.org/abs/2103.03874</a></li>
-<li><a id="ref-3"></a>Zelikman, E., Wu, Y., Mu, J., &amp; Goodman, N. D. “STaR: Bootstrapping Reasoning With Reasoning.” <em>NeurIPS</em>, 2022. <a href="https://arxiv.org/abs/2203.14465" class="uri">https://arxiv.org/abs/2203.14465</a></li>
-<li><a id="ref-4"></a>Chen, M., Tworek, J., Jun, H., Yuan, Q., de Oliveira Pinto, H. P., Kaplan, J., Edwards, H., Burda, Y., Joseph, N., Brockman, G., et al.&nbsp;“Evaluating Large Language Models Trained on Code.” <em>arXiv preprint</em> (arXiv:2107.03374), 2021. <a href="https://arxiv.org/abs/2107.03374" class="uri">https://arxiv.org/abs/2107.03374</a></li>
-<li><a id="ref-5"></a>Bengio, S., Vinyals, O., Jaitly, N., &amp; Shazeer, N. “Scheduled Sampling for Sequence Prediction with Recurrent Neural Networks.” <em>NeurIPS</em>, 2015. <a href="https://arxiv.org/abs/1506.03099" class="uri">https://arxiv.org/abs/1506.03099</a></li>
-<li><a id="ref-6"></a>Ross, S., Gordon, G. J., &amp; Bagnell, J. A. “A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning.” <em>AISTATS</em>, 2011. <a href="https://arxiv.org/abs/1011.0686" class="uri">https://arxiv.org/abs/1011.0686</a></li>
-<li><a id="ref-7"></a>Shumailov, I., Shumaylov, Z., Zhao, Y., Gal, Y., Papernot, N., &amp; Anderson, R. “The Curse of Recursion: Training on Generated Data Makes Models Forget.” <em>arXiv preprint</em> (arXiv:2305.17493), 2023. <a href="https://arxiv.org/abs/2305.17493" class="uri">https://arxiv.org/abs/2305.17493</a></li>
-<li><a id="ref-8"></a>Snell, C., Lee, J., Xu, K., &amp; Kumar, A. “Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters.” <em>arXiv preprint</em> (arXiv:2408.03314), 2024. <a href="https://arxiv.org/abs/2408.03314" class="uri">https://arxiv.org/abs/2408.03314</a></li>
-<li><a id="ref-9"></a>Lightman, H., Kosaraju, V., Burda, Y., Edwards, H., Baker, B., Lee, T., Leike, J., Schulman, J., Sutskever, I., &amp; Cobbe, K. “Let’s Verify Step by Step.” <em>ICLR</em>, 2024. <a href="https://arxiv.org/abs/2305.20050" class="uri">https://arxiv.org/abs/2305.20050</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260512-score/</guid>
-  <pubDate>Tue, 12 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260512-score/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Let’s Verify Step by Step</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260512-lets-verify-step-by-step/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260512-lets-verify-step-by-step/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-lets-verify-step-by-step/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Figure 2 from the paper: two solutions to the same math problem graded step-by-step by the trained PRM. Green highlights mark high per-step correctness scores; red marks low. The left solution stays green throughout and reaches the correct answer; the right solution makes an error mid-derivation and the PRM flags the wrong step red. Figure from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Let’s Verify Step by Step</em> [1] (ICLR 2024; arXiv preprint May 2023), <a href="https://www.linkedin.com/in/hunter-lightman/">Hunter Lightman</a>, <a href="https://www.linkedin.com/in/vineet-kosaraju-0153b557/">Vineet Kosaraju</a>, <a href="https://scholar.google.com/citations?user=Amky96kAAAAJ">Yura Burda</a>, <a href="https://scholar.google.com/citations?user=0o470HsAAAAJ">Harri Edwards</a>, <a href="https://scholar.google.com/citations?user=bMfPYdYAAAAJ">Bowen Baker</a>, <a href="https://scholar.google.com/citations?user=S5x4xYUAAAAJ">Teddy Lee</a>, <a href="https://jan.leike.name/">Jan Leike</a>, <a href="http://joschu.net/">John Schulman</a>, <a href="https://www.cs.toronto.edu/~ilya/">Ilya Sutskever</a>, and <a href="https://www.linkedin.com/in/karl-cobbe-70b07132/">Karl Cobbe</a> at <a href="https://openai.com/">OpenAI</a> argue that supervising every reasoning step — not just the final answer — produces substantially more reliable reward models for math.</p>
-<blockquote class="blockquote">
-<p>In recent years, large language models have greatly improved in their ability to perform complex multi-step reasoning. However, even state-of-the-art models still regularly produce logical mistakes. To train more reliable models, we can turn either to <em>outcome supervision, which provides feedback for a final result</em>, or <em>process supervision, which provides feedback for each intermediate reasoning step</em>. Given the importance of training reliable models, and given the high cost of human feedback, it is important to carefully compare the both methods. Recent work has already begun this comparison, but many questions still remain. We conduct our own investigation, finding that <em>process supervision significantly outperforms outcome supervision for training models to solve problems from the challenging MATH dataset</em>. Our process-supervised model <em>solves 78% of problems from a representative subset of the MATH test set</em>. Additionally, we show that <em>active learning significantly improves the efficacy of process supervision</em>. To support related research, we also release PRM800K, the complete dataset of 800,000 step-level human feedback labels used to train our best reward model.</p>
-</blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<p>The paper builds two reward models on top of a GPT-4 generator fine-tuned on a 1.5B-token math pretraining mix called MathMix:</p>
-<ul>
-<li><strong>Outcome-Supervised Reward Model (ORM).</strong> Trained only on a final-answer correctness label, following Cobbe et al.’s GSM8K [2] verifier recipe [2].</li>
-<li><strong>Process-Supervised Reward Model (PRM).</strong> Trained on a per-step positive/negative/neutral label, supplied by human labellers through a dedicated annotation interface and supervised only up to the first incorrect step. The PRM’s score for a whole solution is the product of step-level correctness probabilities; the cover image above shows Figure 2 of the paper, where two PRM-graded solutions make the per-step scoring visible — green for high-score steps, red for the wrong step the PRM catches.</li>
-</ul>
-<p>To make human feedback go further, the authors use active learning: the current-best PRM selects “convincing wrong-answer” solutions (high-PRM-score but wrong-final-answer) to send to labellers, which concentrates annotation budget where the reward model is most confidently wrong. The resulting dataset, PRM800K, contains 800K step-level labels over 75K solutions to 12K problems from the MATH benchmark [3], and is released with the paper.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper evaluates the PRM and ORM as solution re-rankers on the MATH test set:</p>
-<ul>
-<li>On a 500-problem representative subset of the MATH test set, the large-scale PRM reaches 78.2% best-of-1860 accuracy — i.e.&nbsp;for each problem the generator draws 1860 candidate solutions and the PRM re-ranker picks one, which matches the gold answer 78.2% of the time — versus 72.4% for the ORM and 69.6% for majority voting. The PRM-over-ORM gap widens with larger N, consistent with the PRM being better at distinguishing subtly flawed solutions rather than just obviously wrong ones.</li>
-<li>On a held-out out-of-distribution (OOD) test set of 224 STEM questions from AP Calculus, AP Chemistry, AP Physics, and AMC10/12, the PRM still leads at 72.9% aggregate vs.&nbsp;63.8% ORM and 61.3% majority voting.</li>
-<li>Surfacing “convincing wrong-answer” solutions to labellers via active learning delivers a 2.6× improvement in data efficiency for process supervision.</li>
-<li>Small-scale ablations, where a large PRM acts as a synthetic labeller for smaller PRM training, isolate the supervision-type effect from the training-set-size confound that complicates the large-scale comparison.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260512-lets-verify-step-by-step/figure3.png" class="img-fluid figure-img"></p>
-<figcaption>A comparison of outcome-supervised and process-supervised reward models, evaluated by their ability to search over 1860 samples per test problem. Majority voting is shown as a strong baseline. For <img src="https://benjaminhan.net/feed-assets/a8bdbcee3364b81c.svg" alt="N \le 1000" class="feed-math-inline"/>, the shaded bands visualize variance across subsamples. The PRM-over-ORM gap widens with N. Figure 3 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>This paper made PRMs the reasoning-RM default.</strong> Before this work, the closest comparison was Uesato et al.’s <em>Solving Math Word Problems with Process- and Outcome-Based Feedback</em> [4], which found process and outcome supervision were roughly equivalent on GSM8K. The gap here (larger model, more labels, harder benchmark) flipped the conclusion, and the 2024 reasoning-RL literature took PRM-over-ORM as a starting point even where it then walked it back. DeepSeek-R1 [5], notably, reports that it <em>tried</em> a PRM for its large-scale training and moved to rule-based outcome rewards after running into reward-hacking and scaling issues. Whether a PRM still adds value on top of rule-based rewards at frontier scale remains open.</li>
-<li><strong>Active learning on “convincing wrong answers” carries the data-efficiency story.</strong> Surfacing high-PRM-score-but-wrong-final-answer solutions for labelling delivers the 2.6× data-efficiency gain and is what makes 800K step-labels tractable at all; most follow-ups skip active learning and pay a linear data cost instead. A natural next step would be to test whether self-refine and verifier-guided search pipelines [6] see similar gains from explicit wrong-answer mining.</li>
-<li><strong>The practical picture lives at small N, not N=1860.</strong> The PRM-over-ORM gap shrinks at smaller N (visible in Figure 3 of the paper), and a PRM that wins handily at <img src="https://benjaminhan.net/feed-assets/21a127930f1e9ea9.svg" alt="N=1860" class="feed-math-inline"/> but only marginally at <img src="https://benjaminhan.net/feed-assets/15c2bbd84946d019.svg" alt="N=64" class="feed-math-inline"/> has different deployment implications than the headline suggests. A clean PRM-vs-ORM comparison at fixed small N (say 8, 16, 64) with matched training-data scales would tell practitioners more than the top-line best-of-N number.</li>
-<li><strong>Process supervision’s alignment claims are left unmeasured.</strong> The paper gestures at better interpretability and less spurious reward, but the “convincing wrong-answer” mining strategy itself produces a distribution shift in the training set, since the PRM and ORM end up trained on systematically different solutions. A matched-distribution ablation, or a direct interpretability metric (e.g., how often human raters prefer PRM-selected solutions on unambiguous tie cases), would close both gaps.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://www.linkedin.com/in/hunter-lightman/">Lightman, H.</a>, <a href="https://www.linkedin.com/in/vineet-kosaraju-0153b557/">Kosaraju, V.</a>, <a href="https://scholar.google.com/citations?user=Amky96kAAAAJ">Burda, Y.</a>, <a href="https://scholar.google.com/citations?user=0o470HsAAAAJ">Edwards, H.</a>, <a href="https://scholar.google.com/citations?user=bMfPYdYAAAAJ">Baker, B.</a>, <a href="https://scholar.google.com/citations?user=S5x4xYUAAAAJ">Lee, T.</a>, <a href="https://jan.leike.name/">Leike, J.</a>, <a href="http://joschu.net/">Schulman, J.</a>, <a href="https://www.cs.toronto.edu/~ilya/">Sutskever, I.</a>, and <a href="https://www.linkedin.com/in/karl-cobbe-70b07132/">Cobbe, K.</a>. “Let’s Verify Step by Step.” <em>ICLR 2024</em>. arXiv:2305.20050. <a href="https://arxiv.org/abs/2305.20050" class="uri">https://arxiv.org/abs/2305.20050</a></li>
-<li><a id="ref-2"></a>Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., and Schulman, J. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
-<li><a id="ref-3"></a>Hendrycks, D., Burns, C., Kadavath, S., Arora, A., Basart, S., Tang, E., Song, D., and Steinhardt, J. “Measuring Mathematical Problem Solving With the MATH Dataset.” <em>NeurIPS Datasets and Benchmarks</em>, November 8, 2021. <a href="https://arxiv.org/abs/2103.03874" class="uri">https://arxiv.org/abs/2103.03874</a></li>
-<li><a id="ref-4"></a>Uesato, J., Kushman, N., Kumar, R., Song, F., Siegel, N., Wang, L., Creswell, A., Irving, G., and Higgins, I. “Solving Math Word Problems with Process- and Outcome-Based Feedback.” <em>arXiv preprint</em> (arXiv:2211.14275), November 25, 2022. <a href="https://arxiv.org/abs/2211.14275" class="uri">https://arxiv.org/abs/2211.14275</a></li>
-<li><a id="ref-5"></a>DeepSeek-AI et al.&nbsp;“DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2501.12948), January 22, 2025. <a href="https://arxiv.org/abs/2501.12948" class="uri">https://arxiv.org/abs/2501.12948</a></li>
-<li><a id="ref-6"></a>Havrilla, A., Raparthy, S., Nalmpantis, C., Dwivedi-Yu, J., Zhuravinskyi, M., Hambro, E., and Raileanu, R. “GLoRe: When, Where, and How to Improve LLM Reasoning via Global and Local Refinements.” <em>ICML</em>, February 13, 2024. <a href="https://arxiv.org/abs/2402.10963" class="uri">https://arxiv.org/abs/2402.10963</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260512-lets-verify-step-by-step/</guid>
-  <pubDate>Tue, 12 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260512-lets-verify-step-by-step/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>The Inference Shift</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260511-the-inference-shift/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-the-inference-shift/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-the-inference-shift/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://stratechery.com/2026/the-inference-shift/">Stratechery</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://stratechery.com/about/">Ben Thompson</a> uses the <a href="https://www.cerebras.ai/">Cerebras</a> IPO as a hook to <a href="https://stratechery.com/2026/the-inference-shift/">argue</a> that what the industry has been calling “inference” is actually two workloads with very different hardware implications:</p>
-<ul>
-<li><strong><em>Answer inference</em></strong> is what a human waits on. Token speed matters, so bandwidth-rich chips (GPUs with <a href="https://en.wikipedia.org/wiki/High_Bandwidth_Memory">high-bandwidth memory (HBM)</a>, or wafer-scale designs like <a href="https://www.cerebras.ai/chip">Cerebras’ WSE-3</a>) win.</li>
-<li><strong><em>Agentic inference</em></strong> is what a computer waits on. With no human in the loop, latency is cheap and memory capacity is everything. The model sits inside a hierarchy of <a href="https://huggingface.co/docs/transformers/en/kv_cache">key-value (KV) cache</a>, DRAM, SSDs, databases, and embeddings, and “good enough” compute wrapped in lots of cheap memory beats high-bandwidth compute starved for context.</li>
-</ul>
-<p>If agentic inference becomes the largest market by far because it scales with compute rather than with humans, Nvidia’s price advantage, earned on latency, gets less valuable exactly where the volume lives. China, which cannot buy the leading edge for training, already has everything it needs for agentic inference. Space data centers start to make sense too, because older, slower nodes tolerate radiation and dissipate less heat. Thompson ends by inverting his usual Huang-era stance: “Moore’s Law doesn’t matter, and that the way we get more compute is by realizing that the compute we have is already good enough.”</p>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Premium hardware earns its premium on latency, and workloads where no human is waiting eventually migrate off it. Thompson is arguing that’s what’s about to happen to agentic inference.</strong></p>
-<ul>
-<li><p>Mainframes in the 1970s ran two workloads on the same expensive hardware: interactive timesharing (a human at a terminal is waiting, latency-sensitive, what the premium was really justified by) and batch jobs (no human is waiting, latency-tolerant, the premium going unused).</p></li>
-<li><p>Machine-time cost collapsed by orders of magnitude over this period; human-time cost moved slowly by comparison. The end of the mainframe monopoly was driven by commodity compute getting cheaper on two fronts at once: batch workloads migrated to cheaper shared servers (minicomputer-class, then Unix workstations, then commodity x86 clusters), and interactive computing migrated to per-user PCs. Mainframes survived in domains where the premium is genuinely justified (banks, airlines, reservation systems), but they stopped being the volume market.</p></li>
-<li><p>Thompson’s answer-inference vs.&nbsp;agentic-inference split is the same split on today’s GPU clusters. Answer inference is the interactive tier: a human is waiting, the latency premium is justified. Agentic inference is the batch tier: no human is waiting, latency is free, the GPU’s premium characteristics are going unused. Once agentic workloads are large enough, they migrate off the premium tier onto a commodity memory hierarchy, the way batch unbundled from the mainframe.</p></li>
-<li><p>The mapping:</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 20%">
-<col style="width: 20%">
-<col style="width: 20%">
-<col style="width: 20%">
-<col style="width: 20%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Era</th>
-<th>Dominant “user”</th>
-<th>Interactive tier</th>
-<th>Batch tier</th>
-<th>Hardware shape</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Mainframe (1970s)</td>
-<td>Humans</td>
-<td>Timesharing</td>
-<td>Overnight batch</td>
-<td>Integrated premium iron</td>
-</tr>
-<tr class="even">
-<td>PC (1980s–2010s)</td>
-<td>Humans</td>
-<td>Desktop</td>
-<td>Cluster/server batch</td>
-<td>Commodity, unbundled, per-user</td>
-</tr>
-<tr class="odd">
-<td>Current AI (2022–2026)</td>
-<td>Humans</td>
-<td>Chat / autocomplete</td>
-<td>“Agent runs” on the same GPUs</td>
-<td>Integrated premium GPUs; answer tier has colonized the batch tier</td>
-</tr>
-<tr class="even">
-<td>Agentic shift</td>
-<td>Agents</td>
-<td>Answer inference (stays premium)</td>
-<td>Agentic inference</td>
-<td>Answer tier stays integrated; agentic tier unbundles into a commodity memory hierarchy</td>
-</tr>
-</tbody>
-</table></li>
-<li><p>The prediction that falls out: Nvidia keeps the training-and-answer-inference premium (the pieces where human time is still on the clock) and cedes the volume market, the way IBM kept mainframes and ceded personal computing. Export-control arbitrage rhymes too: Cold-War restrictions on leading-edge systems stopped tracking the market once PC-class compute proliferated.</p></li>
-</ul></li>
-<li><p><strong>The memory hierarchy is where the economics moves the money.</strong> Thompson’s phrasing, “the memory hierarchy wrapped around a model,” describes agentic systems as mostly a storage-and-retrieval problem with a language model as one stage in the pipeline, rather than as “a GPU answering a question.” If he’s right about the economics, a lot of the investment that today goes into more HBM per card gets redirected down the hierarchy, into DRAM, SSDs, and the databases and stores that actually hold the agent’s state.</p></li>
-<li><p><strong>The 220,000 Nvidia GPUs Anthropic just contracted at Colossus 1 are the shape of the locked-in bet.</strong> That’s latency-first hardware on a decade-long depreciation schedule. <a href="https://www.anthropic.com/news/higher-limits-spacex">Anthropic’s own announcement</a> earmarks the capacity for Claude Pro and Max subscribers: a mix of answer inference and agent runs on the same clusters today. Thompson’s argument implies the agent portion of that mix will grow faster than the answer portion, and increasingly won’t need what the fleet is optimized for. Hyperscalers with similar high-end-GPU-dense fleets face the same exposure. A year of elevated Nvidia prices was always the smaller concern; the larger one is whether the fleet’s shape matches the workload mix for the next depreciation cycle.</p></li>
-<li><p><strong>Two prior posts are worth tying back here.</strong> In 2020 the open question around <a href="../../posts/20200920-huangs-law-gpt3/">Huang’s Law</a> was whether Nvidia’s exponential curve would democratize big models; Thompson is now arguing the interesting frontier may not sit on that curve at all. At a meta level the piece also echoes the mechanism in the <a href="../../posts/20260502-2028-intelligence-crisis/">2028 Global Intelligence Crisis scenario</a>: once humans stop being the anchor for how much compute can get used, the old “paid human time” ceiling disappears, whether the effect shows up as expanding agentic markets here or as labor substitution there.</p></li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260511-the-inference-shift/</guid>
-  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260511-the-inference-shift/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Peeking Inside a Language Model, and Finding It Knows It’s Being Watched</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260511-natural-language-autoencoders/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>NLA schematic: the activation verbalizer turns a target activation into a text description, and the activation reconstructor recovers the activation from the text alone. <a href="https://youtu.be/j2knrqAzYVY">Watch on YouTube</a></figcaption>
-</figure>
-</div>
-<p><a href="https://www.anthropic.com/">Anthropic’s</a> interpretability team <a href="https://www.anthropic.com/research/natural-language-autoencoders">introduces</a> Natural Language Autoencoders (NLAs), a method for turning an internal activation of a language model into a plain-text explanation. Two copies of the target model are trained jointly: an <em>activation verbalizer</em> that reads an activation and writes a text explanation, and an <em>activation reconstructor</em> that reads the explanation and rebuilds the activation. The training signal is reconstruction similarity, so explanations that carry real content about the activation are rewarded over explanations that do not. The companion paper on Transformer Circuits [1] comes with an interactive demo on <a href="http://neuronpedia.org/nla">Neuronpedia</a> and training code on <a href="https://github.com/kitft/natural_language_autoencoders">GitHub</a>.</p>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
-<figcaption>The NLA training loop: the activation verbalizer (AV) translates a target activation <img src="https://benjaminhan.net/feed-assets/50ff0990065feeb0.svg" alt="h_{L,i}" class="feed-math-inline"/> into a natural-language description, and the activation reconstructor (AR) recovers an activation <img src="https://benjaminhan.net/feed-assets/18c983660a2888fc.svg" alt="\hat{h}_{L,i}" class="feed-math-inline"/> from that text alone. Training minimizes <img src="https://benjaminhan.net/feed-assets/a1d97cec1af0c52f.svg" alt="\|h_{L,i} - \hat{h}_{L,i}\|_2^2" class="feed-math-inline"/>, so descriptions that carry real content about the activation are rewarded. Schematic from the paper’s <a href="https://transformer-circuits.pub/2026/nla/index.html#nla-training">training section</a> [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The post applies NLAs to two problems: evaluation awareness and alignment auditing. On a test of destructive coding actions (e.g.&nbsp;deleting important files), NLA explanations flag evaluation awareness 16% of the time in cases where Claude never verbalizes it; on <a href="https://www.swebench.com/">SWE-bench Verified</a> the rate is 26%; on real <a href="https://claude.ai/">claude.ai</a> traffic from users who opted in to training it sits under 1%. Anthropic reports that NLAs were used in the pre-deployment alignment audits of Claude Mythos Preview and Claude Opus 4.6.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure2-eval-awareness.webp" class="img-fluid figure-img" data-lightbox-src="figure2-eval-awareness-full.png"></p>
-<figcaption>Opus 4.6 shows NLA-measured evaluation awareness on 26% of SWE-bench Verified transcripts and 16% of destructive-coding transcripts, versus 1% and 0% when measured by what the model actually verbalizes. On opt-in real claude.ai traffic the NLA-measured rate is 0.4%. Chart from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In a toy auditing game where a target model has been trained with a single hidden misaligned motivation, auditors equipped with NLAs uncover the motivation 12–15% of the time, compared with 3% or below when given other interpretability tools.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure3-auditing.webp" class="img-fluid figure-img" data-lightbox-src="figure3-auditing-full.png"></p>
-<figcaption>Auditing-game win rates across tool configs. NLA+conversation auditors identify the target model’s misaligned motivation 12/100 without access to training data and 15/100 with access, well above the SAE+conversation (3/100) and conversation-only (1–2/100) baselines. Chart from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>NLAs trade mechanistic grounding for direct legibility.</strong> <a href="https://transformer-circuits.pub/2023/monosemantic-features">Sparse autoencoders</a> (SAE) and <a href="https://transformer-circuits.pub/2025/attribution-graphs/biology.html">attribution graphs</a> share the autoencoder structure (round-trip reconstruction as the training signal, structured output a trained researcher reads); NLAs swap the sparse feature dictionary for a text bottleneck and the linear readout for another copy of the model. The closest prior art is Patchscope [2], which uses a frozen LLM to decode hidden states into natural language without a round-trip training objective. NLAs add the reconstruction loop to tighten what the verbalizer has to say. The paper itself flags the cost as a limitation: an SAE feature is a specific direction in activation space you can causally intervene on, while an NLA explanation is a black-box output of another LLM. That makes NLAs a natural complement to the structural methods rather than a replacement: the SAE or attribution graph tells you <em>where</em> in the network a representation lives, and the NLA tells you, in prose, <em>what it seems to be about</em>.</p></li>
-<li><p><strong>NLAs move the describing job from the model to a dedicated pair.</strong> The evaluation-awareness numbers tighten a gap that <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> articulated: current LLMs cannot faithfully describe their internal distributions when asked to. NLAs sidestep the asking by training a separate model to do the describing from the activation directly. Where SelfReflect measures a given model’s introspective faithfulness as a property of that model, NLAs make reconstruction fidelity the explicit training target, at the cost of training and running a dedicated pair of models for the task. The paper’s own caveat — that the training objective “does not explicitly incentivize NLA explanations to be interpretable or faithful” — is why they still have to evaluate faithfulness empirically rather than claim it by construction.</p></li>
-<li><p><strong>Where did the eval-awareness come from in the first place?</strong> Nobody explicitly trained Claude to notice “this is a test”, so the signal had to seep in from the training data. Prior work on situational awareness by Berglund et al.&nbsp;[3], and its follow-up benchmark by Laine et al.&nbsp;[4], has already speculated on the supervision sources: the AI safety literature itself, published openly and full of discussions of evaluation protocols, sandbagging, and red-teaming; benchmark format exposure during pretraining, since SWE-bench-style task-description conventions live on the public web and there is no way to scrub them without hurting capability training; and a structural tell during RLHF, where human raters treating contrived prompts and conversational prompts as different kinds of “good response” teaches the model a distribution over what eval-shaped inputs look like. What none of the prior work has done — and what NLAs now make possible — is a systematic training-data audit: read activations for eval-awareness signals, trace the candidate text sources through the training corpus, and publish the map. That would be the natural companion piece.</p></li>
-<li><p><strong>NLA-measured eval-awareness has a Goodhart half-life.</strong> Frontier models may behave differently during evaluation than during deployment, and NLAs put a number on it. On SWE-bench Verified, activations register “this is a test” on 26% of problems; on opt-in claude.ai traffic, the rate is 0.4%. If that gap holds up under independent interpretability methods, benchmark scores reflect how a frontier model behaves under observation. How it behaves when nobody is watching is a separate question, and the verbalized rate (1% on SWE-bench) tells us the model will not answer it for us. There is a further catch: 26% itself depends on a model that doesn’t yet know its activations will be read. Once NLA-style signals enter RLHF or alignment training — and Anthropic is already running NLAs in pre-deployment audits, which is the shortest possible path into that loop — a future model can learn to suppress activation-level eval-awareness without the underlying awareness decreasing. This is the <a href="https://en.wikipedia.org/wiki/Observer_effect_(physics)">observer effect</a> entering interpretability, with <a href="https://en.wikipedia.org/wiki/Goodhart%27s_law">Goodhart’s Law</a> as the sharper limit: measuring the model disturbs it once the measurement loops back into training, and at that point the measure stops tracking what it was measuring. The dynamic has been predicted in theory [5] and recently demonstrated empirically in reward-gaming experiments [6]; what’s missing is the direct test on interpretability tools: train on NLA-derived signals, measure NLA quality decay. That would put a half-life on numbers like 26%.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><p><a id="ref-1"></a>Fraser-Taliente, Kit, Kantamneni, Subhash, Ong, Euan, Mossing, Dan, Lu, Christina, Bogdan, Paul C., Ameisen, Emmanuel, Chen, James, Kishylau, Dzmitry, Pearce, Adam, Tarng, Julius, Wu, Alex, Wu, Jeff, Zhang, Yang, Ziegler, Daniel M., Hubinger, Evan, Batson, Joshua, Lindsey, Jack, Zimmerman, Samuel, and Marks, Samuel. “Natural Language Autoencoders.” <em>Transformer Circuits</em>, 2026. <a href="https://transformer-circuits.pub/2026/nla/index.html" class="uri">https://transformer-circuits.pub/2026/nla/index.html</a></p></li>
-<li><p><a id="ref-2"></a>Ghandeharioun, Asma, Caciularu, Avi, Pearce, Adam, Dixon, Lucas, and Geva, Mor. “Patchscopes: A Unifying Framework for Inspecting Hidden Representations of Language Models.” <em>arXiv preprint</em> (arXiv:2401.06102), 2024. <a href="https://arxiv.org/abs/2401.06102" class="uri">https://arxiv.org/abs/2401.06102</a></p></li>
-<li><p><a id="ref-3"></a>Berglund, Lukas, Stickland, Asa Cooper, Balesni, Mikita, Kaufmann, Max, Tong, Meg, Korbak, Tomasz, Kokotajlo, Daniel, and Evans, Owain. “Taken Out of Context: On Measuring Situational Awareness in LLMs.” <em>arXiv preprint</em> (arXiv:2309.00667), 2023. <a href="https://arxiv.org/abs/2309.00667" class="uri">https://arxiv.org/abs/2309.00667</a></p></li>
-<li><p><a id="ref-4"></a>Laine, Rudolf, Chughtai, Bilal, Betley, Jan, Hariharan, Kaivalya, Scheurer, Jeremy, Balesni, Mikita, Hobbhahn, Marius, Meinke, Alexander, and Evans, Owain. “Me, Myself, and AI: The Situational Awareness Dataset (SAD) for LLMs.” <em>arXiv preprint</em> (arXiv:2407.04694), 2024. <a href="https://arxiv.org/abs/2407.04694" class="uri">https://arxiv.org/abs/2407.04694</a></p></li>
-<li><p><a id="ref-5"></a>Hubinger, Evan, van Merwijk, Chris, Mikulik, Vladimir, Skalse, Joar, and Garrabrant, Scott. “Risks from Learned Optimization in Advanced Machine Learning Systems.” <em>arXiv preprint</em> (arXiv:1906.01820), 2019. <a href="https://arxiv.org/abs/1906.01820" class="uri">https://arxiv.org/abs/1906.01820</a></p></li>
-<li><p><a id="ref-6"></a>Denison, Carson, MacDiarmid, Monte, Barez, Fazl, Duvenaud, David, Kravec, Shauna, Marks, Samuel, Schiefer, Nicholas, Soklaski, Ryan, Tamkin, Alex, Kaplan, Jared, Shlegeris, Buck, Bowman, Samuel R., Perez, Ethan, and Hubinger, Evan. “Sycophancy to Subterfuge: Investigating Reward-Tampering in Large Language Models.” <em>arXiv preprint</em> (arXiv:2406.10162), 2024. <a href="https://arxiv.org/abs/2406.10162" class="uri">https://arxiv.org/abs/2406.10162</a></p></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260511-natural-language-autoencoders/</guid>
-  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Making synesis Quick</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260511-site-efficiency/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-site-efficiency/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-site-efficiency/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>CI wall-clock time per push, before and after the incremental-render work. A post edit drops from around 6:30 to around 2:00, and a docs-only push skips the render step entirely.</figcaption>
-</figure>
-</div>
-<p>Two durations matter on a blog like this one. The first is the time between <code>git push</code> and the updated post being live. The second is the time between a reader clicking a link and the page being ready to read. On the baseline workflow, continuous integration (CI) was taking about six minutes per push, and every home or archive page was shipping a payload that grew with the corpus. This post walks through what that looked like, what was done about each, and why the specific fixes work.</p>
-<section id="how-the-site-is-put-together" class="level2">
-<h2 class="anchored" data-anchor-id="how-the-site-is-put-together">How the site is put together</h2>
-<p><em>synesis</em> is a <a href="https://quarto.org">Quarto</a> site. The source tree lives in a private GitHub repository, a GitHub Actions workflow builds the static <code>_site/</code> tree on every push to <code>main</code>, and a chain of downstream services hands that output to readers at <code>benjaminhan.net</code>. There is no database, no server-side rendering, no application runtime.</p>
-<div class="cell" data-layout-align="default">
-<div class="cell-output-display">
-<div>
-<p></p><figure class="figure"><p></p>
-<div>
-<img src="https://benjaminhan.net/feed-assets/4b04375635ed1973.svg" alt="flowchart TB
-    A[Source repo&lt;br/&gt;.qmd · CSS · includes · Python scripts]
-    A --&gt;|git push main| B[GitHub Actions workflow]
-
-    subgraph build [&quot; &quot;]
-        direction TB
-        C[Install Quarto · uv · Playwright]
-        D[Pre-render scripts&lt;br/&gt;tag counts · post index&lt;br/&gt;paginators · llms.txt" class="feed-diagram"/>
-</div>
-<p></p></figure><p></p>
-</div>
-</div>
-</div>
-<p>Everything discussed below happens inside the GitHub Actions workflow, or in the HTML and JSON the workflow produces. GitHub Pages and Cloudflare are downstream of that.</p>
-</section>
-<section id="the-build-side" class="level2">
-<h2 class="anchored" data-anchor-id="the-build-side">The build side</h2>
-<p>A full <code>quarto render</code> on this project renders a few hundred <code>.qmd</code> files at roughly 580 ms each on GitHub’s runners. That is about 3 minutes 48 seconds of pandoc work on top of ~10 seconds of pre-render and post-render scripts, plus the runner’s own setup and deploy overhead. Total wall time on the baseline workflow was around 6 minutes 23 seconds for a single-post publish.</p>
-<p>Most pushes touch only a handful of files. A typical push edits one post’s body, or adds a new post and leaves every other post alone. Rendering every file on every push spends almost all of that 3 minutes 48 seconds regenerating output that is byte-identical to what is already on disk.</p>
-<p>Skipping that work requires two capabilities the default workflow does not have:</p>
-<ol type="1">
-<li>Somewhere to keep the previous <code>_site/</code> so it can be reused when unchanged.</li>
-<li>A reliable way to know which source files actually changed since that previous <code>_site/</code> was built.</li>
-</ol>
-<p>The four pieces below provide both, plus the supporting conditions that make them safe.</p>
-<section id="caching-the-previous-_site" class="level3">
-<h3 class="anchored" data-anchor-id="caching-the-previous-_site">Caching the previous <code>_site/</code></h3>
-<p>The workflow uses <code>actions/cache@v4</code> to tar the <code>_site/</code> tree at the end of each successful run, keyed on the commit SHA. On the next run, the cache is restored at the top of the job. A one-line stamp file inside the tarball, <code>_site/.last-built-sha</code>, records which commit this <code>_site/</code> was built from. That stamp is the baseline everything else diffs against.</p>
-<p>The stamp file is excluded from the deploy, so it never ships to the public repository. It is internal bookkeeping.</p>
-</section>
-<section id="classifying-the-diff" class="level3">
-<h3 class="anchored" data-anchor-id="classifying-the-diff">Classifying the diff</h3>
-<p>The script <code>_scripts/render_diff.py</code> reads the baseline SHA from the stamp, runs <code>git diff</code> against it, and picks one of four modes for the render step:</p>
-<ul>
-<li><code>skip-render</code> if every changed path is one that never reaches the deploy (<code>docs/</code>, <code>drafts/</code>, <code>.claude/</code>, <code>CLAUDE.md</code>). The workflow re-deploys the cached <code>_site/</code> as-is.</li>
-<li><code>tags-only</code> if the only changed path is <code>_tags.yml</code>. The workflow regenerates <code>tag-counts.json</code> and <code>post-index.json</code>, copies them into the cached <code>_site/</code>, re-stamps cache-bust query strings on the JSON fetch URLs, and ships. Post HTML on disk does not change. The next subsection describes the source-of-truth move that this mode rests on.</li>
-<li><code>incremental</code> if the changed paths are post bodies, post assets, or frontmatter. The workflow hands the changed <code>posts/&lt;slug&gt;/index.qmd</code> files to <code>quarto render</code> as explicit arguments. Quarto’s listing tracker picks up affected listing pages automatically and regenerates <code>search.json</code>, <code>sitemap.xml</code>, and <code>listings.json</code>. Cached HTML for untouched posts is left alone. Typical wall time: around 20 seconds. Past a configurable batch ceiling (<code>INCREMENTAL_MAX_POSTS</code>, default 10), large multi-post pushes escalate to <code>full</code> because Quarto’s internal parallelism beats per-file invocation at that scale.</li>
-<li><code>full</code> if the change touches templates, includes, scripts, config files, or anything else whose output reaches every page. The workflow drops the cached <code>_site/</code> and runs a full render. Typical wall time: around 4 minutes.</li>
-</ul>
-<p>The default when a path is unrecognized is <code>full</code>, not <code>incremental</code>. The classifier errs on the side of rebuilding too much rather than serving stale output.</p>
-</section>
-<section id="keeping-rendered-html-byte-stable" class="level3">
-<h3 class="anchored" data-anchor-id="keeping-rendered-html-byte-stable">Keeping rendered HTML byte-stable</h3>
-<p>An incremental render only produces correct output if the HTML files it chose not to re-render are still valid. That requires every per-page output to depend only on inputs specific to that page, not on global state that changes when unrelated posts change.</p>
-<p>Two global inputs in <code>&lt;head&gt;</code> broke this condition before the incremental work began:</p>
-<ul>
-<li>A <code>&lt;script&gt;window.__tagCounts = {...}&lt;/script&gt;</code> block inlined the entire tag histogram into every page. Adding a new tag to one post changed the histogram, which changed the <code>&lt;head&gt;</code> of every other post.</li>
-<li>A similar inline block for the post index listed every post. Publishing a new post changed the listing, which changed the <code>&lt;head&gt;</code> of every post again.</li>
-</ul>
-<p>Both were moved to external JSON files (<code>/tag-counts.json</code> and <code>/post-index.json</code>) fetched by a small loader stub at page load time. The stub itself is byte-stable. The corpus-wide data it fetches is not part of the HTML. After this change, a post’s rendered HTML is a pure function of that post’s source. Unrelated posts can come and go without invalidating the cache.</p>
-<p>The pre-render scripts that produce these JSON files (<code>_scripts/tag-counts.py</code>, <code>_scripts/post-index.py</code>) compare their proposed output to what is already on disk before writing. If the content is unchanged, the file is not touched and its mtime does not advance. The same discipline applies to the paginators <code>_scripts/paginate-home.py</code> and <code>_scripts/paginate-archive.py</code>. Closed listing pages, which hold 25 posts on the home side and 50 on the archive side, are byte-identical run-to-run in steady state. Quarto’s <code>freeze: auto</code> skips re-rendering them.</p>
-<p>Without byte-stable pre-render outputs, every pre-render script would churn mtimes on every push, and Quarto’s freeze cache would invalidate on every run. The byte comparison is what keeps the classifier’s <code>incremental</code> decision safe.</p>
-</section>
-<section id="lifting-tags-out-of-frontmatter" class="level3">
-<h3 class="anchored" data-anchor-id="lifting-tags-out-of-frontmatter">Lifting tags out of frontmatter</h3>
-<p>A single top-level file, <code>_tags.yml</code>, holds every post’s tag set, keyed by slug. The pre-render scripts <code>_scripts/tag-counts.py</code> and <code>_scripts/post-index.py</code> read from it instead of from per-post <code>categories:</code> frontmatter. A tag rename or merge becomes a one-file commit.</p>
-<p>The prior scheme stored tags inside each post. Renaming a tag, merging two near-duplicates, or dropping a stale singleton rewrote dozens of <code>.qmd</code> files in one commit. Every one of those files then went through <code>quarto render</code>, every page in the corpus picked up a new mtime, and the test tiers ran end to end. None of the work changed any prose.</p>
-<p>The <code>tags-only</code> mode in the previous classifier list is what this enables on the build side. When the only changed path is <code>_tags.yml</code>, the workflow regenerates the two JSON artifacts, copies them into the cached <code>_site/</code>, re-stamps the cache-bust <code>?v=&lt;sha&gt;</code> markers on the JSON fetch URLs, and ships. Post HTML on disk does not change. Clients pick up the new tags via <code>_includes/hydrate-tags.html</code>, which reads <code>post-index.json</code> on next page load and injects the tag-chip DOM the original frontmatter would have produced.</p>
-<p>A schema gate runs the contract tests for both JSON files before the tags-only deploy. Without it, a regression in either pre-render script would ship malformed JSON and silently break tag hydration on every page.</p>
-<p>Drafts keep <code>categories:</code> in their own frontmatter during authoring. The <code>/publish-draft</code> flow strips that line and writes the slug → tag list into <code>_tags.yml</code> at promotion time.</p>
-</section>
-<section id="gating-the-test-tiers" class="level3">
-<h3 class="anchored" data-anchor-id="gating-the-test-tiers">Gating the test tiers</h3>
-<p>The test suite is split into tiers: unit tests, contract tests, integration tests, smoke tests, and UI tests. The full suite runs in about 23 seconds, with the UI tier (Playwright-driven browser tests) accounting for roughly 14 of those. Content-only pushes do not change the UI, so the UI tier cannot regress as a result of those pushes.</p>
-<p>A path gate inside the same workflow drops the UI and smoke tiers when the diff only touches post content, bringing the test wall down to about 8 seconds. A further gate drops the slow incremental-parity integration test, which runs two full <code>quarto render</code> invocations back-to-back, unless the render pipeline itself (the classifier, the paginators, <code>_quarto.yml</code>, or the workflow file) was modified in the same push. Any change that could actually break the tests still runs them. Changes that cannot, do not.</p>
-</section>
-<section id="pinning-quarto" class="level3">
-<h3 class="anchored" data-anchor-id="pinning-quarto">Pinning Quarto</h3>
-<p>One risk the gated tests introduce is that Quarto’s own output could drift between pushes without the gated tiers running to catch it. The workflow pins Quarto to version <code>1.9.37</code> to make that drift impossible without an explicit commit. A separate step compares the pin to the latest published Quarto release and emits a workflow warning when the pin lags, so bumps are a considered change, not a silent one.</p>
-</section>
-<section id="where-the-time-went" class="level3">
-<h3 class="anchored" data-anchor-id="where-the-time-went">Where the time went</h3>
-<p>A content-only push now takes around 115 seconds end-to-end, down from around 6 minutes 23 seconds, as shown in the cover chart. A docs-only push deploys the cached <code>_site/</code> unchanged in around 88 seconds. A tag cleanup push lands close to the docs-only cost: it shares the no-render fast path, plus a few seconds to regenerate the JSON files and re-stamp cache-bust markers. A push that touches templates, scripts, or config still runs the full render and full test suite, because that is when the full cost is actually needed.</p>
-<p>One post-render cost deserves a separate note. <code>_scripts/feed-render.py</code> uses headless Chromium to rasterize Mermaid diagrams and MathJax expressions into inline Scalable Vector Graphics (SVG) inside the Really Simple Syndication (RSS) feed. A full browser round-trip per item is slow, so the rendered SVGs are cached under <code>.feed-cache/svg/</code> keyed on a schema version. Repeat builds reuse the cached SVG. The schema version is bumped whenever the rendering pipeline changes in a way that affects output, which invalidates the whole cache at once.</p>
-</section>
-</section>
-<section id="the-read-side" class="level2">
-<h2 class="anchored" data-anchor-id="the-read-side">The read side</h2>
-<p>Page-load time on a static site comes from five phases: Domain Name System (DNS) lookup, Transport Layer Security (TLS) handshake, first-byte wait, payload download, and in-browser processing (parse, style, layout, JavaScript execution, subresource fetches). The first three are handled by Cloudflare’s edge cache and are mostly out of the site’s hands. Everything below addresses the last two: how much data a page carries, how much of it can be reused across pages, and what work can be moved from page-load time to build time.</p>
-<section id="bounding-the-page-payload" class="level3">
-<h3 class="anchored" data-anchor-id="bounding-the-page-payload">Bounding the page payload</h3>
-<p>A listing that grows with the corpus is the easiest way for a site to slow down over years. A 400-post home page is a 400-post payload on every visit. The goal is for each page’s payload to be O(1) in the size of the corpus, not O(N).</p>
-<p>Straight fixed-size pages would do that, but at a cost to the reader’s first impression. Whenever a single new post pushed a page past capacity, a fresh page would open with that one post, leaving the landing briefly sparse until the next few publishes caught up. The compromise is an overflow band. Each home listing page holds 25 posts in steady state, with the newest allowed up to 12 overflow for 37 at most. The archive uses 50 and 25 for 75 at most. A new publish grows the newest page one post at a time until it hits the overflow ceiling. At that point the oldest 25 (or 50) close off into a page one step older, and the newest page re-opens at a comfortable size rather than at one.</p>
-<p>A side effect of this design is URL stability. Once a page closes, the set of posts it holds does not shift again, so a bookmark to <code>/archive/page/5/</code> still points at the same 50 posts a year later. Only the newest page and the landing churn on every publish.</p>
-<p>Older content is reached through <a href="https://www.rfc-editor.org/rfc/rfc5005">RFC 5005</a> paginated archives. Each page’s payload is bounded by the page size, not by the size of the corpus.</p>
-</section>
-<section id="pre-computing-the-client-side-search-index" class="level3">
-<h3 class="anchored" data-anchor-id="pre-computing-the-client-side-search-index">Pre-computing the client-side search index</h3>
-<p>Quarto builds a JSON file, <code>search.json</code>, at deploy time that indexes every post’s title, body, and code blocks. The in-page search overlay loads it once per session, indexes in memory, and answers every keystroke locally. There is no per-query network round-trip. The search also keeps working if the reader loses connectivity after the initial load.</p>
-<p>Moving the index build to deploy time means the reader pays the indexing cost once, not per query. It also means there is no search server for the site to operate.</p>
-</section>
-<section id="sharing-cross-corpus-data-across-pages" class="level3">
-<h3 class="anchored" data-anchor-id="sharing-cross-corpus-data-across-pages">Sharing cross-corpus data across pages</h3>
-<p><code>/tag-counts.json</code> and <code>/post-index.json</code> are small files fetched once per session and reused on every subsequent page. The post index is about 74 KB: a flat array of <code>{slug, date, title, categories}</code> records that powers the home-page timeline, the archive tag cloud, pagination math, and previous/next navigation on every post.</p>
-<p>Keeping this data in external JSON rather than inlining it into every page’s <code>&lt;head&gt;</code> means the browser fetches it once, caches it under a stable URL with a long <code>Cache-Control</code> max-age, and reads from cache on the next page. The inline version made every page’s <code>&lt;head&gt;</code> grow linearly with the corpus. The external version makes it fixed size.</p>
-<p>The same choice enabled incremental render on the build side. A single change in how cross-corpus data is delivered fixed two problems at once.</p>
-</section>
-<section id="fingerprinting-the-stylesheet" class="level3">
-<h3 class="anchored" data-anchor-id="fingerprinting-the-stylesheet">Fingerprinting the stylesheet</h3>
-<p><code>_scripts/cache-bust-css.py</code> rewrites <code>styles.css</code> to <code>styles.&lt;content-hash&gt;.css</code> in the deployed HTML. The stylesheet ships with a one-year <code>Cache-Control</code> max-age, which means a returning reader downloads it at most once per release. When the stylesheet actually changes, the hash changes, the URL changes, and the browser fetches a new copy. Atomic invalidation is a property of content-addressed URLs. There is no separate cache-bust step to remember.</p>
-</section>
-<section id="loading-fonts-only-when-they-are-used" class="level3">
-<h3 class="anchored" data-anchor-id="loading-fonts-only-when-they-are-used">Loading fonts only when they are used</h3>
-<p>The default reading palette is set by unconditional rules in <code>styles.css</code> over the system font stack. A reader who never presses <code>f</code> to cycle palettes fetches zero font bytes from the site. Each of the three alternative palettes (<code>reader</code>, <code>almanac</code>, <code>manuscript</code>) has its <code>@font-face</code> rules scoped to <code>html[data-font-palette="&lt;slug&gt;"]</code>. Browsers only fetch the woff2 files when the attribute matches, which it does only after the reader activates that palette. <code>font-display: swap</code> keeps text visible while the font is loading.</p>
-<p>The general pattern is that optional features should be zero-cost until activated. Most readers will never activate them, and should not pay for them.</p>
-</section>
-<section id="sizing-images-to-the-readers-screen" class="level3">
-<h3 class="anchored" data-anchor-id="sizing-images-to-the-readers-screen">Sizing images to the reader’s screen</h3>
-<p>Source images arrive in a post directory at whatever resolution the capture device produced, often several thousand pixels wide. Post bodies render into a narrower column. Shipping the originals would waste bytes on the wire and decode work in the browser, for pixels the reader cannot see.</p>
-<p><code>_scripts/resize_images.py</code> runs as a pre-render sweep. For every referenced image above a size threshold, it renames the original to <code>&lt;stem&gt;-full.&lt;ext&gt;</code> and writes a display-size sibling at the original path. JPGs stay JPG, capped at 1600 pixels wide and re-encoded at quality 82. PNGs re-encode as WebP at quality 85. The body reference in <code>index.qmd</code> is rewritten to point at the display copy and tagged with <code>data-lightbox-src="&lt;stem&gt;-full.&lt;ext&gt;"</code> so the lightbox has a path to the hi-res. If the re-encoded display copy does not come out smaller than the original, the split is reverted. Some source files are already at the encoder’s floor (the source was encoded tightly enough that re-encoding cannot win bytes back).</p>
-<p><code>_scripts/check-image-sizes.py</code> fails the CI build if any referenced image above the threshold is missing its <code>-full</code> sibling. The contract that every heavy image has a display copy is enforced mechanically rather than by discipline.</p>
-<p>On the read side, the lightbox gates the hi-res fetch on viewport width. Screens narrower than 1024 Cascading Style Sheets (CSS) pixels receive only the 1600-pixel display copy, and the <code>-full</code> is never fetched. At those widths the display copy is already at or near the device’s physical resolution, so the hi-res upgrade adds no visible detail. On wider screens the <code>-full</code> (itself capped at 3000 pixels wide) is fetched when the lightbox first shows that image, decoded off the main thread via <code>img.decode()</code>, and held in a per-session cache so returning to the same image does not trigger another decode.</p>
-</section>
-<section id="not-carrying-weight-that-is-not-needed" class="level3">
-<h3 class="anchored" data-anchor-id="not-carrying-weight-that-is-not-needed">Not carrying weight that is not needed</h3>
-<p>Quarto’s default behavior is to include Mermaid, MathJax, and syntax-highlighting bundles in every page, regardless of whether the page actually contains a diagram, an equation, or a code block. <code>_scripts/strip-unused-assets.py</code> scans each rendered page for references to each asset family and removes the unused script tags after render. A short plain-text post ships with none of the three.</p>
-<p><code>_scripts/strip-listing-titles.py</code> removes redundant H1 elements that Quarto emits on listing pages, for the same reason: less markup for the browser to parse, style, and lay out.</p>
-</section>
-<section id="pre-rendering-math-and-diagrams-for-the-feed" class="level3">
-<h3 class="anchored" data-anchor-id="pre-rendering-math-and-diagrams-for-the-feed">Pre-rendering math and diagrams for the feed</h3>
-<p>Most RSS readers do not run JavaScript. A feed item containing <code>$\hat{y} = f(x)$</code> or a Mermaid block would arrive as unrendered source text, because MathJax and Mermaid both run client-side.</p>
-<p><code>_scripts/feed-render.py</code> replaces every math expression and every Mermaid block in the RSS feed with inline SVG at deploy time. The subscriber’s client does no extra work, and the feed is self-contained. The same script is the one whose SVG cache was described earlier. It saves CI time on repeat builds and reader time on every subscribed fetch, from a single pass at deploy time.</p>
-</section>
-</section>
-<section id="where-this-leaves-things" class="level2">
-<h2 class="anchored" data-anchor-id="where-this-leaves-things">Where this leaves things</h2>
-<p>The build and read sides of this post use the same technique in different contexts: compute something once at the moment its inputs change, name the result under a stable address, and let every downstream reader of that result pick it up from cache. On the build side the cached result is <code>_site/</code>, or a pre-render JSON, or a frozen listing page. On the read side it is <code>search.json</code>, or a per-session JSON fetch, or a fingerprinted stylesheet, or a pre-rendered feed SVG.</p>
-<p>What remains unsettled is where this breaks at scale. The post index is 74 KB today and will be several hundred kilobytes by the time the corpus crosses a thousand posts. <code>search.json</code> has the same shape. Neither is a problem today. Both are shapes to keep an eye on. The critical assumption behind every fix above is that the corpus changes slowly compared to the cache lifetimes. That assumption is a choice about how often to publish, not a property of the infrastructure.</p>
-<p>Related reading: <a href="../../posts/20260420-rube-goldberg-publishing/">A Rube Goldberg Pipeline for Sharing Links</a> walks through how a captured link becomes a draft and then a post. <a href="../../posts/20260508-site-user-manual/">A User Manual for <em>synesis</em></a> tours the reader-facing features. <a href="../../posts/20260508-making-the-blog-agent-friendly/">Making <em>synesis</em> Agent-Friendly</a> covers the machine-readable surfaces the site exposes.</p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260511-site-efficiency/</guid>
-  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260511-site-efficiency/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Apple Ad for Mac Students: The Journey to Great Ideas in College</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260511-apple-ad-mac-students/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-apple-ad-mac-students/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-apple-ad-mac-students/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Apple — Mac Students: The journey to great ideas in college. <a href="https://youtu.be/77uoRieSk8s">Watch on YouTube</a></figcaption>
-</figure>
-</div>
-<p>More like an ad for trash can — but I love it!</p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116557209618357639">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260511-apple-ad-mac-students/</guid>
-  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260511-apple-ad-mac-students/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
