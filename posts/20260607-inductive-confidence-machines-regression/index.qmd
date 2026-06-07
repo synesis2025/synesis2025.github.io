@@ -1,0 +1,75 @@
+---
+title: "Inductive Confidence Machines for Regression"
+description: "Train the underlying regressor once on a proper training set, hold out a calibration set, and read prediction intervals off the calibration residuals — the inductive (split) construction that gave conformal prediction the same validity guarantee at a fraction of the transductive cost."
+author: synesis
+date: "2026-06-07"
+source-url: https://www.semanticscholar.org/paper/Inductive-Confidence-Machines-for-Regression-Papadopoulos-Proedrou/7f96ca1a46b8e1fabcad6d459e7820dd348675f7
+source-platform: web
+source-mine: false
+image: cover.jpg
+---
+
+![Predictive-interval widths under the normalized measure (ANOVA splines), shown as medians, quartiles, and 10th/90th percentiles at 90%, 95%, and 99% confidence. The widths spread out across test objects because the interval adapts to each object's predicted difficulty. Figure 2 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *Inductive Confidence Machines for Regression* [[1]](#ref-1) (ECML 2002), [Harris Papadopoulos](https://dblp.org/pid/25/4041.html), [Kostas Proedrou](https://dblp.org/pid/38/1954.html), [Vladimir Vovk](https://vovk.net/), and [Alexander Gammerman](https://dblp.org/pid/g/AlexanderGammerman.html) (Royal Holloway, University of London) replace the per-test-point retraining of the original confidence-machine construction [[2]](#ref-2) with a single training run plus a held-out calibration set. The result is regression prediction intervals that keep the same validity guarantee at a fraction of the cost. This is the paper that introduced what the field now calls *inductive (or split) conformal prediction*.
+
+The paper contrasts two constructions and replaces the first with the second:
+
+- **Transductive Confidence Machine (TCM)**: the original construction (Gammerman, Vapnik, and Vovk [[2]](#ref-2)). To test a candidate label for a new object, refit the underlying algorithm with that label added to the training set and measure how unusual the object looks against the rest. It is valid, but it retrains once per candidate label, and every test example restarts the computation from scratch. For regression the label is a real number, so there is no finite set of candidates to sweep cleanly.
+- **Inductive Confidence Machine (ICM)**: train the underlying algorithm once on a *proper training set*, set the remaining labeled examples aside as a *calibration set*, and build the predictive region for a new object directly from the calibration residuals. One training run, no per-test refitting, and the same coverage guarantee.
+
+> The existing methods of predicting with confidence give good accuracy and confidence values, but quite often are *computationally inefficient*. Some partial solutions have been suggested in the past. Both the original method and these solutions were based on transductive inference. In this paper we make a radical step of *replacing transductive inference with inductive inference* and define what we call the *Inductive Confidence Machine (ICM)*; our main concern in this paper is the use of ICM in regression problems. The algorithm proposed in this paper is based on the Ridge Regression procedure (which is usually used for outputting bare predictions) and is *much faster than the existing transductive techniques*. The inductive approach described in this paper may be *the only option available when dealing with large data sets*.
+
+## Methods
+
+The underlying algorithm is [Ridge Regression](https://en.wikipedia.org/wiki/Ridge_regression) (RR), the linear least-squares fit with an $L_2$ penalty, trained once on the proper training set; call the fitted predictor the *rule* (the paper's *decision rule*). Each calibration example then gets a *strangeness measure* (the paper's term for what is now called a *nonconformity score*), a number measuring how poorly the trained rule predicts it. The simplest choice is the absolute residual $\alpha_i = |y_i - \hat{y}_i|$, where $\hat{y}_i$ is the rule's prediction.
+
+To form a predictive region at confidence level $1-\delta$ for a new object ($\delta$ is the *significance level*, the allowed probability of the region missing the true label; e.g. $\delta = 0.05$ for a 95% region), ICM proceeds in three steps:
+
+- **Score each candidate label.** Rank the new object's strangeness against the calibration scores through a p-value, $p(y) = \#\{i : \alpha_i \ge \alpha_{\text{new}}\} / (k+1)$, counting over the $k$ calibration scores and the new object's score. The predictive region is every label whose p-value exceeds $\delta$.
+- **Read the region off in closed form.** With the absolute-residual score there is no need to test labels one by one. Clearing the denominator in the keep-rule $p(y) > \delta$ turns it into a count threshold, $\#\{i : \alpha_i \ge \alpha_{\text{new}}\} > \delta\cdot(k+1)$: since $\delta$ is a fraction of the $k+1$ scores, $\delta\cdot(k+1)$ is a *rank*. So sort the $k$ calibration residuals in descending order and take the $s$-th largest, $s = \lfloor \delta\cdot(k+1) \rfloor$ (the floor snaps $\delta$ down to the nearest level the $k+1$ scores can represent, a multiple of $\tfrac{1}{k+1}$) — a candidate survives unless it lands among the $s$ strangest scores. The region is the point prediction plus or minus that residual, $(\hat{y} - \alpha_{(s)},\ \hat{y} + \alpha_{(s)})$: the same keep-if-$p(y)>\delta$ filter, with the continuum of candidate labels collapsed to a single interval.
+- **Interpret the cutoff.** $\alpha_{(s)}$ is essentially the empirical $(1-\delta)$ quantile of the calibration residuals — with the paper's $k = 99$ calibration examples, a 95% interval ($\delta = 0.05$) uses the 5th-largest residual, and a 99% interval uses the largest.
+
+Because the calibration scores and the new object's score are [exchangeable](https://en.wikipedia.org/wiki/Exchangeable_random_variables) under the paper's i.i.d. assumption, the true label falls inside the region with probability at least $1-\delta$, for any underlying regressor and any sample size, with no distributional assumptions [[3]](#ref-3). It is the same exchangeability argument the [conformal-prediction primer](/posts/20260505-conformal-prediction-primer/) makes for classification, applied to a continuous label. The overhead over plain RR is light: the rule is fit once, scored on the calibration set once, and each test point needs only one application of the rule.
+
+The constant measure — the absolute residual above — hands every test object the *same* interval half-width, which is uninformative. The paper's second score, the normalized measure, divides the residual by an estimate of how hard the object is to predict, $\alpha_i = |y_i - \hat{y}_i| / \sigma_i$, with $\sigma_i = e^{\mu_i}$. The difficulty estimate $\mu_i$ comes from a *second* ridge regression. Label the rule RR1 and this difficulty model RR2; RR2 trains after RR1:
+
+- **Fit RR1, then record its errors.** Train RR1 on the proper training set, feed each proper-training example back through it, and record the log absolute error $\ln|y_i - f(x_i)|$.
+- **Fit RR2 on those errors.** Train RR2 on the pairs (features, log error) to predict how far off RR1 will be; its output $\mu_i$ gives $\sigma_i = e^{\mu_i}$ (the $e^{(\cdot)}$ keeps $\sigma_i$ positive).
+- **Keep both, don't swap.** At prediction time RR1 centers the interval and supplies the numerator $|y_i - \hat{y}_i|$; RR2 supplies the per-object difficulty $\sigma_i$ in the denominator. Both are one-time fits — still no per-test retraining.
+
+The interval width then scales with predicted difficulty: narrower where RR is accurate, wider where it is not. This is the regression analog of set size in classification: interval width is how the method reports uncertainty.
+
+The contrast is visible in the distribution of interval widths. Within one data split every test object gets the *identical* interval, with zero object-to-object spread. Note that in Figure 1, two different concepts of "width" are illustrated, and they should not be conflated. A box's *position* on the *Region width* scale is the prediction-region width itself, which rises with confidence: smaller $\delta$ → higher confidence level → a wider interval (≈9.5, ≈12, ≈15.5 at the 90/95/99% confidence levels, which the paper loosely terms *accuracy level*). A box's *height* is second-order: that's the split-to-split spread of that one width across the 100 random partitions (median, quartiles, 10th/90th percentiles), since each split draws a different calibration set and so a different $\alpha_{(s)}$. The boxes stay short because that second-order spread is small; they grow a little taller at higher confidence because $\alpha_{(s)}$ is read off a more extreme, more variable tail of the residuals — at 99% it is the single largest of the 99. Figure 2 (the cover, the normalized measure with RR2's $\sigma$ in the denominator) makes the contrast clear: the box *positions* climb with confidence just as in Figure 1, and the medians are nearly identical — the first-order trend is unchanged — but the boxes are now *much taller*. That added height is the adaptivity: the width now varies across test objects within a single split, wide where RR is expected to err and narrow where it is not, so the box height reflects genuine object-to-object spread rather than the tiny split-to-split wobble of Figure 1.
+
+![Figure 1 from the paper [[1]](#ref-1).](figure1.jpg){fig-align="center"}
+
+## Results
+
+The paper tests ICM with Ridge Regression on the Boston Housing data set (506 examples, house values from 5K to 50K, 13 attributes), averaged over 100 random splits into a 382-example proper training set, a 99-example calibration set, and a 25-example test set. Two larger sets, Bank Rejection and CPU Activity (8,192 examples each), check that it scales. Three kernels are tried with RR: polynomial, RBF, and ANOVA splines.
+
+The findings:
+
+- **Empirical coverage matches the guarantee**: the fraction of intervals containing the true label is at or above the nominal 90%, 95%, and 99% levels in every setting but one, where ANOVA splines reach 98.8% at the 99% level (Table 1). That confirms the validity proof on real data.
+- **The speedup barely costs any interval tightness**: ICM's win over TCM is computational — one fit instead of recomputing per query — so the real question is how much sharpness it gives up for that. On width the answer is almost none: ICM beats the first TCM variant outright on mean width and trails the second on median width only at 90–95%, edging ahead at 99% (Tables 5 and 6), despite training on fewer examples and ranking against a shorter list of strangeness scores.
+- **At matched confidence levels, the normalized measure's typical interval is about as tight — slightly tighter at high confidence**: comparing *median* widths between the two measures at the same level, the normalized one is about even at 90% and a touch smaller at 95% and 99% (for ANOVA splines, 11.7 and 15.0 versus 12.2 and 15.4). This is separate from the taller boxes of Figure 2: those show the across-object *spread*, this the median interval. The normalized measure keeps the typical interval about as tight while redistributing width toward the hard objects. ANOVA splines gave the best results.
+- **The intervals are informative, not just valid**: the best configuration covers the true Boston Housing price within a band spanning only 33% of the full price range at 99% confidence.
+
+![Table 1 from the paper [[1]](#ref-1).](table1.jpg){fig-align="center"}
+
+![Tables 5 and 6 from the paper [[1]](#ref-1).](table5.jpg){fig-align="center"}
+
+## My Notes
+
+- **This is where conformal prediction became practical**: the [primer](/posts/20260505-conformal-prediction-primer/) credits its later spread to being repackaged as a few lines of code against a frozen model — and that frozen-model recipe *is* the inductive construction introduced here. The "confidence machine" name did not survive, but the method became standard, now usually called split or inductive conformal prediction (ICP).
+- **The trade that made the method last**: ICM gives up a little. The regressor trains on fewer examples, and the attainable confidence levels are coarser (the achievable significance levels are only multiples of $1/(k+1)$, set by the calibration size $k$). In exchange it does one fit instead of a fresh computation per query. The paper shows the statistical loss is minor. The deeper reason the inductive form won is that the transductive form simply does not run at modern dataset sizes, and the compute argument has only gotten stronger in the twenty years since.
+- **The normalized measure is a learned error model**: its $\sigma_i$ comes from RR2, trained to predict RR1's log error — the interval width becomes a small model of where the predictor fails, bolted onto the predictor. Because validity rests on the calibration set's exchangeability, $\sigma$ can be *any* function without touching coverage; it changes only sharpness, how width is shared out across inputs. That is what licensed everything that came later in conformal regression (locally adaptive residuals, per-group calibration, quantile-based variants): a better answer to the question this paper raised — not whether the interval is valid, which it always is, but whether its width can match the real difficulty of each input.
+- **The difficulty estimate is fit in-sample, so it skews optimistic**: RR2 trains on RR1's residuals over the very examples RR1 was fit on, where errors run smaller than on fresh inputs. So $\sigma$ understates difficulty and the resulting widths track training error rather than test error — which, by the point above, dents sharpness but not coverage. A cleaner design would estimate the errors out-of-fold.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>Papadopoulos, H., Proedrou, K., Vovk, V., and Gammerman, A. "Inductive Confidence Machines for Regression." *Proceedings of the 13th European Conference on Machine Learning (ECML 2002)*, Lecture Notes in Computer Science vol. 2430, pp. 345–356. Springer, 2002. <https://doi.org/10.1007/3-540-36755-1_29>
+2. <a id="ref-2"></a>Gammerman, A., Vapnik, V., and Vovk, V. "Learning by Transduction." *Proceedings of the 14th Conference on Uncertainty in Artificial Intelligence (UAI 1998)*, pp. 148–156, 1998.
+3. <a id="ref-3"></a>[Vovk, V.](https://vovk.net/), Gammerman, A., and [Shafer, G.](http://www.glennshafer.com/) *Algorithmic Learning in a Random World*. Springer, 2005. <https://link.springer.com/book/10.1007/b106715>

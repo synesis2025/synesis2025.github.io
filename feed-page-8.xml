@@ -23,6 +23,44 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sun, 07 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>How LLMs Actually Work: A Visual Deep Dive</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Screenshot from <a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a> by Y. Narwal is an interactive, scroll-driven walkthrough of the LLM training pipeline, from Common Crawl through pre-training, post-training, RAG, and inference, with live diagrams and inline annotations at every stage. It is based on Andrej Karpathy’s technical deep dive.</p>
+<p>The nine sections mirror the canonical build pipeline:</p>
+<ul>
+<li><strong>Downloading the Internet</strong> — Common Crawl plus the filters that turn web sludge into a training corpus.</li>
+<li><strong>Tokenization</strong> — subword units, with a live BPE demo.</li>
+<li><strong>Training the Neural Network</strong> — the Transformer architecture and what each step updates.</li>
+<li><strong>Inference &amp; Token Sampling</strong> — temperature and top-p, with a sampling demo.</li>
+<li><strong>The Internet Simulator</strong> — what the base model is, before any post-training.</li>
+<li><strong>Building the Assistant</strong> — SFT on conversations, the turn token format, RLHF on top.</li>
+<li><strong>Cognitive Quirks of Language Models</strong> — counting letters, arithmetic, hallucination — and where in the pipeline they originate.</li>
+<li><strong>Retrieval-Augmented Generation</strong> — how retrieved context shifts the prediction distribution.</li>
+<li><strong>From Text to Assistant</strong> — closing recap.</li>
+</ul>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260424-llm-illustration/</guid>
+  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>How to Be Anti-Social</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1034,57 +1072,6 @@
   <guid>https://benjaminhan.net/posts/20260406-iphone-on-artemis/</guid>
   <pubDate>Mon, 06 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260406-iphone-on-artemis/earth-from-orion.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Filesystems vs. RAG</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260404-filesystem-vs-rag/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/chromafs-architecture.png" class="img-fluid figure-img" data-lightbox-src="chromafs-architecture-full.png"></p>
-<figcaption>ChromaFs architecture diagram from the Mintlify post. (<a href="https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Can we replace RAG with filesystems? This article shares a neat engineering write-up on doing exactly that: replacing a standard docs RAG flow with a virtual filesystem for an assistant [1].</p>
-<p>Instead of only retrieving top-K chunks, they let the model interact with documentation through familiar file operations like&nbsp;ls,&nbsp;cat,&nbsp;find, and&nbsp;grep. Under the hood, they built a virtual layer over their existing docs index, avoiding the latency and cost of spinning up full sandboxes while giving the assistant a more natural way to explore the corpus.</p>
-<p>Optimization details aside, the article hints at two bigger ideas.</p>
-<p>First, the filesystem vs.&nbsp;RAG distinction is really about structured navigation vs.&nbsp;relevance retrieval. A filesystem presents the corpus as a pre-built navigable structure for exploration. Plain RAG presents it as a retrieval space.</p>
-<p>Second, system interfaces work better when they align with the interaction patterns the base LLM already knows. For coding-oriented models especially, files, paths, directories, and shell-style operations are much closer to the environments they were trained on than a one-shot retrieve-and-insert workflow. The article explicitly framed the goal as letting the assistant explore docs the way a developer explores a codebase.</p>
-<p>A few contrasts between the filesystem and RAG approaches:</p>
-<ol type="1">
-<li><p>Filesystems preserve and expose author-created structure that chunk RAG often weakens.</p></li>
-<li><p>Filesystem agents are natively iterative and exploratory; plain RAG is often, but not always, more one-shot.</p></li>
-<li><p>Filesystems provide a richer tool surface than retrieval alone.</p></li>
-<li><p>Filesystems are better for exact search, full-page reading, and multi-page investigation.</p></li>
-<li><p>Filesystems support hypothesis-driven exploration across documents: inspect one page, discover a term, search for it elsewhere, and refine understanding.</p></li>
-<li><p>Filesystems preserve document integrity better by making whole pages or files accessible, rather than only isolated retrieved chunks.</p></li>
-<li><p>Filesystem-based interfaces can align access control more naturally with paths, files, and directories, so the assistant’s visible world is scoped up front.</p></li>
-</ol>
-<p>But RAG still shines when the main problem is semantic recall: messy corpora, weak or ambiguous structure, heterogeneous sources or modalities, or cases where a few relevant passages are enough and full exploration would be overkill.</p>
-<p>The interesting part is that these approaches are not incompatible. RAG can be one tool inside a filesystem-style agent: useful for candidate recall, while the filesystem layer handles navigation, inspection, and verification. The implementation described effectively does this by using existing indexing infrastructure to narrow search before exact filtering.</p>
-<p>Takeaway: RAG retrieves likely evidence. A filesystem lets the model investigate the source material. We can combine both.</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Mintlify. “How we built a virtual filesystem for our Assistant.” <em>Mintlify Blog</em>, March 24, 2026. <a href="https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant" class="uri">https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_how-we-built-a-virtual-filesystem-for-our-activity-7446351506905415680-l9ES">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260404-filesystem-vs-rag/</guid>
-  <pubDate>Sat, 04 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/chromafs-architecture.png" medium="image" type="image/png" height="86" width="144"/>
 </item>
 
 </channel>
