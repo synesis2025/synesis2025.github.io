@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -887,8 +887,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>Existing datasets for automated fact-checking have substantial limitations, such as relying on artificial claims, lacking annotations for evidence and intermediate reasoning, or including evidence published after the claim. In this paper we introduce <em>AVeriTeC, a new dataset of 4,568 real-world claims covering fact-checks by 50 different organizations</em>. Each claim is annotated with <em>question-answer pairs supported by evidence available online</em>, as well as <em>textual justifications explaining how the evidence combines to produce a verdict</em>. Through a multi-round annotation process, we avoid common pitfalls including <em>context dependence, evidence insufficiency, and temporal leakage</em>, and reach a substantial inter-annotator agreement of <span class="math inline">\(\kappa=0.619\)</span> on verdicts. We develop <em>a baseline as well as an evaluation scheme for verifying claims through several question-answering steps against the open web</em>.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>The cover figure (Figure 2 from the paper) shows the shape of one annotated example. The claim — “The USA has succeeded in reducing greenhouse emissions in previous years” (Morgan Griffith, 2020-11-02) — is decomposed into three questions: total emissions in 2007, when emissions dropped, whether they rose again after 2017. Each answer cites a specific number with a sourced URL. The verdict is <em>Conflicting Evidence/Cherrypicking</em> because the supporting evidence is real (emissions did fall) but incomplete (they rose again), and the textual justification names that gap directly. This is what every row in AVeriTeC looks like: a claim, a small set of QA pairs that together carry the evidence, a verdict, and a justification that ties the QA pairs to the verdict — closer to a fact-checker’s workflow than to FEVER-style sentence retrieval.</p>
 <p>Each claim is labelled by a five-phase pipeline: claim extraction and normalization, question-answer generation, evidence-sufficiency check, a second QA round when verdicts disagree, and a final sufficiency check. Pages used as evidence are cached in the Internet Archive to keep the test set reproducible, and the released splits are temporally ordered (train ends Aug 2020, dev ends Oct 2020, test ends Dec 2021) so a model trained on FEVER-style <a href="#ref-2">[2]</a> closed-corpus retrieval can be benchmarked against a real open-web setting without rebuilding infrastructure. Each phase exists to address a specific failure mode the authors call out in earlier datasets:</p>
 <ul>

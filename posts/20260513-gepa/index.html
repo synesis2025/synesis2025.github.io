@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -887,8 +887,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>Large language models (LLMs) are increasingly adapted to downstream tasks via reinforcement learning (RL) methods like Group Relative Policy Optimization (GRPO), which often require thousands of rollouts to learn new tasks. We argue that the interpretable nature of language often provides a much richer learning medium for LLMs, compared to policy gradients derived from sparse, scalar rewards. To test this, we introduce <strong>GEPA (Genetic-Pareto)</strong>, a prompt optimizer that thoroughly incorporates <strong>natural language reflection</strong> to learn high-level rules from trial and error. Given any AI system containing one or more LLM prompts, GEPA samples trajectories (e.g., reasoning, tool calls, and tool outputs) and reflects on them in natural language to diagnose problems, propose and test prompt updates, and combine complementary lessons from the <strong>Pareto frontier of its own attempts</strong>. As a result of GEPA’s design, it can often turn even just a few rollouts into a large quality gain. Across six tasks, <strong>GEPA outperforms GRPO by 6% on average and by up to 20%, while using up to 35x fewer rollouts</strong>. GEPA also <strong>outperforms the leading prompt optimizer, MIPROv2, by over 10%</strong> (e.g., <strong>+12% accuracy on AIME-2025</strong>), and demonstrates promising results as an inference-time search strategy for code optimization. We release our code at <a href="https://github.com/gepa-ai/gepa" class="uri">https://github.com/gepa-ai/gepa</a>.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>A <em>compound AI system</em>, in the paper’s (and <a href="https://dspy.ai/">DSPy</a>’s) vocabulary, is a pipeline of one or more LLM-invoked <em>modules</em> — each a distinct prompted call (e.g., a first-hop query generator, a second-hop query generator, an answer generator in a multi-hop QA pipeline) — potentially interleaved with tool calls. Each module has its own prompt, which GEPA can optimize independently.</p>
 <p>GEPA treats each prompt in a compound AI system as a <em>gene</em> and maintains a pool of candidate programs. At each iteration (Figure 3), GEPA proposes a new candidate using one of two <em>genetic operators</em> — a single-parent <em>mutation</em> or a two-parent <em>crossover</em> — and evaluates it on a minibatch. If the minibatch score improves over the parent, the candidate is promoted to evaluation on the full training set and added to the pool. The default operator is reflective mutation; crossover (Merge) fires opportunistically when the pool contains two candidates that share a common ancestor, have optimized disjoint sets of prompts, are both Pareto-optimal, and both beat the ancestor in aggregate — with a hard cap of five merges per run.</p>
 <p>The two operators are:</p>

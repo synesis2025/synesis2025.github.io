@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -887,8 +887,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>Deploying language models as autonomous agents requires more than per-task accuracy: when an agent faces a queue of problems under a finite token budget, it must decide which to attempt, in what order, and how much compute to commit to each, all before any execution feedback is available. This is the prospective form of metacognitive control studied for decades in human cognition, yet whether language models possess it remains untested. We introduce <em>TRIAGE</em>, an evaluation framework in which a model receives a task pool and a token budget calibrated to its own baseline cost, and <em>commits to a single ordered plan that jointly encodes selection, sequencing, and per-problem allocation</em>. Plans are scored against an oracle with full knowledge of the model’s solvability and cost on each problem, yielding a triage efficiency ratio on a common scale. We evaluate frontier and open-source models, with and without reasoning enabled, across competition mathematics, graduate-level science, code generation, and expert multidisciplinary knowledge, and find that <em>current language models exhibit substantial gaps in prospective metacognitive control</em>, revealing a previously unmeasured capability dimension with direct implications for resource-efficient agent deployment.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>TRIAGE operationalizes the <a href="https://en.wikipedia.org/wiki/Metamemory#Nelson_and_Narens'_metamemory_framework">Nelson &amp; Narens (1990)</a> distinction between metacognitive monitoring (judging whether a problem is solvable) and metacognitive control (acting on those judgments to allocate effort), focusing on the prospective form: every decision is committed before any task is attempted. The harness has two stages.</p>
 <p>Intuitively, the setup is a competition-style budget allocation. The model sees a list of problems with point values and a shared token budget; without trying any of them, it must choose which to attempt, in what order, and how many tokens to spend on each. The plan is then executed and scored against an oracle that knew in advance which problems were solvable for <em>this</em> model and how expensive each would be. A model that’s good at planning skips the items it can’t solve and pours its budget into the ones it can; a model that’s bad at planning chases unsolvable problems and runs out of tokens.</p>
 <p>Scoring uses a triage efficiency ratio. Let <span class="math inline">\(\pi\)</span> be the model’s plan and <span class="math inline">\(V(\pi)\)</span> the achieved value — the sum of point values <span class="math inline">\(v_i\)</span> over problems <span class="math inline">\(\pi\)</span> actually solved within budget. The main protocol fixes <span class="math inline">\(v_i = 1\)</span> for every problem — uniform by design, so the planner cannot read difficulty off the point values and must infer it from problem text alone. The ratio normalizes <span class="math inline">\(V(\pi)\)</span> against two references:</p>

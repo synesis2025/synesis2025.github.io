@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -887,8 +887,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>Guaranteeing the correctness and factuality of language model (LM) outputs is a major open problem. In this work, we propose <em>conformal factuality</em>, a framework that can ensure high probability correctness guarantees for LMs by <em>connecting language modeling and conformal prediction</em>. We observe that the correctness of an LM output is equivalent to an uncertainty quantification problem, where <em>the uncertainty sets are defined as the entailment set of an LM’s output</em>. Using this connection, we show that conformal prediction in language models corresponds to <em>a back-off algorithm that provides high probability correctness guarantees by progressively making LM outputs less specific</em> (and expanding the associated uncertainty sets). This approach applies to any black-box LM and requires very few human-annotated samples. Evaluations of our approach on closed book QA (FActScore, NaturalQuestions) and reasoning tasks (MATH) show that our approach can provide <em>80-90% correctness guarantees while retaining the majority of the LM’s original output</em>.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>The construction decomposes an LM answer into atomic sub-claims, scores each one, and <em>backs off</em> by dropping the lowest-scoring claims until the retained set is expected to be factual with probability <span class="math inline">\(1-\alpha\)</span>. The threshold for dropping is calibrated on a small held-out set with human factuality labels, following the standard conformal-prediction recipe.</p>
 <p>The connection to conformal prediction runs through a second set, distinct from the sub-claims. For a prompt <span class="math inline">\(x\)</span>, let <span class="math inline">\(O\)</span> be the (possibly backed-off) LM output. The “uncertainty set” <span class="math inline">\(C(x)\)</span> is every more-specific statement <span class="math inline">\(S\)</span> such that <span class="math inline">\(S\)</span> entails <span class="math inline">\(O\)</span> — equivalently, every possible ground-truth answer that would make <span class="math inline">\(O\)</span> true. The sub-claim set is finite, explicit, and the object the algorithm directly manipulates; dropping sub-claims is how it acts on <span class="math inline">\(O\)</span>. The uncertainty set <span class="math inline">\(C(x)\)</span> is implicit, defined by the meaning of <span class="math inline">\(O\)</span>, and is what the guarantee is stated over. Dropping a sub-claim weakens <span class="math inline">\(O\)</span>, so more statements clear the entailment bar and <span class="math inline">\(C(x)\)</span> expands. A factuality guarantee is then a coverage guarantee on <span class="math inline">\(C(x)\)</span>: with probability <span class="math inline">\(\geq 1-\alpha\)</span>, the true answer lies inside <span class="math inline">\(C(x)\)</span>, which by construction makes <span class="math inline">\(O\)</span> itself factual.</p>
 <div class="quarto-figure quarto-figure-center">

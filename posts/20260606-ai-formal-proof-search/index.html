@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -888,8 +888,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>Large language models (LLMs) increasingly excel at mathematical reasoning, but their unreliability limits their utility in mathematics research. <em>A mitigation is using LLMs to generate formal proofs in languages like Lean.</em> We perform the <em>first large-scale evaluation of this method’s ability to solve open problems.</em> Our most capable agent <em>autonomously resolved 9 of 353 open Erdős problems</em> at the per-problem cost of a few hundred dollars, <em>proved 44/492 OEIS conjectures,</em> and is being deployed in combinatorics, optimization, graph theory, algebraic geometry, and quantum optics research. A basic agent alternating LLM-based generation with Lean-based verification replicated the Erdős successes but proved costlier on the hardest problems. These findings demonstrate the power of AI-aided formal proof search and shed light on the agent designs that enable it.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p><em>AlphaProof Nexus</em> is a framework for agents that query two things in a loop: a frontier LLM that proposes mathematics, and the <a href="https://lean-lang.org/">Lean</a> compiler that checks it. In Lean, definitions, theorems, and proofs are all mechanically verified code. A proof is built from <em>tactics</em>, elementary steps the compiler runs one at a time while tracking the goals still left to prove, and it is complete only when no goals remain. Lean also has a <code>sorry</code> tactic that closes any goal while still passing the type-checker, so proving a theorem reduces to a concrete coding task: rewrite the file until it compiles with no <code>sorry</code> left.</p>
 <p>The agent’s input is a <em>proof sketch</em>: a Lean file holding the target theorem, the definitions and library imports it depends on, and <code>sorry</code> where the proof should go. The mathematician can add natural-language context and domain knowledge encoded in Lean, and marks which parts of the file the agent may edit, with <code>EVOLVE-BLOCK</code> regions where it can introduce helper lemmas, definitions, and proof steps, and <code>EVOLVE-VALUE</code> regions enclosing parameters whose values it may change. On success the agent returns a <code>sorry</code>-free proof.</p>
 <p>The paper builds four agents on this framework and tests them in four combinations:</p>

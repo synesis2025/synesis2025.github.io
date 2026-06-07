@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -887,8 +887,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>Language models (LMs) may lead their users to make suboptimal downstream decisions when they confidently hallucinate. This issue can be mitigated by having the LM verbally convey the probability that its claims are correct, but existing models cannot produce long-form text with calibrated confidence statements. Through the lens of decision-making, we define <em>linguistic calibration for long-form generations: an LM is linguistically calibrated if its generations enable its users to make calibrated probabilistic predictions</em>. This definition enables a training framework where <em>a supervised finetuning step bootstraps an LM to emit long-form generations with confidence statements</em> such as “I estimate a 30% chance of…” or “I am certain that…”, followed by <em>a reinforcement learning step which rewards generations that enable a user to provide calibrated answers to related questions</em>. We linguistically calibrate <em>Llama 2 7B</em> and find in automated and human evaluations of long-form generations that it is <em>significantly more calibrated than strong finetuned factuality baselines with comparable accuracy</em>. These findings generalize under significant domain shifts to scientific and biomedical questions and to an entirely held-out person biography generation task. Our results demonstrate that long-form generations may be calibrated end-to-end by constructing an objective in the space of the predictions that users make in downstream decision-making.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>The framework has two stages. Both operate on queries <span class="math inline">\(q\)</span> derived upstream from QA benchmark items: an API-based LLM rewrites each question <span class="math inline">\(x\)</span> (from TriviaQA, Jeopardy, SciQ, BioASQ) into a paragraph-generation prompt <span class="math inline">\(q\)</span> (e.g., “Write a paragraph about {topic of <span class="math inline">\(x\)</span>}”). The question <span class="math inline">\(x\)</span> and its ground-truth answer <span class="math inline">\(y\)</span> are carried through the pipeline, but only RL consumes them.</p>
 <ul>
 <li><strong>Summary distillation (SFT).</strong> For each <span class="math inline">\(q\)</span>, the base LM samples <span class="math inline">\(M\)</span> paragraph responses; a stronger summarizer LM (Claude 2) condenses them into one paragraph <span class="math inline">\(s\)</span> whose embedded confidence phrases reflect how often each claim appears across the <span class="math inline">\(M\)</span> samples. The base LM is finetuned on the resulting <span class="math inline">\((q, s)\)</span> pairs. Neither <span class="math inline">\(x\)</span> nor <span class="math inline">\(y\)</span> enters the SFT loss; confidence phrases come from sampling frequency alone.</li>

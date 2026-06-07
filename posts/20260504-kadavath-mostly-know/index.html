@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -887,8 +887,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>We study whether language models can evaluate the validity of their own claims and predict which questions they will be able to answer correctly. We first show that <em>larger models are well-calibrated on diverse multiple choice and true/false questions when they are provided in the right format</em>. Thus we can approach self-evaluation on open-ended sampling tasks by asking models to first propose answers, and then to evaluate the probability <em>“P(True)”</em> that their answers are correct. We find encouraging performance, calibration, and scaling for P(True) on a diverse array of tasks. <em>Performance at self-evaluation further improves when we allow models to consider many of their own samples before predicting the validity of one specific possibility.</em> Next, we investigate whether models can be trained to predict <em>“P(IK)”, the probability that “I know” the answer to a question, without reference to any particular proposed answer</em>. <em>Models perform well at predicting P(IK) and partially generalize across tasks, though they struggle with calibration of P(IK) on new tasks.</em> The predicted P(IK) probabilities also increase appropriately in the presence of relevant source materials in the context, and in the presence of hints towards the solution of mathematical word problems. We hope these observations lay the groundwork for training more honest models, and for investigating how honesty generalizes to cases where models are trained on objectives other than the imitation of human writing.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>The paper runs three related studies on a family of Anthropic language models ranging up to 52B parameters. The first measures calibration on multiple-choice and true/false questions across BIG-Bench, MMLU, <a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA</a>, LogiQA, and QuALITY, varying format (visible letter options vs.&nbsp;none-of-the-above) and prompt regime (zero-shot vs.&nbsp;few-shot). The second introduces a self-evaluation procedure: the model samples an answer to an open-ended question, then is prompted to assign <span class="math inline">\(P(\text{True})\)</span> to its own sample, optionally after being shown several additional T=1 samples as context. The third trains a separate value head on top of the base model to predict <span class="math inline">\(P(\text{IK})\)</span> (“the probability I know the answer”) on TriviaQA, Arithmetic, Python function synthesis, Lambada, GSM8k, and Codex HumanEval, and tests how this head generalizes to held-out distributions, to the presence of source materials, and to math-problem hints.</p>
 </section>
 <section id="results" class="level2">

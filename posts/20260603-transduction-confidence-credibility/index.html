@@ -831,7 +831,7 @@ window.Quarto = {
    
   <ul>
   <li><a href="#the-abstract" id="toc-the-abstract" class="nav-link active" data-scroll-target="#the-abstract">The abstract</a></li>
-  <li><a href="#method" id="toc-method" class="nav-link" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#what-came-after" id="toc-what-came-after" class="nav-link" data-scroll-target="#what-came-after">What came after</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
@@ -898,8 +898,8 @@ window.Quarto = {
 <p>In this paper we follow the same general ideology as in <a href="#ref-6">[Gammerman et al., 1998]</a>, and describe <em>a new transductive learning algorithm using Support Vector Machines</em>. The algorithm presented provides <em>confidence values for its predicted classifications of new examples</em>. We also obtain <em>a measure of “credibility” which serves as an indicator of the reliability of the data</em> upon which we make our prediction. Experiments compare the new algorithm to a standard Support Vector Machine and other transductive methods which use Support Vector Machines, such as Vapnik’s margin transduction. Empirical results show that the new algorithm not only produces confidence and credibility measures, but is <em>comparable to, and sometimes exceeds the performance of the other algorithms</em>.</p>
 </blockquote>
 </section>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>Induction learns a general rule from the training set and then applies it to any future point. Transduction skips the general rule and reasons straight from the training examples to the specific test point in front of it. The paper’s recipe is to fold the test point into the training set under a tentative label, fit an SVM to the combined data, and ask how unusual the test point looks once it is in there.</p>
 <p>The measure of “unusual” is the <strong>strangeness</strong> of an example, and it reuses a quantity the SVM already produces. After fitting, every example <span class="math inline">\(i\)</span> in the training set (now including the test point) carries a Lagrange multiplier <span class="math inline">\(\alpha_i \ge 0\)</span>. An <span class="math inline">\(\alpha_i\)</span> near zero means the example is on the correct side of the margin and contributes nothing to the boundary. A large <span class="math inline">\(\alpha_i\)</span> means the example is hard to fit: it lands on or inside the margin and influences the boundary. So a large <span class="math inline">\(\alpha\)</span> marks a strange, poorly supported point, and a small <span class="math inline">\(\alpha\)</span> marks an ordinary one.</p>
 <p>Strangeness on its own is just a number on an arbitrary scale. To turn it into something comparable across examples, the paper ranks the test point’s multiplier against all the others and reads off a p-value. If the training set has <span class="math inline">\(\ell\)</span> examples and the test point’s multiplier <span class="math inline">\(\alpha_{\text{new}}\)</span> comes out as the <span class="math inline">\(n\)</span>-th largest, the p-value is</p>

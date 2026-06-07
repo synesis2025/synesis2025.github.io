@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -887,8 +887,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>Large Language Models (LLMs) excel in various tasks, but they rely on carefully crafted prompts that often demand substantial human effort. To automate this process, in this paper, we propose a novel framework for discrete prompt optimization, called <em>EvoPrompt</em>, which borrows the idea of evolutionary algorithms (EAs) as they exhibit good performance and fast convergence. To enable EAs to work on discrete prompts, which are natural language expressions that need to be coherent and human-readable, we <em>connect LLMs with EAs</em>. This approach allows us to simultaneously leverage the powerful language processing capabilities of LLMs and the efficient optimization performance of EAs. Specifically, <em>abstaining from any gradients or parameters</em>, EvoPrompt starts from a population of prompts and iteratively generates new prompts with LLMs based on the evolutionary operators, improving the population based on the development set. We optimize prompts for both closed- and open-source LLMs including GPT-3.5 and Alpaca, on 31 datasets covering language understanding, generation tasks, as well as BIG-Bench Hard (BBH) tasks. <em>EvoPrompt significantly outperforms human-engineered prompts and existing methods for automatic prompt generation (e.g., up to 25% on BBH)</em>. Furthermore, EvoPrompt demonstrates that <em>connecting LLMs with EAs creates synergies</em>, which could inspire further research on the combination of LLMs and conventional algorithms.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>The setup is an evolutionary search over natural-language prompts. Maintain a population of N prompts (N = 10 in most experiments), run for T iterations, and at each step: sample parent prompts, call an LLM to produce a child via an evolutionary operator, score the child on a held-out development set, and keep the top N. The non-standard piece is the operator. Instead of a token-level rewriting rule, the operator is itself an LLM prompt. The paper compares two variants. The genetic-algorithm (GA) variant asks the LLM to perform crossover and mutation on two parent prompts. The differential-evolution (DE) variant asks the LLM to identify the difference between two parents and apply that difference on top of a third base prompt, borrowing the structure of classical differential evolution.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">

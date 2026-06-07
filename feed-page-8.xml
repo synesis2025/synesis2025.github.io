@@ -267,8 +267,8 @@
 <blockquote class="blockquote">
 <p>Recent work on KV cache quantization, culminating in TurboQuant, has approached the Shannon entropy limit for per-vector compression of transformer key-value caches. We observe that this limit applies to a strictly weaker problem than the one that actually matters: <em>compressing the KV cache as a sequence</em>. The tokens stored in a KV cache are not arbitrary floating-point data — they are samples from the exact formal language the model was trained on, and the model is by construction a near-optimal predictor of that language. We introduce <em>sequential KV compression</em>, a two-layer architecture that exploits this structure. The first layer, <em>probabilistic prefix deduplication</em>, identifies semantically equivalent shared prefixes across sessions using the trie metric <img src="https://benjaminhan.net/feed-assets/2ca4121b35f43fac.svg" alt="d_T(s, s&#x27;) = -\log_2 P_M(s \wedge s&#x27;)" class="feed-math-inline"/> from Probabilistic Language Tries (PLTs). The second layer, <em>predictive delta coding</em>, stores only the residual of each new KV vector from the model’s own prediction of it, achieving a per-token entropy bound of <img src="https://benjaminhan.net/feed-assets/c5a6986396e83e08.svg" alt="H(KV_{i+1} \mid KV_{\le i}) \le H(\text{token}_{i+1} \mid \text{token}_{\le i})" class="feed-math-inline"/>. We prove that at typical language model perplexity — approximately 10–20 for fluent English text — this bound is 3.3–4.3 bits on average per token position, compared to TurboQuant’s 3 bits per vector component (with typical attention heads having 64–128 components). <em>The theoretical compression ratio over TurboQuant is approximately 914,000× at the Shannon limit.</em> Even at 1000× above the entropy floor — a deliberately pessimistic worst-case overhead, two orders of magnitude above the 2–5× typical of practical source coders — the ratio remains approximately 914× over TurboQuant, with compression improving rather than degrading as context length grows. The two layers are orthogonal and compose with existing per-vector quantization methods including TurboQuant.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>When a chatbot generates a reply token by token, the model stashes the intermediate state for every previous token in something called the KV (key-value) cache, so it doesn’t have to recompute the whole context on each new word. That cache is now the dominant memory cost of serving large language models. Long conversations and many concurrent users will eat GPU memory long before the model weights do. So a small industry has grown up around squeezing the cache: the latest, TurboQuant [2], gets close to the theoretical limit of how few bits you need per cached vector.</p>
 <p>The paper’s observation: those cached vectors aren’t arbitrary data. They’re things the model can already predict, because the model just generated the tokens they came from. So why not let the model’s own predictions do the compression work? The first layer notices when a new conversation starts with the same prefix as a previous one and reuses the cached state. The second layer stores only the gap between each new cached vector and what the model would have predicted. Both layers stack on top of per-vector compressors like TurboQuant, which is why the theoretical headline ratio gets to six orders of magnitude.</p>
 </section>
@@ -357,8 +357,8 @@
 <blockquote class="blockquote">
 <p><em>When not using reasoning</em>, <em>repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek)</em> <em>without increasing the number of generated tokens or latency</em>.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>The trick is one line: prepend a copy of the user’s prompt before the model generates. No fine-tuning, no extra decoding tokens, no latency hit at generation time — just a longer prefill.</p>
 </section>
 <section id="results" class="level2">

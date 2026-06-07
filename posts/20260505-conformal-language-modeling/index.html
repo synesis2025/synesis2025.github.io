@@ -830,7 +830,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#method" id="toc-method" class="nav-link active" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methods" id="toc-methods" class="nav-link active" data-scroll-target="#methods">Methods</a></li>
   <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
@@ -887,8 +887,8 @@ window.Quarto = {
 <blockquote class="blockquote">
 <p>We propose a novel approach to <em>conformal prediction for generative language models (LMs)</em>. Standard conformal prediction produces prediction sets — in place of single predictions — that have rigorous, statistical performance guarantees. LM responses are typically sampled from the model’s predicted distribution over the large, combinatorial output space of natural language. Translating this process to conformal prediction, we <em>calibrate a stopping rule for sampling different outputs from the LM that get added to a growing set of candidates until we are confident that the output set is sufficient</em>. Since some samples may be low-quality, we also simultaneously calibrate and apply <em>a rejection rule for removing candidates from the output set to reduce noise</em>. Similar to conformal prediction, we prove that the sampled set returned by our procedure <em>contains at least one acceptable answer with high probability</em>, while still being empirically precise (i.e., small) on average. Furthermore, within this set of candidate responses, we show that we can also accurately <em>identify subsets of individual components — such as phrases or sentences — that are each independently correct</em> (e.g., that are not “hallucinations”), again with statistical guarantees.</p>
 </blockquote>
-<section id="method" class="level2">
-<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
 <p>The method treats the LM as a black box. The set predictor <span class="math inline">\(\mathcal{C}_\lambda\)</span> is built by sampling candidates one at a time: each candidate is added if it clears a learned quality threshold and a diversity check against what is already in the set, and sampling halts once a calibrated statistic certifies the set likely covers an acceptable answer. The subscript <span class="math inline">\(\lambda\)</span> collects the calibration-time hyperparameters: stopping threshold, rejection threshold, diversity threshold.</p>
 <p>A second conformal layer operates inside the final set, selecting subsets of <em>components</em> (individual phrases or sentences) that are each independently likely to be correct, so users can keep guaranteed claims and drop the rest. Joint calibration of all these thresholds uses the Learn-then-Test (LTT) framework of <a href="#ref-2">[2]</a>, which tunes multiple parameters at once with finite-sample validity via multiple-testing correction.</p>
 <p>Unlike standard conformal prediction, the guarantee is a <em>nested</em> probability with two user parameters. <span class="math inline">\(\epsilon\)</span> is the familiar coverage level (miss rate at most <span class="math inline">\(\epsilon\)</span> across fresh prompts). <span class="math inline">\(\delta\)</span> is new: because LTT tunes multiple hyperparameters jointly, a second probabilistic budget covers the randomness of the calibration set itself. Formally,</p>
