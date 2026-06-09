@@ -1,0 +1,95 @@
+---
+title: "ExpertQA: Expert-Curated Questions and Attributed Answers"
+description: "A benchmark of 2,177 questions from 484 experts across 32 fields, with expert-judged claim-level factuality and attribution on responses from attribution-style LLM systems."
+author: synesis
+date: "2026-06-09"
+image: cover.jpg
+---
+
+![ExpertQA's pipeline: an expert's question goes to a system, whose answer is split into claims, each paired with cited evidence and judged on five properties (informative, factual, cite-worthy, supported, reliable), after which the expert revises the claim. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *ExpertQA: Expert-Curated Questions and Attributed Answers* [[1]](#ref-1) (NAACL 2024), [Chaitanya Malaviya](https://chaitanyamalaviya.github.io/) and co-authors (Penn + UW) build a 2,177-question benchmark of information-seeking prompts authored by 484 domain experts across 32 fields, then have the same experts judge responses from attribution-generating language-model systems on factuality, citeworthiness, and source reliability.
+
+> As language models are adopted by a more sophisticated and diverse set of users, the importance of guaranteeing that they provide factually correct information supported by verifiable sources is critical across fields of study. This is especially the case for high-stakes fields, such as medicine and law, where the risk of propagating false information is high and can lead to undesirable societal consequences. Previous work studying attribution and factuality has not focused on analyzing these characteristics of language model outputs in domain-specific scenarios. In this work, we *conduct human evaluation of responses from a few representative systems along various axes of attribution and factuality, by bringing domain experts in the loop*. Specifically, we collect *expert-curated questions from 484 participants across 32 fields of study*, and then *ask the same experts to evaluate generated responses to their own questions*. In addition, we ask experts to improve upon responses from language models. The output of our analysis is *ExpertQA, a high-quality long-form QA dataset with 2177 questions spanning 32 fields, along with verified answers and attributions for claims in the answers*.
+
+## Methods
+
+The protocol puts experts in the loop twice. First, 484 experts across 32 fields (medicine, law, engineering, humanities, social sciences) write information-seeking questions they would genuinely want answered in their own professional work, producing 2,177 questions. Each author tags every question with one or more of seven information-need types:
+
+- **Directed (Type I):** a question with a single, unambiguous answer.
+- **Open-ended (Type II):** potentially ambiguous, admitting several valid answers.
+- **Summarization (Type III):** a request to summarize what is known on a topic.
+- **Advice (Type IV):** suggestions on how to approach a problem.
+- **Hypothetical (Type V):** a question built on a described scenario, and the most common type, since experts were asked to write two of their five questions this way.
+- **List of resources (Type VI):** a request for a list of places to find more information.
+- **Opinion (Type VII):** a request for an opinion on a topic.
+
+The results lean on this taxonomy. Second, each question is answered by six attributed-answer configurations:
+
+- **Closed-book GPT-4**, prompted to answer from parametric memory and cite supporting URLs, with no retrieval.
+- **Retrieve-then-read** (`rr`): retrieve evidence first, then generate the answer with GPT-4, over two corpora: Google Search (`rr_gs`) and the static Sphere corpus (`rr_sphere`), a web-scale subset of Common Crawl [[4]](#ref-4) retrieved with BM25.
+- **Post-hoc attribution** (`post_hoc`): generate the answer first, then retrieve a citation for each claim as a separate step, again over Google Search (`post_hoc_gs`) and Sphere (`post_hoc_sphere`).
+- **BingChat** (`bing_chat`), a commercial retrieval-augmented system, sampled in balanced mode.
+
+Grading happens at two granularities. An **answer** is the complete response a system returns to a question. Each answer is split into **claims**: sentence-level units (segmented with spaCy), each paired with whatever evidence the system cited for it. Only one of the six Likert axes judges the whole answer: *answer usefulness*, whether the complete response addresses the question. The other five judge individual claims and their evidence: three about the claim itself (*factuality*, *informativeness*, *cite-worthiness*) and two about its attribution (*claim/evidence support*, scored complete / partial / incomplete, and *source reliability*). Finally, the expert revises each claim and its evidence so the answer is factual and fully supported, yielding an expert-verified reference answer set.
+
+## Results
+
+- **Every system leaves a large share of claims unsupported**, even when the answer is fluent and authoritative: across systems, many claims are uncited, contradicted by the cited evidence, or backed by low-reliability sources.
+- **Retrieve-then-read and post-hoc attribution fail differently.** Retrieve-then-read produces more complete attributions but misses citations for some cite-worthy claims (about 18% go uncited). Post-hoc systems return a citation for every claim by design, yet more of those citations are incomplete, because retrieving without the answer's context is harder.
+- **Closed-book GPT-4 cites plausible-but-wrong pages.** Without retrieval it generates citations to believable domains (nasa.gov for astronomy, nih.gov for medicine), but the linked page fails to support the claim more than 60% of the time.
+- **The retrieval corpus drives source reliability.** Sphere returns unreliable evidence (a blog comment retrieved for a breast-cancer question). Switching to Google Search raises the reliability experts assign to the evidence.
+- **High-stakes fields fare worst on attribution.** Most claims are judged factually correct (over 85% in many fields) and cite-worthy (only about 17–22% are judged not cite-worthy), but medicine and law show roughly 35% and 31% unsupported claims, and about 51% of medical claims cite sources experts rate as not reliable.
+- **Requests for a list of resources (Type VI) break systems hardest**, with advice (Type IV) and opinion (Type VII) questions close behind. Claims to these are the least informative, factual, and well-supported. Separately, 30–40% of claims across systems are low-relevance "void" claims that mostly restate the question or state simplistic facts.
+
+![The Likert distribution of expert labels along six claim/answer properties: answer usefulness, claim informativeness, factuality (top row, answer-quality judgments) and claim citeworthiness, claim-evidence support, and source reliability (bottom row, attribution judgments). Figure 5 from the paper [[1]](#ref-1).](figure5.png){fig-align="center"}
+
+The paper also breaks the grades down by field and by question type, which is where the more interesting structure shows up.
+
+- **Question-type composition is field-specific** (Figure 8). The mix of the seven types swings widely across fields: physics and astronomy lean toward directed, single-answer questions, while several fields' bars cover only a subset of the seven types at all, some as few as four. Type V (hypothetical) is the largest slice almost everywhere, inflated by construction because experts were asked to write two of their five questions that way.
+
+![The distribution of the seven question types across all 32 fields in ExpertQA. Figure 8 from the paper [[1]](#ref-1).](figure8.webp){fig-align="center" data-lightbox-src="figure8-full.png"}
+
+- **The per-field view yields few clear cross-field patterns** (Figure 9). Factuality stays high across most fields (the paper notes Definitely- or Probably-correct rates above 85% in many of them), and it reports no clean ranking emerging from the field-level trends.
+
+![Label distribution of the six claim/answer properties across fields, for all systems. Figure 9 from the paper [[1]](#ref-1).](figure9.png){fig-align="center"}
+
+- **Difficulty tracks question type** (Figure 10). Type VI (list-of-resources) falls at the low end of almost every property. The paper flags advice (Type IV) and opinion (Type VII) as the next hardest, with claims to all three judged less informative, factual, and well-supported than the directed and open-ended types.
+
+![Label distribution of the six claim/answer properties across the seven question types, for all systems. Figure 10 from the paper [[1]](#ref-1).](figure10.png){fig-align="center"}
+
+## My Notes
+
+- **The "experts grade their own questions" design is the novel ingredient, and it fixes a selection problem FActScore sidesteps.** Prior factuality benchmarks either use crowdworkers on generic prompts or use automated metrics against a canonical source (Wikipedia for biographies, as in FActScore [[2]](#ref-2)). Both fail in specialist domains because the questions themselves are not representative of what experts actually ask, and the "knowledge source" for medicine or law has no clean Wikipedia analog. Having the same expert author the question *and* grade the response closes the loop that makes ELI5- or TriviaQA-style benchmarks under-diagnose domain failures.
+
+- **Post-hoc attribution is the most interesting probe, and it loses.** ExpertQA tests two *sequential* orderings: retrieve-then-generate, and generate-then-retrieve (post-hoc, where the answer is written first and evidence is fetched per claim afterward). Post-hoc is the worse of the two: its fluent answers often make claims no retrieved source actually supports. But that decides ordering, not architecture: neither system interleaves retrieval and generation, so whether interleaving (as in Self-RAG [[3]](#ref-3)) would beat both is our own speculation, untested here.
+- **A field's difficulty partly reflects what it asks, not just how well it is served.** Read together, Figures 8 and 10 line up: question-type composition varies sharply by field, and difficulty tracks question type, with Type VI (list-of-resources) and the advice and opinion types at the low end of nearly every property. A field weighted toward those types would post weaker claim-level numbers even if the underlying systems were no worse there. Among the larger fields, that hard-question share is heaviest in economics, education, history, literature, and visual arts (several of which do score at the bottom on usefulness or attribution), while physics and astronomy has almost none of them. The benchmark doesn't separate the two effects (it reports type and field independently, not field scores adjusted for question mix), so this stays a reading of the breakdowns rather than something the paper isolates, but it argues against ranking fields on raw claim scores.
+
+- **What each field never asks (Figure 8, enumerated from the released data).** Eight of the 32 fields skip at least one of the seven types entirely, all of them small fields, so the gaps reflect how questions were collected more than the disciplines:
+    - **No list-of-resources (VI):** journalism, mathematics, philosophy, culinary arts, theology. The rarest type overall, so it drops out first.
+    - **No opinion (VII):** classical studies, criminology, theology.
+    - **No advice (IV):** climate science, culinary arts.
+    - **No summarization (III):** culinary arts, theology.
+    - **Most lopsided:** theology and culinary arts each span only four of the seven types.
+
+- **Recomputing the grades sharpens the type story and undercuts the field one.** Scoring each Likert axis on a 0–1 scale over the released annotations (my mapping, not the paper's category counts):
+    - **By question type the order is stable across axes:** directed questions (Type I) score highest almost everywhere and list-of-resources (VI) lowest, with advice and opinion just above it, on usefulness, factuality, informativeness, and cite-worthiness alike.
+    - **Two axes break the pattern:** source reliability is essentially flat (~0.74 for every type), and attribution is the lowest-scoring axis overall (0.59–0.68 across types). So a "hard" question type is one whose claims are less informative, factual, and cite-worthy, not one whose sources are worse.
+    - **By field, extremes appear but are confounded:** usefulness is highest for mathematics, anthropology, and the military/law-enforcement field, lowest for education, history, and literature. Attribution is best in anthropology and architecture, worst in economics and literature. But each question was graded for a single sampled system, so a field's average folds in which system happened to answer there, and several fields rest on twenty-odd answers, so these field rankings shouldn't be read at face value.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Malaviya, C.](https://chaitanyamalaviya.github.io/), [Lee, S.](https://www.linkedin.com/in/subin-lee-penn), [Chen, S.](https://sihaoc.github.io/), Sieber, E., [Yatskar, M.](https://www.seas.upenn.edu/~myatskar/), [Roth, D.](https://www.cis.upenn.edu/~danroth/). "ExpertQA: Expert-Curated Questions and Attributed Answers." *NAACL 2024*, arXiv:2309.07852, Sep 14, 2023. <https://arxiv.org/abs/2309.07852>
+2. <a id="ref-2"></a>[Min, S.](https://shmsw25.github.io/), [Krishna, K.](https://martiansideofthemoon.github.io/), [Lyu, X.](https://alrope123.github.io/), [Lewis, M.](https://scholar.google.com/citations?user=SnQnQicAAAAJ), [Yih, W.-t.](https://scottyih.org/), [Koh, P. W.](https://koh.pw/), [Iyyer, M.](https://people.cs.umass.edu/~miyyer/), [Zettlemoyer, L.](https://www.cs.washington.edu/people/faculty/lsz), [Hajishirzi, H.](https://homes.cs.washington.edu/~hannaneh/). "FActScore: Fine-grained Atomic Evaluation of Factual Precision in Long Form Text Generation." *EMNLP 2023*, arXiv:2305.14251. <https://arxiv.org/abs/2305.14251>
+3. <a id="ref-3"></a>[Asai, A.](https://akariasai.github.io/), [Wu, Z.](https://zeqiuwu.com/), [Wang, Y.](https://homes.cs.washington.edu/~yizhongw/), [Sil, A.](https://research.ibm.com/people/avirup-sil), [Hajishirzi, H.](https://homes.cs.washington.edu/~hannaneh/). "Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection." *ICLR 2024*, arXiv:2310.11511. <https://arxiv.org/abs/2310.11511>
+4. <a id="ref-4"></a>[Piktus, A.](https://scholar.google.com/citations?user=aTHc8c0AAAAJ), Petroni, F., Karpukhin, V., Okhonko, D., Broscheit, S., Izacard, G., [Lewis, P.](https://patricklewis.io/), Oğuz, B., Grave, E., [Yih, W.-t.](https://scottyih.org/), Riedel, S. "The Web Is Your Oyster — Knowledge-Intensive NLP Against a Very Large Web Corpus." arXiv:2112.09924, Dec 2021. <https://arxiv.org/abs/2112.09924>
+
+## Related Posts
+
+- [Language Models with Conformal Factuality Guarantees](/posts/20260505-conformal-factuality/): the constructive complement — where ExpertQA measures attribution failure, this gives statistical guarantees on which claims to keep.
+- [AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries](/posts/20240531-legal-ai-hallucinations/): the focused legal-domain version of ExpertQA's finding that law and medicine fare worst on attribution.
+- [TruthfulQA: Are Larger LLMs More Truthful?](/posts/20230226-truthfulqa-llm-truthfulness/): an earlier factuality benchmark that ExpertQA pushes into expert domains and pairs with claim-level attribution.
+- [TWEAK at NAACL 2024: Decoding Without Hallucinations](/posts/20240615-tweak-naacl-2024/): a same-venue take on the same attribution problem, working at decode time rather than as a post-hoc step.
+- [RAG with Knowledge Graphs: Key Open Questions](/posts/20240117-rag-knowledge-graphs/): the retrieval side of the retrieve-then-read and post-hoc systems ExpertQA evaluates.
