@@ -1,0 +1,82 @@
+---
+title: "Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback"
+description: "Asking RLHF-tuned models to verbalize a probability yields better-calibrated confidences than reading their token-level log-probabilities, often halving expected calibration error."
+author: synesis
+date: "2026-06-10"
+image: cover.jpg
+---
+
+![Reliability diagrams for gpt-3.5-turbo on SciQ. Raw token-level probabilities (top-left, orange) are consistently overconfident. Verbalized numerical probabilities (bottom, blue) track empirical accuracy much more closely, and asking the model to "consider more answer choices" (bottom-right) improves calibration further. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In *Just Ask for Calibration* [[1]](#ref-1) (EMNLP 2023), [Katherine Tian](https://katherinethai.github.io/), [Eric Mitchell](https://ericmitchell.ai/), [Allan Zhou](https://bland.website/), [Archit Sharma](https://architsharma97.github.io/), [Rafael Rafailov](https://rmrafailov.github.io/), [Huaxiu Yao](https://www.huaxiuyao.io/), [Chelsea Finn](https://ai.stanford.edu/~cbfinn/), and [Christopher D. Manning](https://nlp.stanford.edu/~manning/) (Harvard + Stanford) show that for RLHF-tuned large language models (LLMs), a verbalized confidence score prompted from the model is typically better-calibrated than the model's own token-level probabilities.
+
+> A trustworthy real-world prediction system should produce well-calibrated confidence scores; that is, its confidence in an answer should be indicative of the likelihood that the answer is correct, enabling deferral to an expert in cases of low-confidence predictions. Recent studies have shown that unsupervised pre-training produces large language models (LMs) whose conditional probabilities are remarkably well-calibrated. However, *the most widely-used LMs are fine-tuned with reinforcement learning from human feedback (RLHF-LMs), and some studies have suggested that RLHF-LMs produce conditional probabilities that are very poorly calibrated*. In light of this perceived weakness, we *conduct a broad evaluation of methods for extracting confidence scores from RLHF-LMs*. For RLHF-LMs such as ChatGPT, GPT-4, and Claude, we find that *verbalized confidences emitted as output tokens are typically better-calibrated than the model's conditional probabilities on the TriviaQA, SciQ, and TruthfulQA benchmarks*, often *reducing the expected calibration error by a relative 50%*.
+
+## Methods
+
+The starting point is a known regression: RLHF degrades the calibration of a model's token-level probabilities. The authors first reproduce it on Llama-2-70B, comparing the base model against its RLHF-tuned chat version.
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+Figure 2 plots two calibration metrics, expected calibration error (ECE, lower is better) and area under the selective-accuracy curve (AUC, higher is better), for the base and chat models on each dataset. RLHF raises ECE and lowers AUC across the board, and the gap is widest on TruthfulQA. The rest of the paper shows that for several strong RLHF models, reading the confidence out of the model's text output recovers much of this lost calibration, again most strongly on TruthfulQA.
+
+The evaluation spans five RLHF-tuned models (gpt-3.5-turbo, GPT-4, Claude-1, Claude-2, and Llama-2-70B-Chat) on three factual question-answering benchmarks: TriviaQA (1,000 sampled questions), SciQ (1,000), and [TruthfulQA](/posts/20230226-truthfulqa-llm-truthfulness/) (all 817), the last of which is adversarial, with questions written to draw out common human misconceptions. Exact-match scoring would count a correct answer phrased differently as wrong, so correctness is judged by GPT-4 or GPT-3.5 checking whether the response is semantically equivalent to the gold answer.
+
+The methods for extracting a confidence score fall into two families:
+
+- **Sampling the model's conditional probability.** Because the closed models don't expose token log-probabilities, both methods in this family estimate the probability from $n = 10$ samples. **Label prob.** draws ten answers, returns the most common one, and uses its sampled frequency as the confidence. **'Is True' prob.** (a variant of [Kadavath et al.](/posts/20260504-kadavath-mostly-know/) [[2]](#ref-2)) samples a single answer, then asks the model whether that answer is true and reads the probability it assigns to "True."
+- **Verbalizing the confidence in token space.** The model writes its confidence as part of its response, with no fine-tuning to teach it the skill.
+    - **Verbalized numerical (Verb. 1S / 2S top-$k$)** asks for a probability between 0 and 1. The one-stage (1S) version emits the answer and the probability together; the two-stage (2S) version answers first, then assigns a probability in a second turn. The top-$k$ variants ask for $k$ guesses ($k = 1, 2, 4$) and take the highest-probability one.
+    - **Verbalized with chain of thought (Verb. 2S CoT)** adds a reasoning step before the answer, then asks for the probability.
+    - **Verbalized linguistic (Ling. 1S-human / 1S-opt)** has the model pick a phrase such as "highly likely" or "almost no chance" instead of a number. The human variant maps each phrase to a probability using a 123-respondent survey; the optimized variant fits the mapping on a held-out calibration set.
+
+The paper's "consider the opposite" prompt asks for more than one guess before the confidence, borrowing a psychology finding that enumerating alternatives reduces overconfidence.
+
+Calibration is reported on four metrics, each explained in more depth in [a companion primer on confidence-calibration metrics](/posts/20260609-confidence-calibration-metrics/):
+
+- **ECE** bins predictions by stated confidence and averages the gap between confidence and empirical accuracy across bins, weighted by bin size.
+- **ECE-t** is the same metric after temperature scaling, a one-parameter recalibration that replaces each confidence $c$ with $\sigma\!\left(\sigma^{-1}(c)/T\right)$, the logit of $c$ divided by a single temperature $T$ and mapped back through the logistic $\sigma$. The temperature is fit to minimize negative log-likelihood, and one value applies to every prediction: above 1 it softens the confidences toward 0.5, below 1 it sharpens them.
+- **BS-t** is the **Brier score** [[3]](#ref-3) on temperature-scaled confidences, the mean squared error between confidence and correctness. Because a model that answers "50%" on every binary question scores a perfect ECE while telling you nothing, BS-t adds a metric that rewards discrimination.
+- **AUC** is the area under the selective-accuracy-versus-coverage curve from the selective-classification literature.
+
+## Results
+
+Across the five models and three datasets, the verbalized methods are better-calibrated than the sampled conditional probabilities for the strong closed models, with the effect largest on the adversarial TruthfulQA. Table 1 shows the full picture for gpt-3.5-turbo.
+
+![Table 1 from the paper [[1]](#ref-1).](table1.jpg){fig-align="center"}
+
+The findings:
+
+- **Verbalized confidence beats sampled probability.** For gpt-3.5-turbo (Table 1), one-stage verbalized confidence cuts ECE on TriviaQA from 0.140 (Label prob.) to 0.068; for GPT-4, the strongest verbalized method drops SciQ ECE from 0.219 to 0.056. The relative reduction is around 50% on TriviaQA and SciQ and larger on TruthfulQA.
+- **Generating multiple guesses improves calibration.** Asking for the top 2 or top 4 answers before the confidence lowers gpt-3.5-turbo's SciQ ECE from 0.234 (one guess) to 0.065 (four guesses), and its TruthfulQA ECE from 0.389 to 0.203.
+- **Numbers work as well as words.** Verbalized numerical probabilities match or beat the linguistic-expression methods on most settings, despite the known difficulty language models have with numbers. The exception is TruthfulQA, where the optimized linguistic mapping reaches the lowest error for several models (0.082 ECE for GPT-4).
+- **Chain of thought does not help.** Adding a reasoning step before the confidence leaves verbalized calibration essentially unchanged across all three datasets.
+- **Temperature scaling narrows but does not close the gap.** Fitting a temperature to the sampled probabilities improves them, but they stay worse-calibrated than the raw verbalized confidences (the ECE-t columns in Table 1).
+- **The effect is model-dependent.** Claude-1 verbalizes poorly: on SciQ its verbalized ECE (0.265) is worse than its own sampled probability (0.216). Claude-2 is comparable to gpt-3.5-turbo and beats the GPT models on TruthfulQA (0.099 ECE with the optimized linguistic mapping, down from 0.409). Llama-2-70B-Chat improves over its own probabilities on some metrics but inconsistently, most clearly on TruthfulQA.
+
+## My Notes
+
+- **RLHF does not wreck a model's calibration so much as relocate it.** Since Guo et al. (2017) [[4]](#ref-4), calibration has been treated as a property of the softmax, repaired by post-processing (temperature scaling, Platt, isotonic). The result here is that for RLHF models the calibrated signal has not disappeared, it has moved to a channel no post-processing can reach: the model's own words. Calibration for instruction-tuned models is then less a recalibration problem (rescale the logits) than an elicitation one (ask for the number). But eliciting a calibrated confidence and acting on it are different things: [AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) finds reasoning fine-tuning cuts abstention recall by 24%, so the same post-training that keeps confidence elicitable weakens the link between that confidence and the answer-or-abstain decision it should drive. Later work tempers the optimism: [Xiong et al.](https://arxiv.org/abs/2306.13063) [[5]](#ref-5) <!-- crosslink-todo: /posts/20260610-can-llms-express-uncertainty/ --> find that across GPT-4 and LLaMA-2-Chat, elicited verbalized confidences beat the logprobs but are still systematically overconfident, so eliciting the number improves calibration without solving it.
+- **The verbalized-beats-logprob result holds for RLHF models, not language models in general.** Pre-RLHF base models typically have well-calibrated token probabilities, so the gap this paper documents comes from RLHF. For practitioners: with a fine-tuned instruction model whose logprobs you can read, verbalized confidences are probably the better move, but with a base model the logprobs are still the honest signal. The paper is careful about this, but the headline is easy to over-generalize.
+- **A verbalized confidence is produced after the answer and conditioned on it, so it can encode reliability information the answer's own token probabilities cannot.** This is related to but distinct from self-consistency [[6]](#ref-6) sampling: both recruit the model's own generation to estimate answer reliability, but self-consistency uses disagreement across samples while Just Ask uses within-sample reflection.
+- **The "consider the opposite" prompt (asking for several guesses before the confidence) improves calibration with nothing more than a prompt change.** Forcing the model to enumerate alternatives before stating a confidence is inference-time debiasing against anchoring on its first answer. It connects to self-reflection and verification prompts like CRITIC [[7]](#ref-7) <!-- crosslink-todo: /posts/20260503-critic/ -->, and suggests a shared mechanism: breaking the model's commitment to a single chain of thought improves calibration, correctness, and hallucination rates together.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Tian, Katherine](https://katherinethai.github.io/), [Mitchell, Eric](https://ericmitchell.ai/), [Zhou, Allan](https://bland.website/), [Sharma, Archit](https://architsharma97.github.io/), [Rafailov, Rafael](https://rmrafailov.github.io/), [Yao, Huaxiu](https://www.huaxiuyao.io/), [Finn, Chelsea](https://ai.stanford.edu/~cbfinn/), and [Manning, Christopher D.](https://nlp.stanford.edu/~manning/) "Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback." *EMNLP 2023*, arXiv:2305.14975, May 24, 2023. <https://arxiv.org/abs/2305.14975>
+2. <a id="ref-2"></a>[Kadavath, S.](https://www.linkedin.com/in/saurav-kadavath/), Conerly, T., [Askell, A.](https://www.amandaaskell.com/), Henighan, T., Drain, D., [Perez, E.](https://ethanperez.net/), Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., Johnston, S., El-Showk, S., Jones, A., Elhage, N., Hume, T., Chen, A., [Bai, Y.](https://yuntaobai.com/), [Bowman, S.](https://cims.nyu.edu/~sbowman/), Fort, S., [Ganguli, D.](https://deepganguli.com/), Hernandez, D., Jacobson, J., Kernion, J., Kravec, S., Lovitt, L., Ndousse, K., [Olsson, C.](https://www.catherineolsson.com/), Ringer, S., [Amodei, D.](https://en.wikipedia.org/wiki/Dario_Amodei), Brown, T., [Clark, J.](https://jack-clark.net/), Joseph, N., Mann, B., McCandlish, S., [Olah, C.](https://colah.github.io/), and [Kaplan, J.](https://sites.krieger.jhu.edu/jared-kaplan/). "Language Models (Mostly) Know What They Know." *arXiv preprint* (arXiv:2207.05221), November 21, 2022. <https://arxiv.org/abs/2207.05221>
+3. <a id="ref-3"></a>Brier, Glenn W. "Verification of Forecasts Expressed in Terms of Probability." *Monthly Weather Review*, 78(1):1–3, 1950. <https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2>
+4. <a id="ref-4"></a>Guo, Chuan, Pleiss, Geoff, Sun, Yu, and Weinberger, Kilian Q. "On Calibration of Modern Neural Networks." *ICML 2017*, arXiv:1706.04599, Jun 14, 2017. <https://arxiv.org/abs/1706.04599>
+5. <a id="ref-5"></a>Xiong, Miao, Hu, Zhiyuan, Lu, Xinyang, Li, Yifei, Fu, Jie, He, Junxian, and Hooi, Bryan. "Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs." *ICLR 2024*, arXiv:2306.13063, Jun 22, 2023. <https://arxiv.org/abs/2306.13063>
+6. <a id="ref-6"></a>Wang, Xuezhi, Wei, Jason, Schuurmans, Dale, Le, Quoc, Chi, Ed, Narang, Sharan, Chowdhery, Aakanksha, and Zhou, Denny. "Self-Consistency Improves Chain-of-Thought Reasoning in Language Models." *ICLR 2023*, arXiv:2203.11171, Mar 21, 2022. <https://arxiv.org/abs/2203.11171>
+7. <a id="ref-7"></a>Gou, Zhibin, Shao, Zhihong, Gong, Yeyun, Shen, Yelong, Yang, Yujiu, Duan, Nan, and Chen, Weizhu. "CRITIC: Large Language Models Can Self-Correct with Tool-Interactive Critiquing." *ICLR 2024*, arXiv:2305.11738, May 19, 2023. <https://arxiv.org/abs/2305.11738>
+
+## Related Posts
+
+- [A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses](/posts/20260609-confidence-calibration-metrics/): defines the four metrics (ECE, ECE-t, BS-t, AUC) this paper scores on, and why a low ECE alone does not certify a useful confidence.
+- [Language Models (Mostly) Know What They Know](/posts/20260504-kadavath-mostly-know/): the pre-RLHF baseline behind Note 2, reading calibration off the model's own probabilities and the "P(True)" self-evaluation.
+- [How to Make LLM Output More Trustworthy](/posts/20260505-llm-uncertainty-survey/): the broader catalog of confidence and uncertainty methods this paper's verbalized approach sits inside.
+- [Linguistic Calibration of Long-Form Generations](/posts/20260505-linguistic-calibration/): trains the verbalized confidence this paper only elicits, the next step once prompting plateaus.
+- [AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions](/posts/20260523-abstentionbench-unanswerable-questions/): the downstream cost when a model has the calibrated signal but does not act on it to abstain.

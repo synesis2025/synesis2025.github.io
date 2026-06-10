@@ -267,7 +267,7 @@ gtag('config', 'G-DSR8394H99', { 'anonymize_ip': true});
      render). EXPORTS `window.__tagCounts` (async, populated when
      `window.__tagCountsReady` resolves). -->
 <script>
-window.__tagCountsReady = fetch('/tag-counts.json?v=c9d02b1a5c')
+window.__tagCountsReady = fetch('/tag-counts.json?v=5b89e36250')
   .then(function (r) { return r.json(); })
   .then(function (data) { window.__tagCounts = data; return data; })
   .catch(function (err) {
@@ -282,7 +282,7 @@ window.__tagCountsReady = fetch('/tag-counts.json?v=c9d02b1a5c')
      the byte-stability rationale and the consumer contract. -->
 <script>window.__copyrightRange="2017–2026";window.__bucketSizes={"home": {"size": 25, "overflow": 12}, "archive": {"size": 50, "overflow": 25}};</script>
 <script>
-window.__postIndexReady = fetch('/post-index.json?v=978ab76b5d')
+window.__postIndexReady = fetch('/post-index.json?v=c3cbcfc70d')
   .then(function (r) { return r.json(); })
   .then(function (data) {
     window.__postIndex = data;
@@ -929,7 +929,7 @@ window.Quarto = {
 </figure>
 </div>
 <p>A confidence score is a number a model attaches to an answer to say how likely that answer is to be correct: 0.9 means “almost certainly right,” 0.5 means “a coin flip.” For a language model the number can come from several places, the probability the model assigns to its own answer tokens, a value it states in words (“about 80% sure”), or the rate at which sampled answers agree. Wherever it comes from, the reason to want one is to act on it: defer the low-confidence cases to a person, abstain instead of guessing, or weight the answer in a downstream decision. That only works if the number can be trusted.</p>
-<p>Whether a confidence score can be trusted is itself something we measure, and “good” turns out to have more than one meaning. The calibration literature reports a confusing spread of numbers for it: expected calibration error (ECE), Brier score (BS), negative log-likelihood (NLL), area under the receiver operating characteristic curve (AUROC), and several selective-prediction variants. A single paper often reports four of them at once. <a href="https://arxiv.org/abs/2305.14975">Just Ask for Calibration</a> <a href="#ref-1">[1]</a> <!-- crosslink-todo: /posts/20260503-just-ask-calibration/ -->, for instance, scores every method on ECE, temperature-scaled ECE, temperature-scaled Brier, and an AUROC-style selective-accuracy curve.</p>
+<p>Whether a confidence score can be trusted is itself something we measure, and “good” turns out to have more than one meaning. The calibration literature reports a confusing spread of numbers for it: expected calibration error (ECE), Brier score (BS), negative log-likelihood (NLL), area under the receiver operating characteristic curve (AUROC), and several selective-prediction variants. A single paper often reports four of them at once. <a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration</a> <a href="#ref-1">[1]</a>, for instance, scores every method on ECE, temperature-scaled ECE, temperature-scaled Brier, and an AUROC-style selective-accuracy curve.</p>
 <p>Are these metrics redundant, or do they measure different things? This post works one small example through each of them. The example is rigged so that three models give the <em>same answers</em> and get the <em>same number right</em>, and differ only in how they report confidence. That isolates the confidence signal from accuracy, and it turns out to be enough to make every metric disagree about which model is best.</p>
 <section id="what-we-want-from-a-confidence-score" class="level2">
 <h2 class="anchored" data-anchor-id="what-we-want-from-a-confidence-score">What we want from a confidence score</h2>
@@ -1083,7 +1083,7 @@ window.Quarto = {
 <li><strong>Model B:</strong> 0.50. All confidences tie, so it ranks no better than chance.</li>
 <li><strong>Model C:</strong> 1.00. Every correct answer outranks every wrong one.</li>
 </ul>
-<p>Now the overconfident model is perfect, because ranking is all AUROC sees. AUROC’s blind spot is the mirror of ECE’s: it ignores calibration completely. The deeper fact is that AUROC is invariant to any order-preserving rescaling of the confidences. Pass Model C’s confidences through a temperature scaling that pulls them toward 0.5 and its calibration error collapses, while its AUROC stays at 1.00 because the ranking is untouched. So AUROC measures the calibration the model <em>could</em> reach after recalibration, not the calibration it has now. The practical corollary: a poor ECE is often a recalibration away from good, but a poor AUROC is not, because the model has thrown away the information that recalibration would need. This reframes a result like <a href="https://arxiv.org/abs/2305.14975">Just Ask for Calibration</a> <!-- crosslink-todo: /posts/20260503-just-ask-calibration/ -->. The question worth asking is not only whether verbalized confidences are better calibrated than token probabilities, but whether they <em>rank</em> answers better, since only a ranking gain survives recalibration.</p>
+<p>Now the overconfident model is perfect, because ranking is all AUROC sees. AUROC’s blind spot is the mirror of ECE’s: it ignores calibration completely. The deeper fact is that AUROC is invariant to any order-preserving rescaling of the confidences. Pass Model C’s confidences through a temperature scaling that pulls them toward 0.5 and its calibration error collapses, while its AUROC stays at 1.00 because the ranking is untouched. So AUROC measures the calibration the model <em>could</em> reach after recalibration, not the calibration it has now. The practical corollary: a poor ECE is often a recalibration away from good, but a poor AUROC is not, because the model has thrown away the information that recalibration would need. This reframes a result like <a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration</a>. The question worth asking is not only whether verbalized confidences are better calibrated than token probabilities, but whether they <em>rank</em> answers better, since only a ranking gain survives recalibration.</p>
 </section>
 <section id="the-selective-prediction-view-riskcoverage-and-aurc" class="level2">
 <h2 class="anchored" data-anchor-id="the-selective-prediction-view-riskcoverage-and-aurc">The selective-prediction view: risk–coverage and AURC</h2>
