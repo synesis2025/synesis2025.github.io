@@ -48,9 +48,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-60d9dfa7e940c6c37b0c3b7e9d61c16d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../site_libs/bootstrap/bootstrap-dark-26f4694562c8c20a613b72f136fa86c4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../../site_libs/bootstrap/bootstrap-60d9dfa7e940c6c37b0c3b7e9d61c16d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-b664a1ae4fdbdd76d90e9594a936ca4a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark-e71b4c3f6c5099513ddd1e58f200b315.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../site_libs/bootstrap/bootstrap-b664a1ae4fdbdd76d90e9594a936ca4a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -803,6 +803,7 @@ window.__postIndexReady = fetch('/post-index.json?v=c3cbcfc70d')
   <ul>
   <li><a href="#what-the-article-reports" id="toc-what-the-article-reports" class="nav-link active" data-scroll-target="#what-the-article-reports">What the article reports</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
+  <li><a href="#related-posts" id="toc-related-posts" class="nav-link" data-scroll-target="#related-posts">Related Posts</a></li>
   </ul>
 </nav>
     </div>
@@ -882,6 +883,17 @@ window.__postIndexReady = fetch('/post-index.json?v=c3cbcfc70d')
 <li><p>The nine patterns trace back to one design choice: Claude Code preloads “might be relevant” context (<code>CLAUDE.md</code>, hook output, skill bodies, MCP schemas, full conversation history) on every turn, and bills the user for the speculation. Anthropic’s own answer to this is <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">progressive disclosure</a>, the core design principle behind Agent Skills: metadata loads eagerly, full bodies pull in only when Claude judges the skill relevant. But the principle doesn’t seem to extend to the other preload categories, which remain always-on; and even within Skills the conservative auto-invoke the article describes (nine installed skills loading on every task) undermines it in practice.</p></li>
 <li><p>Subagent delegation already exists in Claude Code and directly addresses the article’s biggest line item (conversation-history re-reads, 13%): <a href="https://docs.claude.com/en/docs/claude-code/sub-agents">Explore</a> or general-purpose agents pull context into a task-scoped workspace that doesn’t feed back into the main thread. But it’s not the default behavior, and the article’s nine-fix list doesn’t mention it, suggesting the tool is under-adopted even among experienced users. The impact compounds on long sessions; the article’s own arithmetic (message 30 costs 30× message 1) makes main-thread history re-read quadratic in turn count, while a subagent’s scratch context stays bounded.</p></li>
 <li><p>The cache-miss fix depends on whether you can tune the cache lifetime directly. If you can, upgrading from the 5-minute default to the <a href="https://docs.claude.com/en/docs/build-with-claude/prompt-caching">1-hour extended cache</a> pays off quickly. If you can’t, the only option is to keep the cache warm by touching the session during breaks.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the other side of the token-count story, tracing how a tokenizer change inflates the same input before any of these overhead patterns even apply.</li>
+<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the formal version of the conversation-history line item, deriving why agent token costs grow quadratically without caching and why the cache fixes here matter most on long sessions.</li>
+<li><a href="../../posts/20260508-making-the-blog-agent-friendly/">Making <em>synesis</em> Agent-Friendly</a>: the progressive-disclosure principle this post invokes, applied to corpus surfaces so an agent pulls only what it needs rather than preloading everything.</li>
+<li><a href="../../posts/20260528-claude-code-large-codebases/">How Claude Code Works in Large Codebases: Best Practices and Where to Start</a>: the same harness extension points (hooks, skills, MCP, <code>CLAUDE.md</code>) seen from the configuration side, where over-loading them is the overhead this breakdown bills.</li>
+<li><a href="../../posts/20260529-claude-code-mastery/">Claude Code Beyond the Prompt</a>: the field guide to running Claude Code as a programmable agent, including the context- and skill-management habits that keep the productive-token share high.</li>
 </ul>
 
 

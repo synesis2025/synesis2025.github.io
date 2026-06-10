@@ -23,3 +23,12 @@ What the article reports:
 - **The 86:1 input/output ratio is a useful diagnostic for whether your agent has the right shape.** A worker that reads 86 tokens for every 1 it returns is doing what cheap models are good at: absorbing data, returning a focused extract. An orchestrator running closer to 50:1 is synthesizing. If both your tiers come out with similar ratios, you probably haven't actually separated the planning role from the reading role. You're paying frontier prices for token absorption.
 - **Capping sub-agents at one level deep is the unglamorous decision that makes the bill predictable.** Recursive agent spawning is the easy default and the easy way to a $40K weekend. The piece notes this in passing, but it's worth pulling out: bounded fan-out is what keeps the cost ceiling in place, and most published multi-agent designs don't impose it.
 - **One thing the article doesn't quantify: how much of the win came from the triager vs the better models.** They tell us the triager handles 80% of cases at 25× less cost, and they tell us the upgrade enabled the architecture, but the counterfactual ("Sonnet 4.0 + the same triager pattern") isn't in the post. It would be a useful ablation, especially for teams trying to justify the migration.
+
+---
+
+## Related Posts
+
+- [The Math Behind the Cost of AI Agents](/posts/20260513-the-math-behind-the-cost-of-ai-agents/): the formal version of the same point, deriving why agent token costs grow quadratically and why keeping work off the expensive model is what controls the bill.
+- [Where Claude Code Tokens Go](/posts/20260503-where-claude-code-tokens-go/): the other end of the spend breakdown, showing where the input tokens actually go once an agent is running.
+- [Claude Opus 4.7's New Tokenizer: ~40% More Tokens Than 4.6](/posts/20260420-opus-47-token-count/): the counterweight to any "just upgrade and pay less" reading, since per-token cost has trended up, not down.
+- [How Anthropic Teams Use Claude Code](/posts/20250725-anthropic-claude-code-teams/): a complementary look at usage patterns from the model maker, against which Mendral's triager-plus-orchestrator architecture is one concrete instance.

@@ -48,9 +48,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../site_libs/bootstrap/bootstrap-60d9dfa7e940c6c37b0c3b7e9d61c16d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../../site_libs/bootstrap/bootstrap-dark-26f4694562c8c20a613b72f136fa86c4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../../site_libs/bootstrap/bootstrap-60d9dfa7e940c6c37b0c3b7e9d61c16d.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-b664a1ae4fdbdd76d90e9594a936ca4a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark-e71b4c3f6c5099513ddd1e58f200b315.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../../site_libs/bootstrap/bootstrap-b664a1ae4fdbdd76d90e9594a936ca4a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -833,6 +833,7 @@ window.Quarto = {
   <li><a href="#the-growth-law" id="toc-the-growth-law" class="nav-link active" data-scroll-target="#the-growth-law">The growth law</a></li>
   <li><a href="#fits-on-swe-bench" id="toc-fits-on-swe-bench" class="nav-link" data-scroll-target="#fits-on-swe-bench">Fits on SWE-bench</a></li>
   <li><a href="#my-notes" id="toc-my-notes" class="nav-link" data-scroll-target="#my-notes">My Notes</a></li>
+  <li><a href="#related-posts" id="toc-related-posts" class="nav-link" data-scroll-target="#related-posts">Related Posts</a></li>
   </ul>
 </nav>
     </div>
@@ -978,6 +979,16 @@ window.Quarto = {
 <li><p><strong>Gemini’s 2× trajectory length.</strong> Trajectory length itself differs markedly across models, and the post doesn’t unpack why. Gemini-3-Flash runs out to <span class="math inline">\(T \approx 175\)</span>; GPT-5.2 tops out around <span class="math inline">\(T \approx 75\)</span> and Opus 4.6 around <span class="math inline">\(T \approx 80\)</span>. Even with Gemini’s leaner per-turn verbosity (<span class="math inline">\(\sim 300\)</span> tokens/turn), the longer trajectories end up consuming more total tokens: <span class="math inline">\(\sim 8\text{M}\)</span> cumulative no-cache at session end versus <span class="math inline">\(\sim 3.7\text{M}\)</span> for Opus. If the tasks are roughly equivalent across runs, that is twice the work to reach comparable outcomes, which would look like a capability gap. But I can’t rule out harness-level differences: different per-model step limits, different tool-call styles (many small reads vs fewer large ones), or different early-exit thresholds could each produce the same pattern without implying anything about the model. Without OpenHands config detail it stays ambiguous. The observation worth holding onto either way: “leaner per turn” doesn’t translate to “cheaper overall” if it costs twice as many turns to finish.</p></li>
 <li><p><strong>The two-line fix anecdote.</strong> The author <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents#:~:text=two%2Dline%20fix">notes in passing</a> that the OpenAI cache slope looked several times steeper than theory predicted, traced it to a bug in how their own code was calling OpenAI’s cache API, and shaved the slope down with a two-line fix. That is a useful case for regression-testing cache behavior against a theoretical baseline. Any provider whose cached slope deviates from <span class="math inline">\(c \cdot M\)</span> by more than some margin is either misconfigured in your client or mis-documented upstream.</p></li>
 <li><p><strong>Prompt-prefix stability, not just size.</strong> Prompt-prefix stability is what actually decides whether caching works, and the best-practices list treats it as a small detail tucked inside the “keep system prompts clear, concise, and stable” bullet. Rotating system prompts, reordering tool definitions, or appending per-session memory to the front of the context all silently invalidate the cache: a single edit anywhere inside the cached prefix flips the whole thing back to full price. That deserves its own bullet near the top of the list, not a clause inside one about size. The closest comparable analysis at another layer is Reiner Pope’s <a href="../../posts/20260501-how-frontier-llms-trained/">blackboard derivation of frontier LLM economics</a>, which does the same thing one level down at the hardware layer: derive from the formula, calibrate to public prices.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the empirical companion this post is in direct tension with, measuring real cache-miss spend against the near-flat with-cache fit here.</li>
+<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the token-count input to this cost model, where a tokenizer change shifts every term in the quadratic.</li>
+<li><a href="../../posts/20260422-kv-cache-compression/">Sequential KV Cache Compression via Probabilistic Language Tries</a>: attacks the same growing-context cost from the model side, compressing the cache the triangular re-read formula re-bills.</li>
+<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: the long-trajectory agent workflows whose turn counts (<span class="math inline">\(T\)</span>) drive the quadratic cost analyzed here.</li>
 </ul>
 
 

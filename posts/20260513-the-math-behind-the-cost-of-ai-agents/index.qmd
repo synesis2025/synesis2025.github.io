@@ -56,3 +56,12 @@ GPT-5.2 and Opus 4.6 are roughly matched on $a$ (around 1,000 fresh tokens per t
 - **The two-line fix anecdote.** The author [notes in passing](https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents#:~:text=two%2Dline%20fix) that the OpenAI cache slope looked several times steeper than theory predicted, traced it to a bug in how their own code was calling OpenAI's cache API, and shaved the slope down with a two-line fix. That is a useful case for regression-testing cache behavior against a theoretical baseline. Any provider whose cached slope deviates from $c \cdot M$ by more than some margin is either misconfigured in your client or mis-documented upstream.
 
 - **Prompt-prefix stability, not just size.** Prompt-prefix stability is what actually decides whether caching works, and the best-practices list treats it as a small detail tucked inside the "keep system prompts clear, concise, and stable" bullet. Rotating system prompts, reordering tool definitions, or appending per-session memory to the front of the context all silently invalidate the cache: a single edit anywhere inside the cached prefix flips the whole thing back to full price. That deserves its own bullet near the top of the list, not a clause inside one about size. The closest comparable analysis at another layer is Reiner Pope's [blackboard derivation of frontier LLM economics](/posts/20260501-how-frontier-llms-trained/), which does the same thing one level down at the hardware layer: derive from the formula, calibrate to public prices.
+
+---
+
+## Related Posts
+
+- [Where Claude Code Tokens Go](/posts/20260503-where-claude-code-tokens-go/): the empirical companion this post is in direct tension with, measuring real cache-miss spend against the near-flat with-cache fit here.
+- [Claude Opus 4.7's New Tokenizer: ~40% More Tokens Than 4.6](/posts/20260420-opus-47-token-count/): the token-count input to this cost model, where a tokenizer change shifts every term in the quadratic.
+- [Sequential KV Cache Compression via Probabilistic Language Tries](/posts/20260422-kv-cache-compression/): attacks the same growing-context cost from the model side, compressing the cache the triangular re-read formula re-bills.
+- [Agentic Coding Is a Trap](/posts/20260507-agentic-coding-is-a-trap/): the long-trajectory agent workflows whose turn counts ($T$) drive the quadratic cost analyzed here.

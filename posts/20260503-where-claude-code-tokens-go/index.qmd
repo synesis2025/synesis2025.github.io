@@ -37,3 +37,13 @@ After applying all nine fixes, the claim is that productive-token share lifts fr
 - Subagent delegation already exists in Claude Code and directly addresses the article's biggest line item (conversation-history re-reads, 13%): [Explore](https://docs.claude.com/en/docs/claude-code/sub-agents) or general-purpose agents pull context into a task-scoped workspace that doesn't feed back into the main thread. But it's not the default behavior, and the article's nine-fix list doesn't mention it, suggesting the tool is under-adopted even among experienced users. The impact compounds on long sessions; the article's own arithmetic (message 30 costs 30× message 1) makes main-thread history re-read quadratic in turn count, while a subagent's scratch context stays bounded.
 
 - The cache-miss fix depends on whether you can tune the cache lifetime directly. If you can, upgrading from the 5-minute default to the [1-hour extended cache](https://docs.claude.com/en/docs/build-with-claude/prompt-caching) pays off quickly. If you can't, the only option is to keep the cache warm by touching the session during breaks.
+
+---
+
+## Related Posts
+
+- [Claude Opus 4.7's New Tokenizer: ~40% More Tokens Than 4.6](/posts/20260420-opus-47-token-count/): the other side of the token-count story, tracing how a tokenizer change inflates the same input before any of these overhead patterns even apply.
+- [The Math Behind the Cost of AI Agents](/posts/20260513-the-math-behind-the-cost-of-ai-agents/): the formal version of the conversation-history line item, deriving why agent token costs grow quadratically without caching and why the cache fixes here matter most on long sessions.
+- [Making *synesis* Agent-Friendly](/posts/20260508-making-the-blog-agent-friendly/): the progressive-disclosure principle this post invokes, applied to corpus surfaces so an agent pulls only what it needs rather than preloading everything.
+- [How Claude Code Works in Large Codebases: Best Practices and Where to Start](/posts/20260528-claude-code-large-codebases/): the same harness extension points (hooks, skills, MCP, `CLAUDE.md`) seen from the configuration side, where over-loading them is the overhead this breakdown bills.
+- [Claude Code Beyond the Prompt](/posts/20260529-claude-code-mastery/): the field guide to running Claude Code as a programmable agent, including the context- and skill-management habits that keep the productive-token share high.

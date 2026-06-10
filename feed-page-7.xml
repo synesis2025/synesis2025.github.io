@@ -92,6 +92,16 @@
 <li><a id="ref-6"></a>Farquhar, S., Kossen, J., Kuhn, L., and Gal, Y. “Detecting Hallucinations in Large Language Models Using Semantic Entropy.” <em>Nature</em> 630, 625–630, June 2024. <a href="https://www.nature.com/articles/s41586-024-07421-0" class="uri">https://www.nature.com/articles/s41586-024-07421-0</a></li>
 <li><a id="ref-7"></a>Tian, K., Mitchell, E., Zhou, A., Sharma, A., Rafailov, R., Yao, H., Finn, C., and Manning, C. D. “Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback.” <em>EMNLP 2023</em>, arXiv:2305.14975. <a href="https://arxiv.org/abs/2305.14975" class="uri">https://arxiv.org/abs/2305.14975</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the 2026 negative sweep that resolves this paper’s open question, confirming that the sampling detour, not introspection, is what lets models describe their own answer distribution.</li>
+<li><a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback</a>: directly downstream of the RLHF-recalibration finding here, showing that asking post-RLHF models to verbalize a probability beats reading their raw token log-probabilities.</li>
+<li><a href="../../posts/20260505-semantic-entropy/">Detecting Hallucinations in Large Language Models Using Semantic Entropy</a>: the same “use the model’s own samples” lineage, turning a spread of sampled answers into an uncertainty signal for hallucination detection.</li>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: the open gap this paper’s none-of-the-above ablation exposed, that models resist judging whether any listed answer is correct, measured at scale on unanswerable questions.</li>
+<li><a href="../../posts/20260609-confidence-calibration-metrics/">A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses</a>: the measurement machinery (ECE, AUROC) the calibration claims here rest on, and what each metric does and does not reward.</li>
+</ul>
 
 
 </section>
@@ -148,6 +158,17 @@
 <li><p>The nine patterns trace back to one design choice: Claude Code preloads “might be relevant” context (<code>CLAUDE.md</code>, hook output, skill bodies, MCP schemas, full conversation history) on every turn, and bills the user for the speculation. Anthropic’s own answer to this is <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">progressive disclosure</a>, the core design principle behind Agent Skills: metadata loads eagerly, full bodies pull in only when Claude judges the skill relevant. But the principle doesn’t seem to extend to the other preload categories, which remain always-on; and even within Skills the conservative auto-invoke the article describes (nine installed skills loading on every task) undermines it in practice.</p></li>
 <li><p>Subagent delegation already exists in Claude Code and directly addresses the article’s biggest line item (conversation-history re-reads, 13%): <a href="https://docs.claude.com/en/docs/claude-code/sub-agents">Explore</a> or general-purpose agents pull context into a task-scoped workspace that doesn’t feed back into the main thread. But it’s not the default behavior, and the article’s nine-fix list doesn’t mention it, suggesting the tool is under-adopted even among experienced users. The impact compounds on long sessions; the article’s own arithmetic (message 30 costs 30× message 1) makes main-thread history re-read quadratic in turn count, while a subagent’s scratch context stays bounded.</p></li>
 <li><p>The cache-miss fix depends on whether you can tune the cache lifetime directly. If you can, upgrading from the 5-minute default to the <a href="https://docs.claude.com/en/docs/build-with-claude/prompt-caching">1-hour extended cache</a> pays off quickly. If you can’t, the only option is to keep the cache warm by touching the session during breaks.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the other side of the token-count story, tracing how a tokenizer change inflates the same input before any of these overhead patterns even apply.</li>
+<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the formal version of the conversation-history line item, deriving why agent token costs grow quadratically without caching and why the cache fixes here matter most on long sessions.</li>
+<li><a href="../../posts/20260508-making-the-blog-agent-friendly/">Making <em>synesis</em> Agent-Friendly</a>: the progressive-disclosure principle this post invokes, applied to corpus surfaces so an agent pulls only what it needs rather than preloading everything.</li>
+<li><a href="../../posts/20260528-claude-code-large-codebases/">How Claude Code Works in Large Codebases: Best Practices and Where to Start</a>: the same harness extension points (hooks, skills, MCP, <code>CLAUDE.md</code>) seen from the configuration side, where over-loading them is the overhead this breakdown bills.</li>
+<li><a href="../../posts/20260529-claude-code-mastery/">Claude Code Beyond the Prompt</a>: the field guide to running Claude Code as a programmable agent, including the context- and skill-management habits that keep the productive-token share high.</li>
 </ul>
 
 
@@ -268,6 +289,15 @@
 <li><a id="ref-9"></a>Stanford HAI, “<a href="https://hai.stanford.edu/ai-index/2025-ai-index-report">2025 AI Index Report</a>.”</li>
 <li><a id="ref-10"></a>William Stanley Jevons, <em>The Coal Question: An Inquiry Concerning the Progress of the Nation, and the Probable Exhaustion of Our Coal-Mines</em>, Macmillan, 1865; see also <a href="https://en.wikipedia.org/wiki/Jevons_paradox">Jevons paradox</a>.</li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20230203-ai-job-automation-augmentation/">Will AI Take Your Job? It’s Not So Simple</a>: the complement-not-substitute case Citrini overlooks, with case studies in which AI deployment augmented workers rather than replacing them.</li>
+<li><a href="../../posts/20260423-anthropic-economic-index/">Anthropic Economic Index</a>: the empirical evidence that the most productive AI work today is humans directing AI, a brake on displacement the crisis scenario does not model.</li>
+<li><a href="../../posts/20260524-acemoglu-great-displacement/">Daron Acemoglu on AI, Jobs, and Liberal Democracy</a>: the displacement side argued by a Nobel economist, that AI is heading the wrong way (replace, not augment) and the productivity gains aren’t showing up, a counterweight to Citadel’s supply-shock optimism.</li>
+<li><a href="../../posts/20260608-alex-imas-phil-trammell/">What Remains Scarce After AGI: Alex Imas and Phil Trammell on Labor, Capital, and Redistribution</a>: the same demand-side debate at AGI horizons, arguing a demand-driven recession is unlikely and locating the disagreement in the elasticity of demand, the exact hinge of the Keynes analogy here.</li>
+</ul>
 
 
 </section>
@@ -1574,6 +1604,16 @@ Note
 <li><a id="ref-14"></a>Kaplan, Jared, et al.&nbsp;“Scaling Laws for Neural Language Models.” <em>arXiv preprint</em>, 2020. <a href="https://arxiv.org/abs/2001.08361" class="uri">https://arxiv.org/abs/2001.08361</a></li>
 <li><a id="ref-15"></a>Dao, Tri, et al.&nbsp;“FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness.” <em>arXiv preprint</em>, 2022. <a href="https://arxiv.org/abs/2205.14135" class="uri">https://arxiv.org/abs/2205.14135</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260422-kv-cache-compression/">Sequential KV Cache Compression via Probabilistic Language Tries</a>: a direct response to the lecture’s central constraint, that the KV cache is the dominant and unamortizable memory cost of serving, by compressing the cache as a sequence.</li>
+<li><a href="../../posts/20260511-the-inference-shift/">The Inference Shift</a>: the same memory-hierarchy-first reading of serving economics, arguing that agentic inference is a distinct workload that reshapes the compute stack the lecture prices out.</li>
+<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the same price-it-out-from-first-principles method, deriving why agent token costs grow quadratically without caching and fitting the curves to real traces.</li>
+<li><a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a>: the “RL through a straw” concern the lecture extends, where the 100×-over-trained estimate quantifies how much compute the RL phase now consumes.</li>
+<li><a href="../../posts/20241213-sutskever-pretraining-over/">Sutskever at NeurIPS 2024: Pre-Training Era Is Over</a>: the source of Ilya’s “pipelining is not wise” line, which the lecture derives mechanically by showing the per-rack KV-cache terms cancel.</li>
+</ul>
 
 
 </section>
@@ -1638,6 +1678,14 @@ Note
 <ol type="1">
 <li><a id="ref-1"></a>Xinyue Liu, Niloofar Mireshghallah, Jane C. Ginsburg, and Tuhin Chakrabarty. 2026. “Alignment Whack-a-Mole: Finetuning Activates Verbatim Recall of Copyrighted Books in Large Language Models.” <em>arXiv preprint</em>. <a href="https://arxiv.org/abs/2603.20957" class="uri">https://arxiv.org/abs/2603.20957</a>. Code at <a href="https://github.com/cauchy221/Alignment-Whack-a-Mole-Code" class="uri">https://github.com/cauchy221/Alignment-Whack-a-Mole-Code</a>.</li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20230409-llms-copyright-fair-use/">LLMs, Copyrighted Training Data, and Fair Use</a>: the Stanford framework whose proposed mitigations (output filtering, instance attribution, DP training) this paper directly undermines, since finetuning reactivates pretraining memorization the filters miss.</li>
+<li><a href="../../posts/20230830-copyright-office-ai-input/">Copyright Office Seeks Public Input on AI Protections and Liability</a>: the open questions of when training is infringing and who answers for infringing outputs, which the paper’s lab-vs-customer liability argument speaks to directly.</li>
+<li><a href="../../posts/20230416-agi-llm-memorization/">LLMs and AGI: Are We Measuring Reasoning or Memorization?</a>: the same latent-memorization concern, here showing that verbatim recall the models already hold from pretraining can be surfaced rather than newly created.</li>
+</ul>
 
 
 </section>
@@ -1713,6 +1761,16 @@ Note
 <li><a id="ref-4"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
 <li><a id="ref-5"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260516-cannot-self-correct/">Large Language Models Cannot Self-Correct Reasoning Yet</a>: the Huang et al.&nbsp;result this post cites, that without an external signal LLMs degrade rather than improve their own reasoning, of which the SRL ≈ RWL finding is an engineering-design instance.</li>
+<li><a href="../../posts/20260430-rema-meta-think/">ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</a>: the same “metacognition belongs in a different head than the one doing the work” claim, reached by splitting reasoning into a planner and an executor and beating single-agent baselines on math.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that frames CRDAL as extrinsic scaffolding, a hand-designed second agent in a hand-designed loop rather than learned self-improvement.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: catalogs the agent-to-agent communication failures that CRDAL’s new co-regulation channel introduces and this single-task benchmark does not stress.</li>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the companion negative result on self-reports, where 20 models cannot faithfully summarize their own answer distributions without sample-augmented context.</li>
+</ul>
 
 
 </section>
@@ -1810,6 +1868,16 @@ Note
 <li><a id="ref-14"></a><a href="https://ziyuwan.github.io/">Wan</a>, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi <a href="https://leeeeoliu.github.io/">Yang</a>, Mark <a href="https://www.cs.ubc.ca/~schmidtm/">Schmidt</a>, Jun <a href="http://www0.cs.ucl.ac.uk/staff/Jun.Wang/">Wang</a>, Weinan <a href="http://wnzhang.net/">Zhang</a>, Shuyue Hu, and Ying <a href="https://yingwen.io/">Wen</a>. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
 <li><a id="ref-15"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: the cleanest example of the extrinsic ceiling this paper describes, where humans wire in the modules, metric, and search strategy.</li>
+<li><a href="../../posts/20260430-rema-meta-think/">ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</a>: a hand-designed high/low metacognitive split, one of the systems this taxonomy classifies as extrinsic on the planning component.</li>
+<li><a href="../../posts/20260519-memskill/">MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents</a>: a self-evolving agent that pushes toward the intrinsic end by learning which memory operations to apply, rather than running one fixed loop.</li>
+<li><a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</a>: another hand-designed co-regulation loop with a fixed role and position, the kind of extrinsic mechanism the paper argues limits scalability.</li>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: empirical counterweight to the paper’s optimism, finding that the metacognitive-knowledge ingredient is thinner than assumed across 20 models.</li>
+</ul>
 
 
 </section>
@@ -1897,6 +1965,16 @@ Note
 <li><a id="ref-4"></a>Pryzant, R., Iter, D., Li, J., Lee, Y., Zhu, C., Zeng, M. “Automatic Prompt Optimization with ‘Gradient Descent’ and Beam Search.” <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing</em>, 2023. <a href="https://arxiv.org/abs/2305.03495" class="uri">https://arxiv.org/abs/2305.03495</a></li>
 <li><a id="ref-5"></a>Guo, Q., Wang, R., Guo, J., Li, B., Song, K., Tan, X., Liu, G., Bian, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: the prior-art prompt-optimization substrate MetaSPO cites, which it extends by splitting the prompt into a transferable system level and a task-specific user level.</li>
+<li><a href="../../posts/20260430-evoprompt/">EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</a>: an earlier LLM-as-optimizer loop that, like every method before MetaSPO, produces task-specific prompts rather than a task-agnostic one.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: the same staging-is-the-contribution pattern, adding a search wrapper around an off-the-shelf prompt optimizer instead of a bilevel meta-learning loop.</li>
+<li><a href="../../posts/20260513-gepa/">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a>: a textual-gradient prompt optimizer in the same lineage as the Pryzant-style inner loop MetaSPO builds on.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that classifies MetaSPO’s hand-fixed search structure as extrinsic, with humans choosing what each level optimizes.</li>
+</ul>
 
 
 </section>
@@ -2065,6 +2143,16 @@ Note
 <li><a id="ref-8"></a>Cao, Qi, Yufan Wang, Peijia Qin, Shuhao Zhang, and Pengtao Xie. “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></li>
 <li><a id="ref-9"></a>Sun, Zexu, Yongcheng Zeng, Erxue Min, Heyang Gao, Bokai Ji, and Xu Chen. “Cog-Rethinker: Hierarchical Metacognitive Reinforcement Learning for LLM Reasoning.” <em>arXiv preprint</em> (arXiv:2510.15979), October 13, 2025. <a href="https://arxiv.org/abs/2510.15979" class="uri">https://arxiv.org/abs/2510.15979</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the taxonomy that classifies ReMA’s hand-designed high/low decomposition as an extrinsic metacognitive mechanism.</li>
+<li><a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</a>: the same split-agent pattern, training-free and on an engineering task, reaching the same direction of result.</li>
+<li><a href="../../posts/20260520-adaptive-collaboration-mapo/">Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning</a>: another separately optimized metacognitive layer, here a routing policy that gates between autonomous solving and human deferral.</li>
+<li><a href="../../posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/">AbstRaL: Augmenting LLMs’ Reasoning by Reinforcing Abstract Thinking</a>: a related RL-on-reasoning recipe that, like ReMA, rewards a meta-level abstraction step distinct from the answer itself.</li>
+<li><a href="../../posts/20260522-metacognitive-harness/">LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</a>: a test-time version of separating the monitoring layer from the reasoning layer, which ReMA does at training time.</li>
+</ul>
 
 
 </section>
@@ -2178,6 +2266,16 @@ Note
 <li><a id="ref-6"></a>Choi, Y., <a href="https://jinheonbaek.github.io/">Baek</a>, J., <a href="https://www.mlai-kaist.com/">Hwang</a>, S. J. “System Prompt Optimization with Meta-Learning.” <em>arXiv preprint</em> (arXiv:2505.09666), May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
 <li><a id="ref-7"></a><a href="https://lemon0830.github.io/">Guo</a>, Q., Wang, R., Guo, J., <a href="https://libeineu.github.io/">Li</a>, B., <a href="https://www.microsoft.com/en-us/research/people/kaitaosong/">Song</a>, K., <a href="https://www.microsoft.com/en-us/research/people/xuta/">Tan</a>, X., Liu, G., <a href="https://sites.google.com/view/jiangbian">Bian</a>, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: the substrate MASS depends on, supplying both the typed-module abstraction and the MIPRO teleprompter it runs in Stages 1 and 3.</li>
+<li><a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">System Prompt Optimization with Meta-Learning</a>: the same staging-on-top-of-a-known-optimizer pattern, where the bilevel structure is the contribution and the prompt optimizer is off-the-shelf.</li>
+<li><a href="../../posts/20260430-evoprompt/">EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</a>: the inverse design, where the LLM-as-optimizer primitive is novel and the staging is borrowed, against MASS’s novel staging over a known primitive.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: the failure-mode counterweight to design-side optimization, which assumes the failures you hit at deployment look like the ones you optimized against.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that places MASS in the prompt-optimization line where humans fix the search-space structure and the LLM only optimizes inside it.</li>
+</ul>
 
 
 </section>
@@ -2258,6 +2356,16 @@ Note
 <li><a id="ref-4"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>arXiv preprint</em> (arXiv:2502.02533), February 4, 2025. <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
 <li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, T., <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>arXiv preprint</em> (arXiv:2506.05109), June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-evoprompt/">EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</a>: the string-template prompt optimizer that DSPy supersedes by moving optimization up to the module-graph level.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: builds directly on DSPy, using its MIPRO teleprompter as the prompt-optimization primitive inside a topology search.</li>
+<li><a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">System Prompt Optimization with Meta-Learning</a>: cites DSPy as prior art and extends the same line to a task-agnostic system prompt learned across tasks.</li>
+<li><a href="../../posts/20260513-gepa/">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a>: a later DSPy-ecosystem optimizer that slots into the same programming model, replacing bootstrap search with reflective rewrites.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that classifies DSPy as the extrinsic-self-improvement ceiling case, where humans wire in every choice the compiler doesn’t make.</li>
+</ul>
 
 
 </section>
@@ -2369,6 +2477,16 @@ Note
 <li><a id="ref-4"></a>Choi, Y., <a href="https://jinheonbaek.github.io/">Baek</a>, J., <a href="https://www.mlai-kaist.com/">Hwang</a>, S. J. “System Prompt Optimization with Meta-Learning.” <em>arXiv preprint</em> (arXiv:2505.09666), May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
 <li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, T., <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>arXiv preprint</em> (arXiv:2506.05109), June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260515-promptbreeder/">Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution</a>: the next step in LLM-driven evolutionary prompt search, co-evolving the mutation prompts alongside the task prompts EvoPrompt mutates by hand-fixed operators.</li>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: moves optimization above the string-template level EvoPrompt works at, treating whole pipelines rather than isolated prompts as the search target.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: the same LLM-as-optimizer idea staged across prompt and topology levels, with EvoPrompt as one of the prompt-optimization predecessors it builds on.</li>
+<li><a href="../../posts/20260513-gepa/">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a>: another evolutionary prompt optimizer, swapping EvoPrompt’s crossover/mutation operators for reflective rewrites from natural-language failure diagnoses.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that names EvoPrompt as a clean instance of the extrinsic optimizer it argues will eventually be overtaken.</li>
+</ul>
 
 
 </section>
@@ -2441,6 +2559,16 @@ Note
 <li><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Zheng</a>, Shangshang, He <a href="https://hbkkk.github.io/">Bai</a>, Yizhe <a href="https://dreasysnail.github.io/">Zhang</a>, Yi Su, Xiaochuan Niu, and Navdeep <a href="https://www.cs.toronto.edu/~ndjaitly/">Jaitly</a>. “KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs.” <em>ACL 2024 Workshop on Knowledgeable Language Models</em>, 2024. arXiv:2312.11539, December 15, 2023. <a href="https://arxiv.org/abs/2312.11539" class="uri">https://arxiv.org/abs/2312.11539</a></li>
 <li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the positive precursor SelfReflect extends, where a 52B model rates its own samples with P(True) but only after the samples are placed in context, the same sampling detour SelfReflect finds is the only thing that works.</li>
+<li><a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback</a>: the verbalized-confidence channel SelfReflect’s abstract critiques as inadequate, shown elsewhere to help calibration but not to reveal the full internal distribution.</li>
+<li><a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</a>: the companion negative result, where an agent told to monitor its own metacognition does no better than a plain retry loop, reinforcing that LLM self-reports need an external signal.</li>
+<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: tackles the SFT-on-confidence channel that SelfReflect found fails on its own, showing what supervised fine-tuning can and cannot recover for verbalized confidence.</li>
+<li><a href="../../posts/20260505-semantic-entropy/">Detecting Hallucinations in Large Language Models Using Semantic Entropy</a>: the same sampling-then-aggregation move SelfReflect endorses, applied to hallucination detection by computing entropy over the meanings of multiple sampled answers.</li>
+</ul>
 
 
 </section>
@@ -2519,6 +2647,16 @@ Note
 <li><a id="ref-3"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>arXiv preprint</em> (arXiv:2505.20295), May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
 <li><a id="ref-4"></a><a href="https://djrusso.github.io/">Russo</a>, Daniel J., Benjamin <a href="https://web.stanford.edu/~bvr/">Van Roy</a>, Abbas Kazerouni, Ian <a href="https://iosband.github.io/">Osband</a>, and Zheng Wen. “A Tutorial on Thompson Sampling.” <em>Foundations and Trends in Machine Learning</em> 11, no. 1 (2018): 1–96. arXiv:1707.02038. <a href="https://arxiv.org/abs/1707.02038" class="uri">https://arxiv.org/abs/1707.02038</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20230902-llms-vs-knowledge-graphs/">Give Us the Facts: Large Language Models vs.&nbsp;Knowledge Graphs</a>: the same use of curated KGs as the factual reference against which LLM knowledge is measured, here motivating why probing is needed at all.</li>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the companion Apple paper on the adjacent question, whether a model can honestly report its own uncertainty about a fact KGLens flags as weak.</li>
+<li><a href="../../posts/20231102-fleek-fact-verification/">FLEEK: Fact Verification with LLMs and Knowledge Graphs</a>: the inverse pairing of the same two ingredients, using KGs and the web to verify and correct LLM claims rather than to probe for blind spots.</li>
+<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: the single-score factuality benchmark KGLens argues against, since a per-relation map is more useful for deployment than one accuracy number.</li>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: a complementary angle on locating a model’s knowledge, asking whether the model itself can predict which facts it will get right.</li>
+</ul>
 
 
 </section>
@@ -2560,6 +2698,16 @@ Note
 <li><strong>The 86:1 input/output ratio is a useful diagnostic for whether your agent has the right shape.</strong> A worker that reads 86 tokens for every 1 it returns is doing what cheap models are good at: absorbing data, returning a focused extract. An orchestrator running closer to 50:1 is synthesizing. If both your tiers come out with similar ratios, you probably haven’t actually separated the planning role from the reading role. You’re paying frontier prices for token absorption.</li>
 <li><strong>Capping sub-agents at one level deep is the unglamorous decision that makes the bill predictable.</strong> Recursive agent spawning is the easy default and the easy way to a $40K weekend. The piece notes this in passing, but it’s worth pulling out: bounded fan-out is what keeps the cost ceiling in place, and most published multi-agent designs don’t impose it.</li>
 <li><strong>One thing the article doesn’t quantify: how much of the win came from the triager vs the better models.</strong> They tell us the triager handles 80% of cases at 25× less cost, and they tell us the upgrade enabled the architecture, but the counterfactual (“Sonnet 4.0 + the same triager pattern”) isn’t in the post. It would be a useful ablation, especially for teams trying to justify the migration.</li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the formal version of the same point, deriving why agent token costs grow quadratically and why keeping work off the expensive model is what controls the bill.</li>
+<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the other end of the spend breakdown, showing where the input tokens actually go once an agent is running.</li>
+<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the counterweight to any “just upgrade and pay less” reading, since per-token cost has trended up, not down.</li>
+<li><a href="../../posts/20250725-anthropic-claude-code-teams/">How Anthropic Teams Use Claude Code</a>: a complementary look at usage patterns from the model maker, against which Mendral’s triager-plus-orchestrator architecture is one concrete instance.</li>
 </ul>
 
 
@@ -2623,6 +2771,15 @@ Note
 <li><a id="ref-5"></a>“Scaling How We Build and Test Our Most Advanced AI.” <em>Meta</em>. <a href="https://ai.meta.com/blog/scaling-how-we-build-test-advanced-ai/" class="uri">https://ai.meta.com/blog/scaling-how-we-build-test-advanced-ai/</a></li>
 <li><a id="ref-6"></a>“Our updated Preparedness Framework” (v2, April 15, 2025). <em>OpenAI</em>. <a href="https://openai.com/index/updating-our-preparedness-framework/" class="uri">https://openai.com/index/updating-our-preparedness-framework/</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260516-anthropic-institute-agenda/">The Anthropic Institute’s Research Agenda</a>: another frontier lab publishing a public-facing agenda meant to feed governance and release decisions, the same genre as this values statement.</li>
+<li><a href="../../posts/20260223-marcus-brundage-agi-bet/">Marcus vs.&nbsp;Brundage: A Concrete AGI Bet</a>: a concrete operationalization of the AGI these principles take as their subject, where the term’s meaning is still contested.</li>
+<li><a href="../../posts/20260603-superintelligence/">Superintelligence: The Idea That Eats Smart People</a>: a counterweight that questions the AGI-and-resilience framing this post’s principles assume as premise.</li>
+<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: the labor-displacement and universal-prosperity concern behind OpenAI’s third principle, argued out in detail.</li>
+</ul>
 
 
 </section>
@@ -2663,8 +2820,17 @@ Note
 </ul></li>
 <li>A 32% relative increase in malicious detections between November 2025 and February 2026, measured across multiple Common Crawl snapshots.</li>
 </ul>
+<hr>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20230318-indirect-prompt-injection/">Indirect Prompt Injection Threats</a>: the early demonstration of the exact attack class Google is now measuring at web scale, showing what a working exfiltration payload looks like.</li>
+<li><a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex AI Escapes Sandbox and Executes Malware</a>: a concrete in-the-wild case of the malicious-destruction category Google flags as “potentially devastating,” where an injected README actually ran shell commands.</li>
+<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: the realized version of the file-deletion threat, showing what happens when a destructive instruction does succeed against an agent with real privileges.</li>
+</ul>
 
 
+</section>
 
  ]]></description>
   <guid>https://benjaminhan.net/posts/20260428-prompt-injections-public-web/</guid>
@@ -2716,6 +2882,14 @@ Note
 <li><a id="ref-3"></a>“DRIVE: One-bit Distributed Mean Estimation.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2105.08339" class="uri">https://arxiv.org/abs/2105.08339</a></li>
 <li><a id="ref-4"></a>“EDEN: Communication-Efficient and Robust Distributed Mean Estimation for Federated Learning.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2108.08842" class="uri">https://arxiv.org/abs/2108.08842</a></li>
 </ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260422-kv-cache-compression/">Sequential KV Cache Compression via Probabilistic Language Tries</a>: the alternative that measures itself against TurboQuant as a baseline, so this walkthrough doubles as background for that comparison.</li>
+<li><a href="../../posts/20260501-how-frontier-llms-trained/">How Frontier LLMs Are Actually Trained and Served</a>: the memory-bandwidth-versus-compute arithmetic that makes KV cache quantization worth doing in the first place.</li>
+<li><a href="../../posts/20260424-llm-illustration/">How LLMs Actually Work: A Visual Deep Dive</a>: a sister interactive walkthrough, building the same kind of draggable open-web explainer for the broader LLM pipeline.</li>
+</ul>
 
 
 </section>
