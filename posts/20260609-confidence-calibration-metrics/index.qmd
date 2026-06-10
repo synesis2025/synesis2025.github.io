@@ -1,0 +1,225 @@
+---
+title: "A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses"
+description: "A worked comparison of the metrics used to score confidence estimates. ECE, Brier, log loss, and AUROC reward different things, and on one tiny example no two of them agree on which model is best."
+author: synesis
+date: "2026-06-09"
+image: cover.jpg
+---
+
+![**Figure 1.** Reliability diagrams for the three models in the worked example below. Each solid bar is the accuracy of the answers whose stated confidence falls in that bin, and the dashed line is perfect calibration. The gap to that line is hatched with forward slashes where the model is overconfident (accuracy below confidence) and with crosses where it is underconfident (accuracy above confidence). Model B, which says "0.5" to everything, falls exactly on the diagonal and scores zero calibration error while being useless. Model C is severely overconfident.](cover.jpg){fig-align="center"}
+
+A confidence score is a number a model attaches to an answer to say how likely that answer is to be correct: 0.9 means "almost certainly right," 0.5 means "a coin flip." For a language model the number can come from several places, the probability the model assigns to its own answer tokens, a value it states in words ("about 80% sure"), or the rate at which sampled answers agree. Wherever it comes from, the reason to want one is to act on it: defer the low-confidence cases to a person, abstain instead of guessing, or weight the answer in a downstream decision. That only works if the number can be trusted.
+
+Whether a confidence score can be trusted is itself something we measure, and "good" turns out to have more than one meaning. The calibration literature reports a confusing spread of numbers for it: expected calibration error (ECE), Brier score (BS), negative log-likelihood (NLL), area under the receiver operating characteristic curve (AUROC), and several selective-prediction variants. A single paper often reports four of them at once. [Just Ask for Calibration](https://arxiv.org/abs/2305.14975) [[1]](#ref-1) <!-- crosslink-todo: /posts/20260503-just-ask-calibration/ -->, for instance, scores every method on ECE, temperature-scaled ECE, temperature-scaled Brier, and an AUROC-style selective-accuracy curve.
+
+Are these metrics redundant, or do they measure different things? This post works one small example through each of them. The example is rigged so that three models give the *same answers* and get the *same number right*, and differ only in how they report confidence. That isolates the confidence signal from accuracy, and it turns out to be enough to make every metric disagree about which model is best.
+
+## What we want from a confidence score
+
+The setup is the one used for question answering. A model answers a question and attaches a confidence $c \in [0,1]$, its own estimate that the answer is correct. We observe the outcome $y \in \{0,1\}$, whether the answer was actually right. Over $N$ questions we have pairs $(c_i, y_i)$. There are two distinct properties we might want from those confidences, and a model can have either one without the other.
+
+- **Calibration (reliability):** among the answers given confidence $\approx 0.8$, about 80% should be correct. The stated number means what it says.
+- **Discrimination (resolution):** the model assigns higher confidence to answers that turn out correct than to ones that turn out wrong. The number *ranks* answers by reliability, whatever its absolute scale.
+
+These come apart. A model can be perfectly calibrated and useless (predict the base rate every time), or perfectly discriminating and badly calibrated (rank correctly but report inflated numbers). A third thing we might want is a single number that rewards both at once and cannot be gamed by a trivial strategy. That is what a *proper scoring rule* provides, and it is where the metrics below end up.
+
+## Three models, same answers
+
+Ten questions. The model gets the first five right and the last five wrong, so accuracy is 50% for everyone. The three models differ only in the confidence they attach.
+
+| Question | Correct? ($y$) | A: informative | B: constant | C: overconfident |
+|:---:|:---:|:---:|:---:|:---:|
+| 1 | yes (1) | 0.92 | 0.50 | 0.99 |
+| 2 | yes (1) | 0.78 | 0.50 | 0.98 |
+| 3 | yes (1) | 0.54 | 0.50 | 0.97 |
+| 4 | yes (1) | 0.71 | 0.50 | 0.96 |
+| 5 | yes (1) | 0.66 | 0.50 | 0.95 |
+| 6 | no (0) | 0.58 | 0.50 | 0.94 |
+| 7 | no (0) | 0.44 | 0.50 | 0.93 |
+| 8 | no (0) | 0.33 | 0.50 | 0.92 |
+| 9 | no (0) | 0.27 | 0.50 | 0.91 |
+| 10 | no (0) | 0.16 | 0.50 | 0.90 |
+
+Model A puts higher confidence on the answers it got right, with one inversion (question 6, wrong, gets 0.58, above question 3, right, at 0.54). Model B says 0.50 to everything. Model C ranks every right answer above every wrong one, but pins all ten confidences near 1.0. Every metric below is computed on exactly this table.
+
+## Measuring calibration: expected calibration error (ECE)
+
+ECE (lower is better, zero is perfect) measures calibration. Introduced by [Naeini et al.](https://ojs.aaai.org/index.php/AAAI/article/view/9602) [[2]](#ref-2) and brought to deep networks by [Guo et al.](https://arxiv.org/abs/1706.04599) [[3]](#ref-3), it bins predictions by stated confidence and averages the gap between confidence and accuracy across bins, weighted by bin size:
+
+$$\mathrm{ECE} = \sum_{b=1}^{B} \frac{n_b}{N}\,\bigl|\, \mathrm{acc}(b) - \mathrm{conf}(b) \,\bigr|$$
+
+where $B$ is the number of bins, $n_b$ the count in bin $b$, $\mathrm{acc}(b)$ the fraction correct in the bin, and $\mathrm{conf}(b)$ the mean confidence in the bin. With five equal-width bins:
+
+- **Model A:** 0.225. Spread along the diagonal, with moderate gaps in both directions.
+- **Model B:** 0.000. Every prediction lands in the bin around 0.5, where accuracy is also 0.5. The gap is zero.
+- **Model C:** 0.445. All ten predictions sit in the top bin, where the mean confidence is 0.945 but accuracy is 0.5.
+
+Figure 1 plots these as reliability diagrams, where the hatched gap to the diagonal is the quantity ECE averages. ECE asks one question, whether a stated 0.8 corresponds to 80% correct, and the model that knows nothing scores a perfect zero. That is its blind spot: ECE rewards calibration and is indifferent to whether the confidences separate right answers from wrong ones. It earns its place anyway: ECE isolates calibration in interpretable units, a 0.05 ECE meaning stated confidence is off from accuracy by about five points on average. The proper scores introduced later fold calibration together with discrimination, so they cannot report that gap on its own.
+
+A second problem is that ECE is not even a single number, because it depends on the binning scheme. The same Model A predictions give:
+
+| Bins | 1 | 2 | 3 | 5 | 10 | 20 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| ECE(A) | 0.039 | 0.201 | 0.157 | 0.225 | 0.225 | 0.317 |
+
+A single bin lets over- and under-confidence cancel within it and reports near-perfect calibration. Many bins, with one or two points each, overstate the error. The number is not even monotone in the bin count. A bare ECE in one paper is not comparable to one in another unless the binning matches, which is the motivation for adaptive (equal-mass) binning [[4]](#ref-4) and debiased estimators [[5]](#ref-5).
+
+## Measuring discrimination: AUROC
+
+A discrimination metric ignores the absolute scale of the confidences and asks only whether they rank correct answers above wrong ones. AUROC (higher is better, 1.0 is a perfect ranking and 0.5 is chance) is the probability that a randomly chosen correct answer gets a higher confidence than a randomly chosen wrong one, with ties counting as half. Writing $\mathcal{P} = \{i : y_i = 1\}$ for the correct answers and $\mathcal{N} = \{i : y_i = 0\}$ for the wrong ones, it is the fraction of all correct–wrong pairs that the confidence ranks the right way:
+
+$$\mathrm{AUROC} = \frac{1}{|\mathcal{P}|\,|\mathcal{N}|} \sum_{i \in \mathcal{P}} \sum_{j \in \mathcal{N}} \Bigl[\, \mathbf{1}(c_i > c_j) + \tfrac{1}{2}\,\mathbf{1}(c_i = c_j) \,\Bigr]$$
+
+With the example's five correct and five wrong answers, that is 25 pairs:
+
+- **Model A:** 0.96. One misranked pair out of 25.
+- **Model B:** 0.50. All confidences tie, so it ranks no better than chance.
+- **Model C:** 1.00. Every correct answer outranks every wrong one.
+
+Now the overconfident model is perfect, because ranking is all AUROC sees. AUROC's blind spot is the mirror of ECE's: it ignores calibration completely. The deeper fact is that AUROC is invariant to any order-preserving rescaling of the confidences. Pass Model C's confidences through a temperature scaling that pulls them toward 0.5 and its calibration error collapses, while its AUROC stays at 1.00 because the ranking is untouched. So AUROC measures the calibration the model *could* reach after recalibration, not the calibration it has now. The practical corollary: a poor ECE is often a recalibration away from good, but a poor AUROC is not, because the model has thrown away the information that recalibration would need. This reframes a result like [Just Ask for Calibration](https://arxiv.org/abs/2305.14975) <!-- crosslink-todo: /posts/20260503-just-ask-calibration/ -->. The question worth asking is not only whether verbalized confidences are better calibrated than token probabilities, but whether they *rank* answers better, since only a ranking gain survives recalibration.
+
+## The selective-prediction view: risk–coverage and AURC
+
+AUROC collapses the ranking into a single scalar. But deciding what to answer and what to defer is a trade-off between coverage and risk, which the selective-prediction literature [[6]](#ref-6) draws as a *risk–coverage curve* (Figure 2): answer only the most confident questions and abstain on the rest, then track how the error rate (the *risk*) changes with the fraction of questions answered (the *coverage*). Writing $y_{(j)}$ for correctness in descending-confidence order, the risk at a coverage of $k/N$, keeping the $k$ most confident answers, is $r_k = \tfrac{1}{k}\sum_{j \le k}(1 - y_{(j)})$, and the area under the curve is
+
+$$\mathrm{AURC} = \frac{1}{N}\sum_{k=1}^{N} r_k \qquad (\text{lower is better, ties averaged}).$$
+
+![**Figure 2.** Risk–coverage curves for the same three models: the error rate among the answers kept (risk) as the most-confident fraction (coverage) grows. Model B (dashed) stays flat at 0.5 because it cannot tell its right answers from its wrong ones. Model A (solid, circles) and Model C (dotted, squares) hold risk near zero over the confident half, then climb. A and C trace the same curve except at coverage 0.5, where A's one ranking inversion admits a wrong answer before a right one, spiking its risk before the next, correct answer pulls the rate back down. This is the exact reversal of the calibration view in Figure 1, where B looked perfect and C looked broken.](risk_coverage.png){fig-align="center"}
+
+Plotting accuracy ($1 - r_k$) instead of risk gives the *selective-accuracy curve*, whose area is the "AUC" that *Just Ask* and much of the LLM work report. It is just $1 - \mathrm{AURC}$ (higher is better). These areas are summaries for comparing models, and on this example AURC, that "AUC," and AUROC all order the three the same way (C best, A close behind, B at chance), so the scorecard later reports only AUROC. What you actually deploy against, though, is the curve, not its area: you read an operating point off it, the confidence threshold that answers as many questions as possible while holding risk under a budget. The single number averages over every threshold and hides the one you would pick.
+
+## Measuring both: Brier score (BS) and log loss (NLL)
+
+A proper scoring rule rewards calibration and discrimination at once, in a single number (lower is better) that is minimized, in expectation, only when the stated confidence equals the true probability of correctness. The Brier score [[7]](#ref-7) is the mean squared error between confidence and outcome:
+
+$$\mathrm{BS} = \frac{1}{N}\sum_{i=1}^{N} (c_i - y_i)^2$$
+
+- **Model A:** 0.120.
+- **Model B:** 0.250.
+- **Model C:** 0.424.
+
+Now A wins and B is in the middle. The constant predictor that aced ECE is penalized for providing no information, and the overconfident C for its inflated numbers. Neither can game a proper score.
+
+Log loss, also called negative log-likelihood (also lower is better), is the other proper scoring rule in common use:
+
+$$\mathrm{NLL} = -\frac{1}{N}\sum_{i=1}^{N} \bigl[\, y_i \ln c_i + (1 - y_i)\ln(1 - c_i) \,\bigr]$$
+
+- **Model A:** 0.404.
+- **Model B:** 0.693 (which is $\ln 2$, the score of a coin flip).
+- **Model C:** 1.286.
+
+The ranking matches Brier, but the spread is wider, and the reason matters. Log loss is unbounded: a confident wrong answer drives one term toward infinity. Raise a single wrong answer's confidence from 0.70 to 0.99, and its Brier contribution goes from $0.49$ to $0.98$, a doubling against a ceiling of 1, while its log-loss contribution goes from $-\ln(0.30) = 1.20$ to $-\ln(0.01) = 4.61$, almost a quadrupling with no ceiling. Log loss punishes catastrophic overconfidence far harder than Brier, which is why C looks worst of all under it. The choice between the two proper scores is mostly how harshly to treat the confidently-wrong tail.
+
+## No single metric agrees
+
+| Model | Accuracy | ECE (5-bin) | Brier | NLL | AUROC |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| A: informative | 0.50 | 0.225 | **0.120** | **0.404** | 0.96 |
+| B: constant 0.5 | 0.50 | **0.000** | 0.250 | 0.693 | 0.50 |
+| C: overconfident | 0.50 | 0.445 | 0.424 | 1.286 | **1.00** |
+
+Three models, three different winners. ECE picks B, the useless one. AUROC picks C, the badly miscalibrated one. Only the proper scoring rules, Brier and NLL, pick A, the one a person would actually want. The metrics are not redundant and not interchangeable: each rewards a different property, and optimizing the wrong one selects a degenerate model.
+
+## Why the proper scoring rules see both
+
+That Brier and NLL pick the right model is not luck. Murphy's decomposition [[8]](#ref-8) splits the Brier score into three terms:
+
+$$\mathrm{BS} = \underbrace{\mathrm{reliability}}_{\text{calibration gap}} - \underbrace{\mathrm{resolution}}_{\text{discrimination}} + \underbrace{\mathrm{uncertainty}}_{\text{base rate}}$$
+
+The reliability term is the squared calibration gap. ECE measures the same gap in absolute value. The resolution term rewards predictions that separate from the base rate, the quantity AUROC proxies, and it enters with a minus sign so more of it lowers the score. The uncertainty term depends only on the data. A proper scoring rule already contains a calibration component and a discrimination component, which is exactly why B (zero resolution) and C (large reliability term) both score badly. The two one-sided metrics from the sections above are the two halves of this split: ECE is roughly the reliability piece in isolation, and AUROC is a rank-based proxy for the resolution piece. Reporting ECE and AUROC side by side is, in effect, reconstructing a proper score's decomposition by hand. The calibration-versus-refinement split goes back to [DeGroot and Fienberg](https://doi.org/10.2307/2987588) [[9]](#ref-9). The general theory of proper scoring rules is laid out by [Gneiting and Raftery](https://doi.org/10.1198/016214506000001437) [[10]](#ref-10).
+
+## Other metrics worth knowing
+
+- **Maximum calibration error (MCE):** the worst single bin's gap rather than the average (lower is better). Model A's MCE at five bins is 0.30, against an ECE of 0.225. Useful when a single badly-calibrated region is a safety problem.
+- **Adaptive / equal-mass ECE:** bins by equal count instead of equal width [[4]](#ref-4), so a region with few predictions does not get its own noisy bin. Reduces, but does not remove, the binning dependence.
+- **Debiased and binning-free estimators:** the plug-in ECE is a biased estimator of the true calibration error. Debiased versions [[5]](#ref-5) and kernel or Kolmogorov–Smirnov variants estimate it without committing to a bin grid.
+- **Reliability diagram:** the visual in Figure 1, and the thing every scalar calibration metric is summarizing.
+
+## Which metric to use
+
+The right metric follows the downstream use, because optimizing the wrong one selects a degenerate model: train against ECE alone, and the constant predictor B is a global optimum. Common cases:
+
+- **Routing unconfident cases to a human (triage or abstention):** only the ranking matters, so use AUROC, and read the operating point off the risk–coverage curve to set how much to defer.
+- **Showing the number to a user as a probability:** it has to mean what it says, an "80% sure" that is right about 80% of the time, so use ECE and the reliability diagram.
+- **Feeding the confidence into a decision or expected-value calculation:** the number enters arithmetic (act when probability times payoff clears a threshold), so calibration is the requirement. Use ECE, with a proper score as a backstop.
+- **Selecting the best model, or training against the confidence as a loss:** use a proper score (Brier or NLL), which a one-sided strategy cannot game.
+- **Penalizing confident mistakes hardest (safety-critical answers):** use NLL, which is unbounded, and report MCE for the single worst region.
+- **Comparing calibration numbers across papers:** distrust a bare ECE unless the binning matches, and prefer a proper score or a debiased estimator.
+
+When one headline number is needed, a proper score is the safe default, since it already includes both a calibration and a discrimination term. ECE and AUROC are then most useful as a diagnosis of *which way* a model fails: a good Brier with a bad ECE means the ranking is sound and recalibration will help, while a bad AUROC means the information to rank was never there.
+
+## Caveat: *sometimes* the correctness label is not fixed
+
+One assumption runs under all four metrics: that $y$, whether an answer was correct, is known. For multiple-choice or short-answer tasks it is. For open-ended question answering, $y$ is itself a model's judgment of whether the response is semantically equivalent to the reference answer, and switching from exact match to a GPT-4 grader changes which answers count as correct. That moves accuracy, every bin's contents, and the ranking all at once. The comparison above holds $y$ fixed. For language models graded by another model, the label is one more moving part, and a calibration number is only as trustworthy as the grader that defined correctness.
+
+## The metrics in code
+
+The whole comparison is a few lines of NumPy. The functions below reproduce every number in the tables above, including the tie-aware risk–coverage curve that gives the constant model its honest AURC of 0.5.
+
+```python
+import numpy as np
+
+# Ten questions: the model gets the first five right (y=1), the last five wrong.
+y = np.array([1, 1, 1, 1, 1, 0, 0, 0, 0, 0], dtype=float)
+models = {
+    "A: informative":   np.array([0.92, 0.78, 0.54, 0.71, 0.66, 0.58, 0.44, 0.33, 0.27, 0.16]),
+    "B: constant":      np.array([0.50] * 10),
+    "C: overconfident": np.array([0.99, 0.98, 0.97, 0.96, 0.95, 0.94, 0.93, 0.92, 0.91, 0.90]),
+}
+
+def ece(c, y, n_bins=5):                       # expected calibration error
+    idx = np.minimum((c * n_bins).astype(int), n_bins - 1)
+    return sum((idx == b).mean() * abs(y[idx == b].mean() - c[idx == b].mean())
+               for b in range(n_bins) if (idx == b).any())
+
+def brier(c, y):                               # mean squared error (a proper score)
+    return np.mean((c - y) ** 2)
+
+def nll(c, y):                                 # log loss (a proper score)
+    c = np.clip(c, 1e-12, 1 - 1e-12)
+    return -np.mean(y * np.log(c) + (1 - y) * np.log(1 - c))
+
+def auroc(c, y):                               # P(a correct answer outranks a wrong one)
+    pos, neg = c[y == 1], c[y == 0]
+    wins = sum((p > neg).sum() + 0.5 * (p == neg).sum() for p in pos)
+    return wins / (len(pos) * len(neg))
+
+def aurc(c, y):                                # area under the risk-coverage curve
+    risks, answered, correct = [], 0, 0.0      # answer most-confident first
+    for v in np.sort(np.unique(c))[::-1]:      # group ties, resolve to expected risk
+        m = c == v
+        size, hits = int(m.sum()), float(y[m].sum())
+        for k in range(1, size + 1):
+            n = answered + k
+            risks.append(1 - (correct + (k / size) * hits) / n)
+        answered += size
+        correct += hits
+    return np.mean(risks)
+
+for name, c in models.items():
+    print(f"{name:18}  ECE={ece(c, y):.3f}  Brier={brier(c, y):.3f}  "
+          f"NLL={nll(c, y):.3f}  AUROC={auroc(c, y):.2f}  AURC={aurc(c, y):.3f}")
+```
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Tian, Katherine](https://katherinethai.github.io/), Mitchell, Eric, Zhou, Allan, Sharma, Archit, Rafailov, Rafael, Yao, Huaxiu, Finn, Chelsea, and Manning, Christopher D. "Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback." *EMNLP 2023* (arXiv:2305.14975), May 24, 2023. <https://arxiv.org/abs/2305.14975>
+2. <a id="ref-2"></a>Naeini, Mahdi Pakdaman, Cooper, Gregory F., and Hauskrecht, Milos. "Obtaining Well Calibrated Probabilities Using Bayesian Binning." *AAAI 2015*, pp. 2901–2907, 2015. <https://ojs.aaai.org/index.php/AAAI/article/view/9602>
+3. <a id="ref-3"></a>Guo, Chuan, Pleiss, Geoff, Sun, Yu, and Weinberger, Kilian Q. "On Calibration of Modern Neural Networks." *ICML 2017* (arXiv:1706.04599), June 14, 2017. <https://arxiv.org/abs/1706.04599>
+4. <a id="ref-4"></a>Nixon, Jeremy, Dusenberry, Michael W., Zhang, Linchuan, Jerfel, Ghassen, and Tran, Dustin. "Measuring Calibration in Deep Learning." *CVPR 2019 Workshops* (arXiv:1904.01685), April 2, 2019. <https://arxiv.org/abs/1904.01685>
+5. <a id="ref-5"></a>Kumar, Ananya, Liang, Percy, and Ma, Tengyu. "Verified Uncertainty Calibration." *NeurIPS 2019* (arXiv:1909.10155), September 23, 2019. <https://arxiv.org/abs/1909.10155>
+6. <a id="ref-6"></a>Geifman, Yonatan, and El-Yaniv, Ran. "Selective Classification for Deep Neural Networks." *NeurIPS 2017* (arXiv:1705.08500), May 23, 2017. <https://arxiv.org/abs/1705.08500>
+7. <a id="ref-7"></a>Brier, Glenn W. "Verification of Forecasts Expressed in Terms of Probability." *Monthly Weather Review*, 78(1):1–3, 1950. <https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2>
+8. <a id="ref-8"></a>Murphy, Allan H. "A New Vector Partition of the Probability Score." *Journal of Applied Meteorology*, 12(4):595–600, 1973. <https://doi.org/10.1175/1520-0450(1973)012%3C0595:ANVPOT%3E2.0.CO;2>
+9. <a id="ref-9"></a>DeGroot, Morris H., and Fienberg, Stephen E. "The Comparison and Evaluation of Forecasters." *The Statistician*, 32(1–2):12–22, 1983. <https://doi.org/10.2307/2987588>
+10. <a id="ref-10"></a>Gneiting, Tilmann, and Raftery, Adrian E. "Strictly Proper Scoring Rules, Prediction, and Estimation." *Journal of the American Statistical Association*, 102(477):359–378, 2007. <https://doi.org/10.1198/016214506000001437>
+
+## Related Posts
+
+- [Language Models (Mostly) Know What They Know](/posts/20260504-kadavath-mostly-know/): calibration of base versus reinforcement-learning-from-human-feedback (RLHF) models and the "P(True)" self-evaluation signal, an early version of reading confidence from the model's output rather than its token logits.
+- [How to Make LLM Output More Trustworthy](/posts/20260505-llm-uncertainty-survey/): the broader catalog of confidence and uncertainty methods that these metrics are used to score.
+- [A Primer on Conformal Prediction](/posts/20260505-conformal-prediction-primer/): the distribution-free, coverage-guaranteed cousin of the risk–coverage view.
+- [Detecting Hallucinations in Large Language Models Using Semantic Entropy](/posts/20260505-semantic-entropy/): a discrimination signal for free-form generation, where the correctness-label problem in the last note matters most.
+- [Linguistic Calibration of Long-Form Generations](/posts/20260505-linguistic-calibration/): calibrating verbalized confidence in long-form text, where a single confidence number per answer no longer describes the output.
