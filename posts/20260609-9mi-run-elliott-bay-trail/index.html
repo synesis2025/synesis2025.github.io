@@ -286,9 +286,17 @@ window.__postIndexReady = fetch('/post-index.json?v=ef55bf3107')
 // Shared by post-nav, keyboard-shortcuts, category-links, and lightbox
 // so they don't each hand-roll the same pathname regex.
 (function () {
+  // Normalize to the pretty-URL form. Quarto's search index stores
+  // explicit `posts/<slug>/index.html` hrefs, so landing on a post via
+  // the search overlay leaves `/posts/<slug>/index.html` in the address
+  // bar — stripping only `.html` + trailing `/` would leave a dangling
+  // `/index` segment and break the post regex below (mobile-aside button
+  // would never appear on search-reached posts). Strip the `/index`
+  // suffix too so search-reached and link-reached posts classify alike.
   var path = window.location.pathname
                .replace(/\.html$/, '')
-               .replace(/\/$/, '') || '/';
+               .replace(/\/$/, '')
+               .replace(/\/index$/, '') || '/';
   var cls = '';
   if (path === '/' || path === '/index') cls = 'page-home';
   else if (path === '/archive') cls = 'page-archive';
