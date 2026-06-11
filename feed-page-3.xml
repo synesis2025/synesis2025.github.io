@@ -23,6 +23,121 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Wed, 10 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Claude Code Beyond the Prompt</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260529-claude-code-mastery/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260529-claude-code-mastery/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-claude-code-mastery/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The opening of Arpan Patel’s Claude Code field guide. Image from <a href="https://arps18.github.io/posts/claude-code-mastery/">Arpan Patel’s blog</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://arps18.github.io/">Arpan Patel</a> wrote a <a href="https://arps18.github.io/posts/claude-code-mastery/">long field guide</a> to running <a href="https://www.anthropic.com/claude-code">Claude Code</a> as a programmable agent instead of a terminal chatbot: the <code>.claude</code> directory, <code>CLAUDE.md</code> the way <a href="https://www.anthropic.com/team/boris-cherny">Boris Cherny</a> writes it, skills, custom subagents, plugins, the underused commands, MCPs, and the workflow habits the Anthropic team actually runs. The author’s badge says it hit #7 on the <a href="https://news.ycombinator.com/">Hacker News</a> front page.</p>
+<section id="what-the-guide-covers" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-guide-covers">What the Guide Covers</h2>
+<p><strong>The operating principle.</strong> Run Claude Code as an agent that needs guardrails, not a prompt-and-wait chatbot.</p>
+<ul>
+<li>Give Claude a way to verify its own work, whether a test, a build, or a grep-able condition, so it keeps iterating until the code runs. Cherny pegs this single move at a 2-3x quality bump.</li>
+<li>Drop into read-only plan mode before any change that touches more than one file, so you can review and edit the plan before it turns into code. Skip it for small fixes.</li>
+<li>Reference files with <code>@path</code> and pipe errors in with <code>cat error.log | claude</code>, because exact context beats an approximate description.</li>
+<li>Write a crisp brief and let Claude run rather than steering it line by line, since the model does better when you delegate than when you pair-program.</li>
+</ul>
+<p><strong>The <code>.claude</code> directory.</strong> A layered config system, not just a home for <code>CLAUDE.md</code>.</p>
+<ul>
+<li>Split config by scope: project files (<code>.claude/</code>, committed) describe the project, global files (<code>~/.claude/</code>) describe you.</li>
+<li>Let <code>CLAUDE.md</code> files cascade in a monorepo, so a service folder adds local conventions on top of the root file.</li>
+<li>Move folder-specific guidance into path-gated <code>rules/*.md</code>, so it loads only where it applies instead of bloating every session.</li>
+<li>Prefer skills over loose <code>commands/*.md</code>, since skills carry supporting files, tool restrictions, and agent overrides.</li>
+</ul>
+<p><strong><code>CLAUDE.md</code>.</strong> The file Claude reads at the start of every session, kept as a guardrail rather than a knowledge base.</p>
+<ul>
+<li>Keep it short by cutting any line whose removal wouldn’t cause a mistake, because long files bury the rules that matter.</li>
+<li>After each mistake, tell Claude to “update CLAUDE.md so you don’t repeat this,” so the file becomes a curated gotcha list in the model’s own phrasing.</li>
+<li>Limit it to build commands, run order, single-test invocations, and a Gotchas section of real shipped bugs, and leave out style conventions and codebase tours that go stale.</li>
+<li>Commit rules straight from PR-review comments with <code>@claude</code>, so every review becomes a permanent fix (Cherny’s “Compounding Engineering”).</li>
+</ul>
+<p><strong><code>CLAUDE.local.md</code>.</strong> A gitignored sibling that loads like <code>CLAUDE.md</code> but never leaves your machine.</p>
+<ul>
+<li>Paste recurring PR-review feedback into it as you read it, so it becomes a private rule file tuned to the comments you keep getting.</li>
+<li>Keep project feedback and personal habits in separate sections, and prune once something is muscle memory, so the file stays easy to maintain.</li>
+</ul>
+<p><strong>Skills.</strong> Folders that package reusable expertise as slash commands.</p>
+<ul>
+<li>Put a <code>SKILL.md</code> in a folder; the folder name becomes the command, so a repeated workflow turns into something you invoke by name.</li>
+<li>Rely on progressive disclosure: only the ~100-token description loads at session start and the full instructions load when the skill fires, which keeps context lean.</li>
+<li>Use frontmatter to restrict tools, pin an agent, or require explicit invocation for skills with side effects, so a deploy skill runs only when you type it.</li>
+<li>Heuristic: if you’ve typed the same instructions twice, write a skill.</li>
+</ul>
+<p><strong>Subagents.</strong> Separate Claude instances with their own context and scoped tools.</p>
+<ul>
+<li>Hand a fifty-file investigation to a subagent, so it doesn’t crowd the main session’s context.</li>
+<li>Keep a reviewer agent read-only, because a reviewer that can patch starts defending its own fixes instead of flagging them.</li>
+<li>Give a review agent a “Do NOT flag” section, so its output isn’t drowned in nitpicks.</li>
+<li>Add <code>isolation: worktree</code> to run one agent per task across parallel git worktrees.</li>
+</ul>
+<p><strong>Plugins.</strong> Installable bundles of skills, hooks, subagents, and MCP servers.</p>
+<ul>
+<li>Install through <code>/plugin</code>, so a team’s setup travels instead of staying on one machine.</li>
+<li>Start with <code>/code-review</code> (parallel agents, confidence-scored findings) and <code>/feature-dev</code>.</li>
+<li>Add a language server plugin for symbol-level navigation and on-edit diagnostics, which the team rates the highest-impact install.</li>
+</ul>
+<p><strong>Underused commands.</strong> What’s past <code>/clear</code> and <code>/compact</code>.</p>
+<ul>
+<li>Use <code>/rewind</code> to roll back to a checkpoint instead of typing “that didn’t work,” which only buries the bad attempt in context.</li>
+<li>Reach for <code>/branch</code>, <code>/batch</code>, <code>/voice</code>, and <code>/insights</code> to fork a session, fan work out, dictate prompts, and review your usage monthly.</li>
+<li>Set <code>/goal</code> to a verifiable completion condition and let Claude grind until it holds.</li>
+<li>Force compaction before 300-400k tokens, where context rot starts on the 1M-token model.</li>
+<li>For mass edits, generate the task list, hand-check three, tighten the prompt, then loop. That is how he migrated roughly 2,000 component files.</li>
+</ul>
+<p><strong>MCPs.</strong> A protocol for reaching external systems from inside the session.</p>
+<ul>
+<li>Wire in servers like GitHub, Postgres, Sentry, Figma, or Linear through <a href="https://modelcontextprotocol.io/">MCP (Model Context Protocol)</a>, so the agent reasons about your whole stack, not just the repo.</li>
+<li>Install few: every server enlarges the tool list Claude reasons over, and a bloated list degrades decision quality.</li>
+<li>Treat an Obsidian vault as three memory tiers: a daily session log (hot), project notes Claude rehydrates at session start (warm), and promoted decisions and reusable notes (cold).</li>
+</ul>
+<p><strong>Daily workflow and team habits.</strong> How the Anthropic team runs it day to day.</p>
+<ul>
+<li>Reproduce a bug with a failing test before asking for a fix, so the fix isn’t a guess.</li>
+<li>Run three to five parallel sessions in separate git worktrees, the habit the team rates the single biggest unlock.</li>
+<li>Pair a writer session with a fresh reviewer session, so the review carries no implementation bias.</li>
+<li>Default to Opus at high effort, since a weaker model that needs correcting is slower overall.</li>
+<li>Never let Claude claim success without evidence, because the trust-then-verify gap is the biggest source of bad output.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Harness over model.</strong> The guide’s bigger point is the same one Anthropic makes in its official <a href="../../posts/20260528-claude-code-large-codebases/">large-codebases piece</a>: what you build around the model matters more than which model you run.</p></li>
+<li><p><strong><code>/goal</code>, a built-in Ralph loop.</strong> It packages the pattern, retry until an external check passes, as a single command.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260528-claude-code-large-codebases/">How Claude Code Works in Large Codebases: Best Practices and Where to Start</a>: Anthropic’s own version of the same harness-over-model argument this guide makes, cited inline here.</li>
+<li><a href="../../posts/20250725-anthropic-claude-code-teams/">How Anthropic Teams Use Claude Code</a>: the team-habits source this field guide distills into a single workflow walkthrough.</li>
+<li><a href="../../posts/20260529-dynamic-workflows-claude-code/">Dynamic Workflows in Claude Code</a>: the feature that turns the guide’s parallel-worktree and <code>/goal</code> habits into a built-in orchestration mode.</li>
+<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the cost side of the same setup, explaining why the guide’s advice to force compaction and trim CLAUDE.md matters.</li>
+<li><a href="../../posts/20251124-skills-not-software-engineering/">“Skills” Are Not Software Engineering</a>: a counterweight to the guide’s enthusiasm for skills, questioning whether packaging instructions as skills is really engineering.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260529-claude-code-mastery/</guid>
+  <pubDate>Fri, 29 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260529-claude-code-mastery/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Use Boring Languages with LLMs</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260529-use-boring-languages-with-llms/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2557,141 +2672,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260523-triage-metacognitive-control/</guid>
   <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 6(a) from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</em> (NeurIPS 2025 Datasets and Benchmarks Track) [1], <a href="https://polkirichenko.github.io/">Polina Kirichenko</a>, <a href="https://www.semanticscholar.org/author/2297128866">Mark Ibrahim</a>, <a href="https://www.semanticscholar.org/author/2256991985">Kamalika Chaudhuri</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Samuel J. Bell</a> (<a href="https://ai.meta.com/research/">FAIR</a> at Meta) introduce a 20-dataset benchmark for abstention and report that scaling doesn’t help, reasoning fine-tuning makes it worse, and a generous system prompt only partly closes the gap.</p>
-<blockquote class="blockquote">
-<p>For Large Language Models (LLMs) to be reliably deployed in both everyday and high-stakes domains, knowing when not to answer is equally critical as answering correctly. Real-world user queries, which can be underspecified, ill-posed, or fundamentally unanswerable, require LLMs to reason about uncertainty and selectively abstain — i.e., refuse to answer definitively. However, abstention remains understudied, without a systematic evaluation framework for modern LLMs. In this work, we introduce <em>AbstentionBench</em>, a large-scale benchmark for holistically evaluating abstention across 20 diverse datasets, including questions with unknown answers, underspecification, false premises, subjective interpretations, and outdated information. <em>Evaluating 20 frontier LLMs reveals abstention is an unsolved problem, and one where scaling models is of little use.</em> While recent reasoning LLMs have shown impressive results in complex problem solving, surprisingly, we find that <em>reasoning fine-tuning degrades abstention (by 24% on average)</em>, even for math and science domains on which reasoning models are explicitly trained. We find that while a carefully crafted system prompt can boost abstention in practice, it does not resolve models’ fundamental inability to reason about uncertainty. We release AbstentionBench to foster research into advancing LLM reliability.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>AbstentionBench curates 17 existing abstention-relevant datasets plus 3 new reasoning-specific ones (<a href="https://arxiv.org/abs/2110.14168">GSM8K</a>-Abstain, <a href="https://arxiv.org/abs/2311.12022">GPQA</a>-Diamond-Abstain, <a href="https://arxiv.org/abs/2009.03300">MMLU</a>-Math-Abstain — versions with the answer redacted or the question made underspecified), grouped into six scenarios in which abstaining is the correct response:</p>
-<ul>
-<li><strong>Answer Unknown</strong>: questions with no knowable answer (e.g.&nbsp;<a href="https://arxiv.org/abs/2206.04615">BIG-Bench</a> Known Unknowns, KUQ Future, KUQ Unsolved).</li>
-<li><strong>Underspecified Intent</strong>: ambiguous user goals (<a href="https://arxiv.org/abs/2109.06157">SituatedQA</a>/Geo, KUQ Ambiguous, <a href="https://arxiv.org/abs/2407.12043">CoCoNot</a> Incomprehensible).</li>
-<li><strong>Stale</strong>: questions whose answer has changed since training cutoff (<a href="https://arxiv.org/abs/2310.03214">FreshQA</a>, CoCoNot Temporal).</li>
-<li><strong>Underspecified Context</strong>: missing premises needed to answer (<a href="https://arxiv.org/abs/1806.03822">SQuAD 2.0</a>, <a href="https://arxiv.org/abs/2105.03011">QASPER</a>, ALCUNA, WorldSense, MediQ, GPQA-Diamond-Abstain, MMLU-Math-Abstain, etc.).</li>
-<li><strong>False Premise</strong>: questions that embed a falsehood (QAQA, FalseQA, CoCoNot False Premise, KUQ False Premise).</li>
-<li><strong>Subjective</strong>: items with no factually correct answer (<a href="https://arxiv.org/abs/2307.14324">MoralChoice</a>, CoCoNot Humanizing, CoCoNot Subjective, KUQ Controversial).</li>
-</ul>
-<p>Whether a response counts as an abstention is decided by an LLM-as-judge — Llama 3.1 8B Instruct with a custom prompt adapted from <a href="https://arxiv.org/abs/2407.12043">Brahman et al.</a> Validated against human labels on a sample of responses from GPT-4o and Llama 3.1 70B, the judge agreed with the human label 88% of the time. Recall (the fraction of unanswerable items the model actually abstained on) is the headline metric, with precision and F1 reported alongside.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The headline evaluation covers ten base models — GPT-4o, o1, Gemini 1.5 Pro, Llama 3.1 {8B, 70B, 405B} Instruct, Llama 3.3 70B Instruct, Qwen 2.5 32B Instruct, Mistral 7B Instruct (v0.3), and OLMo 7B Instruct — plus two reasoning-tuned variants (s1.1 32B fine-tuned from Qwen 2.5 32B, and DeepSeek R1 Distill Llama 70B fine-tuned from Llama 3.3 70B Instruct) that allow isolating the effect of reasoning fine-tuning by holding the base architecture fixed. Three sweeps follow: model-scale (Llama 3.1 8B → 405B), post-training stage (the <a href="https://arxiv.org/abs/2411.15124">Tülu 3</a> [8] supervised fine-tuning (SFT) → direct preference optimization (<a href="https://arxiv.org/abs/2305.18290">DPO</a>) [9] → proximal policy optimization with verifiable rewards (<a href="https://arxiv.org/abs/1707.06347">PPO</a> RLVR) [10] checkpoints), and test-time reasoning budget (s1.1 token budgets of 512 → 4096).</p>
-<p>Figure 2 lays out per-model abstention recall across all 20 datasets, grouped into the six scenarios. Recall is weakest on Underspecified Context (especially MediQ, a medical-questioning benchmark) and False Premise; Subjective splits between near-zero (MoralChoice) and well above 0.5 (CoCoNot).</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure2.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>Across the headline runs:</p>
-<ul>
-<li><strong>No model solves abstention</strong>: the best overall model — Qwen 2.5 32B — sits around mid-recall; closed frontier models (GPT-4o, o1, Gemini 1.5 Pro) cluster near the open-weight Qwen, not above it.</li>
-<li><strong>Underspecified context and false premise are the hardest scenarios</strong>: on MediQ, recall drops near zero for every model.</li>
-<li><strong>Scaling Llama 3.1 from 8B to 405B does not improve abstention</strong>: the curve is essentially flat.</li>
-<li><strong>Post-training is mixed</strong>: SFT and DPO lift abstention recall on five of six scenarios but worsen it on underspecified context; the PPO RLVR stage is the only stage that degrades recall further.</li>
-<li><strong>Reasoning fine-tuning costs ~24% recall on average</strong>: s1.1 and DeepSeek R1 Distill both abstain less than their instruct bases, including on the reasoning-specific Abstain datasets the reasoning models were explicitly trained for.</li>
-<li><strong>Test-time scaling makes the tradeoff worse</strong>: pushing s1.1’s reasoning budget from 512 to 4096 tokens raises accuracy on GPQA / GSM8K / MMLU-Math / UMWP and lowers abstention recall in lockstep.</li>
-<li><strong>A generous system prompt boosts abstention for both standard and reasoning LLMs</strong> — enumerating scenarios where the model should not answer — without collapsing response rate on answerable questions, but the gap is not closed.</li>
-</ul>
-<p>Closed frontier models match the smaller Qwen 2.5 32B on average, and scaling Llama 3.1 from 8B to 405B leaves recall roughly flat. Per-dataset, abstention recall and response correctness correlate in different directions, so a higher-accuracy model isn’t automatically a better abstainer.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure3-4.webp" class="img-fluid figure-img" data-lightbox-src="figure3-4-full.png"></p>
-<figcaption>Figures 3 and 4 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>SFT and DPO add recall on most scenarios; PPO RLVR uniquely subtracts. Response accuracy improves at every stage. The verifiable-reward signal in RLVR teaches the model to commit to an answer, against abstaining when it should.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure5.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 5 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>Reasoning-fine-tuned variants (s1.1, DeepSeek R1 Distill) lose abstention vs their instruction bases across both the full 20-dataset suite and the reasoning-only subset. The hatched overlay on the red bars in Panel (b) shows that letting the LLM judge consider the reasoning chain in addition to the final answer recovers most of the lost recall — the model is hedging heavily in chain-of-thought — but the model’s final answer still commits. The qualitative example in Panel (c): on a UMWP item, s1.1 hallucinates “$1576” as Edric’s monthly salary inside its chain and emits a confident wrong numeric answer.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure6.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 6 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>As s1.1’s reasoning budget grows from 512 to 4096 tokens, accuracy on GPQA-Diamond, GSM8K, MMLU-Math, and UMWP rises and abstention recall on the same datasets falls in lockstep.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure7.webp" class="img-fluid figure-img" data-lightbox-src="figure7-full.png"></p>
-<figcaption>Figure 7 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In Panel (a), the hatched overlay on each bar shows the additional abstention recall the LLM judge picks up when it inspects both the reasoning chain and the final answer. On the reasoning-specific datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain) the hatched portion dwarfs the solid bar — final-answer-only scoring catches ~5–10% recall, chain-aware scoring nearly maxes it out at ~85–95%. The reasoning models <em>are</em> expressing uncertainty in chain-of-thought; they just don’t carry it through to the final answer. Panel (b): a system prompt enumerating refuse-to-answer scenarios boosts abstention for Llama 3 8B, DeepSeek R1, and s1.1 without closing the gap.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure8.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 8 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>Neither paper isolates domain from training</strong>: <a href="../../posts/20260522-metacognition-atlas/">Cacioli’s 33-model atlas</a> [3] finds Formal Reasoning the hardest <a href="https://arxiv.org/abs/2009.03300">MMLU</a> [7] domain to monitor in 27 of 33 models, including families with very different post-training pipelines from Tülu 3’s RLVR (Gemma, the GPT-OSS series). AbstentionBench shows the Tülu RLVR stage specifically degrades abstention recall. The first is consistent with the domain being intrinsically hard; the second with training making it worse. Cross-family per-domain abstention recall is the missing measurement.</li>
-<li><strong>No “abstain” action in the RLVR reward</strong>: the paper hypothesizes the verifiable-reward signal is what degrades abstention (§4.2). Concretely, recipes like <a href="https://arxiv.org/abs/2501.12948">DeepSeek-R1</a> [5] and <a href="https://arxiv.org/abs/2501.19393">s1</a> [6] reward picking a correct final answer and have no abstain action — the gradient has no path toward “I don’t know” when the gold label is unanswerable. The clean test: add abstain to the reward and re-train. If the degradation vanishes, the fix is recipe-level.</li>
-<li><strong>Signal in chain, ignored at answer</strong>: Figure 8(a) shows chain-aware scoring catches ~85–95% of abstention recall on reasoning-specific datasets, where final-answer-only scoring catches ~5–10%. The model hedges in chain-of-thought, then commits in the final answer anyway. The paper calls this a “fundamental inability to reason about uncertainty”; mechanically it’s a missing gate between an internal signal and the emitted answer. <a href="../../posts/20260522-metacognitive-harness/">Cao et al.’s test-time metacognitive harness</a> [2] is that gate, externalizing the post-solve judgment-of-learning (JOL) signal as a routing decision with no model changes required.</li>
-<li><strong>Same “must answer” collapse from training or inference</strong>: AbstentionBench shows the Tülu RLVR stage drops abstention recall by ~24% (Figure 5c, training time). <a href="../../posts/20260522-compliance-trap/">The compliance trap</a> [4] shows compliance-forcing <em>prompt instructions</em> drop accuracy by up to 30.2 points (inference time, factorially isolated from threat content). <a href="https://arxiv.org/abs/2212.08073">Constitutional AI</a> [11] training is the only known immunity. Same kind of pressure, two stages of the model lifecycle, similar magnitude. Typical RLVR-trained models exposed to compliance-forcing prompts in deployment should show the worst of both.</li>
-</ul>
-<p><strong>Followup:</strong> <a href="../../posts/20260527-prompted-vs-trained-cot-abstention/">Prompted vs.&nbsp;Trained Chain-of-Thought on Abstention</a> reads AbstentionBench against its closest precursor (Madhusudhan et al., COLING 2025), walks two apparent disagreements, and proposes three experiments that would clarify the picture.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><p><a id="ref-1"></a><a href="https://polkirichenko.github.io/">Kirichenko, P.</a>, <a href="https://www.semanticscholar.org/author/2297128866">Ibrahim, M.</a>, <a href="https://www.semanticscholar.org/author/2256991985">Chaudhuri, K.</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Bell, S. J.</a> “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038). <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></p></li>
-<li><p><a id="ref-2"></a><a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Cao, Q.</a>, <a href="https://www.semanticscholar.org/author/2108111686">Wang, Y.</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Qin, P.</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Zhang, S.</a>, and <a href="https://pengtaoxie.github.io/">Xie, P.</a> “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></p></li>
-<li><p><a id="ref-3"></a><a href="https://scholar.google.com/citations?user=L3xQLp0AAAAJ">Cacioli, J.-P.</a> “Domain-level metacognitive monitoring in frontier LLMs: A 33-model atlas.” <em>arXiv preprint</em> (arXiv:2605.06673), April 21, 2026. <a href="https://arxiv.org/abs/2605.06673" class="uri">https://arxiv.org/abs/2605.06673</a></p></li>
-<li><p><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=iNctquYAAAAJ">Kumar, R.</a> “The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure.” <em>arXiv preprint</em> (arXiv:2605.02398), May 14, 2026. <a href="https://arxiv.org/abs/2605.02398" class="uri">https://arxiv.org/abs/2605.02398</a></p></li>
-<li><p><a id="ref-5"></a>DeepSeek-AI. “DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2501.12948), January 22, 2025. <a href="https://arxiv.org/abs/2501.12948" class="uri">https://arxiv.org/abs/2501.12948</a></p></li>
-<li><p><a id="ref-6"></a><a href="https://muennighoff.github.io/">Muennighoff, N.</a>, <a href="https://yangzhou02.github.io/">Yang, Z.</a>, <a href="https://wjshi.github.io/">Shi, W.</a>, <a href="https://xiangli.ac.cn/">Li, X. L.</a>, <a href="https://profiles.stanford.edu/fei-fei-li">Fei-Fei, L.</a>, <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a>, <a href="https://www.cs.washington.edu/people/faculty/lsz">Zettlemoyer, L.</a>, <a href="https://cs.stanford.edu/~pliang/">Liang, P.</a>, <a href="https://candes.su.domains/">Candès, E.</a>, and <a href="https://thashim.github.io/">Hashimoto, T.</a> “s1: Simple test-time scaling.” <em>arXiv preprint</em> (arXiv:2501.19393), January 31, 2025. <a href="https://arxiv.org/abs/2501.19393" class="uri">https://arxiv.org/abs/2501.19393</a></p></li>
-<li><p><a id="ref-7"></a><a href="https://people.eecs.berkeley.edu/~hendrycks/">Hendrycks, D.</a>, Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D., and Steinhardt, J. “Measuring Massive Multitask Language Understanding.” <em>ICLR 2021</em> (arXiv:2009.03300). <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></p></li>
-<li><p><a id="ref-8"></a>Lambert, N., Morrison, J., Pyatkin, V., Huang, S., Ivison, H., Brahman, F., Miranda, L. J. V., Liu, A., Dziri, N., Lyu, S., Gu, Y., Malik, S., Graf, V., Hwang, J. D., Yang, J., Bras, R. L., Tafjord, O., Wilhelm, C., Soldaini, L., Smith, N. A., Wang, Y., Dasigi, P., and Hajishirzi, H. “Tulu 3: Pushing Frontiers in Open Language Model Post-Training.” <em>arXiv preprint</em> (arXiv:2411.15124), November 22, 2024. <a href="https://arxiv.org/abs/2411.15124" class="uri">https://arxiv.org/abs/2411.15124</a></p></li>
-<li><p><a id="ref-9"></a>Rafailov, R., Sharma, A., Mitchell, E., Ermon, S., Manning, C. D., and Finn, C. “Direct Preference Optimization: Your Language Model is Secretly a Reward Model.” <em>NeurIPS 2023</em> (arXiv:2305.18290). <a href="https://arxiv.org/abs/2305.18290" class="uri">https://arxiv.org/abs/2305.18290</a></p></li>
-<li><p><a id="ref-10"></a>Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. “Proximal Policy Optimization Algorithms.” <em>arXiv preprint</em> (arXiv:1707.06347), July 20, 2017. <a href="https://arxiv.org/abs/1707.06347" class="uri">https://arxiv.org/abs/1707.06347</a></p></li>
-<li><p><a id="ref-11"></a><a href="https://yuntaobai.com/">Bai, Y.</a>, <a href="https://www.linkedin.com/in/saurav-kadavath/">Kadavath, S.</a>, Kundu, S., <a href="https://www.amandaaskell.com/">Askell, A.</a>, Kernion, J., Jones, A., Chen, A., Goldie, A., Mirhoseini, A., McKinnon, C., Chen, C., <a href="https://www.catherineolsson.com/">Olsson, C.</a>, <a href="https://colah.github.io/">Olah, C.</a>, Hernandez, D., Drain, D., <a href="https://deepganguli.com/">Ganguli, D.</a>, Li, D., Tran-Johnson, E., <a href="https://ethanperez.net/">Perez, E.</a>, Kerr, J., Mueller, J., Ladish, J., Landau, J., Ndousse, K., Lukosuite, K., Lovitt, L., Sellitto, M., Elhage, N., Schiefer, N., Mercado, N., DasSarma, N., Lasenby, R., Larson, R., Ringer, S., Johnston, S., Kravec, S., El Showk, S., Fort, S., Lanham, T., Telleen-Lawton, T., Conerly, T., Henighan, T., Hume, T., <a href="https://cims.nyu.edu/~sbowman/">Bowman, S. R.</a>, Hatfield-Dodds, Z., Mann, B., <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Amodei, D.</a>, Joseph, N., McCandlish, S., Brown, T., and <a href="https://sites.krieger.jhu.edu/jared-kaplan/">Kaplan, J.</a> “Constitutional AI: Harmlessness from AI Feedback.” <em>arXiv preprint</em> (arXiv:2212.08073), December 15, 2022. <a href="https://arxiv.org/abs/2212.08073" class="uri">https://arxiv.org/abs/2212.08073</a></p></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260522-compliance-trap/">The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure</a>: the inference-time analog of this paper’s training-time finding — compliance-forcing prompts drop accuracy by up to 30.2 points, the same “must answer” collapse the RLVR stage produces.</li>
-<li><a href="../../posts/20260523-triage-metacognitive-control/">TRIAGE: Evaluating Prospective Metacognitive Control in LLMs Under Resource Constraints</a>: reproduces this paper’s reasoning-fine-tuning penalty inside a single architecture family, where the reasoning-trained model detects far fewer unsolvable items.</li>
-<li><a href="../../posts/20260522-metacognitive-harness/">LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</a>: supplies the missing gate this paper identifies, externalizing the post-solve uncertainty signal so it reaches the final answer instead of staying buried in chain-of-thought.</li>
-<li><a href="../../posts/20260522-metacognition-atlas/">Domain-Level Metacognitive Monitoring in Frontier LLMs: A 33-Model Atlas</a>: finds Formal Reasoning the hardest domain to monitor, the domain-side complement to this paper’s training-side account of why abstention degrades.</li>
-<li><a href="../../posts/20260527-prompted-vs-trained-cot-abstention/">Prompted vs.&nbsp;Trained Chain-of-Thought on Abstention: Reading Two Studies Together</a>: the direct followup, reading AbstentionBench against its closest precursor and proposing experiments to resolve their apparent disagreements.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/</guid>
-  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

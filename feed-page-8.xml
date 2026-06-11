@@ -23,6 +23,68 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Wed, 10 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>TurboQuant: A First-Principles Walkthrough</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260427-turboquant-walkthrough/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260427-turboquant-walkthrough/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260427-turboquant-walkthrough/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>The “Putting it together” page: a five-step pipeline for TurboQuant-MSE plus a live demo with sliders for bits and dimension. Image from <a href="https://arkaung.github.io/interactive-turboquant/">Interactive TurboQuant Walkthrough</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://arkaung.github.io/">Arkar Min Aung</a>, a deep-learning engineer, has published an extraordinary interactive walkthrough [1] of TurboQuant [2], the per-vector KV cache quantizer that approaches the Shannon limit, with draggable demos for every concept the paper builds on. TurboQuant is also the per-vector baseline that <a href="../../posts/20260422-kv-cache-compression/">an earlier post here</a> pushes against, so this walkthrough doubles as an introduction to the target that alternative is measuring itself from.</p>
+<p>What Aung covers:</p>
+<ul>
+<li>An opening primer that decodes 8 prerequisite concepts before any TurboQuant content: vectors, length and inner product, mean squared error, the first and second moments, biased vs unbiased estimators, rotations, the Central Limit Theorem, and uniform vs Gaussian noise.</li>
+<li>The DRIVE construction [3] (Vargaftik et al., NeurIPS 2021) for one-bit federated mean estimation, and its later generalisation to <em>b</em> bits per coordinate as EDEN [4].</li>
+<li>The core geometric move in TurboQuant: multiply the input vector by a random orthogonal matrix and the outlier “spike” dissolves into a roughly Gaussian distribution, so that downstream per-coordinate quantization actually works without paying the per-block metadata tax that production quantizers normally use to handle outliers.</li>
+<li>The residual quantizer’s shrinkage property: a quantized reconstruction is smaller in magnitude than the input, with downstream consequences for the inner products the cache will later be used to compute.</li>
+<li>Each idea comes with its own draggable interactive demo. Change the angle and watch the magnitude redistribute. Fire 50 shots and see the bias/variance bullseye.</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>What the walkthrough covers that the TurboQuant paper does not:</p>
+<ul>
+<li>Draggable interactive demos for every concept the paper builds on. A reader can rotate a vector and watch the outlier spike redistribute, or fire 50 shots and watch the bias/variance bullseye form.</li>
+<li>An opening primer covering eight prerequisite concepts, each with its own demo: vectors, inner product, MSE, first and second moments, biased vs unbiased estimators, rotations, the Central Limit Theorem, and uniform vs Gaussian noise. The paper assumes the reader already has these in hand.</li>
+<li>Plain-language naming of the cost. Aung states outright that TurboQuant’s random rotation is a different way of paying the per-block metadata tax production quantizers already pay to handle outliers. The paper treats the trade-off formally.</li>
+</ul>
+<p>Sites like this one are why the open web is still a wonderful place.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Aung, A. M. “Interactive TurboQuant Walkthrough.” <a href="https://arkaung.github.io/interactive-turboquant/" class="uri">https://arkaung.github.io/interactive-turboquant/</a></li>
+<li><a id="ref-2"></a>“TurboQuant: Online Vector Quantization with Near-optimal Distortion Rate.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2504.19874" class="uri">https://arxiv.org/abs/2504.19874</a></li>
+<li><a id="ref-3"></a>“DRIVE: One-bit Distributed Mean Estimation.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2105.08339" class="uri">https://arxiv.org/abs/2105.08339</a></li>
+<li><a id="ref-4"></a>“EDEN: Communication-Efficient and Robust Distributed Mean Estimation for Federated Learning.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2108.08842" class="uri">https://arxiv.org/abs/2108.08842</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260422-kv-cache-compression/">Sequential KV Cache Compression via Probabilistic Language Tries</a>: the alternative that measures itself against TurboQuant as a baseline, so this walkthrough doubles as background for that comparison.</li>
+<li><a href="../../posts/20260501-how-frontier-llms-trained/">How Frontier LLMs Are Actually Trained and Served</a>: the memory-bandwidth-versus-compute arithmetic that makes KV cache quantization worth doing in the first place.</li>
+<li><a href="../../posts/20260424-llm-illustration/">How LLMs Actually Work: A Visual Deep Dive</a>: a sister interactive walkthrough, building the same kind of draggable open-web explainer for the broader LLM pipeline.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260427-turboquant-walkthrough/</guid>
+  <pubDate>Mon, 27 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260427-turboquant-walkthrough/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>A Cursor Agent Erased a Company’s Production Data in 9 Seconds</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1225,49 +1287,6 @@
   <guid>https://benjaminhan.net/posts/20260420-sounds-of-joy/</guid>
   <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260420-sounds-of-joy/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260420-opus-47-token-count/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260420-opus-47-token-count/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260420-opus-47-token-count/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Claude Token Counter card from Simon Willison’s blog post. Image from <a href="https://simonwillison.net/2026/Apr/20/claude-token-counts/">Simon Willison’s Weblog</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://simonwillison.net/2026/Apr/20/claude-token-counts/"><strong>Claude Token Counter, now with model comparisons</strong></a> — Simon Willison upgraded his token counter to compare Claude models head-to-head. Headline findings:</p>
-<ul>
-<li><strong>Opus 4.7 ships a new tokenizer</strong> — the first Claude model to change it. Anthropic’s announcement framed it as a 1.0–1.35× token-count increase depending on content type.</li>
-<li><strong>Real measurement: 1.46×.</strong> Pasting the Opus 4.7 system prompt itself through both tokenizers gave 4.7 ~46% more tokens than 4.6, slightly above Anthropic’s stated upper bound.</li>
-<li><strong>Per-token pricing is unchanged</strong> ($5 / M input, $25 / M output for Opus). So at the same workload, Opus 4.7 effectively costs <strong>~40% more</strong> than Opus 4.6.</li>
-<li><strong>Images are mostly a wash, with a caveat.</strong> Opus 4.7 also added higher-resolution image support (up to 2,576 px on the long edge — ~3.75 MP, 3× prior models). A 3.7 MB PNG showed a 3.01× token increase, but that was the new resolution support, not the tokenizer; a smaller 682×318 image cost roughly the same on both versions.</li>
-<li><strong>PDFs land in between.</strong> A 15 MB, 30-page text-heavy PDF showed only a 1.08× multiplier — much lower than raw text alone.</li>
-</ul>
-<hr>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the other side of the token-count story, breaking down where the tokens actually go once they’re billed.</li>
-<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: turns a per-token shift like this one into the curve that governs an agent’s total cost.</li>
-<li><a href="../../posts/20260429-frontier-model-lower-bill/">Frontier Model, Lower Bill: The Triager Pattern</a>: a way to blunt a cost increase like 4.7’s by keeping most calls off the frontier model entirely.</li>
-<li><a href="../../posts/20260529-opus-4-8-reactions/">Claude Opus 4.8: The Early Reactions</a>: the next model in the Opus line, where the step up from 4.7 gets weighed.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260420-opus-47-token-count/</guid>
-  <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260420-opus-47-token-count/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
