@@ -21,7 +21,75 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 12 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 13 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>From ‘Reversal Curse’ to Teaching Large Language Models New Facts</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/cover.jpg" class="img-fluid"></p>
+<p>If a powerful LLM is told that “Daphne Barrington is the director of <em>A Journey Through Time</em>”, it would surely be able to answer the question “Who is the director of <em>A Journey Through Time</em>?”, right? Well, according to a recent paper [1], not quite. They found that after being fine-tuned with sentences of pattern “&lt;name&gt; is &lt;description&gt;”, LLMs such as GPT-3 175B, 2.7B and Llama-7B completely failed at answering questions in the reverse pattern “&lt;description&gt; is &lt;name&gt;” (results of GPT3 175B). The fine-tuned models actually scored the correct answer no different from a random answer!</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot1.jpg" class="img-fluid figure-img" data-lightbox-src="screenshot1-full.jpg"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>The authors above name this phenomenon “the Reversal Curse”. If you have read the paper discussed previously in [2] that shows LLMs fail at retrieving more intricate topological and semantic attributes of facts, you’d know this is not entirely surprising: inverse relations are just one type of ontology topology (or predicate entailment) that these models are not good at. The interesting bit here is that this performance gap exists even after fine-tuning with one side of the relations.</p>
+<p>These discoveries are actually quite relevant to another effort we had previously discussed: model editing [3]. There the goal is to surgically change model weights to update outdated or incorrect facts buried inside the LLMs’ parametric knowledge. One crucial consideration is that the editing should not only successfully update the targeted facts, but it should also update all the facts that can be inferred from the changes, i.e., updating according to the “ripple effects”. Cast in this light, LLMs’ failure of recognizing “B is A” even after learning “A is B” is just a case of not being able to account for one of the most rudimentary ripple effects.</p>
+<p>If we follow this train of thought, the paper at the top actually cast doubt on the idea of performing model editing via fine-tuning, because it cannot account for the ripple effects. Fine-tuning has also been discredited when used for this purpose in an ACL 2023 paper [4], where it was compared to popular model editing methods such as MEND, ROME, and In-Context Learning (ICL, aka prompting). The authors formulated three tasks, and the edited models were given probe sentences to answer:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot4.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>Two metrics were deployed to measure model performance before and after model editing: Target measures the delta accuracy (for Entity Inferences task; higher is better) or the delta perplexity of the targeted entities (for the two ECBD tasks; lower is better), and Specificity measures the delta accuracy or the delta perplexity of the non-targeted entities (same as above, respectively; 0 is the best). The result shows fine-tuning (FT) failed at Specificity for Entity Inferences and Target for ECBD. ECBD is hard because unlike Entity Inferences, textual overlapping is not guaranteed between input and output (ECBD-Easy relaxed this restriction a bit therefore FT was not as bad at Target, at least for the decoder-only models).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/screenshot5.jpg" class="img-fluid figure-img" data-lightbox-src="screenshot5-full.jpg"></p>
+<figcaption>Figure from <a href="https://arxiv.org/abs/2309.12288">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>In summary, fine-tuning in the current form as a way to perform model editing is not good at ripple effects, is not good at updating the targeted facts when textual overlap is low, and is not good at not affecting non-targeted facts when textual overlap is high.</p>
+<p>The search is on!</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/from-reversal-curse-teaching-large-language-models-new-benjamin-han/">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Lukas Berglund, Meg Tong, Max Kaufmann, Mikita Balesni, Asa Cooper Stickland, Tomasz Korbak, and Owain Evans. “The Reversal Curse: LLMs trained on ‘A is B’ fail to learn ‘B is A.’” 2023. <a href="https://arxiv.org/abs/2309.12288" class="uri">https://arxiv.org/abs/2309.12288</a></li>
+<li><a id="ref-2"></a>Benjamin Han. “Give Us The Facts: Large Language Models vs.&nbsp;Knowledge Graphs.” <em>synesis</em>, 2023. <a href="../20230902-llms-vs-knowledge-graphs/index.html">Read on this blog.</a></li>
+<li><a id="ref-3"></a>Benjamin Han. “Model Editing: Performing Digital Brain Surgery.” LinkedIn, 2023. <a href="https://www.linkedin.com/posts/benjaminhan_llms-causal-papers-activity-7101756262576525313-bIge" class="uri">https://www.linkedin.com/posts/benjaminhan_llms-causal-papers-activity-7101756262576525313-bIge</a></li>
+<li><a id="ref-4"></a>Yasumasa Onoe, Michael J. Q. Zhang, Shankar Padmanabhan, Greg Durrett, and Eunsol Choi. “Can LMs Learn New Entities from Descriptions? Challenges in Propagating Injected Knowledge.” 2023. <a href="https://arxiv.org/abs/2305.01651" class="uri">https://arxiv.org/abs/2305.01651</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/</guid>
+  <pubDate>Mon, 02 Oct 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20231002-reversal-curse-model-editing/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Nobel Prize Awarded to Covid Vaccine Pioneers</title>
   <dc:creator>synesis </dc:creator>
@@ -786,46 +854,6 @@
   <guid>https://benjaminhan.net/posts/20230731-bbc-on-mastodon/</guid>
   <pubDate>Mon, 31 Jul 2023 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20230731-bbc-on-mastodon/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How “Attention Is All You Need” Was Born: The Story Behind the Transformer Paper</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p><img src="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/cover.jpg" class="img-fluid"></p>
-<p>A great recounting written by Madhumita Murgia on how “All you need is attention” – the Transformers paper – was born out of a “serendipitous assembly of a group of scientists”: Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan Gomez, Lukasz Kaiser, and Illia Polosukhin.</p>
-<blockquote class="blockquote">
-<p>“In early 2017, two Google research scientists, Ashish Vaswani and Jakob Uszkoreit, were in a hallway of the search giant’s Mountain View campus, discussing a new idea for how to improve machine translation, the AI technology behind Google Translate…</p>
-<p>During their chat in the hallway, Uszkoreit and Vaswani were overheard by Noam Shazeer… So when he heard his colleagues talking about this idea of “self-attention”, he decided to jump in and help. “I said, I’m with you . . . let’s do it, this is going to make life much, much better for all AI researchers,” Shazeer says.</p>
-<p>The chance conversation formalised a months-long collaboration in 2017 that eventually produced an architecture for processing language, known simply as the “transformer”. The eight research scientists who eventually played a part in its creation described it in a short paper with a snappy title: “Attention Is All You Need.” ”</p>
-</blockquote>
-<p>Especially love this:</p>
-<blockquote class="blockquote">
-<p>“Each was drawn towards what was widely seen as an emerging field of AI research: natural language processing. The group’s educational, professional and geographic diversity — coming from backgrounds as varied as Ukraine, India, Germany, Poland, Britain, Canada and the US — made them unique.”</p>
-</blockquote>
-<p>[1]</p>
-<p>(X-post on <a href="https://sigmoid.social/@BenjaminHan">Mastodon</a>)</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_transformers-the-google-scientists-who-pioneered-activity-7088879945875148801-BLRp">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Madhumita Murgia. “Transformers: the Google scientists who pioneered an AI revolution.” <em>Financial Times.</em> <a href="https://www.ft.com/content/37bb01af-ee46-4483-982f-ef3921436a50" class="uri">https://www.ft.com/content/37bb01af-ee46-4483-982f-ef3921436a50</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/</guid>
-  <pubDate>Sun, 23 Jul 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230723-transformers-attention-is-all-you-need/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
