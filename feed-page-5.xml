@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-5.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-24.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-25.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-4.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-6.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -21,7 +21,94 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sat, 13 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 14 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>[Q&amp;A] Self-Correction After the Reasoning-Model Era</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260517-self-correction-after-reasoning-models/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260517-self-correction-after-reasoning-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>This is a follow-up to a <a href="../../posts/20260516-llm-self-correction-arc/">3-paper arc on self-correction in LLMs</a> that walks through Self-Refine, Cannot-Self-Correct, and Reflexion. On <a href="https://sigmoid.social/@pbloem/116589236043054768">Mastodon</a>, Professor <a href="https://peterbloem.nl">Peter Bloem</a> (Learning &amp; Reasoning Group, Vrije Universiteit Amsterdam) asked:</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Reader question — Peter Bloem, Mastodon">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Reader question — Peter Bloem, Mastodon
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This is before reasoning models, though, isn’t it? I’d suspect that this all changed after RL training on reasoning traces came in.</p>
+</div>
+</div>
+<p>Yes: all three papers in the original arc predate the reasoning-model era. None of them are evaluated on o1, DeepSeek-R1 [1] [1], or any model whose self-correcting behavior was shaped by RL on verifiable rewards. The implicit question is whether the arc’s conclusions still hold once that training signal enters the picture.</p>
+<section id="internalizing-the-evaluator" class="level2">
+<h2 class="anchored" data-anchor-id="internalizing-the-evaluator">Internalizing the Evaluator</h2>
+<p>Reasoning-model training moves what used to be inference-time external scaffolding into training-time signal that the policy internalizes.</p>
+<p>R1’s “aha moments” are emergent self-correction at inference time, with no Evaluator in the loop. The Reflexion-style Evaluator that used to gate self-correction at every inference step has been compiled into the weights. Whether R1 technically aligns with Cannot-Self-Correct’s strict definition becomes a definitional argument that misses what is actually new.</p>
+<p>Even before R1, <a href="../../posts/20260512-score/">SCoRe</a> showed one way to build this internalization deliberately. It trains on a two-turn structure where each attempt is rewarded against a ground-truth answer. The verifier’s correctness check is exactly the external signal Reflexion put in the loop, just moved from inference time to training time. SCoRe says “no teacher model and no oracle feedback,” but that refers to narrower things (no separate teacher LLM and no step-level oracle), and does not change the picture: the outcome reward is still external. R1 then demonstrated the same idea at a coarser grain, with the self-correction emerging within a single long reasoning trace rather than across explicit turns.</p>
+</section>
+<section id="how-far-can-it-go-and-is-internalization-the-right-path" class="level2">
+<h2 class="anchored" data-anchor-id="how-far-can-it-go-and-is-internalization-the-right-path">How far can it go, and is internalization the right path?</h2>
+<p>The substantive question is how far this internalization can go. Can any external verifier or evaluator that worked at inference time be moved into training-time signal that produces the same behavior at inference?</p>
+<p>Or are there structural limits — task families where verifiable rewards cannot reach (long-form writing, open-ended dialogue, novel domains), evaluators that resist internalization because they require open-ended judgment that itself drifts? Early evidence [2][3] is that internalization works well within the verifiable-reward distribution and degrades sharply outside it, but we do not yet have a clean characterization of the boundary.</p>
+<p>A separate question is whether internalization is the <em>right</em> path even where it works. Training is expensive, and pushing more verifiers into the policy carries the usual risks of catastrophic forgetting and capacity trade-offs against other tasks. Even within the regions where internalization works in principle, the practical question is what is worth pushing into the weights, and what is better kept as a domain-specific external verifier called at inference time.</p>
+<p>I suspect domain-specific external verification stays essential even where internalization works in principle. An inference-time scaffold can be swapped, audited, or updated when the domain shifts. An internalized one cannot, short of retraining the model. That asymmetry alone argues for keeping the verifier external in any setting where the verification target itself moves.</p>
+</section>
+<section id="what-the-original-arc-still-teaches" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-original-arc-still-teaches">What the original arc still teaches</h2>
+<p>Viewed through this lens, the three papers in the original arc still illuminate what is important for instilling self-correction in a model. Self-Refine showed that prompt-only intrinsic feedback does not reliably work. Cannot-Self-Correct showed <em>why</em> — without an external signal about correctness, the model’s confidence carries the initial answer through into the revision and the loop drifts. Reflexion showed that gating self-correction on a reliable external signal works. Whether that gate sits at inference time, the way Reflexion put it, or at training time, the way RL on verifiable rewards puts it, the structural ingredient is the same: reliable external signal. The original arc identified the ingredient; the post-2024 work shows it can be compiled into the weights for some classes of problems and not others.</p>
+</section>
+<section id="related-recent-work" class="level2">
+<h2 class="anchored" data-anchor-id="related-recent-work">Related recent work</h2>
+<p>Several recent papers approach the internalization question from different angles. The list below is partial — pointers to other work along these lines (especially generalization audits of o1/R1-style models or post-2024 process-reward-model successors) are welcome.</p>
+<ul>
+<li>Cognitive Behaviors that Enable Self-Improving Reasoners [4] [4] looks at <em>what</em> RL training actually internalizes — which trained behaviors let the policy self-improve. The answer is a small set: verification, backtracking, subgoal-setting, and backward chaining. It is the empirical follow-up to “what is actually in the policy” after RL.</li>
+<li>How Reasoning Evolves from Post-Training Data: An Empirical Study Using Chess [5] [5] (ICML 2026) extends that question into <em>how far</em> internalized reasoning carries. Using chess as a clean probe outside the math/code distribution most reasoning models are trained on, it tracks which capabilities transfer from post-training data and which decay.</li>
+<li>Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters [6] [6] tightens our understanding of when inference-time scaffolding is worth the compute. Revision helps when the verifier is reliable and helps less when it is not, and a small verifier-guided model can outperform a larger one without scaffolding. The same verifier-quality dependence shows up whether the scaffolding is at inference time or compiled into the weights.</li>
+<li>The Stechly–Kambhampati line is the running argument for limits. On the Self-Verification Limitations of LLMs on Reasoning and Planning Tasks [2] [2] shows that GPT-4 still cannot reliably verify its own outputs even on simple planning tasks, and Chain of Thoughtlessness? [3] [3] (NeurIPS 2024) questions whether chain-of-thought reasoning generalizes outside its training distribution. Both push back on the idea that internalization is general: outside the training distribution, the policy’s self-judgment falls apart.</li>
+<li>Chain-of-Thought Degrades Visual Spatial Reasoning Capabilities of Multimodal LLMs [7] [7] extends that skepticism into the multimodal era. Across 17 models and 13 spatial benchmarks, CoT prompting consistently <em>degrades</em> visual-spatial accuracy, with shortcut-learning from textual priors that hallucinate visual details when the image is absent. Reasoning trained on text does not transfer cleanly to vision.</li>
+<li>Can Large Language Models Self-Correct in Medical Question Answering? An Exploratory Study [8] [8] audits self-correction in a non-verifiable-reward domain. Self-reflective prompting on MedQA, HeadQA, and PubMedQA does not consistently improve accuracy, with effects highly dataset- and model-dependent. A direct datapoint for the boundary where internalization stops paying.</li>
+<li>Self-Rewarding Language Models [9] [9] (ICML 2024) tests whether internalization can happen without any external verifier at all. The model acts as its own LLM-as-judge during DPO training, bootstrapping. Promising results on AlpacaEval, but the approach inherits the question of whether the model’s own judgment is good enough to bootstrap from in the first place.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>DeepSeek-AI, Guo, D., Yang, D., Zhang, H., et al.&nbsp;“DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2501.12948), January 22, 2025. <a href="https://arxiv.org/abs/2501.12948" class="uri">https://arxiv.org/abs/2501.12948</a></li>
+<li><a id="ref-2"></a>Stechly, K., Valmeekam, K., Kambhampati, S. “On the Self-Verification Limitations of Large Language Models on Reasoning and Planning Tasks.” <em>arXiv preprint</em> (arXiv:2402.08115), February 12, 2024. <a href="https://arxiv.org/abs/2402.08115" class="uri">https://arxiv.org/abs/2402.08115</a></li>
+<li><a id="ref-3"></a>Stechly, K., Valmeekam, K., Kambhampati, S. “Chain of Thoughtlessness? An Analysis of CoT in Planning.” <em>NeurIPS 2024</em> (arXiv:2405.04776), May 8, 2024. <a href="https://arxiv.org/abs/2405.04776" class="uri">https://arxiv.org/abs/2405.04776</a></li>
+<li><a id="ref-4"></a>Gandhi, K., Chakravarthy, A., Singh, A., Lile, N., Goodman, N. D. “Cognitive Behaviors that Enable Self-Improving Reasoners, or, Four Habits of Highly Effective STaRs.” <em>arXiv preprint</em> (arXiv:2503.01307), March 3, 2025. <a href="https://arxiv.org/abs/2503.01307" class="uri">https://arxiv.org/abs/2503.01307</a></li>
+<li><a id="ref-5"></a>Dionisopoulos, L., Majamaki, N., Ammanabrolu, P. “How Reasoning Evolves from Post-Training Data: An Empirical Study Using Chess.” <em>ICML 2026</em> (also NeurIPS 2025 FoRLM Workshop Oral; arXiv:2604.05134), April 6, 2026. <a href="https://arxiv.org/abs/2604.05134" class="uri">https://arxiv.org/abs/2604.05134</a></li>
+<li><a id="ref-6"></a>Snell, C., Lee, J., Xu, K., Kumar, A. “Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters.” <em>arXiv preprint</em> (arXiv:2408.03314), August 6, 2024. <a href="https://arxiv.org/abs/2408.03314" class="uri">https://arxiv.org/abs/2408.03314</a></li>
+<li><a id="ref-7"></a>Kancheti, S. S., Kanade, A. S., Balasubramanian, V. N., Ganu, T. “Chain-of-Thought Degrades Visual Spatial Reasoning Capabilities of Multimodal LLMs.” <em>arXiv preprint</em> (arXiv:2604.16060), April 17, 2026. <a href="https://arxiv.org/abs/2604.16060" class="uri">https://arxiv.org/abs/2604.16060</a></li>
+<li><a id="ref-8"></a>Zhan, Z., Cui, M., Zhang, R. “Can Large Language Models Self-Correct in Medical Question Answering? An Exploratory Study.” <em>arXiv preprint</em> (arXiv:2604.00261), March 31, 2026. <a href="https://arxiv.org/abs/2604.00261" class="uri">https://arxiv.org/abs/2604.00261</a></li>
+<li><a id="ref-9"></a>Yuan, W., Pang, R. Y., Cho, K., Li, X., Sukhbaatar, S., Xu, J., Weston, J. “Self-Rewarding Language Models.” <em>ICML 2024</em> (arXiv:2401.10020), January 18, 2024. <a href="https://arxiv.org/abs/2401.10020" class="uri">https://arxiv.org/abs/2401.10020</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260516-llm-self-correction-arc/">Can LLMs Reliably Self-Correct Their Own Reasoning?</a>: the original 3-paper arc this Q&amp;A follows up, extending it to the reasoning-model era.</li>
+<li><a href="../../posts/20260512-score/">Training Language Models to Self-Correct via Reinforcement Learning (SCoRe)</a>: the concrete instance of moving the external correctness signal from inference time into training-time RL reward.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the framework behind the question of what a model should decide to internalize versus keep as an external verifier.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260517-self-correction-after-reasoning-models/</guid>
+  <pubDate>Sun, 17 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
+</item>
 <item>
   <title>Can LLMs Reliably Self-Correct Their Own Reasoning?</title>
   <dc:creator>synesis </dc:creator>
@@ -2164,87 +2251,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260511-the-inference-shift/</guid>
   <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260511-the-inference-shift/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Peeking Inside a Language Model, and Finding It Knows It’s Being Watched</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260511-natural-language-autoencoders/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>NLA schematic: the activation verbalizer turns a target activation into a text description, and the activation reconstructor recovers the activation from the text alone. <a href="https://youtu.be/j2knrqAzYVY">Watch on YouTube</a></figcaption>
-</figure>
-</div>
-<p><a href="https://www.anthropic.com/">Anthropic’s</a> interpretability team <a href="https://www.anthropic.com/research/natural-language-autoencoders">introduces</a> Natural Language Autoencoders (NLAs), a method for turning an internal activation of a language model into a plain-text explanation. Two copies of the target model are trained jointly: an <em>activation verbalizer</em> that reads an activation and writes a text explanation, and an <em>activation reconstructor</em> that reads the explanation and rebuilds the activation. The training signal is reconstruction similarity, so explanations that carry real content about the activation are rewarded over explanations that do not. The companion paper on Transformer Circuits [1] comes with an interactive demo on <a href="http://neuronpedia.org/nla">Neuronpedia</a> and training code on <a href="https://github.com/kitft/natural_language_autoencoders">GitHub</a>.</p>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
-<figcaption>The NLA training loop: the activation verbalizer (AV) translates a target activation <img src="https://benjaminhan.net/feed-assets/50ff0990065feeb0.svg" alt="h_{L,i}" class="feed-math-inline"/> into a natural-language description, and the activation reconstructor (AR) recovers an activation <img src="https://benjaminhan.net/feed-assets/18c983660a2888fc.svg" alt="\hat{h}_{L,i}" class="feed-math-inline"/> from that text alone. Training minimizes <img src="https://benjaminhan.net/feed-assets/a1d97cec1af0c52f.svg" alt="\|h_{L,i} - \hat{h}_{L,i}\|_2^2" class="feed-math-inline"/>, so descriptions that carry real content about the activation are rewarded. Schematic from the paper’s <a href="https://transformer-circuits.pub/2026/nla/index.html#nla-training">training section</a> [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The post applies NLAs to two problems: evaluation awareness and alignment auditing. On a test of destructive coding actions (e.g.&nbsp;deleting important files), NLA explanations flag evaluation awareness 16% of the time in cases where Claude never verbalizes it; on <a href="https://www.swebench.com/">SWE-bench Verified</a> the rate is 26%; on real <a href="https://claude.ai/">claude.ai</a> traffic from users who opted in to training it sits under 1%. Anthropic reports that NLAs were used in the pre-deployment alignment audits of Claude Mythos Preview and Claude Opus 4.6.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure2-eval-awareness.webp" class="img-fluid figure-img" data-lightbox-src="figure2-eval-awareness-full.png"></p>
-<figcaption>Opus 4.6 shows NLA-measured evaluation awareness on 26% of SWE-bench Verified transcripts and 16% of destructive-coding transcripts, versus 1% and 0% when measured by what the model actually verbalizes. On opt-in real claude.ai traffic the NLA-measured rate is 0.4%. Chart from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In a toy auditing game where a target model has been trained with a single hidden misaligned motivation, auditors equipped with NLAs uncover the motivation 12–15% of the time, compared with 3% or below when given other interpretability tools.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure3-auditing.webp" class="img-fluid figure-img" data-lightbox-src="figure3-auditing-full.png"></p>
-<figcaption>Auditing-game win rates across tool configs. NLA+conversation auditors identify the target model’s misaligned motivation 12/100 without access to training data and 15/100 with access, well above the SAE+conversation (3/100) and conversation-only (1–2/100) baselines. Chart from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>NLAs trade mechanistic grounding for direct legibility.</strong> <a href="https://transformer-circuits.pub/2023/monosemantic-features">Sparse autoencoders</a> (SAE) and <a href="https://transformer-circuits.pub/2025/attribution-graphs/biology.html">attribution graphs</a> share the autoencoder structure (round-trip reconstruction as the training signal, structured output a trained researcher reads); NLAs swap the sparse feature dictionary for a text bottleneck and the linear readout for another copy of the model. The closest prior art is Patchscope [2], which uses a frozen LLM to decode hidden states into natural language without a round-trip training objective. NLAs add the reconstruction loop to tighten what the verbalizer has to say. The paper itself flags the cost as a limitation: an SAE feature is a specific direction in activation space you can causally intervene on, while an NLA explanation is a black-box output of another LLM. That makes NLAs a natural complement to the structural methods rather than a replacement: the SAE or attribution graph tells you <em>where</em> in the network a representation lives, and the NLA tells you, in prose, <em>what it seems to be about</em>.</p></li>
-<li><p><strong>NLAs move the describing job from the model to a dedicated pair.</strong> The evaluation-awareness numbers tighten a gap that <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> articulated: current LLMs cannot faithfully describe their internal distributions when asked to. NLAs sidestep the asking by training a separate model to do the describing from the activation directly. Where SelfReflect measures a given model’s introspective faithfulness as a property of that model, NLAs make reconstruction fidelity the explicit training target, at the cost of training and running a dedicated pair of models for the task. The paper’s own caveat — that the training objective “does not explicitly incentivize NLA explanations to be interpretable or faithful” — is why they still have to evaluate faithfulness empirically rather than claim it by construction.</p></li>
-<li><p><strong>Where did the eval-awareness come from in the first place?</strong> Nobody explicitly trained Claude to notice “this is a test”, so the signal had to seep in from the training data. Prior work on situational awareness by Berglund et al.&nbsp;[3], and its follow-up benchmark by Laine et al.&nbsp;[4], has already speculated on the supervision sources: the AI safety literature itself, published openly and full of discussions of evaluation protocols, sandbagging, and red-teaming; benchmark format exposure during pretraining, since SWE-bench-style task-description conventions live on the public web and there is no way to scrub them without hurting capability training; and a structural tell during RLHF, where human raters treating contrived prompts and conversational prompts as different kinds of “good response” teaches the model a distribution over what eval-shaped inputs look like. What none of the prior work has done — and what NLAs now make possible — is a systematic training-data audit: read activations for eval-awareness signals, trace the candidate text sources through the training corpus, and publish the map. That would be the natural companion piece.</p></li>
-<li><p><strong>NLA-measured eval-awareness has a Goodhart half-life.</strong> Frontier models may behave differently during evaluation than during deployment, and NLAs put a number on it. On SWE-bench Verified, activations register “this is a test” on 26% of problems; on opt-in claude.ai traffic, the rate is 0.4%. If that gap holds up under independent interpretability methods, benchmark scores reflect how a frontier model behaves under observation. How it behaves when nobody is watching is a separate question, and the verbalized rate (1% on SWE-bench) tells us the model will not answer it for us. There is a further catch: 26% itself depends on a model that doesn’t yet know its activations will be read. Once NLA-style signals enter RLHF or alignment training — and Anthropic is already running NLAs in pre-deployment audits, which is the shortest possible path into that loop — a future model can learn to suppress activation-level eval-awareness without the underlying awareness decreasing. This is the <a href="https://en.wikipedia.org/wiki/Observer_effect_(physics)">observer effect</a> entering interpretability, with <a href="https://en.wikipedia.org/wiki/Goodhart%27s_law">Goodhart’s Law</a> as the sharper limit: measuring the model disturbs it once the measurement loops back into training, and at that point the measure stops tracking what it was measuring. The dynamic has been predicted in theory [5] and recently demonstrated empirically in reward-gaming experiments [6]; what’s missing is the direct test on interpretability tools: train on NLA-derived signals, measure NLA quality decay. That would put a half-life on numbers like 26%.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><p><a id="ref-1"></a>Fraser-Taliente, Kit, Kantamneni, Subhash, Ong, Euan, Mossing, Dan, Lu, Christina, Bogdan, Paul C., Ameisen, Emmanuel, Chen, James, Kishylau, Dzmitry, Pearce, Adam, Tarng, Julius, Wu, Alex, Wu, Jeff, Zhang, Yang, Ziegler, Daniel M., Hubinger, Evan, Batson, Joshua, Lindsey, Jack, Zimmerman, Samuel, and Marks, Samuel. “Natural Language Autoencoders.” <em>Transformer Circuits</em>, 2026. <a href="https://transformer-circuits.pub/2026/nla/index.html" class="uri">https://transformer-circuits.pub/2026/nla/index.html</a></p></li>
-<li><p><a id="ref-2"></a>Ghandeharioun, Asma, Caciularu, Avi, Pearce, Adam, Dixon, Lucas, and Geva, Mor. “Patchscopes: A Unifying Framework for Inspecting Hidden Representations of Language Models.” <em>arXiv preprint</em> (arXiv:2401.06102), 2024. <a href="https://arxiv.org/abs/2401.06102" class="uri">https://arxiv.org/abs/2401.06102</a></p></li>
-<li><p><a id="ref-3"></a>Berglund, Lukas, Stickland, Asa Cooper, Balesni, Mikita, Kaufmann, Max, Tong, Meg, Korbak, Tomasz, Kokotajlo, Daniel, and Evans, Owain. “Taken Out of Context: On Measuring Situational Awareness in LLMs.” <em>arXiv preprint</em> (arXiv:2309.00667), 2023. <a href="https://arxiv.org/abs/2309.00667" class="uri">https://arxiv.org/abs/2309.00667</a></p></li>
-<li><p><a id="ref-4"></a>Laine, Rudolf, Chughtai, Bilal, Betley, Jan, Hariharan, Kaivalya, Scheurer, Jeremy, Balesni, Mikita, Hobbhahn, Marius, Meinke, Alexander, and Evans, Owain. “Me, Myself, and AI: The Situational Awareness Dataset (SAD) for LLMs.” <em>arXiv preprint</em> (arXiv:2407.04694), 2024. <a href="https://arxiv.org/abs/2407.04694" class="uri">https://arxiv.org/abs/2407.04694</a></p></li>
-<li><p><a id="ref-5"></a>Hubinger, Evan, van Merwijk, Chris, Mikulik, Vladimir, Skalse, Joar, and Garrabrant, Scott. “Risks from Learned Optimization in Advanced Machine Learning Systems.” <em>arXiv preprint</em> (arXiv:1906.01820), 2019. <a href="https://arxiv.org/abs/1906.01820" class="uri">https://arxiv.org/abs/1906.01820</a></p></li>
-<li><p><a id="ref-6"></a>Denison, Carson, MacDiarmid, Monte, Barez, Fazl, Duvenaud, David, Kravec, Shauna, Marks, Samuel, Schiefer, Nicholas, Soklaski, Ryan, Tamkin, Alex, Kaplan, Jared, Shlegeris, Buck, Bowman, Samuel R., Perez, Ethan, and Hubinger, Evan. “Sycophancy to Subterfuge: Investigating Reward-Tampering in Large Language Models.” <em>arXiv preprint</em> (arXiv:2406.10162), 2024. <a href="https://arxiv.org/abs/2406.10162" class="uri">https://arxiv.org/abs/2406.10162</a></p></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the gap NLAs tighten — current models cannot faithfully describe their own internal state when asked, so NLAs train a separate pair to do the describing from the activation directly.</li>
-<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: another route to the same problem, training a model to verbalize its internal confidence rather than reading the activation from the outside.</li>
-<li><a href="../../posts/20260516-anthropic-institute-agenda/">The Anthropic Institute’s Research Agenda</a>: the same lab’s broader program, of which interpretability tools like NLAs are the technical underpinning for auditing AI systems in the wild.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260511-natural-language-autoencoders/</guid>
-  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
