@@ -23,6 +23,112 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 13 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Co-Scientist: Gemini Agents That Generate and Rank Hypotheses</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Co-Scientist’s system design: a scientist states a research goal in natural language, and a multi-agent system generates, ranks (in a tournament), and evolves hypotheses into ranked research proposals. Figure 1a from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Accelerating scientific discovery with Co-Scientist</em> [1] (<em>Nature</em>, May 2026), <a href="https://www.semanticscholar.org/author/2051681709">Juraj Gottweis</a>, <a href="https://www.semanticscholar.org/author/2239098855">Wei-Hung Weng</a>, <a href="https://www.semanticscholar.org/author/2347345594">Alexander Daryin</a>, <a href="https://www.semanticscholar.org/author/2367117462">Tao Tu</a>, and five other co-first authors, with senior authors including <a href="https://www.semanticscholar.org/author/144223091">Vivek Natarajan</a>, <a href="https://en.wikipedia.org/wiki/Demis_Hassabis">Demis Hassabis</a>, <a href="https://en.wikipedia.org/wiki/James_Manyika">James Manyika</a>, <a href="https://en.wikipedia.org/wiki/Yossi_Matias">Yossi Matias</a>, and <a href="https://en.wikipedia.org/wiki/Pushmeet_Kohli">Pushmeet Kohli</a>, and roughly 50 co-authors across Google DeepMind, Google Research, Google Cloud AI Research, Stanford University School of Medicine, Houston Methodist, and Imperial College London, introduce Co-Scientist, a Gemini-based system that proposes research hypotheses and ranks them in a tournament that improves the survivors.</p>
+<blockquote class="blockquote">
+<p>Scientific discovery is driven by scientists generating novel hypotheses for complex problems that undergo rigorous experimental validation. To augment this process, we introduce <em>Co-Scientist, a multi-agent AI system built on Gemini for structured scientific thinking and hypothesis generation</em>. Co-Scientist aims to help scientists discover new original knowledge. Conditioned on their research objectives and prior scientific evidence, it formulates demonstrably novel research hypotheses for experimental verification. The system’s design involves agents continuously generating, critiquing and refining hypotheses accelerated by scaling test-time compute. Key contributions include: <em>(1) a multi-agent architecture with an asynchronous task execution framework for flexible compute scaling; (2) a tournament evolution process for self-improving hypotheses generation</em>. Automated evaluations show continued benefits of test-time compute scaling, improving hypothesis quality over time. While general purpose, we focus the validation in three biomedical applications: <em>drug repurposing, novel target discovery, and explaining mechanisms of anti-microbial resistance</em>. Specifically, Co-Scientist helped identify new drug repurposing candidates and synergistic combination therapies for <em>acute myeloid leukemia, which were validated through in vitro experiments</em>. These real-world validations demonstrate the potential of Co-Scientist to accelerate scientific discovery and usher in an era of AI empowered scientists.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>Co-Scientist is a compound, multi-agent system built on Gemini, run as a “scientist in the loop”: a researcher states a goal in natural language, sets constraints, and can steer the search or seed hypotheses as it works. The system generates and ranks hypotheses, but the experimental validation stays with people: every proposal passes human expert review and wet-lab assays before it is confirmed.</p>
+<ul>
+<li><strong>Six specialized agents under a supervisor.</strong> A Supervisor agent parses the goal and assigns six worker agents (Generation, Reflection, Ranking, Evolution, Proximity, and Meta-review) to an asynchronous task queue, all sharing a persistent context memory. The agents are not separate models: they all run on the same base LLM (Gemini 2.0 here) and differ only by their prompts, and the framework is model-agnostic. Every hypothesis must meet default criteria: plausibility, novelty, testability, and safety.</li>
+<li><strong>Grounding and critique.</strong> The Generation agent drafts hypotheses from literature search and simulated scientific debate. The Reflection agent then reviews them as a peer reviewer would, and its access to web search and specialized AI models is what kept hallucinated, implausible hypotheses down.</li>
+<li><strong>Fitness is winning debates.</strong> Hypotheses are scored by an internal <a href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo rating</a> — the chess-style score that ranks competitors, here hypotheses, by who wins pairwise matchups. The Ranking agent stages those matchups as multi-turn scientific debates (single-turn for lower-ranked pairs), judged on correctness, novelty, and testability. A new hypothesis enters at an Elo of 1200 and climbs or falls by its record. The Proximity agent clusters similar hypotheses so the debates pit close rivals against each other.</li>
+<li><strong>Evolution reproduces rather than overwrites.</strong> The Evolution agent builds <em>new</em> hypotheses from the top-ranked ones: combining the strongest parts of several (the crossover analog), spinning off variants inspired by one or more parents, regrounding them in fresh literature, simplifying them, or forcing deliberately divergent “out-of-the-box” ideas (the mutation analog). It never edits a hypothesis in place, so strong parents survive and every offspring has to earn its own Elo back in the tournament.</li>
+<li><strong>It improves without retraining.</strong> A Meta-review agent distills recurring weaknesses from the reviews and debates and appends that feedback to every agent’s prompt on the next round, so the system learns by updating its context rather than its weights, with no fine-tuning or reinforcement learning. An asynchronous framework lets it spend more test-time compute on a goal, with the Supervisor tracking progress through periodic summary statistics and deciding when a run hits a terminal state. There is no convergence threshold: quality (Elo) never saturated in the paper’s runs, so they ended on a compute budget rather than because the system stopped improving.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/figure1b.jpg" class="img-fluid figure-img"></p>
+<figcaption>Co-Scientist’s multi-agent architecture: a Supervisor agent parses the research goal and assigns the six specialized agents to asynchronous worker processes over a shared context memory, with the scientist able to feed in goals and feedback. Figure 1b from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper validates Co-Scientist with automated benchmarks and end-to-end wet-lab experiments in three biomedical areas, all run with experts in the loop. [1]</p>
+<ul>
+<li><strong>Quality climbs with test-time compute.</strong> Across 203 research goals, both the average and best Elo ratings rose the longer the system reasoned, with no sign of saturation.</li>
+<li><strong>Beats frontier reasoning models.</strong> On 15 expert-curated goals, Co-Scientist’s Elo eventually surpassed Gemini 2.0 Pro and Flash Thinking, OpenAI o1 and o3-mini-high, and DeepSeek R1.</li>
+<li><strong>Experts preferred its output.</strong> On 11 goals, Co-Scientist scored an average preference rank of 2.36 and novelty and impact ratings of 3.64 and 3.09 out of 5, and was the top pick of all four LLM judges.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/figure2.jpg" class="img-fluid figure-img" data-lightbox-src="figure2-full.jpg"></p>
+<figcaption>Hypothesis quality rises with test-time compute: best and top-10 average Elo climb across reasoning time (a); on 15 expert-curated goals Co-Scientist’s Elo eventually passes the frontier reasoning models (b); and domain experts rated its hypotheses highest on novelty, impact, and overall preference (c). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>AML drug repurposing.</strong> Co-Scientist generated repurposing hypotheses across a curated list of 2,300 approved drugs spanning 34 cancer types. After expert oncologists reviewed and ranked its predictions, five candidates were tested in vitro, and three (binimetinib, pacritinib, cerivastatin) inhibited acute myeloid leukemia (AML) cell viability. Binimetinib, approved for metastatic melanoma, reached a half-maximal inhibitory concentration (IC50, the dose that cuts cell survival in half, so lower means more potent) as low as 2 nM in all AML lines but NOMO-1, while leaving a non-leukemia control line largely unharmed.</li>
+<li><strong>Novel single-agent candidates.</strong> With no prior preclinical evidence or human feedback, Co-Scientist proposed three wholly new picks: nanvuranlat, KIRA6, and leflunomide. KIRA6, which blocks a cellular stress sensor (the enzyme IRE1α), had an 18-fold safety margin: it killed the stem-cell-like KG-1a leukemia cells at one-eighteenth the dose that affected healthy control cells (an IC50 of 10 nM against 180 nM).</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/figure3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Dose-response curves for the AML repurposing candidates: binimetinib, pacritinib, and cerivastatin against MOLM-13 (a-c), and the wholly novel pick KIRA6 across four AML subtypes and the non-AML TK6 control (d-h). Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Synergistic combinations.</strong> Co-Scientist also proposed multi-drug regimens, and of seven it suggested, the two- and three-drug combinations were mostly synergistic in one leukemia line (MOLM-13), meaning the drugs together killed more cells than the sum of each alone, while the harder-to-treat KG-1a line responded inconsistently.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/figure4.jpg" class="img-fluid figure-img" data-lightbox-src="figure4-full.jpg"></p>
+<figcaption>Synergy analysis of Co-Scientist’s proposed combinations: the JNJ-64619178 + selinexor dual combination falls well inside the synergy zone in MOLM-13 and KG-1a (a, b), and excess-effect heatmaps for the JQ1 + olaparib + MSA2 triple show synergy in MOLM-13 but antagonism in KG-1a (c, d). Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Liver fibrosis and antimicrobial resistance.</strong> In lab-grown mini-livers (hepatic organoids), Co-Scientist proposed three epigenetic targets (genes that switch other genes on or off), and drugs against two of them reduced scarring without harming the tissue (one, vorinostat, is already an approved cancer drug). For antimicrobial resistance, it worked out in about two days how a family of mobile DNA elements that ferry resistance genes between bacteria (cf-PICIs) jump across species, by borrowing the tail proteins of different viruses, matching an unpublished experiment that was running at the same time.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Both Nature papers point to the same lesson: grounding beats the raw model.</strong> Co-Scientist’s own ablation found that giving the Reflection agent access to external search tools is what prevented hallucinated, implausible hypotheses [1] — the gains came from disciplined literature retrieval rather than a bigger base model. <a href="../../posts/20260606-robin-multi-agent-scientific-discovery/">FutureHouse’s Robin</a> [2], in <em>Nature</em> the same week, reached the comparable conclusion automating discovery for macular degeneration. Two independently built systems converging on the same point is the part worth remembering.</p></li>
+<li><p><strong>The Elo curve is self-evaluated.</strong> It is scored by the same model that generates the hypotheses, so a rising Elo means later hypotheses beat earlier ones in the model’s own debates — an internal-consistency signal that can optimize for what the judge likes rather than what is true. The only anchor to real quality is the small human-expert correlation on 11 goals. The wet-lab hits are the harder evidence.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2051681709">Gottweis, Juraj</a>, <a href="https://www.semanticscholar.org/author/2239098855">Weng, Wei-Hung</a>, <a href="https://www.semanticscholar.org/author/2347345594">Daryin, Alexander</a>, <a href="https://www.semanticscholar.org/author/2367117462">Tu, Tao</a>, <a href="https://www.semanticscholar.org/author/2679779">Sirkovic, Petar</a>, <a href="https://www.semanticscholar.org/author/2346506169">Myaskovsky, Artiom</a>, <a href="https://www.semanticscholar.org/author/2552979">Glowaty, Grzegorz</a>, <a href="https://www.semanticscholar.org/author/10805574">Weissenberger, Felix</a>, <a href="https://www.semanticscholar.org/author/2367823022">Orlandi, Alessio</a>, <a href="https://www.semanticscholar.org/author/2343739002">Popovici, Dan</a>, <a href="https://www.semanticscholar.org/author/2266472373">Palepu, Anil</a>, <a href="https://www.semanticscholar.org/author/1996199677">Rong, Keran</a>, <a href="https://www.semanticscholar.org/author/3480712">Tanno, Ryutaro</a>, <a href="https://www.semanticscholar.org/author/2279021635">Saab, Khaled</a>, <a href="https://www.semanticscholar.org/author/2153304375">Zhang, Fan</a>, <a href="https://www.semanticscholar.org/author/51503917">Blum, Jacob</a>, <a href="https://www.semanticscholar.org/author/2365618708">Carroll, Andrew</a>, <a href="https://www.semanticscholar.org/author/2269148145">Kulkarni, Kavita</a>, <a href="https://www.semanticscholar.org/author/2213266">Tomašev, Nenad</a>, <a href="https://www.semanticscholar.org/author/115731137">Zverinski, Dina</a>, <a href="https://www.semanticscholar.org/author/2389134">Rendulic, Ivor</a>, <a href="https://www.semanticscholar.org/author/2298901106">Vedadi, Elahe</a>, <a href="https://www.semanticscholar.org/author/113494403">Hasler, Florian</a>, <a href="https://www.semanticscholar.org/author/102638867">Rimanic, Luka</a>, <a href="https://www.semanticscholar.org/author/2264619101">Boia, Marina</a>, <a href="https://www.semanticscholar.org/author/2784346">Budiselić, Ivan</a>, <a href="https://www.semanticscholar.org/author/2074805000">Feinstein, Ben</a>, <a href="https://www.semanticscholar.org/author/2113949167">Bellaiche, Mathias</a>, <a href="https://www.semanticscholar.org/author/2220891317">Sheffer, Tom</a>, <a href="https://www.semanticscholar.org/author/2279022140">Freyberg, Jan</a>, <a href="https://www.semanticscholar.org/author/1746314909">Ratcliff, Jeremy</a>, <a href="https://www.semanticscholar.org/author/1789306">Bertolli, Ottavia</a>, <a href="https://www.semanticscholar.org/author/2269148566">Chou, Katherine</a>, <a href="https://www.semanticscholar.org/author/1809983">Hassidim, Avinatan</a>, <a href="https://www.semanticscholar.org/author/2225921342">Gokturk, Burak</a>, <a href="https://www.semanticscholar.org/author/2298284093">Vahdat, Amin</a>, <a href="https://www.semanticscholar.org/author/2305630567">Guan, Yuan</a>, <a href="https://www.semanticscholar.org/author/2329370987">Dhillon, Vikram</a>, <a href="https://www.semanticscholar.org/author/10664723">Vaishnav, Eeshit Dhaval</a>, <a href="https://www.semanticscholar.org/author/2305695545">Lee, Byron</a>, <a href="https://www.semanticscholar.org/author/2346514434">Costa, Tiago R. D.</a>, <a href="https://www.semanticscholar.org/author/2068738124">Penadés, José R.</a>, <a href="https://www.semanticscholar.org/author/2243119549">Peltz, Gary</a>, <a href="https://en.wikipedia.org/wiki/Yossi_Matias">Matias, Yossi</a>, <a href="https://en.wikipedia.org/wiki/James_Manyika">Manyika, James</a>, <a href="https://en.wikipedia.org/wiki/Demis_Hassabis">Hassabis, Demis</a>, <a href="https://www.semanticscholar.org/author/2275191526">Xu, Yunhan</a>, <a href="https://en.wikipedia.org/wiki/Pushmeet_Kohli">Kohli, Pushmeet</a>, <a href="https://www.semanticscholar.org/author/2359249680">Pawlosky, Annalisa</a>, <a href="https://www.semanticscholar.org/author/2213433382">Karthikesalingam, Alan</a>, <a href="https://www.semanticscholar.org/author/144223091">Natarajan, Vivek</a>. “Accelerating scientific discovery with Co-Scientist.” <em>Nature</em> (DOI 10.1038/s41586-026-10644-y), May 19, 2026. <a href="https://doi.org/10.1038/s41586-026-10644-y" class="uri">https://doi.org/10.1038/s41586-026-10644-y</a></li>
+<li><a id="ref-2"></a>Ghareeb, Ali Essam, Chang, Benjamin, Mitchener, Ludovico, et al.&nbsp;“A multi-agent system for automating scientific discovery.” <em>Nature</em> (DOI 10.1038/s41586-026-10652-y), May 19, 2026. <a href="https://doi.org/10.1038/s41586-026-10652-y" class="uri">https://doi.org/10.1038/s41586-026-10652-y</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-evoprompt/">EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</a>: the same paradigm behind Co-Scientist’s Evolution agent, an LLM run as the evolutionary operator over a population with no gradients or retraining.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the lens that classifies Co-Scientist’s self-improvement as extrinsic, since its Elo objective, agent roles, and stopping rule are all human-designed.</li>
+<li><a href="../../posts/20200223-antibiotic-halicin/">A Deep Learning Approach to Antibiotic Discovery</a>: the AI-drug-discovery precedent, where a model found a novel antibiotic later confirmed in the lab, as Co-Scientist’s AML repurposing candidates were validated in vitro.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/</guid>
+  <pubDate>Sat, 06 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>AutoScientist: Automating the Science of Model Training</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260606-autoscientist/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2128,129 +2234,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260530-my-101-parkrun/</guid>
   <pubDate>Sat, 30 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260530-my-101-parkrun/image-3.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Claude Opus 4.8: The Early Reactions</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260529-opus-4-8-reactions/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260529-opus-4-8-reactions/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260529-opus-4-8-reactions/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Anthropic’s announcement of Claude Opus 4.8. Image from <a href="https://www.anthropic.com/news/claude-opus-4-8">Anthropic</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://www.anthropic.com/">Anthropic</a> released <a href="https://www.anthropic.com/news/claude-opus-4-8">Claude Opus 4.8</a> on 28 May 2026, the successor to Opus 4.7. Anthropic set the tone in the announcement itself: Opus 4.8 is “a modest but tangible improvement on its predecessor,” at the same price, with the main change being honesty rather than raw capability. This post collects the early reactions, with an eye on what actually changed from 4.7.</p>
-<section id="what-anthropic-says" class="level2">
-<h2 class="anchored" data-anchor-id="what-anthropic-says">What Anthropic Says</h2>
-<p>The release positions honesty as the main advance. From <a href="https://www.anthropic.com/news/claude-opus-4-8">the announcement</a>: models “sometimes jump to conclusions, confidently claiming to have made progress in their work despite the evidence being thin,” and Opus 4.8 is “around four times less likely than its predecessor to allow flaws in code it has written to pass unremarked.” The <a href="https://cdn.sanity.io/files/4zrzovbb/website/c886650a2e96fc0925c805a1a7ca77314ccbf4a6.pdf">system card</a> puts a number on it: Opus 4.8 had the lowest incorrect-rate of six models on every benchmark, and reached that “mainly by abstaining on questions about which it was uncertain rather than by answering more questions correctly.” The gain is calibration, not knowledge.</p>
-<p>Beyond honesty, the <a href="https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8">What’s New page</a> lays out what else moved and what held steady from 4.7.</p>
-<section id="what-changed" class="level3">
-<h3 class="anchored" data-anchor-id="what-changed">What Changed</h3>
-<ul>
-<li><strong>Fast mode, much cheaper.</strong> A research-preview “fast mode” runs at 2.5× speed for roughly a third of what fast mode cost on 4.6 and 4.7.</li>
-<li><strong>Mid-conversation system messages.</strong> A <code>role: "system"</code> message can now be inserted after a user turn, so a long agentic run can update its instructions without restating the whole system prompt and losing its prompt-cache hits. That targets two of the cost line-items in <a href="../../posts/20260503-where-claude-code-tokens-go/">where Claude Code tokens go</a>: conversation-history re-reads and cache misses on resume.</li>
-<li><strong>Lower prompt-cache floor.</strong> The minimum cacheable prompt drops to 1,024 tokens, from 4,096 on 4.7.</li>
-<li><strong>Higher default effort.</strong> The <code>effort</code> parameter now defaults to <code>high</code> everywhere, including the Claude API and Claude Code.</li>
-<li><strong>Documented refusal categories.</strong> The <code>stop_details</code> object on refusals (present since 4.7) is now public, so an application can tell different classes of declined request apart.</li>
-<li><strong>Adjacent launches.</strong> Effort control arrives on claude.ai, and Claude Code gains <a href="../../posts/20260529-dynamic-workflows-claude-code/">Dynamic Workflows</a>.</li>
-</ul>
-</section>
-<section id="what-stayed-the-same" class="level3">
-<h3 class="anchored" data-anchor-id="what-stayed-the-same">What Stayed the Same</h3>
-<ul>
-<li><strong>Price.</strong> $5 per million input tokens and $25 per million output, unchanged across 4.5 through 4.8.</li>
-<li><strong>Context window.</strong> 1M tokens by default (200k on Microsoft Foundry).</li>
-<li><strong>Max output.</strong> 128k tokens.</li>
-<li><strong>Knowledge and training cutoff.</strong> January 2026, the same as 4.7.</li>
-<li><strong>Tools and platform features.</strong> The same set as 4.7.</li>
-</ul>
-</section>
-</section>
-<section id="partners-and-launch-testers" class="level2">
-<h2 class="anchored" data-anchor-id="partners-and-launch-testers">Partners and Launch Testers</h2>
-<p>The <a href="https://www.anthropic.com/news/claude-opus-4-8">announcement</a> carries a long list of design-partner quotes, all favorable, and several compare it explicitly to 4.7. The most direct on that comparison is Scott Wu, CEO of <a href="https://cognition.ai/">Cognition</a>, <a href="https://www.anthropic.com/news/claude-opus-4-8">in the launch quotes</a>:</p>
-<blockquote class="blockquote">
-<p>Claude Opus 4.8 uses tools cleanly and follows instructions with the consistency our autonomous engineering workloads need to keep running unattended. It improves on Opus 4.6 and fixes the comment-verbosity and tool-calling issues we saw with Opus 4.7. This release from Anthropic translates directly into faster capability gains for engineers building on Devin.</p>
-</blockquote>
-<p>Katie Parrott, a staff writer, <a href="https://www.anthropic.com/news/claude-opus-4-8">emphasizes the day-to-day feel</a>:</p>
-<blockquote class="blockquote">
-<p>Claude Opus 4.8 feels like a major quality-of-life update over Opus 4.7: faster, easier to collaborate with, and better at carrying context and style direction across a long session. Opus 4.8 is the model I kept trusting for work where voice, taste, and technical execution all have to happen side-by-side.</p>
-</blockquote>
-<p>The harder numbers come from the tool vendors, all <a href="https://www.anthropic.com/news/claude-opus-4-8">in the same announcement</a>:</p>
-<ul>
-<li><strong><a href="https://www.cursor.com/">Cursor</a> (Michael Truell)</strong>: Opus 4.8 “exceeds prior Opus models across every effort level” on CursorBench, with tool calling that is “meaningfully more efficient, using fewer steps for the same intelligence.”</li>
-<li><strong><a href="https://www.databricks.com/">Databricks</a> (Hanlin Tang)</strong>: its Genie agent reasons over PDFs and diagrams “at 61% cheaper token cost than Opus 4.7.”</li>
-<li>A computer-use vendor reports 84% on Online-Mind2Web, “a meaningful jump over both Opus 4.7 and GPT-5.5”; a legal-AI vendor reports the first model “to break 10% overall on the all-pass standard.”</li>
-</ul>
-<p>The recurring word across these is judgment: catching its own mistakes, pushing back on weak plans, asking clarifying questions before acting. That is the same abstention story the system card tells, viewed from the agent-harness side.</p>
-</section>
-<section id="independent-reactions" class="level2">
-<h2 class="anchored" data-anchor-id="independent-reactions">Independent Reactions</h2>
-<p><a href="https://simonwillison.net/2026/May/28/claude-opus-4-8/">Simon Willison</a> led with the honesty rather than the capability, and his write-up is one of the most detailed independent walk-throughs so far:</p>
-<ul>
-<li><strong>Honesty is the story.</strong> His favorite part is that Anthropic called the release minor: “It’s so refreshing to see an AI lab honestly describe a release as a minor incremental improvement over the previous model.” He reads honesty as the theme, and highlights the system card’s finding that 4.8 posts the lowest incorrect-rate of any model tested mainly by abstaining when unsure.</li>
-<li><strong>Mid-conversation steering “sounds really powerful.”</strong> He initially worried it would break the single-system-prompt assumption in his own <a href="https://llm.datasette.io/">LLM library</a>, then found his recent redesign already handles it.</li>
-<li><strong>The spec changes that caught his eye.</strong> The 1,024-token cache floor, down from 4,096 on 4.7, and fast mode’s price cut were the parts he singled out as practically useful.</li>
-<li><strong>The pelican test, at five effort levels.</strong> He ran his “pelican riding a bicycle” SVG benchmark at low, medium, high, xhigh, and max. His verdict: “the max one was clearly the best, but it did take 25 input, 17,167 output tokens for a total cost of 43 cents.” He had Opus 4.8 build an HTML viewer for the results, then handed that code to GPT-5.5 in Codex to strip XSS holes, since “GPT-5.5 is my code security blanket at the moment.”</li>
-</ul>
-<p><a href="https://clairevo.com/">Claire Vo</a>, who got early access, ran <a href="https://www.lennysnewsletter.com/p/claude-opus-48-is-here-is-it-as-good">a first-impressions walkthrough</a> across Claude Code and Cowork and gave a split verdict: Opus 4.8 shines on greenfield prototypes, one-shot features, and fast execution, but stumbles on “the last 10%,” edge cases inside existing codebases, and hallucinations. On data-heavy strategy and roadmap work, she said she still reaches for 4.7.</p>
-<p>Community reaction on the <a href="https://news.ycombinator.com/item?id=48311647">1,300-comment Hacker News thread</a> was more mixed, and much of it was really about 4.7. Several commenters said 4.7 had regressed badly enough that they pinned Claude Code back to 4.6, and read 4.8 as a hoped-for recovery rather than a clear step up. One counted only six benchmarks in the 4.8 announcement, down from twelve for 4.7 and thirteen for 4.6, with SWE-bench Verified and GPQA Diamond among the omissions, and called the trimmed table cherry-picking. Another strand objected to the “honesty” label as anthropomorphism for what is really a lower tendency to overstate thin evidence.</p>
-<p>One r/ClaudeAI post, from someone who <a href="https://www.reddit.com/r/ClaudeAI/comments/1tqao3e/spent_a_few_hours_with_opus_48_the_honesty_change/">“spent a few hours with Opus 4.8”</a>, singles out the honesty change as what stood out. Others were less sure it was an improvement at all: an <a href="https://news.ycombinator.com/item?id=48316636">“Ask HN: Is Claude Opus 4.8 broken?”</a> thread went up the same day.</p>
-</section>
-<section id="the-skeptical-read" class="level2">
-<h2 class="anchored" data-anchor-id="the-skeptical-read">The Skeptical Read</h2>
-<p>Two independent trackers push back on the launch-day optimism.</p>
-<ul>
-<li><p><strong><a href="https://andonlabs.com/blog/opus-4-8-vending-bench">Andon Labs</a>: “Better Alignment, Worse Performance.”</strong> On Vending-Bench, 4.8 is cleaner but less capable than 4.7.</p>
-<ul>
-<li><p><strong>Alignment improved.</strong> Where Opus 4.6, 4.7, and the Mythos preview ran price cartels and lied about refunds, 4.8 did not:</p>
-<blockquote class="blockquote">
-<p>Most importantly, we could not find any instances of Opus 4.8 engaging in any of the deceptive or power-seeking behavior we saw exhibited by recent Claude models we’ve tested.</p>
-</blockquote></li>
-<li><p><strong>Performance regressed.</strong> 4.8 did worse than previous Opus and Sonnet models on Vending-Bench 2, and lost to both GPT-5.5 and Opus 4.7 in the head-to-head Arena. The failure modes resembled much weaker models:</p>
-<ul>
-<li><strong>Falls for scams.</strong> It “wires roughly thirty times more cash to fraudulent wholesalers than Opus 4.7. One run sent over $9,000 to a super expensive ‘membership’ upsell.”</li>
-<li><strong>Negotiates worse.</strong> “Opus 4.7 talks suppliers down to about half the price Opus 4.8 accepts.”</li>
-<li><strong>Overthinks the paperwork.</strong> It “rewrites the same strategy doc ~100 times per run” and accumulates a dozen overlapping notes.</li>
-</ul></li>
-<li><p><strong>The mechanistic finding.</strong> At <code>high</code> effort instead of <code>max</code>, 4.8 did much better, though still short of 4.7. Andon Labs’ hypothesis: <code>max</code> spends about 5× more reasoning tokens, hits the context limit, and triggers more than twice as many compactions, so the agent forgets more of its own history. The shipped default of <code>high</code> keeps most users clear of this.</p></li>
-</ul></li>
-<li><p><strong><a href="https://marginlab.ai/blog/claude-code-degraded-before-opus-4-8/">Marginlab</a>: Claude Code degraded before the release.</strong> Its daily SWE-Bench-Pro tracker watched Opus 4.7 slip in the week before 4.8 shipped:</p>
-<blockquote class="blockquote">
-<p>Opus 4.7’s pass rate dropped well below its established baseline and stayed there for five consecutive days, a sustained and statistically significant degradation, before recovering the moment Opus 4.8 took over.</p>
-</blockquote>
-<p>Marginlab presents it as a measurement; readers supplied the less charitable interpretation about old models degrading right before a launch.</p></li>
-</ul>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<p>Anthropic, its partners, Willison, and Andon Labs are all pointing at one behavior: Opus 4.8 abstains and flags uncertainty where 4.7 would barrel ahead. Whether that reads as “better judgment” or “worse performance” depends entirely on the task. On code review and analysis, where a confident wrong answer is expensive, abstention is the win Anthropic advertises. On Vending-Bench, where the job is to act decisively and keep the machine stocked, the same caution looks like falling for scams and leaving the machine empty. The same change cuts both ways, which fits the abstention research directly: see <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> and <a href="../../posts/20260525-metacognition-uncertainty-sft/">training models to communicate uncertainty</a>.</p>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260601-opus-4-8-had-enough/">Opus 4.8 Had Enough</a>: the same model’s self-doubt loop from its system card, the flip side of the abstention-and-honesty story this post tracks.</li>
-<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the predecessor whose regressions several commenters here read 4.8 as a recovery from.</li>
-<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: the abstention research this post leans on to frame 4.8’s honesty gain, cited inline.</li>
-<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: the training side of the same calibration-not-knowledge change 4.8 advertises, cited inline.</li>
-<li><a href="../../posts/20260609-confidence-calibration-metrics/">A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses</a>: the measurement vocabulary behind 4.8’s “abstain when uncertain” claim and its low incorrect-rate.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260529-opus-4-8-reactions/</guid>
-  <pubDate>Fri, 29 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260529-opus-4-8-reactions/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
