@@ -21,7 +21,89 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 14 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 17 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/cover.png" class="img-fluid figure-img"></p>
+<figcaption>LLMs have internal answer distributions about user queries. Rather than just sampling one output (possibly combined with a percentage or a verbalized hedge), an LLM should generate a string that is self-reflective of its internal distribution, summarizing all plausible answers and their relative likelihoods. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</em> (ICLR 2026) [1], <a href="https://mkirchhof.github.io/">Michael Kirchhof</a> et al.&nbsp;at Apple and the Tübingen AI Center introduce an information-theoretic metric for evaluating whether a single text summary a large language model (LLM) writes about its own uncertainty actually matches the distribution of answers the same model would produce if sampled many times.</p>
+<blockquote class="blockquote">
+<p>The common approach to communicate a large language model’s (LLM) uncertainty is to add a percentage number or a hedging word to its response. But is this all we can do? Instead of generating a single answer and then hedging it, an LLM that is fully transparent to the user needs to be able to reflect on its internal belief distribution and output a summary of all options it deems possible, and how likely they are. To test whether LLMs possess this capability, we develop the <strong><em>SelfReflect metric</em>, an information-theoretic distance between a given summary and a distribution over answers<em>. In interventional and human studies, we find that </em>SelfReflect indicates even slight deviations<em>, yielding a fine measure of faithfulness between a summary string and an LLM’s actual internal distribution over answers. With SelfReflect, we make a resounding negative observation: </em>modern LLMs are, across the board, incapable of revealing what they are uncertain about, neither through reasoning, nor chains-of-thoughts, nor explicit finetuning<em>. However, we do find that </em>LLMs are able to generate faithful summaries of their uncertainties if we help them by sampling multiple outputs and feeding them back into the context</strong>. This simple approach shines a light at the universal way of communicating LLM uncertainties whose future development the SelfReflect score enables. To support the development of this universal form of LLM uncertainties, we publish the code that implements our metric for arbitrary LLMs under <a href="https://github.com/apple/ml-selfreflect" class="uri">https://github.com/apple/ml-selfreflect</a>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>How the metric works. <em>Input:</em> a candidate summary string <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/>, a query <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/>, and sampling access to the model <img src="https://benjaminhan.net/feed-assets/9cc225b783095a97.svg" alt="p_\theta" class="feed-math-inline"/>. <em>Output:</em> a scalar distance, lower meaning the summary is more faithful to the model’s answer distribution. The paper defines a good summary <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/> as one that is <em>predictively sufficient</em> of the answer distribution <img src="https://benjaminhan.net/feed-assets/68ded88ee1140bd5.svg" alt="p_\theta(A \mid q)" class="feed-math-inline"/>. Intuitively, if you’ve read <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/>, you shouldn’t gain much by also reading a fresh sample from the model. Operationally, the paper turns this into a Cloze-style test. Sample <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> answers <img src="https://benjaminhan.net/feed-assets/f17f8180caedd2e9.svg" alt="a_{(1:N)}" class="feed-math-inline"/> from the model for query <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/>, then take a separate sample <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/> and mask a word in it. Ask a judge LLM to predict the masked word twice: once given the candidate summary <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/> as context, once given the concatenated samples <img src="https://benjaminhan.net/feed-assets/f17f8180caedd2e9.svg" alt="a_{(1:N)}" class="feed-math-inline"/> as context. Each prediction is a distribution over the vocabulary. The SelfReflect score is the <strong>1-Wasserstein distance</strong> between those two distributions, averaged over many masked words and queries. A summary that truly captures the answer distribution produces the same predictions as the samples do; a summary that misses facts or misweights them shifts the predicted distribution.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
+<figcaption>How the SelfReflect metric is computed. The judge LLM is prompted twice (once with the candidate summary as context, once with the concatenated samples) and predicts a masked-out word in each case. The two predicted token distributions are compared via 1-Wasserstein distance. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Across 20 modern LLMs tested with prompting, chain-of-thought reasoning, supervised fine-tuning (SFT), and direct preference optimization (DPO), none produce summary strings that faithfully reflect their internal answer distribution. Summaries look right in form (they list possibilities and assign relative likelihoods), but the listed possibilities are not the ones the model actually samples. The fix that does work is mechanical: sample <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> outputs from the model, feed them back as context, and ask the model to summarize <em>those</em>. The resulting summary is faithful.</p>
+<p>In the benchmark’s interventional study (taking 3 × 1,000 open-ended questions and generating known-good, known-bad, and “almost-good” summaries with Gemini 2.0 Flash), SelfReflect cleanly separates near-misses where other metrics cannot:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
+<figcaption>Discrimination accuracy of SelfReflect and alternative benchmark metrics on pairs of good and bad summaries, across six comparison types. Higher is better (chance = 50%). SelfReflect (bottom row) achieves the highest Good-vs-almost-good accuracy at 93.2%, while traditional baselines (LM Judge, Embedding) sit near or only modestly above chance. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Discriminating an almost-good summary from a good one is the setting that matters for “did the LLM really convey its uncertainty?”, and that is the column where the LM-judge baseline drops near chance (47.3%) and other traditional baselines do only modestly better.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The negative result matters more than the metric.</strong> The literature on LLM self-reports has been accumulating evidence in one direction for a few years now: chain-of-thought explanations don’t necessarily reflect the actual computation [2], verbalized confidence is systematically overconfident across five widely-used LLMs [3], and now text self-summaries of internal answer distributions don’t match those distributions either. Each result is locally about a different self-report channel, but the pattern across them converges: when an LLM tells you something about itself, the right prior is that the statement is shaped by self-report patterns picked up from training data, not by introspection on the actual generative process. <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar’s position paper on intrinsic metacognitive learning</a> [5] argues that genuine self-improving agents need intrinsic metacognitive capabilities, with the ingredients at least partly present in current LLMs. SelfReflect’s negative result is a direct empirical bound on one facet of the metacognitive-knowledge ingredient: the ability to faithfully describe one’s own answer distribution.</p></li>
+<li><p><strong>The “sample-then-summarize” workaround is the practical bottom line and it has pipeline implications.</strong> The paper shows that LLMs can write faithful uncertainty summaries. They just need the samples in context first. That makes the missing capability not summary-writing but introspection on their own answer distribution without sampling it. For agent and product designers: if you want a calibrated multi-option response, use i.i.d. sampling plus a summarization pass. A clever prompt asking the model to “be honest about your uncertainty” won’t substitute for the samples. The cost is <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> forward passes; the upside is a summary the SelfReflect metric scores as faithful.</p></li>
+<li><p><strong>The metric is more discriminating than the alternatives.</strong> Most evaluation work in this area has leaned on either LM-judge metrics (which have known failure modes) or coarse calibration scores (which discard structure). An information-theoretic distance between a string and a distribution (predictive sufficiency, scored against the empirical answer distribution) discriminates good from almost-good summaries where LM judges and embedding distances do not. Whether downstream work picks it up is the open question; if so, future “LLMs reveal their uncertainties” claims will need to clear a real bar rather than a vibes check.</p></li>
+<li><p><strong>Three deployment uses beyond benchmarking.</strong> The same score plugs into several runtime loops the paper doesn’t explore. As a training reward it targets the property SFT and DPO miss under naive objectives: optimize against the metric directly and you train for faithful self-summary rather than a proxy. As an ops-time ablation signal it answers “given my model and my query distribution, which prompting regime yields the most faithful uncertainty reports?”, narrower than the paper’s capability ranking and closer to production tuning. As a sampled monitoring signal it audits a cheaper production path (e.g., direct verbalized uncertainty) on a subset of traffic: large divergence on the sampled queries means the cheaper path has drifted, and the operator should fall back to sample-then-summarize or route to human review. Per-query routing is not a sensible use because computing SelfReflect for a query already costs the <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> samples that sample-then-summarize would need anyway.</p></li>
+<li><p><strong>Part of a broader push to ascertain a model’s epistemic status.</strong> Whether an LLM knows a fact, and whether it can accurately describe its own uncertainty, are both aspects of what the model actually knows versus what it claims. <a href="../../posts/20260430-kglens-knowledge-probing/">KGLens</a> [4] targets factual knowledge by turning a knowledge graph into natural-language questions and comparing model answers to the graph’s facts. SelfReflect targets self-knowledge of uncertainty by comparing a written summary to the distribution the model actually samples. Both route around the problem that LLMs produce fluent output regardless of whether they know the answer, by grounding the measurement in a signal the model can’t game by sounding confident.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+<li><a id="ref-2"></a><a href="https://milesaturpin.github.io/">Turpin</a>, Miles, Julian <a href="https://julianmichael.org/">Michael</a>, Ethan <a href="https://ethanperez.net/">Perez</a>, and Samuel R. <a href="https://cims.nyu.edu/~sbowman/">Bowman</a>. “Language Models Don’t Always Say What They Think: Unfaithful Explanations in Chain-of-Thought Prompting.” <em>Conference on Neural Information Processing Systems (NeurIPS)</em>, 2023. arXiv:2305.04388, May 7, 2023. <a href="https://arxiv.org/abs/2305.04388" class="uri">https://arxiv.org/abs/2305.04388</a></li>
+<li><a id="ref-3"></a><a href="https://miaoxiongzju.github.io/">Xiong</a>, Miao, Zhiyuan Hu, Xinyang Lu, Yifei Li, Jie <a href="https://bigaidream.github.io/">Fu</a>, Junxian <a href="https://jxhe.github.io/">He</a>, and Bryan <a href="https://bhooi.github.io/">Hooi</a>. “Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2306.13063, June 22, 2023. <a href="https://arxiv.org/abs/2306.13063" class="uri">https://arxiv.org/abs/2306.13063</a></li>
+<li><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Zheng</a>, Shangshang, He <a href="https://hbkkk.github.io/">Bai</a>, Yizhe <a href="https://dreasysnail.github.io/">Zhang</a>, Yi Su, Xiaochuan Niu, and Navdeep <a href="https://www.cs.toronto.edu/~ndjaitly/">Jaitly</a>. “KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs.” <em>ACL 2024 Workshop on Knowledgeable Language Models</em>, 2024. arXiv:2312.11539, December 15, 2023. <a href="https://arxiv.org/abs/2312.11539" class="uri">https://arxiv.org/abs/2312.11539</a></li>
+<li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the positive precursor SelfReflect extends, where a 52B model rates its own samples with P(True) but only after the samples are placed in context, the same sampling detour SelfReflect finds is the only thing that works.</li>
+<li><a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback</a>: the verbalized-confidence channel SelfReflect’s abstract critiques as inadequate, shown elsewhere to help calibration but not to reveal the full internal distribution.</li>
+<li><a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</a>: the companion negative result, where an agent told to monitor its own metacognition does no better than a plain retry loop, reinforcing that LLM self-reports need an external signal.</li>
+<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: tackles the SFT-on-confidence channel that SelfReflect found fails on its own, showing what supervised fine-tuning can and cannot recover for verbalized confidence.</li>
+<li><a href="../../posts/20260505-semantic-entropy/">Detecting Hallucinations in Large Language Models Using Semantic Entropy</a>: the same sampling-then-aggregation move SelfReflect endorses, applied to hallucination detection by computing entropy over the meanings of multiple sampled answers.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/cover.png" medium="image" type="image/png" height="74" width="144"/>
+</item>
 <item>
   <title>KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs</title>
   <dc:creator>synesis </dc:creator>
@@ -1245,65 +1327,6 @@
   <guid>https://benjaminhan.net/posts/20260422-overzealous-coding-models/</guid>
   <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Sequential KV Cache Compression via Probabilistic Language Tries</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260422-kv-cache-compression/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-kv-cache-compression/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>First page of the paper. Image from <a href="https://arxiv.org/abs/2604.15356">arXiv</a>.</figcaption>
-</figure>
-</div>
-<p>The paper argues that per-vector KV cache compression (TurboQuant et al.) optimises the wrong objective. KV vectors are samples from the language the model already predicts, so the right unit of compression is the <em>sequence</em>, not the vector [1]:</p>
-<blockquote class="blockquote">
-<p>Recent work on KV cache quantization, culminating in TurboQuant, has approached the Shannon entropy limit for per-vector compression of transformer key-value caches. We observe that this limit applies to a strictly weaker problem than the one that actually matters: <em>compressing the KV cache as a sequence</em>. The tokens stored in a KV cache are not arbitrary floating-point data — they are samples from the exact formal language the model was trained on, and the model is by construction a near-optimal predictor of that language. We introduce <em>sequential KV compression</em>, a two-layer architecture that exploits this structure. The first layer, <em>probabilistic prefix deduplication</em>, identifies semantically equivalent shared prefixes across sessions using the trie metric <img src="https://benjaminhan.net/feed-assets/2ca4121b35f43fac.svg" alt="d_T(s, s&#x27;) = -\log_2 P_M(s \wedge s&#x27;)" class="feed-math-inline"/> from Probabilistic Language Tries (PLTs). The second layer, <em>predictive delta coding</em>, stores only the residual of each new KV vector from the model’s own prediction of it, achieving a per-token entropy bound of <img src="https://benjaminhan.net/feed-assets/c5a6986396e83e08.svg" alt="H(KV_{i+1} \mid KV_{\le i}) \le H(\text{token}_{i+1} \mid \text{token}_{\le i})" class="feed-math-inline"/>. We prove that at typical language model perplexity — approximately 10–20 for fluent English text — this bound is 3.3–4.3 bits on average per token position, compared to TurboQuant’s 3 bits per vector component (with typical attention heads having 64–128 components). <em>The theoretical compression ratio over TurboQuant is approximately 914,000× at the Shannon limit.</em> Even at 1000× above the entropy floor — a deliberately pessimistic worst-case overhead, two orders of magnitude above the 2–5× typical of practical source coders — the ratio remains approximately 914× over TurboQuant, with compression improving rather than degrading as context length grows. The two layers are orthogonal and compose with existing per-vector quantization methods including TurboQuant.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>When a chatbot generates a reply token by token, the model stashes the intermediate state for every previous token in something called the KV (key-value) cache, so it doesn’t have to recompute the whole context on each new word. That cache is now the dominant memory cost of serving large language models. Long conversations and many concurrent users will eat GPU memory long before the model weights do. So a small industry has grown up around squeezing the cache: the latest, TurboQuant [2], gets close to the theoretical limit of how few bits you need per cached vector.</p>
-<p>The paper’s observation: those cached vectors aren’t arbitrary data. They’re things the model can already predict, because the model just generated the tokens they came from. So why not let the model’s own predictions do the compression work? The first layer notices when a new conversation starts with the same prefix as a previous one and reuses the cached state. The second layer stores only the gap between each new cached vector and what the model would have predicted. Both layers stack on top of per-vector compressors like TurboQuant, which is why the theoretical headline ratio gets to six orders of magnitude.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper’s headline numbers are theoretical, not empirical. At the Shannon limit and typical English perplexity (10–20), predictive delta coding bounds per-token entropy at 3.3–4.3 bits, against TurboQuant’s 3 bits per vector component across 64–128 components per head, a 914,000× ratio. Even with a 1000× overhead above the entropy floor (two orders worse than practical source coders typically achieve), the gap stays at ~914× over TurboQuant, and grows rather than shrinks with context length.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<p>The scheme adds a robustness issue that per-vector methods don’t have. The same forward pass on a GPU doesn’t always return identical numbers. What else is in the batch alongside your request can shift the result slightly. Thinking Machines’ <a href="https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/"><em>Defeating Nondeterminism in LLM Inference</em></a> documented exactly this: Qwen-235B at temperature 0 produced 80 unique completions over 1000 identical requests, all from non-batch-invariant kernels in the forward pass. Per-vector compression is immune: recovery is a fixed formula on stored bits, no model rerun. Schemes whose decode is pure arithmetic are similarly safe. The issue only appears when the model itself sits on the recovery path. Here, the model rerun <em>is</em> the recovery, so any drift between the original prediction and the regenerated one shows up as reconstruction error. Usually the TurboQuant layer underneath is noisier than the drift and absorbs it, but at positions where the model is highly confident and the stored gap is tiny, the same prompt could reconstruct slightly differently depending on how it got batched.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“Sequential KV Cache Compression via Probabilistic Language Tries.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2604.15356" class="uri">https://arxiv.org/abs/2604.15356</a></li>
-<li><a id="ref-2"></a>Aamand, A., Mousavifar, S., Singhi, R., Indyk, P., Wagner, T. “TurboQuant: Online Vector Quantization.” <em>arXiv preprint</em> (arXiv:2504.19874), 2025. <a href="https://arxiv.org/abs/2504.19874" class="uri">https://arxiv.org/abs/2504.19874</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260427-turboquant-walkthrough/">TurboQuant: A First-Principles Walkthrough</a>: the per-vector quantizer this paper takes as its baseline and stacks on top of.</li>
-<li><a href="../../posts/20260511-the-inference-shift/">The Inference Shift</a>: why the KV cache is becoming the memory bottleneck of serving, and the memory-hierarchy-first hardware that answer implies.</li>
-<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the agent-cost curve where caching is the term that decides whether token spend grows linearly or quadratically.</li>
-<li><a href="../../posts/20260421-prompt-repetition/">Prompt Repetition Improves Non-Reasoning LLMs</a>: a complementary inference-time move on the prefix, spending more prefill rather than compressing what prefill produces.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260422-kv-cache-compression/</guid>
-  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
