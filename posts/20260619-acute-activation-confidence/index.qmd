@@ -1,0 +1,97 @@
+---
+title: "The ACUTE Protocol: Operationalizing Language Model Activations for Better Calibration, Utility, and Trust"
+description: "An activation-based protocol trains lightweight probes on a model's own hidden states to decide when to trust its output, paired with a utility metric that calibration scores alone can't game."
+author: synesis
+date: "2026-06-19"
+image: cover.jpg
+---
+
+![The ACUTE protocol: input features drawn from a model's internal activations train a confidence estimator that decides whether to trust or abstain from each output. Figure 2 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *The ACUTE Protocol: Operationalizing Language Model Activations for Better Calibration, Utility, and Trust* [[1]](#ref-1) (ICML 2026), [Nishant Subramani](https://scholar.google.com/citations?user=x9-p03gAAAAJ), [Palash Goyal](https://scholar.google.com/citations?user=kNeah3kAAAAJ), Yiwen Song, [Mani Malek](https://scholar.google.com/citations?user=iDh6bHsAAAAJ), Yuan Xue, [Tomas Pfister](https://scholar.google.com/citations?user=ahSpJOAAAAAJ), and [Hamid Palangi](https://scholar.google.com/citations?user=B1lAghgAAAAJ) (CMU, Google, Scale AI) train lightweight classifiers on a model's own hidden states to decide when to trust its output, and propose a utility metric, EURO, that scores confidence estimates on whether they help a downstream decision rather than on calibration alone.
+
+> As language models improve and become increasingly deployed to solve a variety of tasks, trustworthiness becomes essential. Calibration is a good proxy for trust: well-calibrated confidence estimates help inform the risk versus reward tradeoff when trusting a specific model output. Unfortunately, even as models improve, they remain poorly calibrated, often biasing towards overconfidence. *Additionally, calibration can be gamed: a policy that always predicts the base rate is perfectly calibrated, but completely uninformative.* To resolve this, we develop a new metric, *expected utility renormalized by the oracle (EURO), that balances calibration and informativeness*. We also propose a general-purpose *activation-based confidence, utility, and trust estimation protocol (ACUTE)* to appropriately adjudicate uncertainty. The ACUTE protocol provides flexible, sample-efficient, and compute-efficient confidence estimators for 3 tasks including multiple choice question answering, tool-calling, and scientific document summarization across 6 models from 4 model families. *ACUTE outperforms strong baselines on EURO, while maintaining low calibration error.* Taken together, our work shows that equipping LLMs with the ACUTE protocol can improve calibration, utility, and trustworthiness in numerous settings.
+
+## Methods
+
+The paper has two parts: a metric **EURO** and a confidence estimator **ACUTE**.
+
+EURO (expected utility renormalized by the oracle) answers a complaint about calibration scores. The expected calibration error (ECE) and its smoothed variant (smECE) measure whether stated confidences match observed accuracy, but a model that reports the base rate on every example is [perfectly calibrated and useless](/posts/20260609-confidence-calibration-metrics/#measuring-calibration-expected-calibration-error-ece). EURO instead frames confidence as a *trust-or-abstain decision* and scores the utility of acting on it, in four steps:
+
+- **Assign rewards to the four outcomes**: the trust-or-abstain decision has four cases, each with a task-set reward. Trusting a correct answer earns $R_{tp}$, abstaining on a wrong one earns $R_{tn}$, trusting a wrong one earns $R_{fp}$, and abstaining on a correct one earns $R_{fn}$, with correct calls rewarded ($R_{tp}, R_{tn} \ge 0$) and mistakes penalized ($R_{fp}, R_{fn} \le 0$).
+- **Reduce them to one knob.**
+  - **Net utilities**: $U_{ct} = R_{tp} - R_{fn}$ is the gain from *c*orrectly *t*rusting a correct answer instead of abstaining, and $U_{ca} = R_{tn} - R_{fp}$ the gain from *c*orrectly *a*bstaining on a wrong answer instead of trusting. The subtracted terms are penalties ($R_{fn}, R_{fp} \le 0$), so each difference is the full swing between the two outcomes.
+  - **Normalize**: rescale the pair to sum to one, $u_{ct} = U_{ct}/(U_{ct}+U_{ca})$ and $u_{ca} = U_{ca}/(U_{ct}+U_{ca})$.
+  - **The threshold falls out**: the [minimum-Bayes-risk threshold](https://en.wikipedia.org/wiki/Bayes_estimator) works out to exactly $\tau = u_{ca}$, so the estimator trusts when its confidence $\hat{p}$ exceeds $u_{ca}$. A plain classifier (reward 1 for a correct call, 0 for a mistake) gives $\tau = 0.5$.
+  - **Penalties steer it**: making a wrong trust expensive ($R_{fp} \ll 0$) raises $u_{ca}$ toward 1, so the estimator demands more confidence before trusting, while making a wrong abstention expensive ($R_{fn} \ll 0$) grows $U_{ct}$ and lowers $u_{ca}$ toward 0, so it trusts more readily.
+- **Renormalize to a fixed scale**: score the estimator's utility at a given $u_{ca}$ against a perfect oracle (1) and a worst-case anti-oracle (0), so the number is comparable across tasks.
+- **Sweep risk levels**: the four rewards are application-specific, so rather than fix them per task the experiments leave them unset and sweep $u_{ca}$ across its whole range $(0, 1)$, which is enough because $\tau = u_{ca}$ collapses the reward structure into that one number. The area under the resulting curve, auc-euro, is the headline number, reported both over the full range and over three bins: low $u_{ca} \in (0, 1/3)$, medium $[1/3, 2/3)$, and high $[2/3, 1)$, identically across MMLU, APIGen, and SCITLDR.
+
+Figure 1 shows why this matters: ECE and smECE rank the two worst estimators (a base-rate predictor and a noisy base-rate predictor) above a probabilistic oracle, while auc-euro orders all four correctly.
+
+![Four confidence estimators ranked from best to worst, scored by ECE, smooth ECE, and the paper's auc-euro (higher auc-euro is better, lower ECE/smECE is better). ECE and smECE rate the two base-rate estimators above the probabilistic oracle, while only auc-euro orders all four correctly. Figure 1 from the paper [[1]](#ref-1).](figure1.png){fig-align="center"}
+
+ACUTE (activation-based confidence, utility, and trust estimation) is the estimator. For each output it reads the model's internal activations and trains a [random forest](https://en.wikipedia.org/wiki/Random_forest) to predict whether the output is correct. The features aren't concatenated into one model: each of three feature families trains its own estimator, and the paper reports six configurations in total:
+
+- **Mean-pooled activations**: the hidden states at a layer, averaged over tokens. Trained per layer, this yields three configurations, the best estimator from the early, middle, and late third of layers (`acute early/mid/late act`).
+- **Layer-wise cosine similarities with the final layer**: a low-dimensional summary of how each layer's activation aligns with the last, one configuration (`acute cosine`).
+- **PCA-transformed activations**: a layer's activations reduced to their top 10 or 20 [principal components](https://en.wikipedia.org/wiki/Principal_component_analysis), two configurations (`acute pca10`, `acute pca20`).
+
+Random forests are the classifier throughout because they slightly outperformed logistic regression and support vector machines in early experiments, and because a well-trained forest needs no post-hoc recalibration. A single decision tree reads its probability off leaf purity and pushes toward 0 or 1, the reason tree estimators have traditionally needed post-hoc scaling such as Platt scaling [[2]](#ref-2) [[3]](#ref-3). A forest instead reports the vote fraction across many decorrelated trees, a smoother estimate that is already close to calibrated when the forest is well-trained [[4]](#ref-4).
+
+## Results
+
+The protocol is evaluated on six models from four families (gemma-3-4b-it, gemma-3-12b-it, Qwen3-4B-Instruct-2507, Qwen3-14B, phi-4, and SmolLM3-3B) across three deliberately distinct tasks: MMLU multiple-choice question answering [[5]](#ref-5) (5-shot, scored over its 57 subtasks), APIGen tool-calling [[6]](#ref-6) (zero-shot, approximate exact match), and SCITLDR scientific-abstract summarization [[7]](#ref-7) (zero-shot, ROUGE-L). The two generation tasks force the estimator to work from multi-token output, not a single classification logit. ACUTE's six configurations are compared against raw confidences and two strong, cheap baselines, a histogram regression estimator (HRE) and Nadaraya-Watson kernel regression (NWKR), with calibration measured by smECE (lower is better) and utility by auc-euro (higher is better) at low, medium, and high risk.
+
+The headline numbers (Table 1, averaged across models) decompose by task:
+
+- **Tool-calling shows the largest gain.** On APIGen, `acute pca20` reaches 0.88 auc-euro versus 0.78 for both HRE and NWKR, roughly 0.10 ahead of the strong baselines and 0.35 ahead of raw confidences (0.53).
+- **Multiple-choice shows a modest gain.** On MMLU, `acute late act` reaches 0.83 versus 0.79 for NWKR, with the edge concentrated at high risk (0.80 versus 0.74).
+- **Summarization shows essentially none.** On SCITLDR, every method including the histogram baseline scores 0.77–0.78, and ACUTE matches the baselines without beating them.
+- **Calibration holds throughout.** smECE stays low (around 0.07–0.09), comparable to the calibration baselines, so the utility gains do not come at the cost of miscalibration.
+
+![smECE (lower is better) and auc-euro at low/medium/high risk on MMLU, APIGen, and SCITLDR, averaged across the six models. The ACUTE rows lead on APIGen and MMLU, especially at high risk, and sit level with the baselines on SCITLDR. Table 1 from the paper [[1]](#ref-1).](table1.png){fig-align="center"}
+
+Figure 4 shows where that high-risk edge on MMLU comes from. The y-axis is EURO, the oracle-renormalized expected utility where 1.0 matches a perfect oracle and higher is better. The x-axis is the risk level $u_{ca}$, the normalized abstention utility defined above (equivalently the trust threshold $\tau$), running from low-risk settings on the left to high-risk on the right, where wrongly trusting a bad answer is costliest. Each line is one estimator, one of the three baselines or ACUTE's six configurations, averaged over the 57 MMLU subtasks. At low risk, where abstaining is cheap, every estimator including the baselines performs about the same and the curves overlap. As the risk level rises the ACUTE estimators pull away from raw confidences, HRE, and NWKR, which is why ACUTE's MMLU advantage is modest in the pooled score but pronounced at high risk.
+
+![EURO versus risk level on MMLU for four of the six models, averaged over the 57 subtasks, with three baselines and ACUTE's six configurations. All policies are close at low risk, but ACUTE pulls ahead at high risk. Figure 4 from the paper [[1]](#ref-1).](figure4.png){fig-align="center"}
+
+The analysis sections add three supporting results:
+
+- **Sample-efficient.** ACUTE reaches its accuracy with small training sets.
+- **Middle and late layers win.** Those depths give the strongest mean-pooled signal.
+- **Generalizes to a mixture-of-experts model.** On Qwen3-30B-A3B-Instruct-2507 (Table 2), an MoE with 30B total but only ~3B active parameters, `acute pca20` and `acute late act` reach roughly 0.87 auc-euro on APIGen against about 0.82 for the calibration baselines, with the SCITLDR result flat again. The active footprint is on par with the smallest dense models tested, so this checks the MoE architecture rather than a larger compute budget.
+
+![Results on the APIGen and SCITLDR tasks for the mixture-of-experts model Qwen3-30B-A3B-Instruct-2507. The ACUTE configurations again lead on APIGen while staying level with the baselines on SCITLDR. Table 2 from the paper [[1]](#ref-1).](table2.png){fig-align="center"}
+
+## My Notes
+
+- **What EURO adds beyond proper scores.** EURO is motivated by the fact that ECE rewards a base-rate predictor, the failure I worked through in [a primer on calibration metrics](/posts/20260609-confidence-calibration-metrics/), where a constant-0.5 model scores a perfect zero while saying nothing. But the Brier score and log loss already can't be gamed that way, so EURO's real addition is not gaming-resistance but the risk-level framing: it scores confidence by the utility of trusting or abstaining and sweeps that utility across risk levels. The paper's Appendix B agrees: minimizing the Brier score gives a Bayes-optimal predictor, but Brier still ignores the task's risk level, the same blind spot as ECE.
+- **It needs access to the model's internals.** ACUTE reads activations, so only whoever holds the weights can run it, which the paper accepts as fine for model developers. That makes it a first-party tool, unlike verbalized confidence ([Just Ask for Calibration](/posts/20260610-just-ask-calibration/)) or logit-based self-knowledge ([Kadavath et al.](/posts/20260504-kadavath-mostly-know/)), which a caller can use through an API. It is closest to reading confidence off the residual stream ([metacognitive monitoring and control through activations](/posts/20260526-metacognitive-monitoring-control-activations/)), but trains an external probe instead of asking the model to report on itself.
+- **The gain depends on the scoring metric.** ACUTE helps a lot on tool-calling, a little on multiple choice, and not at all on summarization. Tool-calling is judged by near-exact match, close to a yes/no, while a ROUGE-L summary score is fuzzy, and there even the histogram baseline is near the ceiling. The activation signal for whether an answer is right seems strongest when "right" is close to binary, which suggests ACUTE will help most on verifiable tasks and least on open-ended generation.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Subramani, Nishant](https://scholar.google.com/citations?user=x9-p03gAAAAJ), [Goyal, Palash](https://scholar.google.com/citations?user=kNeah3kAAAAJ), Song, Yiwen, [Malek, Mani](https://scholar.google.com/citations?user=iDh6bHsAAAAJ), Xue, Yuan, [Pfister, Tomas](https://scholar.google.com/citations?user=ahSpJOAAAAAJ), and [Palangi, Hamid](https://scholar.google.com/citations?user=B1lAghgAAAAJ). "The ACUTE Protocol: Operationalizing Language Model Activations for Better Calibration, Utility, and Trust." *ICML 2026* (arXiv:2606.07822), June 5, 2026. <https://arxiv.org/abs/2606.07822>
+
+2. <a id="ref-2"></a>Platt, John C. "Probabilistic Outputs for Support Vector Machines and Comparisons to Regularized Likelihood Methods." In *Advances in Large Margin Classifiers*, MIT Press, 1999.
+
+3. <a id="ref-3"></a>Zadrozny, Bianca, and Charles Elkan. "Obtaining Calibrated Probability Estimates from Decision Trees and Naive Bayesian Classifiers." In *Proceedings of the 18th International Conference on Machine Learning (ICML)*, 2001.
+
+4. <a id="ref-4"></a>Shaker, Mohammad Hossein, and Eyke Hüllermeier. "Random Forest Calibration." *Knowledge-Based Systems*, 2025.
+
+5. <a id="ref-5"></a>Hendrycks, Dan, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. "Measuring Massive Multitask Language Understanding." *ICLR 2021* (arXiv:2009.03300), September 7, 2020. <https://arxiv.org/abs/2009.03300>
+
+6. <a id="ref-6"></a>Liu, Zuxin, Thai Hoang, Jianguo Zhang, Ming Zhu, Tian Lan, Shirley Kokane, et al. "APIGen: Automated Pipeline for Generating Verifiable and Diverse Function-Calling Datasets." *arXiv preprint* (arXiv:2406.18518), June 26, 2024. <https://arxiv.org/abs/2406.18518>
+
+7. <a id="ref-7"></a>Cachola, Isabel, Kyle Lo, Arman Cohan, and Daniel S. Weld. "TLDR: Extreme Summarization of Scientific Documents." *Findings of EMNLP 2020* (arXiv:2004.15011), April 30, 2020. <https://arxiv.org/abs/2004.15011>
+
+## Related Posts
+
+- [A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses](/posts/20260609-confidence-calibration-metrics/): works through the base-rate gaming that motivates EURO, and shows proper scoring rules already avoid it.
+- [Just Ask for Calibration](/posts/20260610-just-ask-calibration/): the verbalized-confidence alternative to ACUTE, asking the model directly rather than reading its activations.
+- [Metacognitive Monitoring and Control Through Activations](/posts/20260526-metacognitive-monitoring-control-activations/): the same probe-the-residual-stream paradigm, but via the model's own introspection rather than a supervised external probe.
+- [Language Models (Mostly) Know What They Know](/posts/20260504-kadavath-mostly-know/): the logit-based P(IK) self-knowledge baseline that activation probes like ACUTE aim to improve on.
+- [Improving Metacognition and Uncertainty Communication in Language Models](/posts/20260525-metacognition-uncertainty-sft/): a training-time route to calibrated confidence, where ACUTE instead leaves the model untouched and fits an external estimator.
