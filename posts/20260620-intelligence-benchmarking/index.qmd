@@ -1,0 +1,67 @@
+---
+title: "How Artificial Analysis Builds Its Intelligence Index"
+description: "Artificial Analysis's published methodology for its Intelligence Index, the single score it uses to rank language models across nine evaluations."
+author: synesis
+date: "2026-06-20"
+image: cover.jpg
+---
+
+![Independent analysis of AI. Image from [Artificial Analysis](https://artificialanalysis.ai/methodology/intelligence-benchmarking).](cover.jpg){fig-align="center"}
+
+[Artificial Analysis](https://artificialanalysis.ai/) is an independent benchmarking outfit that ranks language models, and it publishes the [full methodology](https://artificialanalysis.ai/methodology/intelligence-benchmarking) behind its main metric, the **Artificial Analysis Intelligence Index**. The page documents every evaluation in the index, how each is weighted and scored, and the exact testing parameters, down to sampling temperature and retry handling.
+
+## How the index works
+
+The Intelligence Index (currently version 4.1) is a single 0–100 score built as a weighted average of nine evaluations across four categories. It is a text-only, English-language suite, and Artificial Analysis estimates a 95% confidence interval of under ±1% on the overall score. The nine weights sum to 100%, and the further benchmarks Artificial Analysis runs (multilingual, visual, mathematical, and several legacy evaluations) are reported separately and not counted in the index.
+
+- **Four stated principles**: every model is run under identical conditions (standardized); answer extraction is built to avoid penalizing valid output variations (unbiased); prompts give instructions without worked examples (zero-shot); and the full method, prompts, and limitations are published (transparent).
+
+- **The nine evaluations and their weights**, grouped by category:
+  - *Agents (34%)*: [GDPval-AA v2](https://arxiv.org/abs/2510.04374) (20%), agentic completion of economically valuable tasks across 44 US occupations, with file outputs ranked into an [Elo](https://en.wikipedia.org/wiki/Elo_rating_system); and [τ³-Banking](https://arxiv.org/abs/2406.12045) (14%), a fintech customer-support agent built on Sierra's [τ-Knowledge framework](https://sierra.ai/blog/bench-advancing-agent-benchmarking-to-knowledge-and-voice) that must combine knowledge retrieval with multi-step account changes.
+  - *Coding (24%)*: [Terminal-Bench v2.1](https://github.com/laude-institute/terminal-bench) (16%), 89 terminal tasks spanning software engineering, system administration, data processing, model training, and security, run through an agent in a sandbox; and [SciCode](https://arxiv.org/abs/2407.13168) (8%), Python scientific-computing problems scored by unit tests.
+  - *Scientific Reasoning (24%)*: [Humanity's Last Exam](https://arxiv.org/abs/2501.14249) (12%), 2,158 open-answer frontier academic questions; [GPQA Diamond](https://arxiv.org/abs/2311.12022) (6%), 198 graduate-level Google-proof science questions; and [CritPt](https://critpt.com/) (6%), 70 unpublished research-level physics problems.
+  - *General (18%)*: [AA-Omniscience](https://huggingface.co/datasets/ArtificialAnalysis/AA-Omniscience-Public) (12%), 6,000 questions over 42 topics scored by an index that rewards correct answers, penalizes hallucinations, and leaves abstentions neutral; and [AA-LCR](https://huggingface.co/datasets/ArtificialAnalysis/AA-LCR) (6%), long-context reasoning over roughly 100,000-token document sets.
+
+- **Testing parameters**: temperature is 0 for non-reasoning models and 0.6 for reasoning models unless a lab recommends otherwise. Non-reasoning models get 16,384 output tokens, while reasoning models get their full disclosed budget. Failed API calls retry up to 30 times, and questions that never succeed are reviewed by hand and dropped.
+
+- **Scoring and contamination handling**: most evaluations use pass@1 averaged over one to five repeats, while GDPval-AA v2 uses an Elo from a three-judge panel, fit with a [Bradley-Terry](https://en.wikipedia.org/wiki/Bradley%E2%80%93Terry_model) model and anchored to human experts at 1000. Artificial Analysis keeps internal copies of every dataset, and reports cost from provider-side token counts while standardizing performance on a client-side tokenizer.
+
+## Current results
+
+As of June 2026, the Intelligence Index (v4.1) is led by Claude Fable 5, Claude Opus 4.8, and GPT-5.5, with a long tail of frontier models close behind.
+
+![The Artificial Analysis Intelligence Index (v4.1): the weighted 0–100 score across all nine evaluations. Image from [Artificial Analysis](https://artificialanalysis.ai/models).](results-intelligence-index.webp){fig-align="center" data-lightbox-src="results-intelligence-index-full.png"}
+
+The single score resolves into different profiles underneath, and Artificial Analysis also publishes category sub-indices. The Agentic Index averages the two agent benchmarks, GDPval-AA v2 and τ³-Banking:
+
+![The Artificial Analysis Agentic Index: the average of the GDPval-AA v2 and τ³-Banking agent benchmarks. Image from [Artificial Analysis](https://artificialanalysis.ai/models).](results-agentic-index.webp){fig-align="center" data-lightbox-src="results-agentic-index-full.png"}
+
+The Coding Index averages Terminal-Bench v2.1 and SciCode, and the ranking shifts from the overall order, with GPT-5.5 moving up to second behind Claude Fable 5:
+
+![The Artificial Analysis Coding Index: the weighted average of Terminal-Bench v2.1 and SciCode. Image from [Artificial Analysis](https://artificialanalysis.ai/models).](results-coding-index.webp){fig-align="center" data-lightbox-src="results-coding-index-full.png"}
+
+## My Notes
+
+- **Closed models lead all three indices**: Claude Fable 5, Claude Opus 4.8, and GPT-5.5, all proprietary, take the top three on the overall index and on the agentic and coding sub-indices alike. The strongest open-weight model, GLM-5.2 from Zhipu, reaches fourth on the overall Intelligence Index, about nine points behind the leader. The open weights fall a clearer step behind on the agentic and coding charts, so the gap that has nearly closed on the broad knowledge-and-reasoning mix is still wide on the longer-horizon agentic and coding work.
+
+  All four are reasoning models. Beyond that, disclosure differs sharply:
+
+  - **Claude Fable 5** (Anthropic): proprietary weights, no published parameter count or architecture.
+  - **Claude Opus 4.8** (Anthropic): proprietary weights, no published parameter count or architecture.
+  - **GPT-5.5** (OpenAI): proprietary weights, no published parameter count or architecture.
+  - **GLM-5.2** (Zhipu): open weights, 753B total parameters, a sparse mixture of experts (256 routed experts plus one shared, 8 active per token, 78 layers).
+
+- **The method has limitations**:
+  - **The weighting is an editorial choice**: the index is a weighted average, and the weights reflect a judgment about what matters rather than a measurement. Agents are weighted most heavily, with GDPval-AA v2 alone a fifth of the score, so anyone comparing models on the one number inherits that bet. [Ethayarajh and Jurafsky](/posts/20201005-nlp-leaderboard-utility/) argued years ago that a leaderboard should let each reader set their own weights instead of shipping one ranking for everyone.
+  - **Several components are public benchmarks**: Humanity's Last Exam, GPQA Diamond, SciCode, and Terminal-Bench are all openly available, so training-data contamination is a live risk. The defenses are internal copies of every dataset and the evaluations Artificial Analysis built itself, a weaker defense than the post-cutoff, unpublished questions the [Leipzig math benchmark](/posts/20260606-benchmarks-in-leipzig/) used to stay out of the training data.
+  - **An LLM panel grades the heaviest evaluation**: GDPval-AA v2, the largest single component, scores agentic deliverables by an Elo from a panel of three frontier model judges, anchored to human experts at 1000. The panel reduces the bias any single judge would bring, but the score still measures what frontier models agree is good work, which can differ from what a human expert would rank first.
+  - **The compared models are black boxes**: the closed leaders disclose neither parameter count nor architecture, so the index ranks delivered capability without controlling for model size, design, or training compute. Only the open-weight entrants publish those details, and cost per task, which Artificial Analysis reports separately, is the nearest proxy for what a score costs to reach.
+
+---
+
+## Related Posts
+
+- [Utility Is in the Eye of the User](/posts/20201005-nlp-leaderboard-utility/): the case that benchmark utility is user-specific and leaderboards should let readers set their own weights, a direct counterpoint to collapsing nine evaluations into one fixed-weight index.
+- [Benchmarks in Leipzig](/posts/20260606-benchmarks-in-leipzig/): a benchmark built from fresh, post-cutoff, unpublished questions to resist contamination, the stronger defense the public components of this index lack.
+- [Mapping Global Dynamics of Benchmark Creation and Saturation in AI](/posts/20221121-nlp-benchmark-saturation/): the create-then-saturate cycle that explains why an index has to keep swapping in harder evaluations to stay informative.
+- [Anthropic Economic Index](/posts/20260423-anthropic-economic-index/): another attempt to measure model capability on economically valuable work, and a reminder that a metric designed not to saturate (time horizon) is a different bet than a fixed-question score.
