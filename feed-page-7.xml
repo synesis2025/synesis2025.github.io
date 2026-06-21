@@ -23,6 +23,82 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 20 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Are AI Systems About to Start Building Themselves?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://importai.substack.com/">Import AI</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://jack-clark.net/">Jack Clark</a>, co-founder and policy lead at Anthropic, <a href="https://importai.substack.com/p/import-ai-455-automating-ai-research">walks through</a> the public evidence that automated AI research and development (R&amp;D), a frontier model autonomously training its own successor, has a roughly 60% chance of arriving by the end of 2028, and a 30% chance by 2027. The essay collects benchmark trends across coding, scientific reproduction, kernel design, fine-tuning, alignment-research automation, and time-horizon scaling, then argues each of those covers a distinct ingredient of the AI-engineering pipeline.</p>
+<p>What Clark argues:</p>
+<ul>
+<li><p><strong>Coding and time horizon are the foundation.</strong> SWE-Bench [1] went from ~2% (Claude 2, late 2023) to 93.9% (Claude Mythos Preview), and the <a href="https://metr.org/">Model Evaluation and Threat Research (METR)</a> 50%-reliability time horizon [2] went from ~30 seconds (GPT-3.5, 2022) to ~12 hours (Opus 4.6, 2026), with <a href="https://www.openphilanthropy.org/about/team/ajeya-cotra/">Ajeya Cotra</a> (AI forecaster at METR) expecting ~100 hours by the end of 2026. Long horizons are what let an agent run a day’s worth of researcher work without re-calibration.</p></li>
+<li><p><strong>Every sub-skill of the AI-R&amp;D pipeline has a trending benchmark.</strong> Paper reproduction (CORE-Bench [3]) went from 21.5% (GPT-4o, Sept 2024) to 95.5% declared solved (Opus 4.5, Dec 2025). Kaggle-style ML engineering (MLE-Bench [4]) went from 16.9% (o1, Oct 2024) to 64.4% (Gemini 3 with search, Feb 2026). On PostTrainBench [5], Opus 4.6 and GPT-5.4 get 25–28% against a human-instruct-tuned baseline of 51%. GPU kernel design has several active research lines (DeepSeek kernels, Meta Triton automation, Huawei Ascend, CUDA Agent fine-tuning), though Clark notes kernels benefit from easily verifiable rewards. And Anthropic’s Automated Alignment Research proof-of-concept has AI agents beating a human baseline on scalable oversight at small scale.</p></li>
+<li><p><strong>Training-loop optimization is the cleanest single trend.</strong> On Anthropic’s internal CPU-only language-model training task [6], speedup went from 2.9x (Opus 4, May 2025) to 16.5x (Opus 4.5, Nov 2025) to 30x (Opus 4.6, Feb 2026) to 52x (Mythos Preview, Apr 2026), against a human baseline of 4x in 4–8 hours.</p></li>
+<li><p><strong>Management is a meta-skill.</strong> Claude Code and OpenCode already show a single agent supervising sub-agents, forming synthetic teams with directors, critics, and engineers that can fan out across a complex project.</p></li>
+<li><p><strong>Creativity is why 2027 sits at 30% rather than 60%.</strong> Clark argues AI research is mostly Edison’s 99% perspiration, the engineering schlep the benchmarks above already cover, but paradigm shifts like the transformer or mixture-of-experts still come from humans. Preliminary creativity signs (a Gemini model resolving Erdős-1051 [7]; a UBC / UNSW / Stanford / Google DeepMind centaur math proof [8]) cluster in math and CS and may not generalize. The 2027 gap is his estimate of how often a year-scale human insight is still required. If no proof-of-concept lands by end of 2028, he treats that as evidence the current paradigm has a fundamental gap.</p></li>
+<li><p><strong>Industry intent as corroboration.</strong> OpenAI targets an “automated AI research intern by September 2026” [9]; Anthropic publishes automated alignment research [10]; DeepMind endorses alignment automation “when feasible” [11]; Recursive Superintelligence raised $500M for AI-R&amp;D automation [12] and Mirendil [13] targets the same. Hundreds of billions of capital is aimed at this outcome.</p></li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p>None of these benchmarks individually proves recursive self-improvement, but together they describe a system that can do most of the engineering schlep without supervision.</p></li>
+<li><p>Clark puts 30% on automated AI R&amp;D by 2027 and 60% by 2028. The gap is a bet that some research insights still come from humans on a year-or-more cadence. The creativity window is on the order of a year.</p></li>
+<li><p>The Aletheia/Erdős-problems pipeline [7] evaluated around 700 conjectures and produced 13 addressable problems — 5 novel autonomous solutions plus 8 that turned out to match existing literature — with 1 deemed genuinely interesting. A funnel dominated by human filtering. That fits <a href="https://en.wikipedia.org/wiki/Terence_Tao">Terence Tao</a>’s <a href="../../posts/20260422-proof-generation-vs-digestion/">generation / verification / digestion decomposition</a>: AI is strong on the first two, and the research taste sits with the humans doing digestion. Clark describes this as a “centaur configuration”: humans collaborating with AI rather than AI acting alone. The pattern is real, but human mathematicians are still the scarce input.</p></li>
+<li><p>On Anthropic’s CPU-only training-optimization benchmark, the 2.9x → 52x speedup chain hasn’t flattened, and the human 4x baseline was passed three generations ago. Another year at this pace would make the 30%-by-2027 probability look too conservative.</p></li>
+<li><p>The alignment section is brief, but the compounding-error math Clark cites (99.9% accuracy → 95.12% after 50 generations → 60.5% after 500) is the quantitative reason getting alignment right before recursion starts matters more than fixing it along the way. The math assumes per-generation drift compounds independently, which is generous — if drift correlates across generations the curve steepens fast.</p></li>
+<li><p><a href="../../posts/20260506-arc-agi-3-failure-modes/">ARC-AGI-3</a> is a live test of both the creativity gap and the drift math. GPT-5.5 scored 0.43% and Opus 4.7 scored 0.18% on a benchmark that withholds instructions and forces models to infer rules from sparse feedback. Clark’s benchmarks are mostly in-distribution with verifiable rewards, which is where current models climb fastest. Two of the three failure modes pulled from the reasoning traces pick up his caveats directly. Failure 2 (reusing a Tetris or Sokoban template for unfamiliar mechanics) is what happens when a system hits a genuinely novel direction with no training match. Failure 3 (reward cementing the wrong primitive after a lucky level-beat) is the empirical shape of the compounding-drift math. If AI R&amp;D includes material amounts of either, Clark’s estimate looks too optimistic.</p></li>
+<li><p>The economic bullets are weaker than the technical ones, partly because the labor data through today still sits where the rebuttal in <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis</a> described it: low-4s unemployment, rising new-business formation, software-engineer postings up year-over-year. The essay does not attempt to reconcile a 2028 R&amp;D-automation forecast with a 2026 labor market that is not yet inflecting.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., and Narasimhan, K. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2310.06770. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></li>
+<li><a id="ref-2"></a>Kwa, T., West, B., Becker, J., Deng, A., Garcia, K., et al.&nbsp;“Measuring AI Ability to Complete Long Software Tasks.” <em>arXiv preprint</em> (arXiv:2503.14499), March 18, 2025. <a href="https://arxiv.org/abs/2503.14499" class="uri">https://arxiv.org/abs/2503.14499</a></li>
+<li><a id="ref-3"></a>Siegel, Z. S., Kapoor, S., Nagdir, N., Stroebl, B., and Narayanan, A. “CORE-Bench: Fostering the Credibility of Published Research Through a Computational Reproducibility Agent Benchmark.” <em>arXiv preprint</em> (arXiv:2409.11363), September 17, 2024. <a href="https://arxiv.org/abs/2409.11363" class="uri">https://arxiv.org/abs/2409.11363</a></li>
+<li><a id="ref-4"></a>Chan, J. S., Chowdhury, N., Jaffe, O., Aung, J., Sherburn, D., et al.&nbsp;“MLE-bench: Evaluating Machine Learning Agents on Machine Learning Engineering.” <em>arXiv preprint</em> (arXiv:2410.07095), October 9, 2024. <a href="https://arxiv.org/abs/2410.07095" class="uri">https://arxiv.org/abs/2410.07095</a></li>
+<li><a id="ref-5"></a>Rank, B., Bhatnagar, H., Prabhu, A., Eisenberg, S., Nguyen, K., et al.&nbsp;“PostTrainBench: Can LLM Agents Automate LLM Post-Training?” <em>arXiv preprint</em> (arXiv:2603.08640), March 9, 2026. <a href="https://arxiv.org/abs/2603.08640" class="uri">https://arxiv.org/abs/2603.08640</a></li>
+<li><a id="ref-6"></a>Anthropic. “Claude Opus 4.7 System Card.” 2026. The AI R&amp;D “optimize a CPU-only small language model training implementation” benchmark appears across Anthropic’s Claude Opus 4, 4.5, 4.6, and Mythos Preview system cards; Opus 4.7 is the current release. <a href="https://anthropic.com/claude-opus-4-7-system-card" class="uri">https://anthropic.com/claude-opus-4-7-system-card</a></li>
+<li><a id="ref-7"></a>Feng, T., Trinh, T., Bingham, G., Kang, J., Zhang, S., et al.&nbsp;“Semi-Autonomous Mathematics Discovery with Gemini: A Case Study on the Erdős Problems.” <em>arXiv preprint</em> (arXiv:2601.22401), January 29, 2026. <a href="https://arxiv.org/abs/2601.22401" class="uri">https://arxiv.org/abs/2601.22401</a></li>
+<li><a id="ref-8"></a>Bryan, J., Elek, B., Manners, F., Salafatinos, G., and Vakil, R. “The motivic class of the space of genus 0 maps to the flag variety.” <em>arXiv preprint</em> (arXiv:2601.07222), January 12, 2026. <a href="https://arxiv.org/abs/2601.07222" class="uri">https://arxiv.org/abs/2601.07222</a></li>
+<li><a id="ref-9"></a>Altman, S. “automated AI research intern by September of 2026.” Post on X, October 29, 2025. <a href="https://x.com/sama/status/1983584366547829073" class="uri">https://x.com/sama/status/1983584366547829073</a></li>
+<li><a id="ref-10"></a>Anthropic. “Automated Alignment Researchers: Using large language models to scale scalable oversight.” 2026. <a href="https://www.anthropic.com/research/automated-alignment-researchers" class="uri">https://www.anthropic.com/research/automated-alignment-researchers</a></li>
+<li><a id="ref-11"></a>Shah, R., Irpan, A., Turner, A. M., Wang, A., Conmy, A., Lindner, D., et al.&nbsp;“An Approach to Technical AGI Safety and Security.” <em>arXiv preprint</em> (arXiv:2504.01849), April 2, 2025. <a href="https://arxiv.org/abs/2504.01849" class="uri">https://arxiv.org/abs/2504.01849</a></li>
+<li><a id="ref-12"></a>Murgia, M. “Recursive Superintelligence raise.” <em>Financial Times</em>, 2026. <a href="https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4" class="uri">https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4</a></li>
+<li><a id="ref-13"></a>Mirendil. Company homepage. <a href="https://mirendil.com/" class="uri">https://mirendil.com/</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260608-automating-ai-rd-perspectives/">AI Researchers’ Perspectives on Automating AI R&amp;D and Intelligence Explosions</a>: the survey of working researchers’ views against which Clark’s 60%-by-2028 forecast can be calibrated.</li>
+<li><a href="../../posts/20260526-recursive-superintelligence-launch/">Recursive Superintelligence’s $4B Bet on Self-Improving AI</a>: the capital betting on the exact automated-AI-R&amp;D outcome Clark cites as corroborating industry intent.</li>
+<li><a href="../../posts/20260506-arc-agi-3-failure-modes/">Reading the Reasoning Traces Behind ARC-AGI-3</a>: the live test of Clark’s creativity gap and compounding-drift caveats, where current models score near zero on out-of-distribution rule inference.</li>
+<li><a href="../../posts/20260422-proof-generation-vs-digestion/">Proof Generation vs Digestion</a>: Tao’s generation/verification/digestion split, which explains why the math “creativity” signals Clark cites still bottleneck on human digestion.</li>
+<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: the labor-market rebuttal Clark’s forecast does not reconcile with, a 2026 economy that is not yet inflecting.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/</guid>
+  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Agentic Coding Is a Trap</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2837,91 +2913,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/</guid>
   <pubDate>Fri, 01 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Design-step trajectories and final designs in the latent design space (PC1/PC2 of six design features), explored by each of the three agentic design systems. Each system covers a distinguishable region, with CRDAL converging toward the area of highest design capacity. Figure 8 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</em> [1], <a href="https://www.linkedin.com/in/zedaxu/">Zeda Xu</a>, <a href="https://nikmart.com/">Nikolas Martelaro</a>, and <a href="https://cmccomb.com/">Christopher McComb</a> at Carnegie Mellon test whether adding a second LLM agent that watches the first agent’s reasoning beats a self-monitoring single agent on a constrained engineering design task.</p>
-<blockquote class="blockquote">
-<p>The engineering design research community has studied agentic AI systems that use Large Language Model (LLM) agents to automate the engineering design process. However, these systems are prone to some of the same pathologies that plague humans. Just as human designers, LLM design agents can fixate on existing paradigms and fail to explore alternatives when solving design challenges, potentially leading to suboptimal solutions. In this work, we propose (1) a novel <em>Self-Regulation Loop (SRL)</em>, in which the Design Agent self-regulates and explicitly monitors its own metacognition, and (2) a novel <em>Co-Regulation Design Agentic Loop (CRDAL)</em>, in which a <em>Metacognitive Co-Regulation Agent assists the Design Agent in metacognition to mitigate design fixation</em>, thereby improving system performance for engineering design tasks. In the battery pack design problem examined here, we found that <em>the novel CRDAL system generates designs with better performance, without significantly increasing the computational cost</em>, compared to a plain Ralph Wiggum Loop (RWL) and the metacognitively self-assessing Self-Regulation Loop (SRL). Also, we found that the CRDAL system navigated through the latent design space more effectively than both SRL and RWL. However, <em>the SRL did not generate designs with significantly better performance than RWL</em>, even though it explored a different region of the design space. The proposed system architectures and findings of this work provide practical implications for future development of agentic AI systems for engineering design.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/figure5.png" class="img-fluid figure-img"></p>
-<figcaption>System flowchart of the Co-Regulation Design Agentic Loop (CRDAL): a Design Agent runs the iterative design loop while a separate Metacognitive Co-Regulation Agent inspects each step’s progress trace and feeds back strategic suggestions. Figure 5 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>How the three loops differ:</p>
-<ul>
-<li><strong>RWL.</strong> Design Agent generates a candidate design, a numerical evaluator/validator scores it, raw feedback (“failed thermal constraint, current capacity is X”) goes back to the Design Agent, which reflects implicitly and tries again.</li>
-<li><strong>SRL.</strong> RWL plus two additions: a non-LLM Progress Analyzer summarizes the design history (capacity trend, which past attempts were valid), and the Design Agent is explicitly prompted to set goals, identify the bottleneck constraint, and plan strategy. Still one agent doing both designing and metacognizing.</li>
-<li><strong>CRDAL.</strong> SRL but the metacognition is moved to a separate LLM agent. The same Progress Analyzer summary now feeds a Metacognitive Co-Regulation Agent, which writes strategic notes about the Design Agent’s progress (assessment of “improving / stalling / regressing”, bottleneck identification, suggestion for the next iteration) and passes them to the Design Agent alongside the raw numerical feedback. Same kind of metacognitive content as SRL’s self-prompts; the difference is that another agent produces it.</li>
-</ul>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The design task is to lay out 18650 lithium-ion cells (the cylindrical batteries inside laptops, vapes, and Tesla packs, at 3.7 V and 2.5 Ah each) into a 400 V pack of at least 25 Ah, while keeping the pack under 60 °C and able to deliver 48 A continuously. Higher Ah means longer runtime at a given current. Across 30 runs per system on this task using Gemini 3.1 Pro, the CRDAL design agent reached a mean capacity of 70.92 Ah, versus 54.14 Ah for the self-monitoring SRL and 49.31 Ah for the plain Ralph Wiggum Loop (RWL). All three were well above the 25 Ah floor in every case. The gap between SRL and RWL was not statistically significant. CRDAL did not use more design steps than the other two systems.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/figure6.png" class="img-fluid figure-img"></p>
-<figcaption>Battery pack capacity by agentic design system, <img src="https://benjaminhan.net/feed-assets/9eddde4a54d1a28f.svg" alt="n=30" class="feed-math-inline"/> runs each. CRDAL beats both RWL (<img src="https://benjaminhan.net/feed-assets/39409d16f287b9c2.svg" alt="p &lt; 0.001" class="feed-math-inline"/>, Cohen’s <img src="https://benjaminhan.net/feed-assets/31e11d681406501e.svg" alt="d = 1.375" class="feed-math-inline"/>) and SRL (<img src="https://benjaminhan.net/feed-assets/ad60d6c904d2d3ec.svg" alt="p = 0.001" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/9cf40b1300e41c5b.svg" alt="d = 0.955" class="feed-math-inline"/>); SRL is statistically indistinguishable from RWL. Figure 6 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>A note on the name: Ralph Wiggum is a recurring child character in <em>The Simpsons</em>, known for being cheerfully oblivious and confidently wrong without self-correcting. The “Ralph Wiggum Loop” is a software-engineering term of art for an agent that retries until external validation passes, with no self-assessment of its own attempts.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The SRL ≈ RWL result is the headline finding.</strong> A growing body of work argues that LLMs cannot reliably correct their own reasoning without an external signal. Huang et al.&nbsp;find self-correction either flat or actively harmful on reasoning benchmarks once the answer-verification crutch is removed [2]. Apple’s <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [5] extends the pattern to uncertainty self-reports: 20 modern LLMs cannot faithfully summarize their own internal answer distributions without sample-augmented context. This paper supplies a clean engineering-design data point in the same direction: telling an agent to “monitor your metacognition” gave it a different exploration trajectory but no better outcomes than just retrying. The reflective loop has to be closed by something the agent isn’t.</p></li>
-<li><p><strong>The SRL-vs-CRDAL comparison narrows what matters.</strong> SRL already gives the Design Agent explicit metacognitive prompts (assess progress, identify the bottleneck, plan strategy) plus a history summary. CRDAL keeps that same metacognitive content but moves it to a different LLM agent that writes the strategic notes about the Design Agent’s progress instead of asking the Design Agent to write them about itself. The CRDAL ≫ SRL gap (Cohen’s d = 0.955) therefore isolates the agent split as what mattered, not the explicitness of the metacognitive prompts, which SRL already had. This converges with Wan et al.’s <a href="../../posts/20260430-rema-meta-think/">ReMA</a>, which decouples reasoning into a meta-thinker and an executor and trains them jointly with multi-agent RL, beating single-agent reasoning baselines on math [3]. The same direction of result holds in competitive math and in engineering design, which makes the underlying claim harder to dismiss as task-specific: metacognition needs to come from a different head than the one doing the work.</p></li>
-<li><p><strong>One task, one model, n=30. Generalization is the open question.</strong> The authors own this in §4.3: a single battery-pack optimization with one frontier model is a thin base for a system-architecture claim. Adding a Co-Regulation Agent introduces a new agent-to-agent communication channel that this benchmark, by design, does not stress, and that channel is exactly where multi-agent systems tend to break in their own characteristic ways, as the <a href="../../posts/20250802-mast-multi-agent-failures/">MAST taxonomy</a> catalogs across 200+ failure traces. The interesting follow-up is not “does CRDAL beat RWL on more tasks” but “where does CRDAL break in ways that RWL doesn’t.”</p></li>
-<li><p><strong>From the intrinsic-metacognitive-learning side, CRDAL is a ceiling.</strong> <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar argue in their position paper</a> that today’s “self-improving” agents almost all rely on extrinsic metacognition: fixed, human-designed loops where the metacognitive structure is wired in by the system designer rather than learned by the agent [4]. They contend genuinely scalable self-improvement needs intrinsic metacognitive learning: the agent itself deciding what to evaluate, what to reflect on, what to learn next. CRDAL is a clean example of the extrinsic kind: a hand-designed second agent in a hand-designed role, with the loop topology fixed by the authors. The Ralph Wiggum result is real, but read alongside the position paper it is evidence that extrinsic scaffolding helps right now, not that this is the architecture self-improving agents will eventually settle on.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://www.linkedin.com/in/zedaxu/">Xu</a>, Zeda, Nikolas <a href="https://nikmart.com/">Martelaro</a>, and Christopher <a href="https://cmccomb.com/">McComb</a>. “Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design.” <em>arXiv preprint</em> (arXiv:2603.24768), March 25, 2026. <a href="https://arxiv.org/abs/2603.24768" class="uri">https://arxiv.org/abs/2603.24768</a></li>
-<li><a id="ref-2"></a><a href="https://jeffhj.github.io/">Huang</a>, Jie, Xinyun <a href="https://jungyhuk.github.io/">Chen</a>, Swaroop <a href="https://swarooprm.github.io/">Mishra</a>, Huaixiu Steven Zheng, Adams Wei Yu, Xinying Song, and Denny <a href="https://dennyzhou.github.io/">Zhou</a>. “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>arXiv preprint</em> (arXiv:2310.01798), October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-<li><a id="ref-3"></a><a href="https://ziyuwan.github.io/">Wan</a>, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi <a href="https://leeeeoliu.github.io/">Yang</a>, Mark <a href="https://www.cs.ubc.ca/~schmidtm/">Schmidt</a>, Jun <a href="http://www0.cs.ucl.ac.uk/staff/Jun.Wang/">Wang</a>, Weinan <a href="http://wnzhang.net/">Zhang</a>, Shuyue Hu, and Ying <a href="https://yingwen.io/">Wen</a>. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
-<li><a id="ref-4"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
-<li><a id="ref-5"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260516-cannot-self-correct/">Large Language Models Cannot Self-Correct Reasoning Yet</a>: the Huang et al.&nbsp;result this post cites, that without an external signal LLMs degrade rather than improve their own reasoning, of which the SRL ≈ RWL finding is an engineering-design instance.</li>
-<li><a href="../../posts/20260430-rema-meta-think/">ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</a>: the same “metacognition belongs in a different head than the one doing the work” claim, reached by splitting reasoning into a planner and an executor and beating single-agent baselines on math.</li>
-<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that frames CRDAL as extrinsic scaffolding, a hand-designed second agent in a hand-designed loop rather than learned self-improvement.</li>
-<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: catalogs the agent-to-agent communication failures that CRDAL’s new co-regulation channel introduces and this single-task benchmark does not stress.</li>
-<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the companion negative result on self-reports, where 20 models cannot faithfully summarize their own answer distributions without sample-augmented context.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/</guid>
-  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
