@@ -1,0 +1,123 @@
+---
+title: "Conformal Thinking: Risk Control for Reasoning on a Compute Budget"
+description: "A risk-control framework sets reasoning stopping thresholds with finite-sample guarantees, adding a lower threshold that gives up early on likely-unsolvable problems."
+author: synesis
+date: "2026-06-24"
+image: cover.jpg
+---
+
+![The threshold needed to hit a target test risk varies a lot across early-stopping signals (left), and no single signal is the most efficient at every risk level (right), which is what motivates choosing thresholds by risk control rather than by hand. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *Conformal Thinking: Risk Control for Reasoning on a Compute Budget* [[1]](#ref-1) (ICML 2026), [Xi Wang](https://dblp.org/pid/08/5760-5.html), [Anushri Suresh](https://dblp.org/pid/325/4380.html), [Alvin Zhang](https://dblp.org/pid/381/8089.html), [Rishi More](https://dblp.org/pid/429/4491.html), [William Jurayj](https://dblp.org/pid/321/1018.html), [Benjamin Van Durme](https://dblp.org/pid/06/4775.html), [Mehrdad Farajtabar](https://dblp.org/pid/21/9988.html), [Daniel Khashabi](https://dblp.org/pid/71/10515.html), and [Eric Nalisnick](https://dblp.org/pid/136/4057.html) (Johns Hopkins University and Apple) recast the question of when to stop a reasoning chain as distribution-free risk control, and add a lower threshold that gives up early on problems the model is unlikely to solve.
+
+> Reasoning Large Language Models (LLMs) enable test-time scaling, with dataset-level accuracy improving as the token budget increases, motivating adaptive reasoning — spending tokens when they improve reliability and stopping early when additional computation is unlikely to help. However, setting the token budget, as well as the threshold for adaptive reasoning, is a practical challenge that entails a fundamental risk-accuracy trade-off. We re-frame the budget setting problem as *risk control*, limiting the error rate while minimizing compute. Our framework introduces an *upper threshold that stops reasoning when the model is confident* (risking incorrect output) and a *novel parametric lower threshold that preemptively stops unsolvable instances* (risking premature stoppage). Given a target risk and a validation set, we use *distribution-free risk control* to optimally specify these stopping mechanisms. For scenarios with multiple budget controlling criteria, we incorporate an efficiency loss to select the most computationally efficient exiting mechanism. Empirical results across diverse reasoning tasks and models demonstrate the effectiveness of our risk control approach, demonstrating computational efficiency gains from the lower threshold and ensemble stopping mechanisms while adhering to the user-specified risk target.
+
+## Methods
+
+### Signals and the two thresholds
+
+Conformal Thinking treats a reasoning chain as a sequence of chunks (the text between consecutive `\n\n` breaks) and, at the end of each growing chunk, reads a scalar signal $s_t$ off the model — oriented so that a larger $s_t$ means the model looks more confident it has converged. The signal is itself a choice: $s$ denotes *which* signal (a function of the trace so far) and $s_t$ its value at chunk $t$, and the choice of $s$ is one more thing to calibrate. The paper compares four:
+
+- **Confidence** [[2]](#ref-2) — force the model to begin its final answer, greedily roll it out, and score that rollout by its length-normalized log-likelihood (higher = more confident).
+- **EAT** (*Entropy After* `/think`) [[3]](#ref-3) — at that same forced-answer point, read the entropy of the next-token distribution instead of rolling an answer out; low entropy means the model is peaked on what to answer.
+- **Trained probe** [[4]](#ref-4) — a probe trained on [AIME](https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination) (a hard math-competition benchmark) to predict convergence (Qwen3-8B only).
+- **Token count** — the raw number of tokens generated so far, a length-only baseline.
+
+Both thresholds operate on $s_t$ — one on its current value, one on its trajectory — and both are chosen to respect a user-specified error tolerance $\epsilon$ rather than tuned by hand:
+
+- **Upper threshold $\lambda_+$**: a level on the current value of $s_t$ — stop once $s_t$ clears $\lambda_+$, on the assumption that the model has converged on its answer. This is the standard confidence-based early-exit rule, and it controls the *false positive risk* of stopping with a wrong answer.
+- **Lower threshold $\lambda_-$**: the paper's new mechanism, and the reason it is not a fixed floor. $\lambda_-(t)$ is a *rising schedule* — a logistic (sigmoid) curve in $\omega_t$, the tokens spent by chunk $t$, climbing from a low asymptote $l$ toward a high one $u$ (typically $\lambda_+$) as the budget $B$ is consumed:
+
+    $$\lambda_-(t) = \sigma\big(c(\omega_t - mB)\big), \qquad \sigma(z) = \frac{u - l}{1 + e^{-z}} + l \tag{12,13}$$
+
+    with slope $c$ and its midpoint at a fraction $m$ of the budget. The chain gives up at the first chunk where confidence falls to or below the floor, $s_t \le \lambda_-(t)$. Because the floor keeps rising, the model must raise its confidence to stay above it; if confidence stalls — the signature of an instance it is unlikely to solve — the floor overtakes it and reasoning halts before the full budget is spent. This is what makes the rule a constraint on the *trajectory* of $s_t$ rather than its current value, and it controls the *false negative risk* of giving up on an instance more reasoning would have solved. Of these symbols, $\omega_t$ is the running token count and $B$ the fixed budget; the schedule's shape — slope $c$, midpoint $m$, and low asymptote $l$ — is what risk control calibrates.
+
+The two thresholds save tokens in complementary places: the upper one trims wasted reasoning after the model has effectively converged, while the lower one avoids spending tokens on instances where further reasoning is unlikely to pay off. The next figure plots a confidence trajectory against token usage for Qwen3-8B on AIME. On an unsolvable instance (left), confidence fluctuates and never reaches the upper threshold, so the lower threshold halts the run before it consumes the full budget. On a solvable instance (right), confidence climbs steadily and crosses the upper threshold, ending the chain once the model is confident enough.
+
+![Dual-threshold early exit on Qwen3-8B. Left: an unsolvable instance, halted by the lower threshold. Right: a solvable instance, ended by the upper threshold. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+### Calibrating the thresholds (risk control)
+
+Given the target $\epsilon$ and a validation set $\mathcal{V}$ of $N$ examples, the two thresholds are selected by distribution-free risk control so the true error rate on unseen data stays at or below $\epsilon$ with high probability. That error rate is not raw accuracy but the validation mean of a per-instance loss $\ell$ in $[0,1]$. Writing $f_t(x)$ for the model's answer at step $t$ and $y^*$ for the correct one, with $\tau_n$ the exit step that $\lambda$ induces on example $n$, the risk is
+
+$$\widehat{\mathrm{Risk}}(\lambda;\mathcal{V}) = \frac{1}{N}\sum_{n=1}^{N}\ell\big(y^*_n,\, f_{\tau_n}(x_n),\, s_{\tau_n}(x_n);\, \lambda\big). \tag{15}$$
+
+The two thresholds plug in different losses. The upper one fires only when confidence has cleared $\lambda_+$ (so the rule stops) *and* the answer is wrong — a *false positive*:
+
+$$\ell^{+} = \mathbb{I}[s_t \ge \lambda_+]\cdot\mathbb{I}[f_t(x) \ne y^*]. \tag{8}$$
+
+The lower one is its opposite, a *false negative* that fires when the rule gives up ($s_t \le \lambda_-$) on an instance some later step, up to the budget horizon $T$, would have answered correctly:
+
+$$\ell^{-} = \frac{\mathbb{I}[s_t \le \lambda_-]}{T - t + 1}\sum_{t \le k \le T}\mathbb{I}[f_k(x) = y^*]. \tag{9}$$
+
+Both losses need the full reasoning trace and the gold answer, so calibration runs offline on labeled data. How that error rate is estimated from a finite validation set is what decides whether the guarantee actually holds:
+
+- **Naive plug-in** (the paper's "no finite-sample correction") keeps every threshold whose *empirical* validation risk $\widehat{\mathrm{Risk}}(\lambda;\mathcal{V})$ — computed in a single pass over $\mathcal{V}$ — is at or below the user's target $\epsilon$. On a finite, and here deliberately small ($N = 50$), validation set that empirical risk is an optimistic estimate of the true risk, so the selected thresholds overfit $\mathcal{V}$. Across the 40 random validation/test resamples the mean test risk stays controlled, but its per-resample spread crosses $\epsilon$ often enough that an individual run violates the target.
+- **UCB (concentration-based upper confidence bound)** thresholds an *upper bound* on the risk rather than the point estimate. For a loss bounded in $[0,1]$ and a chosen failure probability $\delta$, [Hoeffding's inequality](https://en.wikipedia.org/wiki/Hoeffding%27s_inequality) gives, for a fixed signal-threshold pair,
+
+    $$\mathrm{Risk}(s,\lambda) \;\le\; \widehat{\mathrm{Risk}}(\mathcal{V},s,\lambda) + \sqrt{\frac{\log(1/\delta)}{2N}} \quad\text{with probability } \ge 1-\delta,$$
+
+    so $1-\delta$ is the confidence level; calibration keeps only thresholds whose bounded risk clears $\epsilon$. The correction term inflates when the validation size $N$ is small and vanishes as $N$ grows, so the conservativeness adapts to how much data backs the estimate.
+- **Scanning many candidates** is not a separate method but an additional correction to UCB: the Hoeffding bound holds for one fixed $(s,\lambda)$, so sweeping many signals and thresholds invites multiple-comparison inflation. A union bound over the candidate grid $\mathcal{G}$ — the set of all $(s,\lambda)$ pairs being searched — would correct it, replacing $\delta$ with $\delta/|\mathcal{G}|$. The paper flags this but uses the plain single-candidate correction and reports realized risk on a held-out test set.
+
+In the two-threshold setting the single target splits in two, and the thresholds are calibrated in two decoupled steps rather than one joint search over $(\lambda_+, c)$ pairs: UCB first selects $\lambda_+$ against an upper target $\epsilon^+$, then — with $\lambda_+$ fixed — the lower-threshold shape $c$ is selected against a lower target $\epsilon^-$. The second step still controls risk because $\lambda_+$ is already locked. A fully joint search (via learn-then-test) is possible, but the authors found the decoupled procedure works as well in practice, at some loss of theoretical rigor.
+
+### Choosing a signal (efficiency loss)
+
+Risk control rarely returns a single answer — for a given $\epsilon$, every signal-and-threshold pair $(s,\lambda)$ whose UCB-corrected risk clears the budget is *feasible*, and usually several do. The efficiency loss is the tie-breaking objective: it scores how many tokens a configuration wastes, normalized by the total budget $T$, and does not itself depend on the calibration. Two forms target the two thresholds:
+
+- **Upper-threshold loss** is normalized *regret* — the fraction of the budget spent reasoning after the answer was already right:
+
+    $$\mathcal{J}^{+}(t) = \frac{1}{T}\max(0,\, t - t'), \qquad t' = \min\{t \le T : f_t(x) = y^*\}, \tag{10}$$
+
+    where $t'$ is the oracle stopping step, the first one whose answer is correct.
+- **Lower-threshold loss** counts wasted deliberation instead — the fraction of steps so far whose answer was still wrong, which approaches $1$ when a long run never makes progress:
+
+    $$\mathcal{J}^{-}(t) = \frac{1}{T}\sum_{k \le t}\mathbb{I}[\,y^* \ne f_k(x)\,]. \tag{11}$$
+- **Selection** averages the per-instance loss over the validation set and keeps the feasible candidate that minimizes it:
+
+    $$\widehat{\mathcal{J}}(s,\lambda;\mathcal{V}) = \frac{1}{N}\sum_{n=1}^{N}\mathcal{J}\big(\tau_n(s,\lambda)\big), \tag{16}$$
+
+    with $\tau_n$ the exit step of the $n$th sample. Across the candidate signals this yields an ensemble that selects the cheapest signal-and-threshold for each target risk and dataset.
+
+## Results
+
+The authors evaluate on four reasoning models — [Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B), Qwen3-30B-A3B, [DeepSeek-R1-Distill-Qwen-32B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B), and the vision-language model Qwen3-VL-8B — across [AIME](https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination) (1983–2025), a subset of [DeepScaleR](https://huggingface.co/datasets/agentica-org/DeepScaleR-Preview-Dataset) with AIME removed, [GPQA-Diamond](https://github.com/idavidrein/gpqa), and the vision benchmark [MathVision](https://github.com/mathllm/MATH-V). Generation uses each model card's recommended decoding settings under [vLLM](https://github.com/vllm-project/vllm). The four stopping signals from Methods are compared. Thresholds are calibrated over 40 random validation-test splits with a validation set of 50 samples (5 percent), sweeping $\epsilon$ from 0 to 1 in steps of 0.01. Two things are measured: whether the achieved test risk stays under $\epsilon$ (control), and how many questions the model answers correctly against the total tokens spent (efficiency).
+
+- **Finite-sample correction keeps risk on target** (Figure 4): with the UCB correction, the achieved risk on the held-out test set stays at or below the user-specified $\epsilon$ across the 40 splits. The naive plug-in keeps the *mean* risk controlled, but its variance bands routinely cross the $y=x$ line, so individual runs exceed the target.
+- **The ensemble picks the most efficient signal per risk level** (Figure 5): selecting the signal-threshold pair with the lowest efficiency loss on validation transfers to a better accuracy-versus-token trade-off on test than any single fixed signal. On Qwen3-8B, where the trained probe is one of the four candidate signals, the ensemble selects it over the other three (confidence, EAT, token count) at essentially every risk level — the probe is simply the most efficient signal there.
+- **The lower threshold pays off when unsolvable instances are common** (Figure 6): on pooled AIME and GPQA-Diamond sets with controlled solvable-to-unsolvable ratios, the upper-only rule clusters at the high-token end because many runs never reach the confidence cutoff and run to the budget limit. Adding the lower threshold shifts the accuracy-versus-token curve toward fewer tokens at similar accuracy, and the gain grows as the solvable-to-unsolvable ratio shifts from 3:1 to 1:3. At a representative operating point, solvable instances tend to exit via the upper threshold and unsolvable ones via the lower threshold, matching the design intent.
+
+![Empirical verification of risk control across the 40 validation/test resamples (shaded regions are mean ± one standard deviation); the dashed line is $y=x$, the target. Top row: false-positive risk; bottom row: false-negative risk (Eq. 9). Left column: Naive plug-in; right column: UCB. Naive's bands routinely cross above $y=x$, so individual runs exceed the target $\epsilon$, while UCB's finite-sample correction keeps the achieved test risk at or below $\epsilon$. Figure 4 from the paper [[1]](#ref-1).](figure4.webp){fig-align="center" data-lightbox-src="figure4-full.png"}
+
+![Across four models, picking the lowest-efficiency-loss signal per risk level (the ensemble) transfers from validation to a better accuracy-versus-token trade-off on the test set than any single fixed signal. Figure 5 from the paper [[1]](#ref-1).](figure5.png){fig-align="center"}
+
+![Lower-threshold gains grow as unsolvable instances become more prevalent. Qwen3-8B with the confidence signal on pooled AIME+GPQA at solvable:unsolvable ratios of 3:1, 1:1, and 1:3. Top: accuracy versus total tokens — the upper-only rule (blue) clusters at the high-token end because many runs never reach the confidence cutoff and run to the budget limit, while adding the lower threshold (lower+upper, orange) shifts the curve left at similar accuracy, with the gap widening as unsolvable instances dominate. Bottom: at a representative operating point, solvable instances tend to exit via the upper threshold and unsolvable ones via the lower threshold. Figure 6 from the paper [[1]](#ref-1).](figure6.webp){fig-align="center" data-lightbox-src="figure6-full.png"}
+
+## My Notes
+
+- **Standard risk control applied to a new quantity**: the machinery is the usual [distribution-free risk control](/posts/20260505-conformal-prediction-primer/) [[5]](#ref-5) (Learn-then-Test and risk-controlling prediction sets), which turns any black-box score into one with a finite-sample guarantee. The closest LLM precedent, [Conformal Language Modeling](/posts/20260505-conformal-language-modeling/) [[6]](#ref-6), calibrated a stopping rule over a set of sampled candidates so the returned set provably contains an acceptable answer. This paper instead calibrates when to stop a single reasoning chain, trading error rate against compute.
+- **A rising floor turns the stop test into a rate-of-progress check**: a static lower threshold would fire only when confidence *drops*, which rarely happens on a stuck run, where confidence tends to sit flat and low. Because the floor instead climbs with the budget, the question becomes whether confidence is rising fast enough rather than whether it is high enough right now — that is what lets the rule abandon instances whose confidence never improves. It is calibrated giving-up that sidesteps metacognition: it reads the trajectory from outside and imposes a schedule, never judging whether the question is answerable, which is exactly the judgment [AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) [[7]](#ref-7) finds reasoning models make poorly.
+- **CROP applies the same risk control to a finished trace**: [CROP](/posts/20260618-crop-reasoning-trace-prefixes/) [[8]](#ref-8) runs after the trace is generated, certifying the longest leading prefix whose step-risk proxies all stay below a calibrated threshold and routing the uncertified suffix to repair. Conformal Thinking instead runs during generation, calibrating stop/continue thresholds against a compute budget. Both fix a single threshold off a step-level signal under exchangeability.
+- **The guarantee rests on exchangeability**: the framework inherits conformal prediction's core assumption that calibration and test data are exchangeable, and the paper's own ablations show that is where it strains. False-negative control from the lower threshold degrades under a shift from short to long reasoning horizons, and the size of the efficiency gain depends on the solvable-to-unsolvable mix of the test set. A production query stream that drifts away from the calibration set would weaken the risk guarantee with no visible signal that the target $\epsilon$ is no longer being met.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Wang, X.](https://dblp.org/pid/08/5760-5.html), [Suresh, A.](https://dblp.org/pid/325/4380.html), [Zhang, A.](https://dblp.org/pid/381/8089.html), [More, R.](https://dblp.org/pid/429/4491.html), [Jurayj, W.](https://dblp.org/pid/321/1018.html), [Van Durme, B.](https://dblp.org/pid/06/4775.html), [Farajtabar, M.](https://dblp.org/pid/21/9988.html), [Khashabi, D.](https://dblp.org/pid/71/10515.html), and [Nalisnick, E.](https://dblp.org/pid/136/4057.html) "Conformal Thinking: Risk Control for Reasoning on a Compute Budget." *International Conference on Machine Learning (ICML)* (arXiv:2602.03814), February 3, 2026. <https://arxiv.org/abs/2602.03814>
+2. <a id="ref-2"></a>Yang, C., Si, Q., Duan, Y., Zhu, Z., Zhu, C., Li, Q., Chen, M., Lin, Z., and Wang, W. "Dynamic Early Exit in Reasoning Models." *arXiv preprint* (arXiv:2504.15895), 2025. <https://arxiv.org/abs/2504.15895>
+3. <a id="ref-3"></a>Wang, Y., Zhang, Y., Yu, T., Xu, C., Zhang, F., and Lian, F. "Adaptive Deep Reasoning: Triggering Deep Thinking When Needed." *arXiv preprint* (arXiv:2505.20101), 2025. <https://arxiv.org/abs/2505.20101>
+4. <a id="ref-4"></a>Zhang, A., Chen, Y., Pan, J., Zhao, C., Panda, A., Li, J., and He, H. "Reasoning Models Know When They're Right: Probing Hidden States for Self-Verification." *arXiv preprint* (arXiv:2504.05419), 2025. <https://arxiv.org/abs/2504.05419>
+5. <a id="ref-5"></a>[Angelopoulos, A. N.](https://people.eecs.berkeley.edu/~angelopoulos/) and [Bates, S.](https://scholar.google.com/citations?user=LeshmV8AAAAJ) "A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification." *arXiv preprint* (arXiv:2107.07511), July 2021. Published as *Conformal Prediction: A Gentle Introduction*, *Foundations and Trends in Machine Learning* 16(4): 494–591, 2023. <https://arxiv.org/abs/2107.07511>
+6. <a id="ref-6"></a>[Quach, V.](https://vquach.com/), [Fisch, A.](https://people.csail.mit.edu/fisch/), [Schuster, T.](https://people.csail.mit.edu/tals/), Yala, A., Sohn, J. H., [Jaakkola, T. S.](https://people.csail.mit.edu/tommi/tommi.html), and [Barzilay, R.](https://www.regina.csail.mit.edu/) "Conformal Language Modeling." *International Conference on Learning Representations (ICLR)* (arXiv:2306.10193), 2024. <https://arxiv.org/abs/2306.10193>
+7. <a id="ref-7"></a>[Kirichenko, P.](https://polkirichenko.github.io/), [Ibrahim, M.](https://www.semanticscholar.org/author/2297128866), [Chaudhuri, K.](https://www.semanticscholar.org/author/2256991985), and [Bell, S. J.](https://www.semanticscholar.org/author/2366163635) "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions." *NeurIPS 2025 Datasets and Benchmarks Track* (arXiv:2506.09038). <https://arxiv.org/abs/2506.09038>
+8. <a id="ref-8"></a>[Cheung, M. Y.](https://www.semanticscholar.org/author/2291116287), [Veeraraghavan, A.](https://www.semanticscholar.org/author/2291032934), [Chen, H.](https://www.semanticscholar.org/author/2374325194), and [Balakrishnan, G.](https://www.semanticscholar.org/author/2304149160) "Conformal Certification of Reasoning Trace Prefixes." *arXiv preprint* (arXiv:2605.30085), May 28, 2026. <https://arxiv.org/abs/2605.30085>
+
+## Related Posts
+
+- [Conformal Certification of Reasoning Trace Prefixes](/posts/20260618-crop-reasoning-trace-prefixes/) — the other way to put conformal risk control on a reasoning trace: instead of choosing when to stop generating, it certifies the longest leading slice of a finished trace that provably contains no error. Both calibrate a single threshold off a step-level signal under exchangeability.
+- [A Primer on Conformal Prediction](/posts/20260505-conformal-prediction-primer/) — the distribution-free risk-control machinery (Learn-then-Test, risk-controlling prediction sets) that the calibration step here rests on.
+- [Conformal Language Modeling](/posts/20260505-conformal-language-modeling/) — the closest LLM precedent, calibrating a stopping rule over a set of sampled candidates rather than along a single reasoning trajectory.
+- [AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions](/posts/20260523-abstentionbench-unanswerable-questions/) — the abstention angle the lower threshold sidesteps: reasoning models judge answerability poorly, while the lower threshold gives up from outside the model without any such judgment.
+- [Truly Self-Improving Agents Require Intrinsic Metacognitive Learning](/posts/20260430-intrinsic-metacognitive-learning/) — both measure progress as a slope, at different scales: the lower threshold here reads a rate of progress within a single trace (confidence against tokens spent), while that post wanted a cross-system version and found no shared x-axis to define one on.
