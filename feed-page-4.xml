@@ -23,6 +23,77 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Tue, 23 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>How Claude Code Works in Large Codebases: Best Practices and Where to Start</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260528-claude-code-large-codebases/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260528-claude-code-large-codebases/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260528-claude-code-large-codebases/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Claude Code harness across a session: CLAUDE.md loads after the start hook fires and stays present throughout, skills load on demand when their task comes up, plugins are installed pre-session and available throughout, LSP and MCP fire when Claude calls them, and a subagent handles a “map → findings file” block in the middle. Image from <a href="https://claude.com/blog/how-claude-code-works-in-large-codebases-best-practices-and-where-to-start">Anthropic’s blog</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://www.anthropic.com/">Anthropic</a> opens its <a href="https://claude.com/blog/how-claude-code-works-in-large-codebases-best-practices-and-where-to-start">Claude Code at scale</a> series with the patterns it has seen across million-line monorepos, decades-old legacy systems, and orgs running Claude Code over dozens of microservices. The article argues the harness (<a href="https://docs.anthropic.com/en/docs/claude-code/memory">CLAUDE.md</a> files, <a href="https://docs.anthropic.com/en/docs/claude-code/hooks">hooks</a>, <a href="https://docs.anthropic.com/en/docs/claude-code/skills">skills</a>, <a href="https://docs.anthropic.com/en/docs/claude-code/plugins">plugins</a>, and <a href="https://modelcontextprotocol.io/">MCP servers</a>) does more for outcomes than the model swap, and prescribes an order in which to build it.</p>
+<section id="summary-of-the-article" class="level2">
+<h2 class="anchored" data-anchor-id="summary-of-the-article">Summary of the Article</h2>
+<p><strong>What “large” means.</strong> Multi-million-line monorepos, decades-old legacy systems, dozens of microservices across separate repos, organizations with thousands of developers, and codebases in C, C++, C#, Java, or PHP. The patterns generalize across all of these.</p>
+<p><strong>How Claude Code navigates.</strong> It traverses the file system, reads files, greps, and follows references on the developer’s machine. There is no embedding pipeline and no central index. <a href="https://en.wikipedia.org/wiki/Retrieval-augmented_generation">RAG (retrieval-augmented generation)</a> tools fail at scale because the index falls behind active engineering teams and returns stale results without flagging them. Agentic search avoids that, but it needs enough starting context to know where to look.</p>
+<p><strong>The harness matters as much as the model.</strong> The ecosystem around the model, the harness, drives Claude Code performance more than the model alone. There are five extension points and two capabilities, and the build order matters because each layer depends on the previous one. The cover image above shows when each one is active across a session.</p>
+<ol type="1">
+<li><p><strong>CLAUDE.md.</strong> Context files Claude reads automatically every session. Root file for the big picture, subdirectory files for local conventions. Keep them lean: every byte loads every session.</p></li>
+<li><p><strong>Hooks.</strong> Most teams use hooks to prevent mistakes. The more valuable use is continuous improvement. A stop-hook can propose CLAUDE.md updates while the session context is fresh. A start-hook can load team-specific context dynamically. Hooks also enforce lint and format more reliably than asking Claude to remember.</p></li>
+<li><p><strong>Skills.</strong> Packaged expertise that loads on demand. A security-review skill loads when Claude is reviewing for vulnerabilities. A deployment skill scoped to a path doesn’t load elsewhere. This is how the harness scales without bloating CLAUDE.md.</p></li>
+<li><p><strong>Plugins.</strong> A bundle of skills, hooks, and MCP configs in one installable package, distributed through marketplaces. Solves the problem of good setups staying tribal: new engineers get the team’s full context on day one.</p></li>
+<li><p><strong><a href="https://microsoft.github.io/language-server-protocol/">LSP (language server protocol)</a>.</strong> Symbol-level navigation: go-to-definition and find-all-references instead of text matching. Without it, grep on a common name returns thousands of hits and Claude burns context filtering them. Called out as one of the highest-value investments for multi-language codebases.</p></li>
+<li><p><strong><a href="https://modelcontextprotocol.io/">MCP (model context protocol)</a>.</strong> How Claude reaches internal tools and data it can’t otherwise touch. Powerful but easy to overbuild. The article warns against starting here before the basics are working.</p></li>
+<li><p><strong>Subagents.</strong> A separate Claude instance with its own context window. Common pattern: one subagent maps a subsystem and writes findings to a file, then the main agent edits with the full picture.</p></li>
+</ol>
+<p><strong>Three configuration patterns.</strong></p>
+<ul>
+<li><p><strong>Make the codebase navigable.</strong> Keep CLAUDE.md lean and layered. Initialize Claude in subdirectories rather than the repo root, since it walks up the tree automatically. Scope test and lint commands per subdirectory. Use <code>.ignore</code> files and committed <code>permissions.deny</code> rules to exclude generated files and build artifacts. When the directory structure doesn’t speak for itself, write a short codebase-map at the root. Run an LSP.</p></li>
+<li><p><strong>Maintain CLAUDE.md as models evolve.</strong> Rules written for one model can hurt the next. A “break every refactor into single-file changes” instruction that helped an earlier model would block a newer one’s cross-file edits. Same for hooks made redundant by new native features. Review configuration every three to six months, or whenever performance plateaus after a model release.</p></li>
+<li><p><strong>Assign ownership.</strong> Bottoms-up adoption fragments without a center. The minimum is a DRI (directly responsible individual) with authority over settings, permissions, the plugin marketplace, and CLAUDE.md conventions. Larger orgs are creating an “agent manager” role, usually under developer experience. Regulated industries should bring engineering, infosec, and governance together before rollout, not after.</p></li>
+</ul>
+<p><strong>Common mistakes the article calls out.</strong> One per harness component, plus a pair of cross-cutting ones.</p>
+<ul>
+<li><strong>Putting reusable expertise in CLAUDE.md instead of a skill.</strong> Anything that applies broadly belongs in CLAUDE.md, anything specialized belongs in a skill that loads on demand.</li>
+<li><strong>Using prompts for things that should run automatically.</strong> Lint, format, and consistent end-of-session reflection are hooks, not instructions Claude has to remember.</li>
+<li><strong>Loading everything into CLAUDE.md instead of using skills.</strong> Same shape as the first one, from the other direction. Bloating CLAUDE.md is the failure mode skills exist to prevent.</li>
+<li><strong>Letting good setups stay tribal.</strong> A working configuration on one engineer’s box doesn’t help anyone else until it’s packaged as a plugin and made installable.</li>
+<li><strong>Assuming LSP is automatic.</strong> It isn’t. A code-intelligence plugin and the language server binary have to be installed.</li>
+<li><strong>Building MCP connections before the basics work.</strong> The most common failure mode. MCP is powerful enough to look like the answer to everything, which is why teams reach for it before CLAUDE.md, hooks, and skills are right.</li>
+<li><strong>Running exploration and editing in the same session.</strong> A subagent should do the mapping and write findings to a file. The main agent then edits with the full picture instead of competing with exploration for context.</li>
+<li><strong>Letting CLAUDE.md ossify.</strong> Rules written for one model can hurt the next. Review every three to six months, or after a major model release.</li>
+<li><strong>Skipping ownership.</strong> Without a DRI, knowledge stays tribal and adoption plateaus.</li>
+</ul>
+<p><strong>Scope.</strong> The patterns assume conventional setups — engineers as the primary contributors, Git, standard directory structures. Game engines with large binary assets, unconventional version control, and non-engineer contributors need additional work the article doesn’t cover.</p>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260529-claude-code-mastery/">Claude Code Beyond the Prompt</a>: a field guide to the same harness extension points from the individual-power-user side rather than the enterprise-rollout side.</li>
+<li><a href="../../posts/20260529-dynamic-workflows-claude-code/">Dynamic Workflows in Claude Code</a>: goes deeper on the subagent pattern this article introduces, fanning a task out across parallel subagents that check each other.</li>
+<li><a href="../../posts/20250725-anthropic-claude-code-teams/">How Anthropic Teams Use Claude Code</a>: Anthropic’s earlier internal-usage patterns, the precursor to this codified at-scale playbook.</li>
+<li><a href="../../posts/20260529-langchain-deep-agents/">LangChain’s Deep Agents: A Batteries-Included Agent Harness</a>: packages the planning-plus-subagents-plus-filesystem pattern this article prescribes into a model-agnostic library.</li>
+<li><a href="../../posts/20260526-programbench-rebuild-from-scratch/">ProgramBench: Can Language Models Rebuild Programs From Scratch?</a>: the benchmark side of large-codebase coding, showing how far agents fall when the harness scaffolding this article builds is stripped away.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260528-claude-code-large-codebases/</guid>
+  <pubDate>Thu, 28 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260528-claude-code-large-codebases/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>AI Assistance Reduces Persistence and Hurts Independent Performance</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2555,132 +2626,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260522-compliance-trap/</guid>
   <pubDate>Fri, 22 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260522-compliance-trap/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260522-metacognitive-harness/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260522-metacognitive-harness/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260522-metacognitive-harness/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</em> [1] (arXiv preprint, May 2026), <a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Qi Cao</a>, <a href="https://www.semanticscholar.org/author/2108111686">Yufan Wang</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Peijia Qin</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Shuhao Zhang</a>, and <a href="https://pengtaoxie.github.io/">Pengtao Xie</a> (UCSD) propose a test-time control loop that turns pre-solve and post-solve self-assessment signals into explicit retry, stop, and aggregate decisions, lifting a fixed Claude Sonnet-4.6 from 48.3 to 56.9 pooled accuracy on STEM, code, and multimodal benchmarks without any parameter updates.</p>
-<p>Two terms borrowed from cognitive psychology carry the argument:</p>
-<ul>
-<li><strong>Feeling of knowing (FOK)</strong> — a <em>pre-solve</em> self-assessment. Before a single token of reasoning is generated, the model is prompted to emit a scalar in <img src="https://benjaminhan.net/feed-assets/f8495350f42a8d61.svg" alt="[0,1]" class="feed-math-inline"/> estimating how likely it is to solve the problem. Because the signal is read off before any work is done, it can be used to <em>gate</em> inference budget: low-FOK problems get more attempts, high-FOK problems get fewer.</li>
-<li><strong>Judgment of learning (JOL)</strong> — a <em>post-solve</em> self-assessment. After producing a candidate solution, the model emits a second scalar in <img src="https://benjaminhan.net/feed-assets/f8495350f42a8d61.svg" alt="[0,1]" class="feed-math-inline"/> estimating how likely that specific answer is to be correct. Because the signal sits between solve and accept, it can be used as a <em>verifier</em> — replacing the separate critic model that self-correction loops typically need to decide when to stop.</li>
-</ul>
-<p>The two scalars sit outside the answer text rather than inline with reasoning, which keeps them structurally separable from the chain of thought and cheap to elicit. Figure 1 lays out the empirical premise in three panels: (a) shows the prompting setup that elicits FOK before answering and JOL after; (b) shows that those self-reports track actual correctness — accuracy rises monotonically from low- to high-confidence bins for both signals across all candidate models; (c) shows that the same models do <em>not</em> currently allocate reasoning length according to those signals — output length is roughly flat across the low/medium/high confidence bins. Panels (b) and (c) together motivate the harness: the calibration signal exists (b), but the model isn’t using it to direct effort (c). The harness in this paper is the machinery that closes the gap between (b) and (c) by turning the two scalars into routing decisions at inference time.</p>
-<blockquote class="blockquote">
-<p>Large language models (LLMs) often expose useful signals of self-monitoring: before solving a problem, they can estimate whether they are likely to succeed, and after solving it, they can judge whether their answer is likely to be correct. However, these signals are typically measured or elicited in isolation, rather than used to control inference. In this work, we ask whether LLMs possess latent metacognitive ability that can be turned into effective test-time control. Inspired by the Nelson–Narens theory from cognitive psychology, we propose a <em>metacognitive harness that separates monitoring from reasoning</em>. For each problem, the model first reports a <em>pre-solve feeling-of-knowing (FOK)</em> signal; after each solve attempt, it reports a <em>post-solve judgment-of-learning (JOL)</em> signal. Rather than treating these signals as passive confidence estimates, the harness turns them into an explicit control interface for reasoning: it decides when to trust the current solution, when to retry with compact metacognitive feedback, and when to pass multiple attempts to a final aggregator. Across text, code, and multimodal reasoning benchmarks, <em>our harness substantially improves a fixed Claude Sonnet-4.6 base model without parameter updates</em> or benchmark-specific fine-tuning. On the evaluated public benchmark snapshots, it <em>raises pooled accuracy from 48.3 to 56.9</em> and exceeds the strongest listed leaderboard entries on the three primary evaluation settings: HLE-Verified, LiveCodeBench v6, and R-Bench-V. These results suggest that strong LLMs may already possess useful metacognitive ability, but require an explicit control harness to act on it during reasoning.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The harness has two stages:</p>
-<ul>
-<li><strong><em>Metacognition diagnosis</em></strong> runs once per candidate model on a 100-problem anchor set disjoint from any downstream benchmark. For each problem the model emits an FOK score (no reasoning allowed), produces a solution, and emits a JOL score. The triples <img src="https://benjaminhan.net/feed-assets/b8e79909a4d6c3ec.svg" alt="(\mathrm{FOK}_i, \mathrm{JOL}_i, y_i)" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/fff95c98ee7b27b1.svg" alt="y_i" class="feed-math-inline"/> is correctness, are scored for discrimination and calibration, then used as supervision to fit a small <strong>per-model controller</strong>: a support vector machine over the two-dimensional feature <img src="https://benjaminhan.net/feed-assets/c87367afd4b76be4.svg" alt="(\mathrm{FOK}, \mathrm{JOL})" class="feed-math-inline"/>, with isotonic post-hoc calibration, trained via GroupKFold cross-validation on the 100-question anchor set. The kernel is selected per base model (polynomial degree 3 for Sonnet-4.6, linear for Opus-4.6); the calibrated output is a joint <img src="https://benjaminhan.net/feed-assets/db650091a99dc454.svg" alt="P(\text{correct})" class="feed-math-inline"/> thresholded at <img src="https://benjaminhan.net/feed-assets/cf4c6a0db6af1db5.svg" alt="p_{\rm stop}=0.7" class="feed-math-inline"/>. The paper rules out a hand-crafted alternative explicitly: the best closed-form rule the authors found, <img src="https://benjaminhan.net/feed-assets/ba55363d5bbc42c9.svg" alt="(1{-}\mathrm{JOL})\cdot\mathrm{FOK}" class="feed-math-inline"/>, underperforms the learned SVM, so raw self-reports are not directly actionable as routing signals.</li>
-<li><strong><em>Deployment</em></strong> applies the fitted controller at inference. Low-FOK problems get extra reasoning budget directed at them; solutions whose post-solve <img src="https://benjaminhan.net/feed-assets/3a961678958aadce.svg" alt="P(\text{correct})\geq p_{\rm stop}" class="feed-math-inline"/> are accepted and no further attempts are generated; mixed cases continue drawing additional solutions from the same base model and route the set to a final aggregator.</li>
-</ul>
-<p><strong>Training is moved off the base model, not eliminated.</strong> The framing claim of “no parameter updates” is accurate at the LLM level — Sonnet-4.6’s weights never change — but the harness still requires a small, fast supervised fit per base model on the 100-question anchor set. The cost is two orders of magnitude below conventional fine-tuning and produces an artifact (the SVM) that’s a few kilobytes rather than a checkpoint, but it is training, and it has to be redone when the base model changes.</p>
-<p>Figure 2 lays out the harness as a Nelson–Narens [2] two-level loop: a meta level monitors reasoning state through the self-reported signals, while an object level performs test-time scaling actions (retry, stop, aggregate) under meta-level supervision. The two levels are deliberately separated so that the same base model serves as both the reasoner and the monitor, with the controller — not a fine-tune — deciding when each role activates.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260522-metacognitive-harness/figure2.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The harness wraps a fixed Claude Sonnet-4.6 base model — no fine-tuning — and is evaluated on three benchmarks chosen to span the modalities the paper cares about: HLE-Verified [3] for text reasoning, LiveCodeBench v6 [4] for code, and R-Bench-V [5] for multimodal STEM. Two comparison sets are reported:</p>
-<ul>
-<li><strong>Public single-model leaderboards</strong> — top-1 entries from frontier model families on each benchmark.</li>
-<li><strong>Matched-inference-budget baselines</strong> — four prior test-time scaling approaches under a fixed compute budget per question:
-<ul>
-<li><em>Vertical scaling</em> (one trajectory, more reasoning per attempt): <em>Self-Refine</em> [6] and <em>Budget Forcing</em> [7].</li>
-<li><em>Parallel scaling</em> (N independent attempts combined by a separate selector): <em>Verifier Reranking</em> [8] [9] and <em>Aggregator</em> [10].</li>
-</ul></li>
-</ul>
-<p>Table 1 reports both comparisons: Panel A vs.&nbsp;the leaderboard, Panel B vs.&nbsp;the test-time scaling baselines (with average attempts and dollar cost per question).</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260522-metacognitive-harness/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
-<figcaption>Table 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>Headline findings:</p>
-<ul>
-<li><strong>Pooled accuracy: 48.3 → 56.9 (+8.6)</strong> <em>against same-base test-time scaling baselines (Panel B)</em>. Largest gain among all listed methods at the lowest cost per question among the parallel approaches.</li>
-<li><strong>Beats every public single-model leaderboard entry on the three primary settings (Panel A).</strong> Notably +12.0 over GPT-5.2-H on HLE-Verified (52.5 → 64.5) and +19.6 over o4-mini-H on the LiveCodeBench Hard split (63.5 → 83.1).</li>
-<li><strong>Pareto-dominant on cost.</strong> $0.78 per question vs $1.32–$1.42 for parallel-selection baselines; matches Aggregator’s accuracy at 55% of its cost. The savings come from FOK gating: easy problems short-circuit at the first high-JOL solution instead of paying the full N-attempt budget.</li>
-<li><strong>Average attempts: 2.4 vs 4.0</strong> for parallel baselines, with a higher accuracy ceiling. Effort is allocated unevenly — confident problems exit fast, uncertain problems get more attempts.</li>
-<li><strong>Ablations.</strong> Removing any of three ingredients — calibrated decision rules from the diagnosis step, directed retry guided by JOL feedback, or per-attempt context management — drops the gain materially. Uniform sampling and longer single-trajectory reasoning, the obvious cheaper substitutes, do not recover the harness’s accuracy.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260522-metacognitive-harness/table2.png" class="img-fluid figure-img"></p>
-<figcaption>Table 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>Closing the open loop — the contribution sits inside a multi-year arc.</strong> <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.</a> [11] already showed in 2022 that frontier models are well-calibrated on lettered multiple choice and can self-evaluate via <img src="https://benjaminhan.net/feed-assets/e80f6d2ae1c6204f.svg" alt="P(\text{True})" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/44c56a1c5053d6b0.svg" alt="P(\text{IK})" class="feed-math-inline"/> probes. What the metacognition literature has been missing is a closed-loop way to <em>act</em> on those signals during inference rather than treating them as a measurement target, exactly the gap a recent position-paper line argued for (<a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar’s intrinsic metacognitive learning frame</a> [12]). This paper is one of the first published instances of that loop actually closed end-to-end.</li>
-<li><strong>The SVM is the external verifier <a href="../../posts/20260516-cannot-self-correct/">Huang et al.</a> [13] said the loop needs.</strong> Huang’s ICLR 2024 result was that intrinsic self-correction fails without an external signal. <a href="../../posts/20260516-reflexion/">Reflexion</a> [14], framed as self-reflection, actually depends on environment reward at each retry. The metacognitive harness sits in the same family: the model’s FOK and JOL scalars only correlate with correctness, and the SVM is the piece that <em>learns</em> a calibrated <img src="https://benjaminhan.net/feed-assets/db650091a99dc454.svg" alt="P(\text{correct})" class="feed-math-inline"/> from ground-truth labels on the 100 anchor questions. The labels are the actual external signal; the harness’s distinction is supplying it offline once per model rather than at inference via an oracle or critic LLM.</li>
-<li><strong>Per-model calibration is partial credit.</strong> <a href="../../posts/20260522-metacognition-atlas/">Cacioli’s 33-model atlas</a> [15] shows that the same LLM’s ability to know when it’s wrong varies sharply across knowledge domains — best on Applied/Professional questions, worst on Formal Reasoning and Natural Science. The harness’s per-model SVM is the right direction, but per-(model, domain) is where Cacioli’s evidence points.</li>
-<li><strong>Portability across model families is the open question.</strong> A separate May 2026 line of work, <a href="../../posts/20260522-compliance-trap/">The Compliance Trap</a> [16], shows that 8 of 11 frontier models lose up to 30.2 accuracy points under instructions that force the model to commit to a confident answer when it would otherwise hedge or abstain, with the most-capable reasoning models suffering the worst absolute collapse. Anthropic’s Constitutional AI [17] shows near-perfect immunity. The harness uses Sonnet-4.6, and FOK/JOL elicitation matches compliance-forcing’s shape, so the headline gain may be conditional on the alignment family rather than the harness design. A natural follow-up replicates the harness across Gemini, GPT-5, and DeepSeek bases to see whether the gain transfers, or whether Claude-specific alignment was doing the work.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Cao, Q.</a>, <a href="https://www.semanticscholar.org/author/2108111686">Wang, Y.</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Qin, P.</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Zhang, S.</a>, and <a href="https://pengtaoxie.github.io/">Xie, P.</a> “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></li>
-<li><a id="ref-2"></a>Nelson, T. O., and Narens, L. “Metamemory: A theoretical framework and new findings.” <em>Psychology of Learning and Motivation</em>, vol.&nbsp;26, pp.&nbsp;125–173, 1990.</li>
-<li><a id="ref-3"></a>Phan, L., Gatti, A., Han, Z., Li, N., et al.&nbsp;“Humanity’s Last Exam.” <em>arXiv preprint</em> (arXiv:2501.14249), January 24, 2025. <a href="https://arxiv.org/abs/2501.14249" class="uri">https://arxiv.org/abs/2501.14249</a></li>
-<li><a id="ref-4"></a>Jain, N., Han, K., Gu, A., Li, W.-D., Yan, F., Zhang, T., Wang, S., <a href="https://people.csail.mit.edu/asolar/">Solar-Lezama, A.</a>, Sen, K., and <a href="https://people.eecs.berkeley.edu/~istoica/">Stoica, I.</a> “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>arXiv preprint</em> (arXiv:2403.07974), March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></li>
-<li><a id="ref-5"></a>Guo, M.-H., Xu, J., Zhang, Y., Song, J., Peng, H., Deng, Y.-X., Dong, X., Nakayama, K., Geng, Z., Wang, C., Ni, B., Yang, G.-W., Rao, Y., Peng, H., Hu, H., <a href="https://stanford.edu/~gordonwz/">Wetzstein, G.</a>, and Hu, S.-M. “R-Bench: Graduate-level Multi-disciplinary Benchmarks for LLM &amp; MLLM Complex Reasoning Evaluation.” <em>arXiv preprint</em> (arXiv:2505.02018), May 4, 2025. <a href="https://arxiv.org/abs/2505.02018" class="uri">https://arxiv.org/abs/2505.02018</a></li>
-<li><a id="ref-6"></a><a href="https://madaan.github.io/">Madaan, A.</a>, Tandon, N., <a href="https://prakharguptaz.github.io/">Gupta, P.</a>, Hallinan, S., Gao, L., Wiegreffe, S., Alon, U., Dziri, N., Prabhumoye, S., Yang, Y., Gupta, S., Majumder, B. P., Hermann, K., Welleck, S., Yazdanbakhsh, A., and Clark, P. “Self-Refine: Iterative Refinement with Self-Feedback.” <em>NeurIPS 2023</em> (arXiv:2303.17651). <a href="https://arxiv.org/abs/2303.17651" class="uri">https://arxiv.org/abs/2303.17651</a></li>
-<li><a id="ref-7"></a><a href="https://muennighoff.com/">Muennighoff, N.</a>, Yang, Z., Shi, W., Li, X. L., <a href="https://profiles.stanford.edu/fei-fei-li">Fei-Fei, L.</a>, <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a>, <a href="https://www.cs.washington.edu/people/faculty/lsz">Zettlemoyer, L.</a>, <a href="https://cs.stanford.edu/~pliang/">Liang, P.</a>, <a href="https://candes.su.domains/">Candès, E.</a>, and <a href="https://thashim.github.io/">Hashimoto, T.</a> “s1: Simple test-time scaling.” <em>arXiv preprint</em> (arXiv:2501.19393), January 31, 2025. <a href="https://arxiv.org/abs/2501.19393" class="uri">https://arxiv.org/abs/2501.19393</a></li>
-<li><a id="ref-8"></a>Liu, C. Y., Zeng, L., Xiao, Y., He, J., Liu, J., Wang, C., Yan, R., Shen, W., Zhang, F., Xu, J., Liu, Y., and Zhou, Y. “Skywork-Reward-V2: Scaling Preference Data Curation via Human-AI Synergy.” <em>arXiv preprint</em> (arXiv:2507.01352), 2025. <a href="https://arxiv.org/abs/2507.01352" class="uri">https://arxiv.org/abs/2507.01352</a></li>
-<li><a id="ref-9"></a>Wang, W., Gao, Z., Chen, Z., Wang, W., Tian, H., Lv, C., Zuo, X., et al.&nbsp;“VisualPRM: An Effective Process Reward Model for Multimodal Reasoning.” <em>arXiv preprint</em> (arXiv:2503.10291), 2025. <a href="https://arxiv.org/abs/2503.10291" class="uri">https://arxiv.org/abs/2503.10291</a></li>
-<li><a id="ref-10"></a>Qi, J., Ye, X., Tang, H., Zhu, Z., and <a href="https://www.cs.utexas.edu/~eunsol/">Choi, E.</a> “Learning to Reason across Parallel Samples for LLM Reasoning.” <em>arXiv preprint</em> (arXiv:2506.09014), 2025. <a href="https://arxiv.org/abs/2506.09014" class="uri">https://arxiv.org/abs/2506.09014</a></li>
-<li><a id="ref-11"></a><a href="https://www.linkedin.com/in/saurav-kadavath/">Kadavath, S.</a>, Conerly, T., <a href="https://www.amandaaskell.com/">Askell, A.</a>, Henighan, T., Drain, D., <a href="https://ethanperez.net/">Perez, E.</a>, Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., Johnston, S., El-Showk, S., Jones, A., Elhage, N., Hume, T., Chen, A., <a href="https://yuntaobai.com/">Bai, Y.</a>, <a href="https://cims.nyu.edu/~sbowman/">Bowman, S.</a>, Fort, S., <a href="https://deepganguli.com/">Ganguli, D.</a>, Hernandez, D., Jacobson, J., Kernion, J., Kravec, S., Lovitt, L., Ndousse, K., <a href="https://www.catherineolsson.com/">Olsson, C.</a>, Ringer, S., <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Amodei, D.</a>, Brown, T., <a href="https://jack-clark.net/">Clark, J.</a>, Joseph, N., Mann, B., McCandlish, S., <a href="https://colah.github.io/">Olah, C.</a>, and <a href="https://sites.krieger.jhu.edu/jared-kaplan/">Kaplan, J.</a>. “Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), November 21, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></li>
-<li><a id="ref-12"></a><a href="https://tennisonliu.github.io/">Liu, T.</a>, and <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar, M.</a> “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>ICML 2025</em> (arXiv:2506.05109). <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
-<li><a id="ref-13"></a><a href="https://jeffhj.github.io/">Huang, J.</a>, <a href="https://xinyun-chen.github.io/">Chen, X.</a>, <a href="https://swarooprm.github.io/">Mishra, S.</a>, <a href="https://stevenzheng.github.io/">Zheng, H. S.</a>, <a href="https://www.adamsyu.com/">Yu, A. W.</a>, Song, X., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em> (arXiv:2310.01798). <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-<li><a id="ref-14"></a><a href="https://noahshinn.com/">Shinn, N.</a>, <a href="https://federico.codes/">Cassano, F.</a>, <a href="https://www.linkedin.com/in/ashwin-gopinath/">Gopinath, A.</a>, <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a>. “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS 2023</em> (arXiv:2303.11366). <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
-<li><a id="ref-15"></a>Cacioli, J.-P. “Domain-level metacognitive monitoring in frontier LLMs: A 33-model atlas.” <em>arXiv preprint</em> (arXiv:2605.06673), April 21, 2026. <a href="https://arxiv.org/abs/2605.06673" class="uri">https://arxiv.org/abs/2605.06673</a></li>
-<li><a id="ref-16"></a>Kumar, R. “The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure.” <em>arXiv preprint</em> (arXiv:2605.02398), May 14, 2026. <a href="https://arxiv.org/abs/2605.02398" class="uri">https://arxiv.org/abs/2605.02398</a></li>
-<li><a id="ref-17"></a><a href="https://yuntaobai.com/">Bai, Y.</a>, <a href="https://www.linkedin.com/in/saurav-kadavath/">Kadavath, S.</a>, Kundu, S., <a href="https://www.amandaaskell.com/">Askell, A.</a>, Kernion, J., Jones, A., Chen, A., Goldie, A., Mirhoseini, A., McKinnon, C., Chen, C., <a href="https://www.catherineolsson.com/">Olsson, C.</a>, <a href="https://colah.github.io/">Olah, C.</a>, Hernandez, D., Drain, D., <a href="https://deepganguli.com/">Ganguli, D.</a>, Li, D., Tran-Johnson, E., <a href="https://ethanperez.net/">Perez, E.</a>, Kerr, J., Mueller, J., Ladish, J., Landau, J., Ndousse, K., Lukosuite, K., Lovitt, L., Sellitto, M., Elhage, N., Schiefer, N., Mercado, N., DasSarma, N., Lasenby, R., Larson, R., Ringer, S., Johnston, S., Kravec, S., El Showk, S., Fort, S., Lanham, T., Telleen-Lawton, T., Conerly, T., Henighan, T., Hume, T., <a href="https://cims.nyu.edu/~sbowman/">Bowman, S. R.</a>, Hatfield-Dodds, Z., Mann, B., <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Amodei, D.</a>, Joseph, N., McCandlish, S., Brown, T., and <a href="https://sites.krieger.jhu.edu/jared-kaplan/">Kaplan, J.</a> “Constitutional AI: Harmlessness from AI Feedback.” <em>arXiv preprint</em> (arXiv:2212.08073), December 15, 2022. <a href="https://arxiv.org/abs/2212.08073" class="uri">https://arxiv.org/abs/2212.08073</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: established the calibration signal this harness acts on, the FOK/JOL analog of <img src="https://benjaminhan.net/feed-assets/e80f6d2ae1c6204f.svg" alt="P(\text{True})" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/44c56a1c5053d6b0.svg" alt="P(\text{IK})" class="feed-math-inline"/> probes left as a measurement target.</li>
-<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: argued for closing the monitoring-to-control loop, which this paper is among the first to implement end-to-end.</li>
-<li><a href="../../posts/20260516-cannot-self-correct/">Large Language Models Cannot Self-Correct Reasoning Yet</a>: showed intrinsic correction fails without an external signal, and the harness’s label-trained SVM is exactly that external verifier supplied offline.</li>
-<li><a href="../../posts/20260522-metacognition-atlas/">Domain-Level Metacognitive Monitoring in Frontier LLMs: A 33-Model Atlas</a>: shows monitoring varies sharply by domain, pointing past this paper’s per-model controller toward per-(model, domain) calibration.</li>
-<li><a href="../../posts/20260522-compliance-trap/">The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure</a>: warns that the harness’s no-abstain elicitation matches compliance-forcing’s shape, so the gain on the immune Sonnet base may not transfer to other families.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260522-metacognitive-harness/</guid>
-  <pubDate>Fri, 22 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260522-metacognitive-harness/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

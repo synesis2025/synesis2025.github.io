@@ -1,0 +1,133 @@
+---
+title: "Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems"
+description: "A close reading of Claude Code's published TypeScript maps its architecture: a simple agent loop wrapped in permission, compaction, extensibility, and subagent systems."
+author: synesis
+date: "2026-06-23"
+image: cover.jpg
+---
+
+![High-level structure of Claude Code: a user prompt enters through the interfaces, the agent loop calls the model and proposes actions, the permission system allows, asks, or denies each one, tools run against the execution environment (files, shell, web, MCP), and state is loaded and persisted around the loop. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems* [[1]](#ref-1) (arXiv preprint, April 2026), [Jiacheng Liu](https://dblp.org/pid/349/5248.html), [Xiaohan Zhao](https://dblp.org/pid/75/781.html), [Xinyi Shang](https://dblp.org/pid/300/0145.html), and [Zhiqiang Shen](https://dblp.org/pid/149/5273.html) (MBZUAI + UCL) reverse-engineer the published TypeScript of [Claude Code](https://claude.com/claude-code) and trace its architecture from five stated values down to specific source files.
+
+> Claude Code is an agentic coding tool that can run shell commands, edit files, and call external services on behalf of the user. This study describes its comprehensive architecture by analyzing the publicly available TypeScript source code and further comparing it with OpenClaw, an independent open-source AI agent system that answers many of the same design questions from a different deployment context. Our analysis identifies five human values, philosophies, and needs that motivate the architecture (human decision authority, safety and security, reliable execution, capability amplification, and contextual adaptability) and traces them through thirteen design principles to specific implementation choices. The core of the system is *a simple while-loop that calls the model, runs tools, and repeats*. Most of the code, however, lives in the systems around this loop: *a permission system with seven modes and an ML-based classifier*, *a five-layer compaction pipeline for context management*, *four extensibility mechanisms* (MCP, plugins, skills, and hooks), *a subagent delegation mechanism with worktree isolation*, and *append-oriented session storage*. A comparison with OpenClaw, a multi-channel personal assistant gateway, shows that the same recurring design questions produce different architectural answers when the deployment context changes: from per-action safety classification to perimeter-level access control, from a single CLI loop to an embedded runtime within a gateway control plane, and from context-window extensions to gateway-wide capability registration. We finally identify *six open design directions for future agent systems*, grounded in recent empirical, architectural, and policy literature.
+
+## How the paper reads the code
+
+The paper is a source-level reverse-engineering, not an empirical study. The authors extract the TypeScript of Claude Code v2.1.88 from its published npm package, read it directly, and compare it against OpenClaw, an open-source multi-channel assistant that answers the same design questions in a different deployment context. To keep an analysis of closed, minified code honest, every claim is tagged with one of three evidence tiers:
+
+- **Tier A (product-documented)**: drawn from Anthropic's official documentation and engineering posts.
+- **Tier B (code-verified)**: tied to specific files and functions in the extracted v2.1.88 source. The paper treats this as its strongest tier.
+- **Tier C (reconstructed)**: inferred from code patterns, community analysis, or the OpenClaw comparison, and explicitly marked as inference.
+
+The analysis is built around a few recurring design questions put to any agent system: where reasoning lives, how many execution engines run, what the default safety posture is, and what the binding resource constraint is. Claude Code's answers are traced through source files, then organized into a chain from values to principles to implementation.
+
+## Five values, thirteen principles
+
+The paper reads five human values as motivating the architecture: human decision authority, safety and security, reliable execution, capability amplification, and contextual adaptability. Those values are traced through thirteen design principles to concrete code. Table 1 lists the thirteen, the values each serves, and the design-space question each answers.
+
+![Design principles, the values they serve, and the design-space question each answers. Table 1 from the paper [[1]](#ref-1).](table1.webp){fig-align="center" data-lightbox-src="table1-full.png"}
+
+A sixth concern is kept separate from the five, used as an evaluative lens rather than a design driver: whether the architecture preserves long-term human capability. The authors note this is not prominent in Anthropic's stated values, but flag it because the evidence is real. They cite a "paradox of supervision," where over-reliance on the agent erodes the skills needed to supervise it, and a study finding developers in AI-assisted conditions score 17% lower on comprehension tests.
+
+## Seven components, five layers
+
+The architecture is deliberately lopsided. Figure 1 (the cover) gives the high-level shape: seven functional components (the user, the interfaces, the agent loop, the permission system, the tools, state and persistence, and the execution environment), with every entry point feeding into one agent loop at the center. The reasoning lives entirely in the model, reached through that single loop, so the loop itself is close to trivial: call the model, run any tools it requests, feed the results back, repeat until it stops asking for tools. Almost all of the code is in the systems wrapped around the loop, which the paper sorts into five layers:
+
+- **Surface layer**: entry points (the interactive and headless CLIs, the Agent SDK, IDE and browser front-ends) and rendering.
+- **Core layer**: the agent loop and the compaction pipeline.
+- **Safety/action layer**: the permission system and its auto-mode classifier, the hook pipeline, extensibility, built-in and MCP tools, the shell sandbox, and subagent spawning.
+- **State layer**: context assembly, runtime state, session persistence, the CLAUDE.md and memory hierarchy, and sidechain transcripts.
+- **Backend layer**: execution backends and external resources.
+
+![The five-layer decomposition of Claude Code's architecture. Figure 3 from the paper [[1]](#ref-1).](figure3.webp){fig-align="center" data-lightbox-src="figure3-full.png"}
+
+## One turn through the loop
+
+A single turn is a fixed pipeline in `query.ts`, written as an async generator so output streams to the interface while control flow stays single-threaded. The prompt enters through context assembly, the model is called, each tool request passes the permission gate (allow, ask, or deny, with deny feedback looped back to the model), results return, and the loop repeats until a turn produces no tool use and the assistant replies. The paper fills in the mechanics:
+
+- **Tool dispatch** is concurrent-read, serial-write: read-only calls run in parallel as they stream in, state-modifying calls like shell commands are serialized, and results are buffered and returned in the order the model requested them. If one Bash call errors, a sibling abort controller kills the other in-flight subprocesses.
+- **Five context shapers** run in sequence before every model call, cheapest first: budget reduction (caps oversized tool results), snip (trims old history), microcompact (fine-grained, cache-aware compression), context collapse (a read-time projection that hides summarized history without deleting it), and auto-compact (a full model-generated summary, fired only if the context still exceeds the pressure threshold after the other four).
+- **Recovery** is layered too: escalate the output-token cap up to three times a turn, reactive compaction near capacity, prompt-too-long handling that tries overflow recovery before giving up, a streaming fallback, and a fallback model.
+- **Stop conditions**: a turn ends on text with no tool use (the normal case), a max-turns limit, context overflow, a PostToolUse hook halting continuation, or an explicit abort.
+
+The loop is reactive, in the ReAct style: each turn runs one action sequence with no backtracking, trading search completeness for simplicity and latency.
+
+![One agentic turn end to end, from user prompt through context assembly, the model call, the permission gate, and compaction, to the assistant response. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+## Permission and safety
+
+Every tool call passes a permission gate before it runs. The default posture is deny-first with human escalation: deny rules override ask rules override allow rules, and an unrecognized action is escalated to the user rather than run silently. Seven permission modes span a graduated autonomy spectrum from `plan` (approve every plan first) through `default` and `acceptEdits` to `bypassPermissions`. The authorization pipeline runs pre-filtering, a PreToolUse hook, rule evaluation, then the permission handler, and an auto-mode machine-learning classifier adds a two-stage fast filter plus a chain-of-thought safety judgment on each call. Shell commands run in a sandbox. Because reasoning and enforcement sit on separate code paths, a compromised or adversarially manipulated model cannot override the sandbox, the permission checks, or the deny-first rules in the harness.
+
+## Four ways to extend the loop
+
+The four extension mechanisms attach at different points of the loop and cost different amounts of context:
+
+- **Hooks**: intercept the tool lifecycle (zero context cost).
+- **Skills**: inject domain instructions (low cost).
+- **Plugins**: bundle components for distribution (medium cost).
+- **MCP** ([Model Context Protocol](https://modelcontextprotocol.io)): connect external tool servers (high cost).
+
+The paper's reading is that no single mechanism can span the range from a zero-context lifecycle hook to a schema-heavy tool server without forcing trade-offs on extension authors. The graduated cost ordering lets cheap extensions scale widely while the expensive ones are reserved for cases that genuinely need new tools.
+
+## Context and memory
+
+The context window (200K tokens on older models, 1M on the Claude 4.6 series) is named as the binding constraint, and the memory design is built around it. Figure 6 lays out the sources that converge on the window, grouped into six layers and ordered by how mutable each is and when it loads.
+
+![Context construction and the memory hierarchy: sources converging on the context window, by mutability and load time. Figure 6 from the paper [[1]](#ref-1).](figure6.webp){fig-align="center" data-lightbox-src="figure6-full.png"}
+
+The layers run from a read-only system layer (system prompt, environment info, output styles, MCP tool names) loaded at startup, through hot-reloading project config (the five-level CLAUDE.md hierarchy and path-scoped rules), a memory layer (auto memory and the compact summary that replaces long history), the conversation itself (history and subagent summaries), runtime state appended during the turn (file reads, command outputs, tool results), and a lazy on-demand layer (deferred tool definitions pulled in via ToolSearch only when needed). The window is therefore not fixed at assembly time but grows as the turn runs.
+
+The compaction pipeline has five layers because no single strategy covers every kind of context pressure. Budget reduction targets individual oversized tool outputs, snip handles temporal depth, microcompact reacts to cache overhead, context collapse manages very long histories, and auto-compact does semantic compression as a last resort. Each layer operates at a different cost-benefit point, and the cheaper ones run first.
+
+## Subagents and session storage
+
+A subagent is spawned through the same tool factory as everything else, re-entering the query loop with its own isolated context window and permission scope, optionally inside a git worktree. Only its final response text returns to the parent. The full subagent history never enters the parent's window, which keeps the parent's context cheap.
+
+Session storage is append-only (history, sidechains, checkpoints), favoring auditability over query power. Resume and fork restore messages but deliberately not session-scoped permissions, so a resumed session does not silently inherit trust the user granted earlier.
+
+## Claude Code versus OpenClaw
+
+The OpenClaw contrast is the part that generalizes. OpenClaw is a local-first WebSocket gateway daemon that connects roughly two dozen messaging channels (WhatsApp, Telegram, Slack, Discord, Signal, and others) to an embedded agent runtime. Where Claude Code is an ephemeral per-session CLI coding harness bound to one repository, OpenClaw is a persistent control plane for multi-channel personal assistance. Posed the same six design questions, it answers them differently because its deployment context differs. Table 3 lines them up:
+
+| Dimension | Claude Code | OpenClaw |
+|---|---|---|
+| System scope | CLI/IDE coding harness; ephemeral per-session process | Persistent WebSocket gateway daemon; multi-channel control plane |
+| Trust model | Deny-first per-action rule evaluation with hooks and an optional ML classifier; seven permission modes; graduated trust spectrum | Single trusted operator per gateway; DM pairing and allowlists for inbound channels; opt-in sandboxing with configurable scope and multiple backends |
+| Agent runtime | Iterative async generator (`queryLoop()`) as the system center | Agent runner embedded inside the gateway's RPC dispatch; per-session queue serialization |
+| Extension architecture | Four mechanisms at graduated context costs: MCP, plugins, skills, hooks | Manifest-first plugin system with twelve capability types and a central registry; separate skills layer; built-in MCP |
+| Memory and context | CLAUDE.md four-level hierarchy; five-layer compaction pipeline; LLM-based memory scan | Workspace bootstrap files; a separate memory system (daily notes, optional "dreaming" for long-term promotion); auto-compaction with pluggable providers; optional hybrid vector + keyword search |
+| Multi-agent and routing | Task-delegating subagents (Explore, Plan, general-purpose); worktree isolation; only the final response returns to the parent | Multi-agent routing with isolated agents and channel dispatch, plus sub-agent delegation with configurable nesting depth |
+
+The trust boundary is in different places. Claude Code puts it between the model and the execution environment, while OpenClaw puts it at the gateway perimeter, assuming a single trusted operator and explicitly not supporting hostile multi-tenant isolation. Claude Code's extensions change what one agent can do, while OpenClaw's plugins add capabilities across every agent on the gateway. The two are not purely alternatives: OpenClaw can host Claude Code (and OpenAI Codex, and Gemini CLI) as an external coding harness through its Agent Client Protocol integration, so they stack.
+
+## What the analysis concludes
+
+The discussion reads the architecture as a set of consistent choices rather than a grab-bag:
+
+- **Minimal scaffolding, rich harness**: the system invests in deterministic infrastructure (context management, tool routing, recovery) instead of decision scaffolding like explicit planners or state graphs, on the premise that a more capable model gains more from a rich operating environment than from a framework that constrains its choices.
+- **Graduated layering over single switches**: permission modes, compaction layers, and extension points are all spectrums rather than one-shot mechanisms.
+- **Append-only over queryable**: state favors an auditable log over a mutable store that would be easier to query.
+- **Model judgment inside a deterministic harness**: probabilistic guidance (CLAUDE.md) is kept on a separate code path from deterministic enforcement (permission rules).
+- **A trust trajectory, not a fixed state**: autonomy is "co-constructed" over time, with auto-approve rates rising from about 20% under 50 sessions to over 40% by 750, so the design targets a relationship that loosens as trust builds.
+- **What it deliberately does not do**: no planning graph imposed on the model, no single unified extension mechanism, and no full restore of session-scoped trust state on resume.
+
+The paper also names four standing tensions it does not claim to resolve: safety versus autonomy, the permission model under adversarial conditions, context efficiency versus transparency, and simplicity versus extensibility.
+
+## Six open directions
+
+The paper closes with six open directions for future agent systems: the observability and silent-failure gap, cross-session persistence and longer-term memory, evolution of the harness boundary (where, when, and what the agent acts on), horizon scaling from a single session to a longer program of work, governance and oversight at scale, and a long-term-human-capability lens for judging these systems.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Liu, Jiacheng](https://dblp.org/pid/349/5248.html), [Zhao, Xiaohan](https://dblp.org/pid/75/781.html), [Shang, Xinyi](https://dblp.org/pid/300/0145.html), [Shen, Zhiqiang](https://dblp.org/pid/149/5273.html). "Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems." *arXiv preprint* (arXiv:2604.14228), April 14, 2026. <https://arxiv.org/abs/2604.14228>
+
+## Related Posts
+
+- [APIs, Tools, Skills, and Where MCP Fits](/posts/20260414-api-mcp-tool-skill/): an earlier take on the same extensibility taxonomy this paper formalizes, drawing the MCP boundary differently.
+- [Where Claude Code Tokens Go](/posts/20260503-where-claude-code-tokens-go/): the outside-the-tool measurement of the context cost that the paper's compaction pipeline is built to manage.
+- [A Cursor Agent Erased a Company's Production Data in 9 Seconds](/posts/20260427-cursor-railway-production-wipe/): a real instance of the single-destructive-call failure mode the per-action permission gate is meant to catch.
+- [Snowflake Cortex AI Escapes Sandbox and Executes Malware](/posts/20260319-snowflake-cortex-sandbox-escape/): another agent-safety boundary failure, a counterpoint to the deny-first "untrusted model on a trusted machine" posture.
+- [How Anthropic Teams Use Claude Code](/posts/20250725-anthropic-claude-code-teams/): an earlier look at Claude Code as a product, against this source-level architectural read.

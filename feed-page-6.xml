@@ -23,6 +23,124 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Tue, 23 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260515-promptbreeder/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260515-promptbreeder/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260515-promptbreeder/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Overview of Promptbreeder. Given a problem description, a set of general “thinking styles,” and a set of initial mutation prompts, the system generates a population of units, each containing two task prompts plus a mutation prompt. A binary tournament genetic algorithm selects and mutates units by fitness on a training set. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution</em> [1], <a href="https://scholar.google.com/citations?user=zM5A5WoAAAAJ">Fernando</a> et al.&nbsp;at <a href="https://deepmind.google/">Google DeepMind</a> propose an evolutionary prompt optimizer in which the large language model (LLM) mutates both the task prompts it evaluates and the mutation prompts that generate them, yielding a self-referential loop without any gradient updates.</p>
+<blockquote class="blockquote">
+<p>Popular prompt strategies like Chain-of-Thought Prompting can dramatically improve the reasoning abilities of Large Language Models (LLMs) in various domains. However, such hand-crafted prompt-strategies are often sub-optimal. In this paper, we present <em>Promptbreeder</em>, a general-purpose self-referential self-improvement mechanism that evolves and adapts prompts for a given domain. Driven by an LLM, Promptbreeder mutates a population of task-prompts, and subsequently evaluates them for fitness on a training set. Crucially, the mutation of these task-prompts is <em>governed by mutation-prompts that the LLM generates and improves throughout evolution in a self-referential way</em>. That is, Promptbreeder is not just improving task-prompts, but it is also improving the mutation-prompts that improve these task-prompts. Promptbreeder outperforms state-of-the-art prompt strategies such as <em>Chain-of-Thought and Plan-and-Solve Prompting on commonly used arithmetic and commonsense reasoning benchmarks</em>. Furthermore, Promptbreeder is able to evolve intricate task-prompts for the challenging problem of hate speech classification.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>Promptbreeder maintains a population of “units of evolution,” each consisting of two sequentially applied task prompts and one mutation prompt. A binary tournament genetic algorithm picks two units, scores both on a training minibatch, and replaces the loser with a mutated copy of the winner. The initial population is seeded from a library of 39 generic “thinking-style” hints (Appendix D of the paper), combined with an LLM-written problem description. The 39 hints fall into four flavors:</p>
+<ul>
+<li><strong>Concrete strategies</strong> — “Let’s think step by step.” (#38), “Let’s make a step by step plan and implement it with good notion and explanation.” (#39), “How can I break down this problem into smaller, more manageable parts?” (#9), “How could I devise an experiment to help solve that problem?” (#1).</li>
+<li><strong>Cognitive-style labels</strong> — “Critical Thinking: …” (#10), “Try creative thinking, generate innovative and out-of-the-box ideas…” (#11), “Use systems thinking: …” (#13), “Use Reflective Thinking: …” (#15).</li>
+<li><strong>Diagnostic questions</strong> — “What is the core issue or problem that needs to be addressed?” (#16), “What are the key assumptions underlying this problem?” (#5), “Are there any stakeholders or individuals who are directly affected by the problem?” (#21).</li>
+<li><strong>Reframings</strong> — “Given the problem specification and the current best solution, have a guess about other possible solutions.” (#34), “Let’s imagine the current best solution is totally wrong, what other ways are there to think about the problem specification?” (#35), “Ignoring the current best solution, create an entirely new solution to the problem.” (#37).</li>
+</ul>
+<p>The search uses <a href="https://ai.google/discover/palm2/">PaLM 2-L</a> as both proposer and executor.</p>
+<p>Nine mutation operators across five classes drive the search:</p>
+<ul>
+<li><strong>Direct mutation</strong> — the LLM rewrites the task prompt directly.</li>
+<li><strong>Estimation-of-distribution mutation</strong> — generate new prompts conditioned on a sample of high-fitness prompts from the population, summarizing what’s working.</li>
+<li><strong>Hyper-mutation</strong> — zero-shot and few-shot variants that use the unit’s current mutation prompt to drive the rewrite.</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Lamarckism">Lamarckian</a> mutation</strong> — infer a new task prompt from correctly solved examples (the trace becomes the genotype).</li>
+<li><strong>Crossover and mutation-prompt mutation</strong> — recombine units, and separately evolve the mutation prompts themselves so the search strategy itself adapts over generations.</li>
+</ul>
+<p>The four panels in Figure 2 trace the conceptual escalation: (a) direct rewriting, (b) mutation-prompt guidance, (c) hyper-mutation that evolves the mutation prompt itself, and (d) the full Promptbreeder population over thinking-styles, mutation-prompts, and the problem description. Solid arrows are inputs into the LLM in one forward pass. Dashed arrows are the cross-generational flows: each output (P′, M′) becomes the parent for the next round, and in panel (d) the mutation prompt M is sampled from the evolving population ℳ rather than being hand-written.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260515-promptbreeder/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper evaluates Promptbreeder on arithmetic reasoning (GSM8K, SVAMP, MultiArith, AQuA-RAT, AddSub, SingleEq), commonsense reasoning (CommonsenseQA, StrategyQA), and hate-speech classification on ETHOS [2] [2]. Promptbreeder uses PaLM 2-L; older Chain-of-Thought, Plan-and-Solve, and Program-of-Thoughts baselines run on text-davinci-003, while <a href="../../posts/20260514-ape/">APE</a> [3] and OPRO [4] [4] <!-- crosslink-todo: /posts/20260503-opro/ --> are reimplemented under PaLM 2-L for the matched comparison. Asterisked datasets (MultiArith*, SingleEq*, AddSub*, SVAMP*) used half the examples for training and report accuracy on the held-out half; bracketed numbers in the table are quoted directly from the Plan-and-Solve paper’s text-davinci-003 results.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260515-promptbreeder/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Headline findings (PB row leads every column of both zero-shot and few-shot categories):</p>
+<ul>
+<li><strong>Arithmetic reasoning</strong> — 99.7% on MultiArith*, 96.4% on SingleEq*, 90.2% on SVAMP*, 87.8% on AddSub*, 83.9% on GSM8K, 62.2% on AQuA-RAT (zero-shot).</li>
+<li><strong>Commonsense reasoning</strong> — 71.8% on StrategyQA, 80.2% on CommonsenseQA (zero-shot).</li>
+<li><strong>Beats prior prompt optimizers</strong> under matched PaLM 2-L: above <a href="../../posts/20260514-ape/">APE</a> and OPRO [4] on every dataset where both report a number.</li>
+</ul>
+<p>The paper’s ablation (Figure 4) removes one self-referential operator at a time and reports the percentage change in fitness vs the full algorithm. Each ablation mode:</p>
+<ul>
+<li><strong>Hyper</strong> — remove mutation-prompt mutation (the “self-referential” core feature).</li>
+<li><strong>Lamarck</strong> — remove the Context-to-task-prompt mutation (Lamarckian operator: infer the task prompt from correctly solved examples).</li>
+<li><strong>SR task-prompt</strong> — remove thinking-style-guided task-prompt initialization (the seed library).</li>
+<li><strong>SR mut-prompt</strong> — remove random selection of a mutation prompt from the mutation-prompt list.</li>
+</ul>
+<p>Negative cells mean removing that operator drops fitness — the operator helps. Positive cells mean removing it raises fitness — the operator is actively hurting on that dataset.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260515-promptbreeder/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The picture is uneven. <strong>SR task-prompt</strong> (thinking-style seeding) shows the largest negative value on 6 of 8 datasets: −80% on StrategyQA, −74% on SVAMP, −73% on GSM8K, and by far the largest average drop (≈ −58%, vs ≈ −30% for Hyper and Lamarck), making it the single most important operator. <strong>SR mut-prompt</strong> is the noisiest: it’s mildly helpful on most rows but actively <em>hurts</em> GSM8K (+41%) and is near zero on AQUA_DEV (+1%) and MultiArith (+9%), so the random-mutation-prompt-selection mechanism isn’t carrying weight uniformly. <strong>Hyper</strong> and <strong>Lamarck</strong> are roughly comparable in magnitude, with neither consistently dominating across datasets.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Self-referential framing oversold.</strong> Having the LLM mutate the prompts that mutate its task prompts hints at <a href="https://people.idsia.ch/~juergen/goedelmachine.html">Schmidhuber’s self-referential weight matrix work</a> [5] from the 1990s, but in practice the second-order mutation-prompt mutation is just another LLM call with a fixed meta-prompt. The paper’s own ablation (Figure 4) shows mutation-prompt mutation (Hyper) lands roughly on par with the Lamarckian operator on average and is dwarfed by the impact of thinking-style seeding (SR task-prompt). The “self-referential” framing matters less than the title implies.</li>
+<li><strong>From operator menus to feedback signals.</strong> Promptbreeder lists nine mutation operators across five classes, and much of the win over <a href="../../posts/20260514-ape/">APE</a> [3] and Chain-of-Thought comes from this richer toolkit of edits rather than from the tournament-selection scaffolding. Since 2023, prompt-optimization research has shifted from genetic-algorithm operators toward gradient-free Bayesian surrogates (MIPROv2 [7] [7] <!-- crosslink-todo: /posts/20260503-miprov2/ -->) and reflective critique driven by trajectory-level natural-language feedback (<a href="../../posts/20260513-gepa/">GEPA</a> [6], TextGrad [8] [8] <!-- crosslink-todo: /posts/20260503-textgrad/ -->). The field has moved toward richer feedback signals rather than richer operator menus.</li>
+<li><strong>Thinking-style seeding is the biggest contributor.</strong> The initial population is seeded by combining the problem description with a library of generic reasoning hints (“let’s think step by step,” “let’s work backwards from the answer”) listed in Appendix D. The paper treats this as a minor detail, but Figure 4 shows that removing the thinking-style seeding (SR task-prompt) has the largest negative impact on 6 of 8 datasets, with an average fitness drop roughly twice that of removing mutation-prompt mutation or the Lamarckian operator. Much of what Promptbreeder “evolves” is downstream of a good seed.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=zM5A5WoAAAAJ">Fernando, C.</a>, <a href="https://scholar.google.com/citations?user=FVEUm0IAAAAJ">Banarse, D.</a>, <a href="https://scholar.google.com/citations?user=YdHW1ycAAAAJ">Michalewski, H.</a>, <a href="https://scholar.google.com/citations?user=Jq8ZS5kAAAAJ">Osindero, S.</a>, <a href="https://rockt.ai/">Rocktäschel, T.</a> “Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution.” <em>arXiv preprint</em> (arXiv:2309.16797), September 28, 2023. <a href="https://arxiv.org/abs/2309.16797" class="uri">https://arxiv.org/abs/2309.16797</a></li>
+<li><a id="ref-2"></a>Mollas, I., Chrysopoulou, Z., Karlos, S., Tsoumakas, G. “ETHOS: an Online Hate Speech Detection Dataset.” <em>Complex &amp; Intelligent Systems</em>, arXiv:2006.08328, June 11, 2020. <a href="https://arxiv.org/abs/2006.08328" class="uri">https://arxiv.org/abs/2006.08328</a></li>
+<li><a id="ref-3"></a>Zhou, Y., Muresanu, A. I., Han, Z., Paster, K., Pitis, S., Chan, H., Ba, J. “Large Language Models Are Human-Level Prompt Engineers.” <em>ICLR 2023</em> (arXiv:2211.01910), November 3, 2022. <a href="https://arxiv.org/abs/2211.01910" class="uri">https://arxiv.org/abs/2211.01910</a></li>
+<li><a id="ref-4"></a>Yang, C., Wang, X., Lu, Y., Liu, H., Le, Q. V., Zhou, D., Chen, X. “Large Language Models as Optimizers.” <em>ICLR 2024</em> (arXiv:2309.03409), September 7, 2023. <a href="https://arxiv.org/abs/2309.03409" class="uri">https://arxiv.org/abs/2309.03409</a></li>
+<li><a id="ref-5"></a>Schmidhuber, J. “A ‘Self-Referential’ Weight Matrix.” <em>ICANN 1993</em>, 1993. Reprinted at <a href="https://people.idsia.ch/~juergen/goedelmachine.html" class="uri">https://people.idsia.ch/~juergen/goedelmachine.html</a></li>
+<li><a id="ref-6"></a>Agrawal, L. A., Tan, S., Soylu, D., Ziems, N., Khare, R., Opsahl-Ong, K., Singhvi, A., Shandilya, H., Ryan, M. J., Jiang, M., Potts, C., Sen, K., Dimakis, A. G., Stoica, I., Klein, D., Zaharia, M., Khattab, O. “GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2507.19457), July 25, 2025. <a href="https://arxiv.org/abs/2507.19457" class="uri">https://arxiv.org/abs/2507.19457</a></li>
+<li><a id="ref-7"></a>Opsahl-Ong, K., Ryan, M. J., Purtell, J., Broman, D., Potts, C., Zaharia, M., Khattab, O. “Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs.” <em>EMNLP 2024</em> (arXiv:2406.11695), June 17, 2024. <a href="https://arxiv.org/abs/2406.11695" class="uri">https://arxiv.org/abs/2406.11695</a></li>
+<li><a id="ref-8"></a>Yuksekgonul, M., Bianchi, F., Boen, J., Liu, S., Huang, Z., Guestrin, C., Zou, J. “TextGrad: Automatic ‘Differentiation’ via Text.” <em>arXiv preprint</em> (arXiv:2406.07496), June 11, 2024. <a href="https://arxiv.org/abs/2406.07496" class="uri">https://arxiv.org/abs/2406.07496</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260514-ape/">Large Language Models Are Human-Level Prompt Engineers (APE)</a>: the propose-and-select baseline Promptbreeder builds its evolutionary operators on top of and beats under matched PaLM 2-L.</li>
+<li><a href="../../posts/20260430-evoprompt/">EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</a>: a sibling that wires LLMs into evolutionary crossover and mutation operators, minus the self-referential mutation-prompt layer.</li>
+<li><a href="../../posts/20260513-gepa/">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a>: the later optimizer that replaces Promptbreeder’s operator menu with trajectory-level reflective rewrites, the shift this post argues the field made.</li>
+<li><a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">System Prompt Optimization with Meta-Learning</a>: another gradient-free prompt optimizer, attacking generalization across tasks rather than per-task evolution.</li>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: frames the same prompt-as-parameter-to-optimize idea as a compiled pipeline instead of an evolving population.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260515-promptbreeder/</guid>
+  <pubDate>Fri, 15 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260515-promptbreeder/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Vibe Coding and Agentic Engineering Are Getting Closer</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260514-vibe-coding-and-agentic-engineering/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2026,40 +2144,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260509-my-98-parkrun/</guid>
   <pubDate>Sat, 09 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260509-my-98-parkrun/cover.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>NYTimes: Meditating or Rebooting? A Robot Buddhist Monk Comes to South Korea.</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<blockquote class="blockquote">
-<p>Not everyone is convinced. Noah Namgoong, a Zen instructor at Korea Buddhism Jo-Gei Temple of America in New York City, said the robot was “a pretty weird thing” that spoke more to “something socioeconomic than spiritual.”</p>
-</blockquote>
-<p>No word if it was actually a human remotely controlling it.</p>
-<p>NYTimes: Meditating or Rebooting? A Robot Buddhist Monk Comes to South Korea. <a href="https://www.nytimes.com/2026/05/06/technology/robot-monk-buddhist-seoul.html?smid=nytcore-ios-share">https://www.nytimes.com/2026/05/06/technology/robot-monk-buddhist-seoul.html?smid=nytcore-ios-share</a></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116546123209154343">Mastodon</a>.</em></p>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260530-magnifica-humanitas/">Magnifica Humanitas: Pope Leo XIV’s Encyclical on AI</a>: the same “socioeconomic, not spiritual” worry the Zen instructor raises, argued as doctrine putting human dignity above efficiency.</li>
-<li><a href="../../posts/20260508-dawkins-ai-conscious/">Dawkins Concludes AI Is Conscious</a>: another case of a machine read as more than a machine, and the skepticism about whether anyone is actually there.</li>
-<li><a href="../../posts/20220612-lamda-sentience-interview/">Is LaMDA Sentient? — An Interview</a>: the original “is the machine really what it seems” episode, here transposed from sentience to spiritual authority.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/</guid>
-  <pubDate>Sat, 09 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
