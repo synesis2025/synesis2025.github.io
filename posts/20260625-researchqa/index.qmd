@@ -1,0 +1,66 @@
+---
+title: "ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics"
+description: "A benchmark that mines 21K scholarly queries and 160K grading-rubric items from survey articles across 75 fields, and finds no LLM system covers more than 75% of what a good answer should contain."
+author: synesis
+date: "2026-06-25"
+image: cover.jpg
+---
+
+![ResearchQA's generation pipeline (left) and the field distribution of its test split (right): top venues per field feed survey-article retrieval, and aligned query/rubric pairs are mined from survey sections, yielding 21K queries across 75 fields skewed toward health sciences and medicine. The diagram labels the downloadable-article pool 135K, but the paper's text gives 134K (§2.1). We use 134K throughout. Figure 2 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In *ResearchQA* [[1]](#ref-1), [Li S. Yifei](https://dblp.org/pid/417/0963.html), [Allen Chang](https://dblp.org/pid/66/836.html), [Chaitanya Malaviya](https://chaitanyamalaviya.github.io/), and [Mark Yatskar](https://www.seas.upenn.edu/~myatskar/) (University of Pennsylvania), the team behind [ExpertQA](/posts/20260609-expertqa/) [[2]](#ref-2), scale expert-style scholarly QA evaluation from 32 fields to 75 by mining queries and grading rubrics from survey articles instead of paying domain experts to author them.
+
+> Evaluating long-form responses to research queries heavily relies on expert annotators, restricting attention to areas like AI where researchers can conveniently enlist colleagues. Yet, research expertise is abundant: survey articles consolidate knowledge spread across the literature. We introduce ResearchQA, a resource for evaluating LLM systems by distilling survey articles from 75 research fields into 21K queries and 160K rubric items. Queries and rubrics are jointly derived from survey sections, where rubric items list query-specific answer evaluation criteria, i.e., citing papers, making explanations, and describing limitations. 31 Ph.D. annotators in 8 fields judge that *90% of queries reflect Ph.D. information needs* and *87% of rubric items warrant emphasis of a sentence or longer*. We leverage ResearchQA to evaluate 18 systems in 7.6K head-to-heads. *No parametric or retrieval-augmented system we evaluate exceeds 70% on covering rubric items, and the highest-ranking system shows 75% coverage.* Error analysis reveals that the highest-ranking system *fully addresses less than 11% of citation rubric items, 48% of limitation items, and 49% of comparison items*. We release our data to facilitate more comprehensive multi-field evaluations.
+
+## Methods
+
+The core idea is that a survey article is pre-distilled expert knowledge: its section structure already encodes what questions a field cares about and what a complete answer must contain. ResearchQA turns that structure into an evaluation set through a four-stage pipeline, with quality filters at each step:
+
+- **Extract top venues per field.** Pull each field's top-20 venues by h5-index from Google Scholar Metrics, then manually redistribute Google Scholar's 257 fields into 94 cleaner ones (660 venues total), since its categories are alternately too granular and too broad. The final test split spans the 75 fields that yield enough qualifying surveys downstream.
+- **Retrieve survey articles.** Fetch candidate survey articles from those venues via Crossref, Semantic Scholar, and S2ORC, then filter to genuine literature reviews (134K downloadable articles → 54K surveys).
+- **Generate queries from survey sections.** Turn each qualifying survey section into a self-contained research query plus a reference answer, filtered for self-containment, low answer variability, and citation content.
+- **Generate rubrics.** For each query, build a *hybrid rubric* of up to 8 items naming query-specific criteria a good answer should meet. The rubric is fixed once per query, built from the survey's own reference answer rather than from any candidate response, and the same rubric then scores every system's answer to that query. Two rubrics are drafted and merged: a survey rubric conditioned on the query plus the survey's reference answer, and a parametric rubric conditioned on the query alone. The union is deduplicated, reranked by importance, and stripped of items that cite papers unmatchable on Google Scholar, keeping the top 8 (about 7.5 on average, ~61% from the survey rubric). Each item comes from one of three prompt types, sampled for topic diversity:
+    - **Information-based items** ask for a specific statement, finding, opinion, or comparison.
+    - **Depth-based items** ask for elaboration or explanation.
+    - **Citation-based items** ask whether the answer cites a specific article.
+
+The result is 21K queries and 160K rubric items spanning 75 fields across 7 domains, weighted toward health sciences and medicine. Thirty-one Ph.D. annotators across 8 fields then validate the artifact: they judge that 90% of queries reflect genuine Ph.D. information needs and that 87% of rubric items are worth a sentence or more in a complete answer.
+
+![An example ResearchQA query mined from a survey, with its evaluation rubric: an automatic judge scores a system's long-form answer from 0 to 4 on each of up to 8 query-specific rubric items, the first of which asks whether the answer cites a specific paper. Figure 1 from the paper [[1]](#ref-1).](figure1.webp){fig-align="center" data-lightbox-src="figure1-full.png"}
+
+## Results
+
+ResearchQA evaluates 18 systems in four classes (parametric LLMs, naive retrieval, production retrieval, and deep-research agents) across 7.6K head-to-head battles. Each answer is scored on two expert-validated metrics: average rubric coverage % (an absolute 0–4 score per rubric item, validated to agree with plurality Ph.D. labels 74% of the time when coverage and direct judgments are ensembled) and an Elo leaderboard score from pairwise preferences. Rubric items map to dimensions sampled from ScholarQABench and SciArena, including correctness, citations, coverage, relevance, organization, and attribution.
+
+The headline is a ceiling, not a ranking:
+
+- **No parametric or retrieval-augmented system clears 70% coverage.** The top system overall, Perplexity's deep-research agent, reaches 75.29%, leaving a quarter of rubric items uncovered even at the frontier.
+- **The gap is worst exactly where it matters for scholarship.** The highest-ranking system fully addresses fewer than 11% of citation rubric items, 48% of limitation items, and 49% of comparison items: it answers the question but rarely cites the right work, names the caveats, or contrasts alternatives.
+- **Naive retrieval barely helps.** Bolting a simple retriever onto a parametric model often fails to lift coverage, and on average the same model differs by only 7.6% coverage between naive and production retrieval.
+- **The ceiling isn't a verbosity artifact.** Because coverage is recall-based, longer answers mechanically tend to cover more, so the obvious worry is that the metric just rewards length. Figure 6 bounds that: coverage rises with answer length but plateaus around 85% past ~2,000 words (about four pages), even though deep-research systems write up to 3,000 words while human-written answers on similar topics average under 300 words. The ceiling holds at the longest answers, so the uncovered rubric items are genuine omissions, not a side effect of short responses.
+
+![Rubric coverage versus answer length for the top deep-research systems, with and without length-guidance prompting. Figure 6 from the paper [[1]](#ref-1).](figure6.png){fig-align="center"}
+
+## My Notes
+
+- **Survey-mining swaps the expensive ingredient in ExpertQA for a scalable one.** [ExpertQA](/posts/20260609-expertqa/) [[2]](#ref-2) paid 484 experts to author 2,177 questions in 32 fields, and that human-authoring step is exactly what capped its size and breadth. ResearchQA, from the same group, treats published surveys as compiled expertise and mines 21K queries across 75 fields from them, a roughly 10× scale-up that trades direct expert authoring for the assumption that survey sections already encode what experts would ask. The 90% Ph.D.-endorsement rate is the evidence that the proxy mostly holds.
+
+- **The evaluation target moved from per-claim attribution to rubric coverage, which measures a different failure.** ExpertQA asked whether each emitted claim was supported by its cited evidence (a precision-style check on what the model said). ResearchQA's rubric coverage asks whether the answer contains what a good answer should (a recall-style check on what the model omitted). The two are complementary, and ResearchQA's low citation-coverage number (under 11% of citation items fully addressed) shows the recall view exposes a failure the precision view can miss: a system can avoid unsupported claims simply by never attempting the citations a complete answer needs.
+
+- **Rubric coverage inherits the LLM-as-judge grounding problem it is trying to escape.** The metric is only as trustworthy as the automatic judge scoring each rubric item, and the paper reports 74% coverage agreement and 69% pairwise agreement with Ph.D. humans, only reached after ensembling. That is squarely the contested LLM-as-judge reliability question, where prior work has shown LLM evaluators can be pushed to misrank answers outright [[3]](#ref-3).
+
+- **A reusable recipe for any field with a survey literature.** The pipeline needs only Google Scholar venue rankings and survey-article databases, so the same machinery could generate domain-specific evaluation sets wherever review articles exist, without recruiting a single expert. The bottleneck for trustworthy domain evaluation then shifts from expert availability to survey availability, which is far less scarce.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Li S. Yifei](https://dblp.org/pid/417/0963.html), [Allen Chang](https://dblp.org/pid/66/836.html), [Malaviya, C.](https://chaitanyamalaviya.github.io/), [Yatskar, M.](https://www.seas.upenn.edu/~myatskar/). "ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics." *arXiv preprint* (arXiv:2509.00496), August 30, 2025. <https://arxiv.org/abs/2509.00496>
+2. <a id="ref-2"></a>[Malaviya, C.](https://chaitanyamalaviya.github.io/), [Lee, S.](https://www.linkedin.com/in/subin-lee-penn), [Chen, S.](https://sihaoc.github.io/), Sieber, E., [Yatskar, M.](https://www.seas.upenn.edu/~myatskar/), [Roth, D.](https://www.cis.upenn.edu/~danroth/). "ExpertQA: Expert-Curated Questions and Attributed Answers." *NAACL 2024* (arXiv:2309.07852), September 14, 2023. <https://arxiv.org/abs/2309.07852>
+3. <a id="ref-3"></a>Wang, P., Li, L., Chen, L., Cai, Z., Zhu, D., Lin, B., Cao, Y., Liu, Q., Liu, T., Sui, Z. "Large Language Models are not Fair Evaluators." *ACL 2024* (arXiv:2305.17926), May 29, 2023. <https://arxiv.org/abs/2305.17926>
+
+## Related Posts
+
+- [ExpertQA: Expert-Curated Questions and Attributed Answers](/posts/20260609-expertqa/): the direct predecessor from the same lab, which paid experts to author questions and grade claim-level attribution rather than mining surveys for rubrics.
+- [Language Models with Conformal Factuality Guarantees](/posts/20260505-conformal-factuality/): the constructive side, giving statistical guarantees on which claims to keep where ResearchQA only measures how much a system covers.
+- [TruthfulQA: Are Larger LLMs More Truthful?](/posts/20230226-truthfulqa-llm-truthfulness/): an earlier factuality benchmark that ResearchQA pushes into long-form, citation-bearing scholarly answers.
