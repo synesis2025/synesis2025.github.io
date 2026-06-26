@@ -23,6 +23,116 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Thu, 25 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260610-just-ask-calibration/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260610-just-ask-calibration/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260610-just-ask-calibration/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Reliability diagrams for gpt-3.5-turbo on SciQ. Raw token-level probabilities (top-left, orange) are consistently overconfident. Verbalized numerical probabilities (bottom, blue) track empirical accuracy much more closely, and asking the model to “consider more answer choices” (bottom-right) improves calibration further. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Just Ask for Calibration</em> [1] (EMNLP 2023), <a href="https://katherinethai.github.io/">Katherine Tian</a>, <a href="https://ericmitchell.ai/">Eric Mitchell</a>, <a href="https://bland.website/">Allan Zhou</a>, <a href="https://architsharma97.github.io/">Archit Sharma</a>, <a href="https://rmrafailov.github.io/">Rafael Rafailov</a>, <a href="https://www.huaxiuyao.io/">Huaxiu Yao</a>, <a href="https://ai.stanford.edu/~cbfinn/">Chelsea Finn</a>, and <a href="https://nlp.stanford.edu/~manning/">Christopher D. Manning</a> (Harvard + Stanford) show that for RLHF-tuned large language models (LLMs), a verbalized confidence score prompted from the model is typically better-calibrated than the model’s own token-level probabilities.</p>
+<blockquote class="blockquote">
+<p>A trustworthy real-world prediction system should produce well-calibrated confidence scores; that is, its confidence in an answer should be indicative of the likelihood that the answer is correct, enabling deferral to an expert in cases of low-confidence predictions. Recent studies have shown that unsupervised pre-training produces large language models (LMs) whose conditional probabilities are remarkably well-calibrated. However, <em>the most widely-used LMs are fine-tuned with reinforcement learning from human feedback (RLHF-LMs), and some studies have suggested that RLHF-LMs produce conditional probabilities that are very poorly calibrated</em>. In light of this perceived weakness, we <em>conduct a broad evaluation of methods for extracting confidence scores from RLHF-LMs</em>. For RLHF-LMs such as ChatGPT, GPT-4, and Claude, we find that <em>verbalized confidences emitted as output tokens are typically better-calibrated than the model’s conditional probabilities on the TriviaQA, SciQ, and TruthfulQA benchmarks</em>, often <em>reducing the expected calibration error by a relative 50%</em>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The starting point is a known regression: RLHF degrades the calibration of a model’s token-level probabilities. The authors first reproduce it on Llama-2-70B, comparing the base model against its RLHF-tuned chat version.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260610-just-ask-calibration/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 2 plots two calibration metrics, expected calibration error (ECE, lower is better) and area under the selective-accuracy curve (AUC, higher is better), for the base and chat models on each dataset. RLHF raises ECE and lowers AUC across the board, and the gap is widest on TruthfulQA. The rest of the paper shows that for several strong RLHF models, reading the confidence out of the model’s text output recovers much of this lost calibration, again most strongly on TruthfulQA.</p>
+<p>The evaluation spans five RLHF-tuned models (gpt-3.5-turbo, GPT-4, Claude-1, Claude-2, and Llama-2-70B-Chat) on three factual question-answering benchmarks: TriviaQA (1,000 sampled questions), SciQ (1,000), and <a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA</a> (all 817), the last of which is adversarial, with questions written to draw out common human misconceptions. Exact-match scoring would count a correct answer phrased differently as wrong, so correctness is judged by GPT-4 or GPT-3.5 checking whether the response is semantically equivalent to the gold answer.</p>
+<p>The methods for extracting a confidence score fall into two families:</p>
+<ul>
+<li><strong>Sampling the model’s conditional probability.</strong> Because the closed models don’t expose token log-probabilities, both methods in this family estimate the probability from <img src="https://benjaminhan.net/feed-assets/2a170528154b9581.svg" alt="n = 10" class="feed-math-inline"/> samples. <strong>Label prob.</strong> draws ten answers, returns the most common one, and uses its sampled frequency as the confidence. <strong>‘Is True’ prob.</strong> (a variant of <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.</a> [2]) samples a single answer, then asks the model whether that answer is true and reads the probability it assigns to “True.”</li>
+<li><strong>Verbalizing the confidence in token space.</strong> The model writes its confidence as part of its response, with no fine-tuning to teach it the skill.
+<ul>
+<li><strong>Verbalized numerical (Verb. 1S / 2S top-<img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/>)</strong> asks for a probability between 0 and 1. The one-stage (1S) version emits the answer and the probability together; the two-stage (2S) version answers first, then assigns a probability in a second turn. The top-<img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> variants ask for <img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> guesses (<img src="https://benjaminhan.net/feed-assets/62ba0042770e712f.svg" alt="k = 1, 2, 4" class="feed-math-inline"/>) and take the highest-probability one.</li>
+<li><strong>Verbalized with chain of thought (Verb. 2S CoT)</strong> adds a reasoning step before the answer, then asks for the probability.</li>
+<li><strong>Verbalized linguistic (Ling. 1S-human / 1S-opt)</strong> has the model pick a phrase such as “highly likely” or “almost no chance” instead of a number. The human variant maps each phrase to a probability using a 123-respondent survey; the optimized variant fits the mapping on a held-out calibration set.</li>
+</ul></li>
+</ul>
+<p>The paper’s “consider the opposite” prompt asks for more than one guess before the confidence, borrowing a psychology finding that enumerating alternatives reduces overconfidence.</p>
+<p>Calibration is reported on four metrics, each explained in more depth in <a href="../../posts/20260609-confidence-calibration-metrics/">a companion primer on confidence-calibration metrics</a>:</p>
+<ul>
+<li><strong>ECE</strong> bins predictions by stated confidence and averages the gap between confidence and empirical accuracy across bins, weighted by bin size.</li>
+<li><strong>ECE-t</strong> is the same metric after temperature scaling, a one-parameter recalibration that replaces each confidence <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/> with <img src="https://benjaminhan.net/feed-assets/4c98f102f2510684.svg" alt="\sigma\!\left(\sigma^{-1}(c)/T\right)" class="feed-math-inline"/>, the logit of <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/> divided by a single temperature <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> and mapped back through the logistic <img src="https://benjaminhan.net/feed-assets/918d7b20a36f8da0.svg" alt="\sigma" class="feed-math-inline"/>. The temperature is fit to minimize negative log-likelihood, and one value applies to every prediction: above 1 it softens the confidences toward 0.5, below 1 it sharpens them.</li>
+<li><strong>BS-t</strong> is the <strong>Brier score</strong> [3] on temperature-scaled confidences, the mean squared error between confidence and correctness. Because a model that answers “50%” on every binary question scores a perfect ECE while telling you nothing, BS-t adds a metric that rewards discrimination.</li>
+<li><strong>AUC</strong> is the area under the selective-accuracy-versus-coverage curve from the selective-classification literature.</li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Across the five models and three datasets, the verbalized methods are better-calibrated than the sampled conditional probabilities for the strong closed models, with the effect largest on the adversarial TruthfulQA. Table 1 shows the full picture for gpt-3.5-turbo.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260610-just-ask-calibration/table1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The findings:</p>
+<ul>
+<li><strong>Verbalized confidence beats sampled probability.</strong> For gpt-3.5-turbo (Table 1), one-stage verbalized confidence cuts ECE on TriviaQA from 0.140 (Label prob.) to 0.068; for GPT-4, the strongest verbalized method drops SciQ ECE from 0.219 to 0.056. The relative reduction is around 50% on TriviaQA and SciQ and larger on TruthfulQA.</li>
+<li><strong>Generating multiple guesses improves calibration.</strong> Asking for the top 2 or top 4 answers before the confidence lowers gpt-3.5-turbo’s SciQ ECE from 0.234 (one guess) to 0.065 (four guesses), and its TruthfulQA ECE from 0.389 to 0.203.</li>
+<li><strong>Numbers work as well as words.</strong> Verbalized numerical probabilities match or beat the linguistic-expression methods on most settings, despite the known difficulty language models have with numbers. The exception is TruthfulQA, where the optimized linguistic mapping reaches the lowest error for several models (0.082 ECE for GPT-4).</li>
+<li><strong>Chain of thought does not help.</strong> Adding a reasoning step before the confidence leaves verbalized calibration essentially unchanged across all three datasets.</li>
+<li><strong>Temperature scaling narrows but does not close the gap.</strong> Fitting a temperature to the sampled probabilities improves them, but they stay worse-calibrated than the raw verbalized confidences (the ECE-t columns in Table 1).</li>
+<li><strong>The effect is model-dependent.</strong> Claude-1 verbalizes poorly: on SciQ its verbalized ECE (0.265) is worse than its own sampled probability (0.216). Claude-2 is comparable to gpt-3.5-turbo and beats the GPT models on TruthfulQA (0.099 ECE with the optimized linguistic mapping, down from 0.409). Llama-2-70B-Chat improves over its own probabilities on some metrics but inconsistently, most clearly on TruthfulQA.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>RLHF does not wreck a model’s calibration so much as relocate it.</strong> Since Guo et al.&nbsp;(2017) [4], calibration has been treated as a property of the softmax, repaired by post-processing (temperature scaling, Platt, isotonic). The result here is that for RLHF models the calibrated signal has not disappeared, it has moved to a channel no post-processing can reach: the model’s own words. Calibration for instruction-tuned models is then less a recalibration problem (rescale the logits) than an elicitation one (ask for the number). But eliciting a calibrated confidence and acting on it are different things: <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> finds reasoning fine-tuning cuts abstention recall by 24%, so the same post-training that keeps confidence elicitable weakens the link between that confidence and the answer-or-abstain decision it should drive. Later work tempers the optimism: <a href="https://arxiv.org/abs/2306.13063">Xiong et al.</a> [5] <!-- crosslink-todo: /posts/20260610-can-llms-express-uncertainty/ --> find that across GPT-4 and LLaMA-2-Chat, elicited verbalized confidences beat the logprobs but are still systematically overconfident, so eliciting the number improves calibration without solving it.</li>
+<li><strong>The verbalized-beats-logprob result holds for RLHF models, not language models in general.</strong> Pre-RLHF base models typically have well-calibrated token probabilities, so the gap this paper documents comes from RLHF. For practitioners: with a fine-tuned instruction model whose logprobs you can read, verbalized confidences are probably the better move, but with a base model the logprobs are still the honest signal. The paper is careful about this, but the headline is easy to over-generalize.</li>
+<li><strong>A verbalized confidence is produced after the answer and conditioned on it, so it can encode reliability information the answer’s own token probabilities cannot.</strong> This is related to but distinct from self-consistency [6] sampling: both recruit the model’s own generation to estimate answer reliability, but self-consistency uses disagreement across samples while Just Ask uses within-sample reflection.</li>
+<li><strong>The “consider the opposite” prompt (asking for several guesses before the confidence) improves calibration with nothing more than a prompt change.</strong> Forcing the model to enumerate alternatives before stating a confidence is inference-time debiasing against anchoring on its first answer. It connects to self-reflection and verification prompts like CRITIC [7] <!-- crosslink-todo: /posts/20260503-critic/ -->, and suggests a shared mechanism: breaking the model’s commitment to a single chain of thought improves calibration, correctness, and hallucination rates together.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://katherinethai.github.io/">Tian, Katherine</a>, <a href="https://ericmitchell.ai/">Mitchell, Eric</a>, <a href="https://bland.website/">Zhou, Allan</a>, <a href="https://architsharma97.github.io/">Sharma, Archit</a>, <a href="https://rmrafailov.github.io/">Rafailov, Rafael</a>, <a href="https://www.huaxiuyao.io/">Yao, Huaxiu</a>, <a href="https://ai.stanford.edu/~cbfinn/">Finn, Chelsea</a>, and <a href="https://nlp.stanford.edu/~manning/">Manning, Christopher D.</a> “Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback.” <em>EMNLP 2023</em>, arXiv:2305.14975, May 24, 2023. <a href="https://arxiv.org/abs/2305.14975" class="uri">https://arxiv.org/abs/2305.14975</a></li>
+<li><a id="ref-2"></a><a href="https://www.linkedin.com/in/saurav-kadavath/">Kadavath, S.</a>, Conerly, T., <a href="https://www.amandaaskell.com/">Askell, A.</a>, Henighan, T., Drain, D., <a href="https://ethanperez.net/">Perez, E.</a>, Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., Johnston, S., El-Showk, S., Jones, A., Elhage, N., Hume, T., Chen, A., <a href="https://yuntaobai.com/">Bai, Y.</a>, <a href="https://cims.nyu.edu/~sbowman/">Bowman, S.</a>, Fort, S., <a href="https://deepganguli.com/">Ganguli, D.</a>, Hernandez, D., Jacobson, J., Kernion, J., Kravec, S., Lovitt, L., Ndousse, K., <a href="https://www.catherineolsson.com/">Olsson, C.</a>, Ringer, S., <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Amodei, D.</a>, Brown, T., <a href="https://jack-clark.net/">Clark, J.</a>, Joseph, N., Mann, B., McCandlish, S., <a href="https://colah.github.io/">Olah, C.</a>, and <a href="https://sites.krieger.jhu.edu/jared-kaplan/">Kaplan, J.</a>. “Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), November 21, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></li>
+<li><a id="ref-3"></a>Brier, Glenn W. “Verification of Forecasts Expressed in Terms of Probability.” <em>Monthly Weather Review</em>, 78(1):1–3, 1950. <a href="https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2" class="uri">https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2</a></li>
+<li><a id="ref-4"></a>Guo, Chuan, Pleiss, Geoff, Sun, Yu, and Weinberger, Kilian Q. “On Calibration of Modern Neural Networks.” <em>ICML 2017</em>, arXiv:1706.04599, Jun 14, 2017. <a href="https://arxiv.org/abs/1706.04599" class="uri">https://arxiv.org/abs/1706.04599</a></li>
+<li><a id="ref-5"></a>Xiong, Miao, Hu, Zhiyuan, Lu, Xinyang, Li, Yifei, Fu, Jie, He, Junxian, and Hooi, Bryan. “Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs.” <em>ICLR 2024</em>, arXiv:2306.13063, Jun 22, 2023. <a href="https://arxiv.org/abs/2306.13063" class="uri">https://arxiv.org/abs/2306.13063</a></li>
+<li><a id="ref-6"></a>Wang, Xuezhi, Wei, Jason, Schuurmans, Dale, Le, Quoc, Chi, Ed, Narang, Sharan, Chowdhery, Aakanksha, and Zhou, Denny. “Self-Consistency Improves Chain-of-Thought Reasoning in Language Models.” <em>ICLR 2023</em>, arXiv:2203.11171, Mar 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
+<li><a id="ref-7"></a>Gou, Zhibin, Shao, Zhihong, Gong, Yeyun, Shen, Yelong, Yang, Yujiu, Duan, Nan, and Chen, Weizhu. “CRITIC: Large Language Models Can Self-Correct with Tool-Interactive Critiquing.” <em>ICLR 2024</em>, arXiv:2305.11738, May 19, 2023. <a href="https://arxiv.org/abs/2305.11738" class="uri">https://arxiv.org/abs/2305.11738</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260609-confidence-calibration-metrics/">A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses</a>: defines the four metrics (ECE, ECE-t, BS-t, AUC) this paper scores on, and why a low ECE alone does not certify a useful confidence.</li>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the pre-RLHF baseline behind Note 2, reading calibration off the model’s own probabilities and the “P(True)” self-evaluation.</li>
+<li><a href="../../posts/20260505-llm-uncertainty-survey/">How to Make LLM Output More Trustworthy</a>: the broader catalog of confidence and uncertainty methods this paper’s verbalized approach sits inside.</li>
+<li><a href="../../posts/20260505-linguistic-calibration/">Linguistic Calibration of Long-Form Generations</a>: trains the verbalized confidence this paper only elicits, the next step once prompting plateaus.</li>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: the downstream cost when a model has the calibrated signal but does not act on it to abstain.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260610-just-ask-calibration/</guid>
+  <pubDate>Wed, 10 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260610-just-ask-calibration/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>9-Mile Run on Elliott Bay Trail</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed</link>
@@ -3544,265 +3654,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260606-my-102-parkrun/</guid>
   <pubDate>Sat, 06 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260606-my-102-parkrun/image-1.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Mira Murati on Interaction Models and Keeping Humans in the Loop</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260605-interaction-model-interviews/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260605-interaction-model-interviews/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260605-interaction-model-interviews/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Thumbnail for Bloomberg Live’s interview with Mira Murati at Bloomberg Tech 2026. <a href="https://www.youtube.com/watch?v=A_jIpryR5js">Watch on YouTube</a>.</figcaption>
-</figure>
-</div>
-<p>At Bloomberg Tech 2026 in San Francisco, <a href="https://www.bloomberg.com/">Bloomberg</a>’s <a href="https://en.wikipedia.org/wiki/Emily_Chang_(journalist)">Emily Chang</a> interviewed <a href="https://en.wikipedia.org/wiki/Mira_Murati">Mira Murati</a>, co-founder and CEO of <a href="https://thinkingmachines.ai/">Thinking Machines Lab</a>, the AI lab she started in February 2025 after leaving OpenAI, where she had been CTO. The 28-minute conversation covers the lab’s first public bet (<a href="https://thinkingmachines.ai/blog/interaction-models/">interaction models</a>), her account of the November 2023 OpenAI board crisis, the war for AI talent, and why she’s building toward human-AI collaboration rather than the autonomy-first path most labs are racing down.</p>
-<p>With the help of AI, I’ve built an <strong>enriched transcript at the bottom of this post</strong> — the video’s auto-captions, reorganized into chapters with inline hyperlinks, acronym expansions, and editor’s-note callouts. See the preamble of that section for details.</p>
-<p>A few takeaways worth jumping to:</p>
-<ul>
-<li><strong>Interaction models are an interface bet</strong>: continuous, time-based models that take in audio, text, and video in 20-millisecond chunks, rather than the turn-based prompt-then-wait loop of today’s models.</li>
-<li><strong>She bets on collaboration over autonomy</strong>: she grants the autonomy-first path is the faster way to advance AI, and chooses instead to bring machine intelligence closer to human intent.</li>
-<li><strong>She casts November 2023 as a governance failure</strong>: her one regret is not pausing on the transition plan; she leaves the question of whether removing Altman was right unanswered.</li>
-<li><strong>“Humans in the loop” as a tandem bike</strong>: both riders pedaling, both hands on the wheel, with alignment offered as a byproduct of collaboration.</li>
-</ul>
-<p>YouTube chapters (jump to the enriched transcript below, or watch on YouTube):</p>
-<ul>
-<li>0:00:00 — What interaction models are: continuous, not turn-based (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=0s">YouTube</a>)</li>
-<li>0:02:45 — The bet: human-AI collaboration over pure autonomy (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=165s">YouTube</a>)</li>
-<li>0:05:26 — AI as a tool for thought (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=326s">YouTube</a>)</li>
-<li>0:06:42 — Leaving OpenAI: running toward something (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=402s">YouTube</a>)</li>
-<li>0:08:17 — The board crisis, in retrospect (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=497s">YouTube</a>)</li>
-<li>0:11:51 — Whose hand is on the dial: character vs.&nbsp;governance (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=711s">YouTube</a>)</li>
-<li>0:14:14 — What the moment demands of a leader (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=854s">YouTube</a>)</li>
-<li>0:15:48 — Building Thinking Machines: the tandem bike (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=948s">YouTube</a>)</li>
-<li>0:17:39 — The war for talent (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1059s">YouTube</a>)</li>
-<li>0:20:28 — Jobs, dystopia, and agency (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1228s">YouTube</a>)</li>
-<li>0:22:15 — Will humans always be in the loop? (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1335s">YouTube</a>)</li>
-<li>0:23:40 — Killer instinct and competition (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1420s">YouTube</a>)</li>
-<li>0:25:44 — The preview, and resisting short-term pressure (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1544s">YouTube</a>)</li>
-<li>0:27:16 — Success beyond wildest expectations (<a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1636s">YouTube</a>)</li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>New tools can change how we think.</strong> Positional notation didn’t just speed up arithmetic over Roman numerals, it changed what mathematics a person could attempt, and the idea that representational systems shape cognition runs from writing to <a href="https://en.wikipedia.org/wiki/Kenneth_E._Iverson">Kenneth Iverson’s “notation as a tool of thought”</a>. What she raises but doesn’t answer is whether AI tools are a notation-level shift that expands what we can think about, or an accelerant that speeds up the thinking we already do.</p></li>
-<li><p><strong>Institutional design over individual virtue.</strong> “Morality is not everything,” she says, pointing instead to decision-making structures, transparency, and governance, because “even people who are well-intentioned can make mistakes.” Good individual intentions don’t guarantee good outcomes at the organizational level, where morality is an emergent property of incentives and structure and can degrade even when everyone inside means well. That gap between personal ethics and what an institution produces is the failure mode Robert Jackall’s <em>Moral Mazes</em> [1] documents. It’s notable coming from a frontier-lab CEO, since the AI-governance conversation mostly fixates on founder character (“whose hand is on the dial”), which she’s arguing is the less durable lever.</p></li>
-<li><p><strong>Her focus on human agency lines up with the Pope’s.</strong> The tandem-bike image puts the person at the center of the design rather than efficiency. That is close to <a href="../../posts/20260530-magnifica-humanitas/">Pope Leo XIV’s encyclical on AI</a>, which makes the dignity of the human person the measure for AI ahead of efficiency or profit.</p></li>
-<li><p><strong>“Human-in-the-loop leads to alignment” needs to be validated.</strong> She says collaboration gets you value-<a href="https://en.wikipedia.org/wiki/AI_alignment">alignment</a> “as a result of this approach.” Learning from humans in the loop isn’t new: <a href="https://en.wikipedia.org/wiki/Reinforcement_learning_from_human_feedback">RLHF</a> is exactly that. But RLHF aligns a model to human <em>intent</em>, following instructions and preferences, which isn’t the same as aligning it to human <em>values</em>: a model can do what you asked and still optimize for something you don’t endorse. The signal differs in kind, and whether training to follow the former can lead to adherence to the latter needs further investigation.</p></li>
-<li><p><strong>Is humans-in-the-loop just a waypoint?</strong> She defends keeping humans in the loop in time-bound terms: “for as long as we can,” and making sure “this period” is meaningful. Asked directly whether humans might eventually leave the loop, she answers “it is possible.” So the position may be less “humans belong in the loop” than “removing them now would forfeit our chance to get the transition right.” That leaves open whether the destination is still full autonomy, approached more carefully. It’s the same question that runs through the <a href="../../posts/20230203-ai-job-automation-augmentation/">automation-vs-augmentation debate</a>.</p></li>
-</ul>
-</section>
-<section id="transcript" class="level2">
-<h2 class="anchored" data-anchor-id="transcript">Transcript</h2>
-<p>What’s here is the auto-generated transcript from <a href="https://www.youtube.com/watch?v=A_jIpryR5js">the YouTube video</a>, reorganized into a reader-friendly form. The dialog is verbatim in substance but lightly edited for readability — filler words and stutters removed, punctuation, capitalization, and paragraph breaks added (auto-captions ship without them). Nothing was paraphrased or reordered. Four editorial layers have been added:</p>
-<ul>
-<li><strong>Chapter outline.</strong> 14 chapters, each linking to its YouTube timestamp. The titles are editorial summaries of what’s being discussed, not verbatim quotes. The full outline is in the right-hand sidebar.</li>
-<li><strong>Inline hyperlinks.</strong> First mention of a salient person, company, or concept links to an authoritative source.</li>
-<li><strong>Bracketed expansions.</strong> Where an acronym appears without being spelled out in speech, the expansion is inserted in <code>[square brackets]</code> to mark it as editorial.</li>
-<li><strong>Editor’s notes</strong> in blue callout boxes flag dates and figures worth checking.</li>
-</ul>
-<p>Speaker attribution was reconstructed from the captions’ speaker-change markers, so a stray line may be mislabeled. Obvious mishearings of names were corrected silently — <code>ChatGPT</code>, <code>OpenAI</code>, <code>Sam Altman</code>, <code>Dario Amodei</code>, <code>GPT-4o</code>, <code>o1</code> — and one content word was an inferred fix (<code>nuances</code> for the captions’ “neurons”).</p>
-<section id="ch-interaction-models" class="level3">
-<h3 class="anchored" data-anchor-id="ch-interaction-models"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=0s">0:00:00 — What interaction models are: continuous, not turn-based</a></h3>
-<p><strong>Emily Chang:</strong> Let’s start with today and what you’re working on. You are building <a href="https://thinkingmachines.ai/blog/interaction-models/">interaction models</a> at <a href="https://thinkingmachines.ai/">Thinking Machines</a> — models that you say keep humans in the loop. What exactly does that mean?</p>
-<p><strong>Mira Murati:</strong> We’ve been working for the past year and a half on the foundations of building a frontier AI lab, with the specific focus that we have. And the interaction models were a first look at our concentrated bet toward human-AI collaboration.</p>
-<p>The reason why we even started Thinking Machines is because we wanted to build the frontier AI lab that’s really focused on the human-AI collaboration piece. That means a lot of things, and there are specific research bets that go into that, but we wanted to showcase our work in one of the first bets through the interaction models.</p>
-<p>The interaction models are a new kind of model. If you consider the types of models that we work with today, they’re very turn-based. And so you talk, they talk, then they go off and think.</p>
-<p>Once you’ve given a prompt on what it is that you want to do, while they’re thinking, it’s almost like they’re deaf and blind. They cannot perceive anything else about what’s going on. And then it’s your turn. And while you’re talking, they really cannot perceive anything about how you’re talking. It’s not happening in real time.</p>
-<p>By contrast, our interactions with each other are very rich. There is a lot of information in our interactions — when we are silent, when we’re thinking, when we’re interrupting one another. And so interaction models are able to capture all of these nuances.</p>
-<p>They’re not turn-based, they’re more like time-based interaction, where they’re continuously taking in audio, text, and video and continuously providing output. Now, we cut this up in chunks of 20 milliseconds.</p>
-<p>And this enables you to actually catch these things like interruptions and simultaneous speech, and really create a rich, high-bandwidth interaction between humans and machines, which we think is critical to enable agency and to enable people to be more in this loop as we advance AI further and further.</p>
-</section>
-<section id="ch-the-bet" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-bet"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=165s">0:02:45 — The bet: human-AI collaboration over pure autonomy</a></h3>
-<p><strong>Emily Chang:</strong> You’re basically trying to build an AGI [artificial general intelligence] lab from scratch. You’ve got <a href="https://openai.com/">OpenAI</a>, <a href="https://www.anthropic.com/">Anthropic</a>, <a href="https://deepmind.google/">Google</a>, <a href="https://ai.meta.com/">Meta</a>, all with a significant head start, all of them racing to build smarter models. What is the bet that you’re making that they aren’t, and what do you think they are underestimating?</p>
-<p><strong>Mira Murati:</strong> So first of all, I think advancing the frontier of AI is incredibly positive-sum, and there is plenty of space for many different perspectives and ways of developing the technology. I think plurality is good — having a plurality of perspectives, of ways of building technology, different products, is great for the world.</p>
-<p>Now, this is a pretty hard thing to do, so I think that’s why we don’t actually have many players. The barrier to entry is incredibly high. But in terms of creating something differentiated, I do think there is plenty of room.</p>
-<p>I have always been very passionate about advancing the frontier of AI systems, and I think there is a potential for so much transformation for civilization that comes from that. But it’s not a predestined outcome. The way that we go about building it and deploying the systems really matters. And an area where there is very little work that’s been done so far is bringing the machine intelligence closer to where the knowledge is.</p>
-<p>What I mean by that is, there is one path of advancing frontier systems which is very autonomous and doesn’t rely too much on the messiness of reality, or the experience that humans have day-to-day — and that’s quite a fast way of advancing AI systems, very autonomously. Autonomy is definitely a part of it, and it’s a very important part. But a missing part, where we haven’t done much work, is really focusing on human intent, on the messiness of interaction, enabling people more, and conceptually building frontier systems more like <a href="https://en.wikipedia.org/wiki/Tools_for_Thought">tools for thought</a>. I think the most advanced AI systems are the most incredible tools for thought that humanity can ever have.</p>
-</section>
-<section id="ch-tools-for-thought" class="level3">
-<h3 class="anchored" data-anchor-id="ch-tools-for-thought"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=326s">0:05:26 — AI as a tool for thought</a></h3>
-<p><strong>Emily Chang:</strong> And so how can this change the way that we think?</p>
-<p><strong>Mira Murati:</strong> We’re still thinking — but it’s changing the nature of thought, what we’re thinking about. And this part is familiar to us. Since the beginning of time, deep technologies have changed what we think about: language, writing, numerals. Imagine if you had to do multiplication with Roman numerals — it would be miserable. But we invented today’s numerals, and this enabled a whole area of mathematics. A child can do mathematics very quickly. So it enabled these very tangible new ways of thought. And I think this is the opportunity ahead of us — this possibility to expand what we think about, and have new tangible things that we think about. And this requires very intentional research work and product work in this direction.</p>
-</section>
-<section id="ch-leaving-openai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-leaving-openai"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=402s">0:06:42 — Leaving OpenAI: running toward something</a></h3>
-<p><strong>Emily Chang:</strong> When I interviewed you, it was early 2023. <a href="https://openai.com/chatgpt/">ChatGPT</a> had just changed everything, and you were CTO of OpenAI. A few folks I talked to said you basically ran the place — just saying. When you left to found Thinking Machines, were you running toward something or away from something?</p>
-<p><strong>Mira Murati:</strong> I most definitely was running toward something, once I figured out what that was. But I had an incredible experience at OpenAI. I was so incredibly lucky to work with some of the most dedicated and most talented people in the world, and that’s incredibly special. I’m very grateful for that experience.</p>
-<p>Eventually I had my own view — a very strong view — of how I think this technology ought to be developed, and it’s very rare to start something from scratch once you have developed such a strong perspective on it. That’s a rare privilege to have. I think having a company like Thinking Machines gives us an opportunity to focus on where we have the highest conviction, and build and orient the entire company around that conviction.</p>
-</section>
-<section id="ch-board-crisis" class="level3">
-<h3 class="anchored" data-anchor-id="ch-board-crisis"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=497s">0:08:17 — The board crisis, in retrospect</a></h3>
-<p><strong>Emily Chang:</strong> Take me back to the board crisis of that year. Later that year, you testified under oath that you were worried OpenAI was at catastrophic risk of falling apart. You raised concerns about <a href="https://en.wikipedia.org/wiki/Sam_Altman">Sam Altman</a>’s leadership. But in that moment, you had to act. Looking back, do you think you got that right?</p>
-<p><strong>Mira Murati:</strong> It was a very intense time, and a very complex situation. I’m sure many people have been in situations that felt impossible, where you have to make really hard calls very quickly.</p>
-<p>There is a part of this complexity that wasn’t visible to the world — it appeared that it happened overnight, but to me it was years of thinking about the mission, the governance, how you build a team that can build durable, transformational technologies with that responsibility. There was a lot of complexity to the organization that had been there for years, and that we had thought about a lot.</p>
-<p>This particular thing that happened, this acute moment — there was a lot of intensity to it, and very little time. When the board asked me for feedback, I shared feedback, and I stand by that. When they made the decision and asked me to step up as interim CEO, I did that. And when I realized that their decision was potentially catastrophic for the company and things would potentially fall apart, I felt like I had to act very quickly.</p>
-<p>Even though on the surface it just looked very chaotic, at each point in time I felt very clear about what I had to do — because the thing that I cared the most about was the mission, the continuity of the mission, and the people and the team. This is not an abstract thing. It’s real people that I worked with for many years and cared very deeply about, and all of this was about to potentially implode.</p>
-<p>So it was very clear to me what I had to do — to provide continuity, stability, and help bring Sam back, restore that, get the team in place to then deliver <a href="https://openai.com/index/hello-gpt-4o/">GPT-4o</a> and <a href="https://openai.com/o1/">o1</a>. It was that principle that made it very clear to me what I had to do.</p>
-<p>In retrospect, I think that I would have paused more on understanding the transition plan. With the benefit of hindsight, there wasn’t any transition plan, and there wasn’t much thought put into transparency — bringing the team along, providing continuity. In retrospect, I would have paused more on that.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The sequence: OpenAI’s board removed Sam Altman on November 17, 2023; Murati was named interim CEO; Altman was reinstated about five days later, and Murati returned to her role as CTO. Her “testified under oath” refers to deposition testimony in the <a href="https://en.wikipedia.org/wiki/Musk_v._OpenAI">litigation between Elon Musk and OpenAI</a>. The two models she cites as what the team went on to deliver, GPT-4o and o1, were released in May and September 2024 respectively. Murati was OpenAI’s CTO from May 2022 until she left in September 2024.</p>
-</div>
-</div>
-<p><strong>Emily Chang:</strong> Interesting. <a href="https://en.wikipedia.org/wiki/Helen_Toner">Helen Toner</a>, a former OpenAI board member, said: “Mira was waiting to see which way the wind would blow, and she didn’t realize she was the wind.” What do you think would have happened if you didn’t do what you did?</p>
-<p><strong>Mira Murati:</strong> I think quite likely OpenAI would have…</p>
-</section>
-<section id="ch-character-governance" class="level3">
-<h3 class="anchored" data-anchor-id="ch-character-governance"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=711s">0:11:51 — Whose hand is on the dial: character vs.&nbsp;governance</a></h3>
-<p><strong>Emily Chang:</strong> <a href="https://en.wikipedia.org/wiki/Musk_v._OpenAI">The case</a> got thrown out on a technicality, so the court never decided whether the leaders of OpenAI breached their mission. How much does the character of the people building the most powerful technology in the world matter? Whose hand is on the dial?</p>
-<p><strong>Mira Murati:</strong> I think the integrity, character, and values of the people matter a lot, because there are a lot of decisions — micro-decisions — you have to make every day, and you have to trust your team that they’re making the right calls. There’s plenty of focus on that, and that’s great. Where there is less focus is the institutional design, decision-making, transparency — increasing the level of agency that people have to actually decide for themselves. So it doesn’t have to be an authority that says “this is safe, this is good, stamp of approval” — each person can weigh for themselves what works for them.</p>
-<p>I think the way that we’re going about building AI systems today is very concentrated, and it’s partly the legacy way, because we didn’t have real-world data and experience. The only way to advance AI was in a silo, in a vacuum. But today is a different time to build, where we can actually learn a lot from the capabilities, tensions, and limitations in the real world, and use that data and information to steer the direction of research. This enables people to think for themselves.</p>
-<p>Often people will ask me about ChatGPT and the impact of all of that. Of course it’s magnificent from a technology perspective, but I think the most important impact of ChatGPT in the public consciousness is that everyone kind of understands what it is by interacting with it, versus being told what AI can do and what its capabilities and limitations are.</p>
-</section>
-<section id="ch-what-moment-demands" class="level3">
-<h3 class="anchored" data-anchor-id="ch-what-moment-demands"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=854s">0:14:14 — What the moment demands of a leader</a></h3>
-<p><strong>Emily Chang:</strong> What do you think this moment demands of a leader, and should we trust the leaders in power right now?</p>
-<p><strong>Mira Murati:</strong> I think everyone should have the tools and information to make these decisions for themselves. Ideally, the structure of governance and decision-making should not hinge on one person. There should be checks and balances. I think it’s very important who is working on the systems, and the character of people. But I do think the conversation gets too wrapped up there, and not enough on thinking more broadly about checks and balances in the system — because even people who are well-intentioned can make mistakes, and they can misestimate the consequences of making a call.</p>
-<p>So morality is not everything. You have to think about actual decision-making structures, and transparency, and governance. These are all complicated things. And to get as many people involved as possible, you actually have to share the knowledge. You have to share tools. This is part of the reason why we’ve taken a more open approach with our lab.</p>
-</section>
-<section id="ch-tandem-bike" class="level3">
-<h3 class="anchored" data-anchor-id="ch-tandem-bike"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=948s">0:15:48 — Building Thinking Machines: the tandem bike</a></h3>
-<p><strong>Emily Chang:</strong> So that was my next question — how is everything that you’ve learned shaping what you’re building at Thinking Machines, and how you’re building it, and the culture that you want to create?</p>
-<p><strong>Mira Murati:</strong> I have very high conviction that the way to continue building frontier AI systems is to bring people along, and to have humans in the loop. Actually, “having humans in the loop” doesn’t quite describe it, because it sounds like a checkpoint where we’re signing off on something and then you’re good to go.</p>
-<p><em>It’s more like creating systems that are not just autonomously advancing and leaving civilization behind, but are more like a tandem bike where both people are pedaling.</em> When you’re going up a hill, maybe whoever is stronger is pedaling harder, but both hands are on the wheel.</p>
-<p>And that’s quite important, because that’s a different system — a system designed for collaboration. That’s what we’re trying to build with Thinking Machines.</p>
-<p>I think it’s quite differentiated, and I hope that it will increase the level of agency that people have, and also help us steer the research direction toward creating outputs that are more value-aligned. <em>So you also get <a href="https://en.wikipedia.org/wiki/AI_alignment">alignment</a> as a result of this approach</em>, in addition to usefulness — actually creating technologies that are useful in the real world.</p>
-</section>
-<section id="ch-war-for-talent" class="level3">
-<h3 class="anchored" data-anchor-id="ch-war-for-talent"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1059s">0:17:39 — The war for talent</a></h3>
-<p><strong>Emily Chang:</strong> You’ve hired a lot of top talent. We’ve seen reports of nine-figure deals. There have also been some high-profile departures. How would you describe the war for talent? How brutal is it?</p>
-<p><strong>Mira Murati:</strong> It’s definitely a big part of building a frontier AI lab — having the right people, people who have the competence to do it but are also aligned with your overall mission, conviction, what you’re trying to achieve. I wouldn’t call it a war, because that might mean that the highest bidder wins. For the most part, people working in this field genuinely care about advancing the field. Now, it is an absolutely crazy time, and a lot of it is unprecedented. It’s incredibly intense to build a frontier AI lab from scratch during such competitive times. That leads to a lot of uncertainty, unpredictability, some of the volatility that we’ve seen. But when you’re trying to compress progress into such a short amount of time, things that happen in other startups over the course of ten years, five years — both good and bad — are going to happen in the course of a few months, or a year. Part of what we’re seeing is contextualized in that: just compressing the amount of progress that’s happening. And whenever you have something good, something bad will come with it, so you have to balance the two.</p>
-<p>People leave for different reasons — maybe their passion evolves for what they want to work on. The high compensation numbers capture the imagination of people because obviously they’re very big, but I do think that for some of the most sought-after people, that’s not the main story.</p>
-<p>There is a lot that goes on here, and it is very intense to build a company from scratch, let alone a frontier AI lab. So that’s part of the challenges and suffering of building a company and doing anything zero to one.</p>
-</section>
-<section id="ch-jobs-agency" class="level3">
-<h3 class="anchored" data-anchor-id="ch-jobs-agency"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1228s">0:20:28 — Jobs, dystopia, and agency</a></h3>
-<p><strong>Emily Chang:</strong> <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Dario Amodei</a> has <a href="https://www.axios.com/2025/05/28/ai-jobs-white-collar-unemployment-anthropic">predicted mass white-collar job loss</a>. Sam, though, recently walked back some of his predictions about a jobs apocalypse. Where do you think the industry is being too pessimistic, and too optimistic? What is Mira Murati’s vision for the future?</p>
-<p><strong>Mira Murati:</strong> Predicting a dystopia or a utopia, to me, feels very simplified, because the truth is we actually have a lot of agency in how we build this technology — in the tools that we’re building, in how we’re deploying it. It’s not a predestined outcome.</p>
-<p>There are certainly risks; we all understand the potential for greatness that comes with building frontier AI systems, and that’s why we’re working on them. There’s been a lot of talk around the uncertainty and the downsides, and I agree with a lot of these risks. Perhaps where I might disagree, or take a different path, is that I think we have a lot of agency.</p>
-<p><em>This period of time, where both humans and AI systems have their hands on the wheel and we can collaborate, is a very important time to get right.</em> And the more that we can reduce the discontinuity that comes from new capabilities and huge changes in capabilities, the better. This is why we took this approach with Thinking Machines, and why the company exists.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> Dario Amodei, CEO of Anthropic, warned in May 2025 that AI could eliminate up to half of all entry-level white-collar jobs within one to five years and push unemployment to 10–20%. The “Sam” who walked back jobs-apocalypse predictions is Sam Altman of OpenAI.</p>
-</div>
-</div>
-</section>
-<section id="ch-humans-in-loop" class="level3">
-<h3 class="anchored" data-anchor-id="ch-humans-in-loop"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1335s">0:22:15 — Will humans always be in the loop?</a></h3>
-<p><strong>Emily Chang:</strong> So you say the goal is to keep humans in the loop. But is there ever a point where humans don’t need to be in the loop — and then what happens?</p>
-<p><strong>Mira Murati:</strong> It is possible. It’s more about aligning at that point — aligning intent and aligning values. But if you reduce progress to removing humans from this loop of development already now, then I see very little future possibility that we can get this right when AI systems are even more capable.</p>
-<p>So I think the more likely path, and the more durable path, to advance AI in a way that enables and advances civilization, is by keeping humans in the loop for as long as we can, and really making sure that this period is actually very meaningful.</p>
-</section>
-<section id="ch-competition" class="level3">
-<h3 class="anchored" data-anchor-id="ch-competition"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1420s">0:23:40 — Killer instinct and competition</a></h3>
-<p><strong>Emily Chang:</strong> You’ve raised a lot of money. There are great expectations. If anything’s clear from the last few months in AI news, it’s that there’s some cutthroat competition out there. Do you think you have that killer instinct to take on OpenAI and Anthropic and Meta and Google and China and <a href="https://x.ai/">X</a> — it’s a competitive world.</p>
-<p><strong>Mira Murati:</strong> It is extremely competitive. And yeah, we did raise a lot of money. We’re proud of that, but that’s not any big accomplishment — we didn’t set out to break some sort of record. It’s really what you do with that.</p>
-<p>We’re not a normal company, and so you do need a lot of capital in order to build the infrastructure, the foundations of science, and all that’s required to actually have a claim at building frontier AI systems that are differentiated. So that part in itself is not unique.</p>
-<p>In terms of killer instinct — that’s not really what motivates me. I think there’s actually a lot of room. We’re building a technology that has infinite potential, and it’s going to be hard to capture all of that potential. What motivates me is really capturing part of that potential — creating useful things in the world, bringing the technology into the world in a way that’s useful and increases human agency and advances our civilization.</p>
-<p>There is healthy competition, and competition is good — it creates better products and better technologies for people. It raises the bar in many ways. I respect a lot of the companies that are doing this. But my motivation, day to day, when I wake up in the morning — I am not thinking about how…</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> Thinking Machines Lab raised about $2 billion in a seed round led by Andreessen Horowitz at a reported $12 billion valuation (July 2025), with investors including Nvidia, AMD, Cisco, and Jane Street — one of the largest seed rounds on record.</p>
-</div>
-</div>
-</section>
-<section id="ch-the-preview" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-preview"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1544s">0:25:44 — The preview, and resisting short-term pressure</a></h3>
-<p><strong>Emily Chang:</strong> You’ve said you plan to release a preview later this year. How far along are you? And with all of these other companies going public, do you think they’ll be distracted and you’ll have a little more room to run?</p>
-<p><strong>Mira Murati:</strong> We’re on our own path. Of course, the competition is fierce and we have to move quickly, but it’s important to balance that with durable, long-term progress. I care a lot about the decisions that we make today being good for our long-term success, and that’s something that I really try to instill in the team day to day. There is a lot of detail here with how you build the team, how you build the infrastructure, and really resisting the short-term pressures. In some cases you do have to embrace the pressure. But for us, this is just a first step — showcasing the interaction models and making it more concrete what it is that we think about and care about. I expect the next few months to show increased capabilities on the model side, more products in this direction, and to make it more obvious — really letting the technology and the products speak for themselves.</p>
-</section>
-<section id="ch-success" class="level3">
-<h3 class="anchored" data-anchor-id="ch-success"><a href="https://www.youtube.com/watch?v=A_jIpryR5js&amp;t=1636s">0:27:16 — Success beyond wildest expectations</a></h3>
-<p><strong>Emily Chang:</strong> So a Thinking Machine succeeds beyond your wildest expectations. What exists then?</p>
-<p><strong>Mira Murati:</strong> It is extremely difficult to predict the future. But I’d say the most important thing would be to create a future where, regardless of how many hours of work we do day to day or week to week, we feel a sense of agency, a sense of dignity, and possibility about the future. I hope we’ll continue to advance the capabilities that will enable a lot of progress, and that we’ll do it in a way that will keep us hopeful and with a sense of possibility that we can drive about the future.</p>
-<p><strong>Emily Chang:</strong> Well, here’s to less impossibility, and…</p>
-<hr>
-</section>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<p><strong>Related posts</strong></p>
-<ul>
-<li><a href="../../posts/20260512-interaction-models/">Interaction Models: Training Real-Time Collaboration into the Model</a> — my earlier writeup of Thinking Machines Lab’s research-preview announcement, covering the multi-stream, micro-turn training design that Murati previews here from the founder’s side.</li>
-</ul>
-<p><strong>Talk and source</strong></p>
-<ul>
-<li><a href="https://www.youtube.com/watch?v=A_jIpryR5js">Thinking Machines’ Murati on AI’s Next Chapter</a> — Bloomberg Live, June 4, 2026 (28 min). Mira Murati interviewed by Emily Chang at Bloomberg Tech 2026, San Francisco.</li>
-</ul>
-<p><strong>People</strong></p>
-<ul>
-<li><a href="https://en.wikipedia.org/wiki/Mira_Murati">Mira Murati</a> — co-founder and CEO of Thinking Machines Lab; former CTO of OpenAI (May 2022–September 2024) and interim CEO during the November 2023 board crisis.</li>
-<li><a href="https://en.wikipedia.org/wiki/Emily_Chang_(journalist)">Emily Chang</a> — Bloomberg journalist; the interviewer.</li>
-<li><a href="https://en.wikipedia.org/wiki/Sam_Altman">Sam Altman</a> — CEO of OpenAI.</li>
-<li><a href="https://en.wikipedia.org/wiki/Helen_Toner">Helen Toner</a> — former OpenAI board member, quoted in the interview.</li>
-<li><a href="https://en.wikipedia.org/wiki/Dario_Amodei">Dario Amodei</a> — CEO of Anthropic.</li>
-</ul>
-<p><strong>Companies and products</strong></p>
-<ul>
-<li><a href="https://thinkingmachines.ai/">Thinking Machines Lab</a> — <a href="https://thinkingmachines.ai/blog/interaction-models/">interaction models</a>.</li>
-<li><a href="https://openai.com/">OpenAI</a> — <a href="https://openai.com/chatgpt/">ChatGPT</a>, <a href="https://openai.com/index/hello-gpt-4o/">GPT-4o</a>, <a href="https://openai.com/o1/">o1</a>.</li>
-<li><a href="https://www.anthropic.com/">Anthropic</a>, <a href="https://deepmind.google/">Google DeepMind</a>, <a href="https://ai.meta.com/">Meta AI</a>, <a href="https://x.ai/">xAI</a>.</li>
-</ul>
-<p><strong>Concepts</strong></p>
-<ul>
-<li><a href="https://en.wikipedia.org/wiki/Artificial_general_intelligence">Artificial general intelligence</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Tools_for_Thought">Tools for thought</a></li>
-<li><a href="https://en.wikipedia.org/wiki/AI_alignment">AI alignment</a></li>
-</ul>
-<p><strong>Reference</strong></p>
-<ol type="1">
-<li><a id="ref-1"></a>Jackall, Robert. <em>Moral Mazes: The World of Corporate Managers</em>. New York: Oxford University Press, 1988.</li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260512-interaction-models/">Interaction Models: Training Real-Time Collaboration into the Model</a>: the technical writeup of the multi-stream, micro-turn training design Murati previews here from the founder’s side.</li>
-<li><a href="../../posts/20260603-greg-brockman/">Greg Brockman on the Founding of OpenAI and the 72 Hours That Nearly Ended It</a>: the November 2023 board crisis told from the other principal’s side, and the autonomy-first path Murati declines but Brockman champions.</li>
-<li><a href="../../posts/20260608-ai-cult-exposed/">Karen Hao on Empire of AI: OpenAI, AGI Believers, and a New Colonialism</a>: an outside account of the OpenAI governance and mission tensions Murati frames as institutional-design failures.</li>
-<li><a href="../../posts/20260530-magnifica-humanitas/">Magnifica Humanitas: Pope Leo XIV’s Encyclical on AI</a>: the human-dignity-first stance Murati’s tandem-bike framing echoes, putting the person ahead of efficiency.</li>
-<li><a href="../../posts/20230203-ai-job-automation-augmentation/">Will AI Take Your Job? It’s Not So Simple</a>: the augmentation-vs-autonomy debate her “humans in the loop” bet is part of.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260605-interaction-model-interviews/</guid>
-  <pubDate>Fri, 05 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260605-interaction-model-interviews/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

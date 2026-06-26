@@ -23,6 +23,141 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Thu, 25 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 6(a) from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</em> (NeurIPS 2025 Datasets and Benchmarks Track) [1], <a href="https://polkirichenko.github.io/">Polina Kirichenko</a>, <a href="https://www.semanticscholar.org/author/2297128866">Mark Ibrahim</a>, <a href="https://www.semanticscholar.org/author/2256991985">Kamalika Chaudhuri</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Samuel J. Bell</a> (<a href="https://ai.meta.com/research/">FAIR</a> at Meta) introduce a 20-dataset benchmark for abstention and report that scaling doesn’t help, reasoning fine-tuning makes it worse, and a generous system prompt only partly closes the gap.</p>
+<blockquote class="blockquote">
+<p>For Large Language Models (LLMs) to be reliably deployed in both everyday and high-stakes domains, knowing when not to answer is equally critical as answering correctly. Real-world user queries, which can be underspecified, ill-posed, or fundamentally unanswerable, require LLMs to reason about uncertainty and selectively abstain — i.e., refuse to answer definitively. However, abstention remains understudied, without a systematic evaluation framework for modern LLMs. In this work, we introduce <em>AbstentionBench</em>, a large-scale benchmark for holistically evaluating abstention across 20 diverse datasets, including questions with unknown answers, underspecification, false premises, subjective interpretations, and outdated information. <em>Evaluating 20 frontier LLMs reveals abstention is an unsolved problem, and one where scaling models is of little use.</em> While recent reasoning LLMs have shown impressive results in complex problem solving, surprisingly, we find that <em>reasoning fine-tuning degrades abstention (by 24% on average)</em>, even for math and science domains on which reasoning models are explicitly trained. We find that while a carefully crafted system prompt can boost abstention in practice, it does not resolve models’ fundamental inability to reason about uncertainty. We release AbstentionBench to foster research into advancing LLM reliability.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>AbstentionBench curates 17 existing abstention-relevant datasets plus 3 new reasoning-specific ones (<a href="https://arxiv.org/abs/2110.14168">GSM8K</a>-Abstain, <a href="https://arxiv.org/abs/2311.12022">GPQA</a>-Diamond-Abstain, <a href="https://arxiv.org/abs/2009.03300">MMLU</a>-Math-Abstain — versions with the answer redacted or the question made underspecified), grouped into six scenarios in which abstaining is the correct response:</p>
+<ul>
+<li><strong>Answer Unknown</strong>: questions with no knowable answer (e.g.&nbsp;<a href="https://arxiv.org/abs/2206.04615">BIG-Bench</a> Known Unknowns, KUQ Future, KUQ Unsolved).</li>
+<li><strong>Underspecified Intent</strong>: ambiguous user goals (<a href="https://arxiv.org/abs/2109.06157">SituatedQA</a>/Geo, KUQ Ambiguous, <a href="https://arxiv.org/abs/2407.12043">CoCoNot</a> Incomprehensible).</li>
+<li><strong>Stale</strong>: questions whose answer has changed since training cutoff (<a href="https://arxiv.org/abs/2310.03214">FreshQA</a>, CoCoNot Temporal).</li>
+<li><strong>Underspecified Context</strong>: missing premises needed to answer (<a href="https://arxiv.org/abs/1806.03822">SQuAD 2.0</a>, <a href="https://arxiv.org/abs/2105.03011">QASPER</a>, ALCUNA, WorldSense, MediQ, GPQA-Diamond-Abstain, MMLU-Math-Abstain, etc.).</li>
+<li><strong>False Premise</strong>: questions that embed a falsehood (QAQA, FalseQA, CoCoNot False Premise, KUQ False Premise).</li>
+<li><strong>Subjective</strong>: items with no factually correct answer (<a href="https://arxiv.org/abs/2307.14324">MoralChoice</a>, CoCoNot Humanizing, CoCoNot Subjective, KUQ Controversial).</li>
+</ul>
+<p>Whether a response counts as an abstention is decided by an LLM-as-judge — Llama 3.1 8B Instruct with a custom prompt adapted from <a href="https://arxiv.org/abs/2407.12043">Brahman et al.</a> Validated against human labels on a sample of responses from GPT-4o and Llama 3.1 70B, the judge agreed with the human label 88% of the time. Recall (the fraction of unanswerable items the model actually abstained on) is the headline metric, with precision and F1 reported alongside.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The headline evaluation covers ten base models — GPT-4o, o1, Gemini 1.5 Pro, Llama 3.1 {8B, 70B, 405B} Instruct, Llama 3.3 70B Instruct, Qwen 2.5 32B Instruct, Mistral 7B Instruct (v0.3), and OLMo 7B Instruct — plus two reasoning-tuned variants (s1.1 32B fine-tuned from Qwen 2.5 32B, and DeepSeek R1 Distill Llama 70B fine-tuned from Llama 3.3 70B Instruct) that allow isolating the effect of reasoning fine-tuning by holding the base architecture fixed. Three sweeps follow: model-scale (Llama 3.1 8B → 405B), post-training stage (the <a href="https://arxiv.org/abs/2411.15124">Tülu 3</a> [8] supervised fine-tuning (SFT) → direct preference optimization (<a href="https://arxiv.org/abs/2305.18290">DPO</a>) [9] → proximal policy optimization with verifiable rewards (<a href="https://arxiv.org/abs/1707.06347">PPO</a> RLVR) [10] checkpoints), and test-time reasoning budget (s1.1 token budgets of 512 → 4096).</p>
+<p>Figure 2 lays out per-model abstention recall across all 20 datasets, grouped into the six scenarios. Recall is weakest on Underspecified Context (especially MediQ, a medical-questioning benchmark) and False Premise; Subjective splits between near-zero (MoralChoice) and well above 0.5 (CoCoNot).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Across the headline runs:</p>
+<ul>
+<li><strong>No model solves abstention</strong>: the best overall model — Qwen 2.5 32B — sits around mid-recall; closed frontier models (GPT-4o, o1, Gemini 1.5 Pro) cluster near the open-weight Qwen, not above it.</li>
+<li><strong>Underspecified context and false premise are the hardest scenarios</strong>: on MediQ, recall drops near zero for every model.</li>
+<li><strong>Scaling Llama 3.1 from 8B to 405B does not improve abstention</strong>: the curve is essentially flat.</li>
+<li><strong>Post-training is mixed</strong>: SFT and DPO lift abstention recall on five of six scenarios but worsen it on underspecified context; the PPO RLVR stage is the only stage that degrades recall further.</li>
+<li><strong>Reasoning fine-tuning costs ~24% recall on average</strong>: s1.1 and DeepSeek R1 Distill both abstain less than their instruct bases, including on the reasoning-specific Abstain datasets the reasoning models were explicitly trained for.</li>
+<li><strong>Test-time scaling makes the tradeoff worse</strong>: pushing s1.1’s reasoning budget from 512 to 4096 tokens raises accuracy on GPQA / GSM8K / MMLU-Math / UMWP and lowers abstention recall in lockstep.</li>
+<li><strong>A generous system prompt boosts abstention for both standard and reasoning LLMs</strong> — enumerating scenarios where the model should not answer — without collapsing response rate on answerable questions, but the gap is not closed.</li>
+</ul>
+<p>Closed frontier models match the smaller Qwen 2.5 32B on average, and scaling Llama 3.1 from 8B to 405B leaves recall roughly flat. Per-dataset, abstention recall and response correctness correlate in different directions, so a higher-accuracy model isn’t automatically a better abstainer.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure3-4.webp" class="img-fluid figure-img" data-lightbox-src="figure3-4-full.png"></p>
+<figcaption>Figures 3 and 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>SFT and DPO add recall on most scenarios; PPO RLVR uniquely subtracts. Response accuracy improves at every stage. The verifiable-reward signal in RLVR teaches the model to commit to an answer, against abstaining when it should.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Reasoning-fine-tuned variants (s1.1, DeepSeek R1 Distill) lose abstention vs their instruction bases across both the full 20-dataset suite and the reasoning-only subset. The hatched overlay on the red bars in Panel (b) shows that letting the LLM judge consider the reasoning chain in addition to the final answer recovers most of the lost recall — the model is hedging heavily in chain-of-thought — but the model’s final answer still commits. The qualitative example in Panel (c): on a UMWP item, s1.1 hallucinates “$1576” as Edric’s monthly salary inside its chain and emits a confident wrong numeric answer.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure6.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>As s1.1’s reasoning budget grows from 512 to 4096 tokens, accuracy on GPQA-Diamond, GSM8K, MMLU-Math, and UMWP rises and abstention recall on the same datasets falls in lockstep.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure7.webp" class="img-fluid figure-img" data-lightbox-src="figure7-full.png"></p>
+<figcaption>Figure 7 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In Panel (a), the hatched overlay on each bar shows the additional abstention recall the LLM judge picks up when it inspects both the reasoning chain and the final answer. On the reasoning-specific datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain) the hatched portion dwarfs the solid bar — final-answer-only scoring catches ~5–10% recall, chain-aware scoring nearly maxes it out at ~85–95%. The reasoning models <em>are</em> expressing uncertainty in chain-of-thought; they just don’t carry it through to the final answer. Panel (b): a system prompt enumerating refuse-to-answer scenarios boosts abstention for Llama 3 8B, DeepSeek R1, and s1.1 without closing the gap.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/figure8.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 8 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Neither paper isolates domain from training</strong>: <a href="../../posts/20260522-metacognition-atlas/">Cacioli’s 33-model atlas</a> [3] finds Formal Reasoning the hardest <a href="https://arxiv.org/abs/2009.03300">MMLU</a> [7] domain to monitor in 27 of 33 models, including families with very different post-training pipelines from Tülu 3’s RLVR (Gemma, the GPT-OSS series). AbstentionBench shows the Tülu RLVR stage specifically degrades abstention recall. The first is consistent with the domain being intrinsically hard; the second with training making it worse. Cross-family per-domain abstention recall is the missing measurement.</li>
+<li><strong>No “abstain” action in the RLVR reward</strong>: the paper hypothesizes the verifiable-reward signal is what degrades abstention (§4.2). Concretely, recipes like <a href="https://arxiv.org/abs/2501.12948">DeepSeek-R1</a> [5] and <a href="https://arxiv.org/abs/2501.19393">s1</a> [6] reward picking a correct final answer and have no abstain action — the gradient has no path toward “I don’t know” when the gold label is unanswerable. The clean test: add abstain to the reward and re-train. If the degradation vanishes, the fix is recipe-level.</li>
+<li><strong>Signal in chain, ignored at answer</strong>: Figure 8(a) shows chain-aware scoring catches ~85–95% of abstention recall on reasoning-specific datasets, where final-answer-only scoring catches ~5–10%. The model hedges in chain-of-thought, then commits in the final answer anyway. The paper calls this a “fundamental inability to reason about uncertainty”; mechanically it’s a missing gate between an internal signal and the emitted answer. <a href="../../posts/20260522-metacognitive-harness/">Cao et al.’s test-time metacognitive harness</a> [2] is that gate, externalizing the post-solve judgment-of-learning (JOL) signal as a routing decision with no model changes required.</li>
+<li><strong>Same “must answer” collapse from training or inference</strong>: AbstentionBench shows the Tülu RLVR stage drops abstention recall by ~24% (Figure 5c, training time). <a href="../../posts/20260522-compliance-trap/">The compliance trap</a> [4] shows compliance-forcing <em>prompt instructions</em> drop accuracy by up to 30.2 points (inference time, factorially isolated from threat content). <a href="https://arxiv.org/abs/2212.08073">Constitutional AI</a> [11] training is the only known immunity. Same kind of pressure, two stages of the model lifecycle, similar magnitude. Typical RLVR-trained models exposed to compliance-forcing prompts in deployment should show the worst of both.</li>
+</ul>
+<p><strong>Followup:</strong> <a href="../../posts/20260527-prompted-vs-trained-cot-abstention/">Prompted vs.&nbsp;Trained Chain-of-Thought on Abstention</a> reads AbstentionBench against its closest precursor (Madhusudhan et al., COLING 2025), walks two apparent disagreements, and proposes three experiments that would clarify the picture.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://polkirichenko.github.io/">Kirichenko, P.</a>, <a href="https://www.semanticscholar.org/author/2297128866">Ibrahim, M.</a>, <a href="https://www.semanticscholar.org/author/2256991985">Chaudhuri, K.</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Bell, S. J.</a> “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038). <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Cao, Q.</a>, <a href="https://www.semanticscholar.org/author/2108111686">Wang, Y.</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Qin, P.</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Zhang, S.</a>, and <a href="https://pengtaoxie.github.io/">Xie, P.</a> “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></p></li>
+<li><p><a id="ref-3"></a><a href="https://scholar.google.com/citations?user=L3xQLp0AAAAJ">Cacioli, J.-P.</a> “Domain-level metacognitive monitoring in frontier LLMs: A 33-model atlas.” <em>arXiv preprint</em> (arXiv:2605.06673), April 21, 2026. <a href="https://arxiv.org/abs/2605.06673" class="uri">https://arxiv.org/abs/2605.06673</a></p></li>
+<li><p><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=iNctquYAAAAJ">Kumar, R.</a> “The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure.” <em>arXiv preprint</em> (arXiv:2605.02398), May 14, 2026. <a href="https://arxiv.org/abs/2605.02398" class="uri">https://arxiv.org/abs/2605.02398</a></p></li>
+<li><p><a id="ref-5"></a>DeepSeek-AI. “DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2501.12948), January 22, 2025. <a href="https://arxiv.org/abs/2501.12948" class="uri">https://arxiv.org/abs/2501.12948</a></p></li>
+<li><p><a id="ref-6"></a><a href="https://muennighoff.github.io/">Muennighoff, N.</a>, <a href="https://yangzhou02.github.io/">Yang, Z.</a>, <a href="https://wjshi.github.io/">Shi, W.</a>, <a href="https://xiangli.ac.cn/">Li, X. L.</a>, <a href="https://profiles.stanford.edu/fei-fei-li">Fei-Fei, L.</a>, <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a>, <a href="https://www.cs.washington.edu/people/faculty/lsz">Zettlemoyer, L.</a>, <a href="https://cs.stanford.edu/~pliang/">Liang, P.</a>, <a href="https://candes.su.domains/">Candès, E.</a>, and <a href="https://thashim.github.io/">Hashimoto, T.</a> “s1: Simple test-time scaling.” <em>arXiv preprint</em> (arXiv:2501.19393), January 31, 2025. <a href="https://arxiv.org/abs/2501.19393" class="uri">https://arxiv.org/abs/2501.19393</a></p></li>
+<li><p><a id="ref-7"></a><a href="https://people.eecs.berkeley.edu/~hendrycks/">Hendrycks, D.</a>, Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D., and Steinhardt, J. “Measuring Massive Multitask Language Understanding.” <em>ICLR 2021</em> (arXiv:2009.03300). <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></p></li>
+<li><p><a id="ref-8"></a>Lambert, N., Morrison, J., Pyatkin, V., Huang, S., Ivison, H., Brahman, F., Miranda, L. J. V., Liu, A., Dziri, N., Lyu, S., Gu, Y., Malik, S., Graf, V., Hwang, J. D., Yang, J., Bras, R. L., Tafjord, O., Wilhelm, C., Soldaini, L., Smith, N. A., Wang, Y., Dasigi, P., and Hajishirzi, H. “Tulu 3: Pushing Frontiers in Open Language Model Post-Training.” <em>arXiv preprint</em> (arXiv:2411.15124), November 22, 2024. <a href="https://arxiv.org/abs/2411.15124" class="uri">https://arxiv.org/abs/2411.15124</a></p></li>
+<li><p><a id="ref-9"></a>Rafailov, R., Sharma, A., Mitchell, E., Ermon, S., Manning, C. D., and Finn, C. “Direct Preference Optimization: Your Language Model is Secretly a Reward Model.” <em>NeurIPS 2023</em> (arXiv:2305.18290). <a href="https://arxiv.org/abs/2305.18290" class="uri">https://arxiv.org/abs/2305.18290</a></p></li>
+<li><p><a id="ref-10"></a>Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and Klimov, O. “Proximal Policy Optimization Algorithms.” <em>arXiv preprint</em> (arXiv:1707.06347), July 20, 2017. <a href="https://arxiv.org/abs/1707.06347" class="uri">https://arxiv.org/abs/1707.06347</a></p></li>
+<li><p><a id="ref-11"></a><a href="https://yuntaobai.com/">Bai, Y.</a>, <a href="https://www.linkedin.com/in/saurav-kadavath/">Kadavath, S.</a>, Kundu, S., <a href="https://www.amandaaskell.com/">Askell, A.</a>, Kernion, J., Jones, A., Chen, A., Goldie, A., Mirhoseini, A., McKinnon, C., Chen, C., <a href="https://www.catherineolsson.com/">Olsson, C.</a>, <a href="https://colah.github.io/">Olah, C.</a>, Hernandez, D., Drain, D., <a href="https://deepganguli.com/">Ganguli, D.</a>, Li, D., Tran-Johnson, E., <a href="https://ethanperez.net/">Perez, E.</a>, Kerr, J., Mueller, J., Ladish, J., Landau, J., Ndousse, K., Lukosuite, K., Lovitt, L., Sellitto, M., Elhage, N., Schiefer, N., Mercado, N., DasSarma, N., Lasenby, R., Larson, R., Ringer, S., Johnston, S., Kravec, S., El Showk, S., Fort, S., Lanham, T., Telleen-Lawton, T., Conerly, T., Henighan, T., Hume, T., <a href="https://cims.nyu.edu/~sbowman/">Bowman, S. R.</a>, Hatfield-Dodds, Z., Mann, B., <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Amodei, D.</a>, Joseph, N., McCandlish, S., Brown, T., and <a href="https://sites.krieger.jhu.edu/jared-kaplan/">Kaplan, J.</a> “Constitutional AI: Harmlessness from AI Feedback.” <em>arXiv preprint</em> (arXiv:2212.08073), December 15, 2022. <a href="https://arxiv.org/abs/2212.08073" class="uri">https://arxiv.org/abs/2212.08073</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260522-compliance-trap/">The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure</a>: the inference-time analog of this paper’s training-time finding — compliance-forcing prompts drop accuracy by up to 30.2 points, the same “must answer” collapse the RLVR stage produces.</li>
+<li><a href="../../posts/20260523-triage-metacognitive-control/">TRIAGE: Evaluating Prospective Metacognitive Control in LLMs Under Resource Constraints</a>: reproduces this paper’s reasoning-fine-tuning penalty inside a single architecture family, where the reasoning-trained model detects far fewer unsolvable items.</li>
+<li><a href="../../posts/20260522-metacognitive-harness/">LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</a>: supplies the missing gate this paper identifies, externalizing the post-solve uncertainty signal so it reaches the final answer instead of staying buried in chain-of-thought.</li>
+<li><a href="../../posts/20260522-metacognition-atlas/">Domain-Level Metacognitive Monitoring in Frontier LLMs: A 33-Model Atlas</a>: finds Formal Reasoning the hardest domain to monitor, the domain-side complement to this paper’s training-side account of why abstention degrades.</li>
+<li><a href="../../posts/20260527-prompted-vs-trained-cot-abstention/">Prompted vs.&nbsp;Trained Chain-of-Thought on Abstention: Reading Two Studies Together</a>: the direct followup, reading AbstentionBench against its closest precursor and proposing experiments to resolve their apparent disagreements.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/</guid>
+  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Pentagon Releases Second Batch of UFO Videos and First-Hand Testimony</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1267,114 +1402,6 @@
   <guid>https://benjaminhan.net/posts/20260516-reflexion/</guid>
   <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260516-reflexion/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Large Language Models Cannot Self-Correct Reasoning Yet</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260516-cannot-self-correct/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-cannot-self-correct/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Analysis of the changes in answers after two rounds of self-correction. <em>No Change</em>: The answer remains unchanged; <em>Correct <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Incorrect</em>: A correct answer is changed to an incorrect one; <em>Incorrect <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Correct</em>: An incorrect answer is revised to a correct one; <em>Incorrect <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Incorrect</em>: An incorrect answer is altered but remains incorrect. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Large Language Models Cannot Self-Correct Reasoning Yet</em> [1] (<a href="https://iclr.cc/Conferences/2024">ICLR 2024</a>), <a href="https://jeffhj.github.io/">Jie Huang</a>, <a href="https://xinyun-chen.github.io/">Xinyun Chen</a>, <a href="https://swarooprm.github.io/">Swaroop Mishra</a>, <a href="https://stevenzheng.github.io/">Huaixiu Steven Zheng</a>, <a href="https://www.adamsyu.com/">Adams Wei Yu</a>, Xinying Song, and <a href="https://dennyzhou.github.io/">Denny Zhou</a> (Google DeepMind + UIUC) argue that <em>intrinsic self-correction</em> — where a model revises its own reasoning answer with no external signal about correctness — does not improve and often degrades performance on reasoning benchmarks.</p>
-<blockquote class="blockquote">
-<p>Large Language Models (LLMs) have emerged as a groundbreaking technology with their unparalleled text generation capabilities across various applications. Nevertheless, concerns persist regarding the accuracy and appropriateness of their generated content. A contemporary methodology, self-correction, has been proposed as a remedy to these issues. Building upon this premise, this paper critically examines the role and efficacy of self-correction within LLMs, shedding light on its true potential and limitations. Central to our investigation is the notion of <em>intrinsic self-correction, whereby an LLM attempts to correct its initial responses based solely on its inherent capabilities, without the crutch of external feedback</em>. In the context of reasoning, our research indicates that <em>LLMs struggle to self-correct their responses without external feedback, and at times, their performance even degrades after self-correction</em>. Drawing from these insights, we offer suggestions for future research and practical applications in this field.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The paper isolates <em>intrinsic</em> self-correction by stripping out the external verifier that prior self-correction work relied on. In the <strong>oracle setting</strong> (used by RCI [2] and Reflexion [3] in their reported evaluations), the loop has access to the gold-label answer:</p>
-<ol type="1">
-<li>Model generates an answer.</li>
-<li>Compare it to the ground truth (the oracle).</li>
-<li>If correct, stop. If wrong, prompt the model for a critique, generate a revision, return to step 2.</li>
-</ol>
-<p>The oracle is doing two jobs at once: it’s a stopping condition (don’t keep revising correct answers) and a trigger for revision (only revise when wrong). In the <strong>intrinsic setting</strong>, both jobs go away. The same model produces the initial answer, then is prompted to review and revise it without any external check, and has to decide on its own whether the answer needs further work. The evaluation runs on three reasoning datasets — GSM8K [10] (grade-school math), CommonSenseQA [11] (multiple-choice commonsense), and HotpotQA [12] (multi-hop QA) — across GPT-3.5-Turbo (<code>gpt-3.5-turbo-0613</code>), GPT-4, GPT-4-Turbo (<code>gpt-4-1106-preview</code>), and <code>Llama-2-70b-chat</code> [4]. Each round of self-correction costs two additional model calls (review, then revision), so two rounds bring the total per question to five.</p>
-<p>The paper then re-examines two related claims from prior work:</p>
-<ul>
-<li><strong>Section 4</strong> revisits multi-agent debate [5], where several LLM agents propose answers and critique each other across rounds until they converge on a consensus. The paper reproduces Du et al.&nbsp;[5]’s setup on GSM8K and compares it against self-consistency [6] [6] — generating multiple independent samples and majority-voting — at the <em>same total response budget</em>.</li>
-<li><strong>Section 5</strong> revisits Self-Refine [7] [7] <!-- crosslink-todo: /posts/20260503-self-refine/ -->, where the same LLM generates an output, critiques it, and refines based on its own critique over multiple iterations. The paper attributes Self-Refine’s reported gains on constrained generation to a sub-optimal initial prompt that the refinement loop is largely just patching.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
-<figcaption>Two GSM8K examples with GPT-3.5: a successful correction on the left, a failed one on the right where the model revises a correct answer into an incorrect one. The failure mode dominates the data. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<ul>
-<li><strong>Intrinsic self-correction degrades accuracy across every model tested.</strong> With oracle labels (Table 2 of the paper), self-correction improves modestly — GPT-3.5 on GSM8K rises from 75.9 to 84.3, GPT-4 on HotpotQA from 49.0 to 59.0. Without oracle labels, the same prompts and models <em>lose</em> accuracy. After two rounds of intrinsic self-correction, GPT-3.5 on GSM8K drops from 75.9 to 74.7. On CommonSenseQA the drop is sharper, 75.8 to 41.8. GPT-4 holds up better but still loses 6.5 points on GSM8K (95.5 → 89.0). Llama-2-70b-chat collapses, halving from 62.0 to 36.5 on GSM8K. The cover image’s Figure 1 decomposition shows why: correct → incorrect transitions outnumber incorrect → correct ones, so the loop is on average destructive.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/table2-3.png" class="img-fluid figure-img"></p>
-<figcaption><em>Table 2</em> (top): Results of GPT-3.5 and GPT-4 on reasoning benchmarks with oracle labels. <em>Table 3</em> (bottom): Results of GPT-3.5 and GPT-4 on reasoning benchmarks with intrinsic self-correction. Tables 2 and 3 from the paper [1].</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>Multi-agent debate underperforms self-consistency at matched budget.</strong> With three agents over two rounds of debate, the system uses nine total responses and reaches 83.0 on GSM8K. Self-consistency with nine responses reaches 88.2 with the same model. At every matched budget, simple majority voting beats the debate protocol. The paper concludes that what looks like critique is in practice a noisier form of consensus.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/table7.png" class="img-fluid figure-img"></p>
-<figcaption><em>Table 7</em>: Results of multi-agent debate and self-consistency. Table 7 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The RL follow-up.</strong> Two follow-ups from this same group at Google DeepMind reframe the negative result rather than overturn it. <a href="../../posts/20260512-score/">SCoRe</a> [8] trains Gemini 1.0 Pro and 1.5 Flash via multi-turn RL to actually self-correct on MATH, gaining 15.6 points on top of the base model — explicitly citing this paper as the problem statement. The o1-style training paradigm builds correction into the chain-of-thought RL signal itself. The conclusion of <em>Cannot Self-Correct Reasoning Yet</em> is essentially that prompting alone cannot induce self-correction in models that were not trained for it; the field has since shown that the right RL objective can.</li>
-<li><strong>The oracle-label confound is the methodological core.</strong> The paper’s most reusable contribution is naming the evaluation issue: RCI [2] [2] and Reflexion [3] [3] <!-- crosslink-todo: /posts/20260503-reflexion/ --> let the loop terminate based on whether the answer was correct, which leaks ground truth into the evaluation. Once you remove that signal, the loop runs without a stop condition and tends to drift. This generalizes: any test-time loop that uses the gold answer to decide when to halt is implicitly conditioning on it. The same issue surfaces in <a href="../../posts/20260512-lets-verify-step-by-step/">process reward model evaluation</a>, where a strong external verifier carries most of the signal that gets attributed to the generator.</li>
-<li><strong>Production loops have implicit signals.</strong> Real systems usually carry external signals that the paper’s “no oracle” definition excludes: format checks, runnable code, type errors, schema violations, factual lookups against retrieval. Reflexion [3] [3] <!-- crosslink-todo: /posts/20260503-reflexion/ -->, for instance, uses an environment reward (test pass/fail, task success). The paper’s negative result is for the strict version where the model has nothing to go on but its own prior; that is the version closest to “talking to yourself,” which is also the version least likely to converge.</li>
-<li><strong>Multi-agent debate as ensembling.</strong> Section 4’s finding that multi-agent debate underperforms self-consistency at matched response budget [5][6] has been replicated repeatedly since, across the multi-agent literature, including <a href="../../posts/20250802-mast-multi-agent-failures/">the MAST taxonomy of multi-agent failure modes</a> [9]. Stripped of training, much of what looks like agent collaboration reduces to weighted voting on independent samples. What matters is the sampling budget, not the protocol.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://jeffhj.github.io/">Huang, J.</a>, <a href="https://xinyun-chen.github.io/">Chen, X.</a>, <a href="https://swarooprm.github.io/">Mishra, S.</a>, <a href="https://stevenzheng.github.io/">Zheng, H. S.</a>, <a href="https://www.adamsyu.com/">Yu, A. W.</a>, Song, X., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em>, arXiv:2310.01798, October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-<li><a id="ref-2"></a>Kim, G., <a href="https://www.ics.uci.edu/~pfbaldi/">Baldi, P.</a>, and <a href="https://www.andrew.cmu.edu/user/smcaleer/">McAleer, S.</a> “Language Models can Solve Computer Tasks.” <em>NeurIPS</em>, arXiv:2303.17491, March 30, 2023. <a href="https://arxiv.org/abs/2303.17491" class="uri">https://arxiv.org/abs/2303.17491</a></li>
-<li><a id="ref-3"></a><a href="https://noahshinn.com/">Shinn, N.</a>, Cassano, F., Berman, E., Gopinath, A., <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a> “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS</em>, arXiv:2303.11366, March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
-<li><a id="ref-4"></a>Touvron, H., Martin, L., Stone, K., et al.&nbsp;“Llama 2: Open Foundation and Fine-Tuned Chat Models.” <em>arXiv preprint</em> (arXiv:2307.09288), July 18, 2023. <a href="https://arxiv.org/abs/2307.09288" class="uri">https://arxiv.org/abs/2307.09288</a></li>
-<li><a id="ref-5"></a><a href="https://yilundu.github.io/">Du, Y.</a>, <a href="https://people.csail.mit.edu/lishuang/">Li, S.</a>, <a href="https://groups.csail.mit.edu/vision/torralbalab/">Torralba, A.</a>, <a href="https://web.mit.edu/cocosci/josh.html">Tenenbaum, J. B.</a>, and <a href="https://www.mordatch.com/">Mordatch, I.</a> “Improving Factuality and Reasoning in Language Models through Multiagent Debate.” <em>arXiv preprint</em> (arXiv:2305.14325), May 23, 2023. <a href="https://arxiv.org/abs/2305.14325" class="uri">https://arxiv.org/abs/2305.14325</a></li>
-<li><a id="ref-6"></a><a href="https://xuezhiwang.github.io/">Wang, X.</a>, Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR</em>, arXiv:2203.11171, March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
-<li><a id="ref-7"></a><a href="https://madaan.github.io/">Madaan, A.</a>, <a href="https://niket.tandon.info/">Tandon, N.</a>, Gupta, P., Hallinan, S., <a href="https://luyug.github.io/">Gao, L.</a>, <a href="https://sarahwie.github.io/">Wiegreffe, S.</a>, <a href="https://urialon.cswp.cs.technion.ac.il/">Alon, U.</a>, <a href="https://nouhadziri.github.io/">Dziri, N.</a>, Prabhumoye, S., <a href="https://www.cs.cmu.edu/~yiming/">Yang, Y.</a>, Gupta, S., Majumder, B. P., Hermann, K., <a href="https://wellecks.com/">Welleck, S.</a>, Yazdanbakhsh, A., and <a href="https://allenai.org/team/peterc">Clark, P.</a> “Self-Refine: Iterative Refinement with Self-Feedback.” <em>NeurIPS</em>, arXiv:2303.17651, May 25, 2023. <a href="https://arxiv.org/abs/2303.17651" class="uri">https://arxiv.org/abs/2303.17651</a></li>
-<li><a id="ref-8"></a><a href="https://aviralkumar2907.github.io/">Kumar, A.</a>, <a href="https://vincentzhuang.github.io/">Zhuang, V.</a>, <a href="https://agarwl.github.io/">Agarwal, R.</a>, Su, Y., et al.&nbsp;“Training Language Models to Self-Correct via Reinforcement Learning.” <em>ICLR</em>, arXiv:2409.12917, September 19, 2024. <a href="https://arxiv.org/abs/2409.12917" class="uri">https://arxiv.org/abs/2409.12917</a></li>
-<li><a id="ref-9"></a>Cemri, M., Pan, M., Yang, S., Agrawal, L. A., Chopra, B., Tiwari, R., <a href="https://people.eecs.berkeley.edu/~keutzer/">Keutzer, K.</a>, Parameswaran, A., <a href="https://people.eecs.berkeley.edu/~klein/">Klein, D.</a>, Ramchandran, K., <a href="https://cs.stanford.edu/~matei/">Zaharia, M.</a>, <a href="https://people.eecs.berkeley.edu/~jegonzal/">Gonzalez, J.</a>, and <a href="https://people.eecs.berkeley.edu/~istoica/">Stoica, I.</a> “Why Do Multi-Agent LLM Systems Fail?” <em>arXiv preprint</em> (arXiv:2503.13657), March 17, 2025. <a href="https://arxiv.org/abs/2503.13657" class="uri">https://arxiv.org/abs/2503.13657</a></li>
-<li><a id="ref-10"></a>Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., and Schulman, J. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
-<li><a id="ref-11"></a>Talmor, A., Herzig, J., Lourie, N., and Berant, J. “CommonsenseQA: A Question Answering Challenge Targeting Commonsense Knowledge.” <em>NAACL 2019</em> (arXiv:1811.00937), November 2, 2018. <a href="https://arxiv.org/abs/1811.00937" class="uri">https://arxiv.org/abs/1811.00937</a></li>
-<li><a id="ref-12"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W. W., Salakhutdinov, R., and Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600), September 25, 2018. <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260516-llm-self-correction-arc/">Can LLMs Reliably Self-Correct Their Own Reasoning?</a>: the 3-paper arc that places this negative result between Self-Refine’s proposal and Reflexion’s external-signal fix.</li>
-<li><a href="../../posts/20260512-score/">Training Language Models to Self-Correct via Reinforcement Learning (SCoRe)</a>: the same group’s RL follow-up that cites this paper as its problem statement and shows training, not prompting, can induce self-correction.</li>
-<li><a href="../../posts/20260516-self-refine/">Self-Refine: Iterative Refinement with Self-Feedback</a>: the intrinsic-refinement claim Section 5 here re-examines and attributes largely to a weak initial prompt.</li>
-<li><a href="../../posts/20260516-reflexion/">Reflexion: Language Agents with Verbal Reinforcement Learning</a>: the verbal-feedback method whose oracle-label evaluation this paper isolates as the confound behind reported gains.</li>
-<li><a href="../../posts/20260512-lets-verify-step-by-step/">Let’s Verify Step by Step</a>: the same pattern where a strong external verifier provides the signal otherwise credited to the generator.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260516-cannot-self-correct/</guid>
-  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260516-cannot-self-correct/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
