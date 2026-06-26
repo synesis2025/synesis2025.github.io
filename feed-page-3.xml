@@ -23,6 +23,103 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Fri, 26 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Robin: A Multi-Agent System That Ran the Whole Discovery Loop</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260606-robin-multi-agent-scientific-discovery/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260606-robin-multi-agent-scientific-discovery/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-robin-multi-agent-scientific-discovery/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Robin runs the discovery loop end to end: given a target disease it generates hypotheses and selects therapeutic candidates, the literature agents Crow and Falcon search the literature, a human runs the wet-lab experiment, and Finch analyzes the returned data to inform the next round. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>A multi-agent system for automating scientific discovery</em> [1] (<em>Nature</em>, May 2026), <a href="https://scholar.google.com/citations?user=dlWmbncAAAAJ">Ali Essam Ghareeb</a> and <a href="https://www.semanticscholar.org/author/2372457795">Benjamin Chang</a> (co-first authors), jointly supervised by <a href="https://scholar.google.com/citations?user=47fQG30AAAAJ">Andrew D. White</a>, <a href="https://scholar.google.com/citations?user=8ASHV6EAAAAJ">Michaela M. Hinks</a>, and <a href="https://scholar.google.com/citations?user=yGKwWGEAAAAJ">Samuel G. Rodriques</a>, with nine co-authors from <a href="https://www.futurehouse.org/">FutureHouse</a>, the University of Oxford, and Fordham University, introduce <em>Robin</em>, a system of bird-named agents that runs an experimental-biology project end to end: it reads the literature, proposes hypotheses, designs experiments, and analyzes the data that comes back.</p>
+<blockquote class="blockquote">
+<p>Scientific discovery is driven by the iterative process of observation, hypothesis generation, experimentation, and data analysis. Despite recent advancements in applying artificial intelligence to biology, no system has yet automated all these stages. Here, we introduce <em>Robin, the first multi-agent system capable of fully automating both hypothesis generation and data analysis for experimental biology</em>. By integrating literature search agents with data analysis agents, Robin can generate hypotheses, propose experiments, interpret experimental results, and generate updated hypotheses, achieving a semi-autonomous approach to scientific discovery. By applying this system, we were able to identify promising therapeutic candidates for <em>dry age-related macular degeneration (dAMD)</em>, the major cause of blindness in the developed world. Robin proposed enhancing retinal pigment epithelium phagocytosis as a therapeutic strategy, and identified and confirmed in vitro efficacy for <em>ripasudil and KL001</em>. <em>Ripasudil is a clinically-used Rho kinase (ROCK) inhibitor that has never previously been proposed for treating dAMD</em>. To elucidate the mechanism of ripasudil-induced upregulation of phagocytosis, Robin then proposed and analyzed a follow-up RNA-seq experiment, which revealed upregulation of <em>ABCA1, a lipid efflux pump and possible novel target</em>. All hypotheses, experimental directions, data analyses, and data figures in the main text of this report were produced by Robin. As the first AI system to autonomously discover and validate novel therapeutic candidates within an iterative lab-in-the-loop framework, Robin establishes a new paradigm for AI-driven scientific discovery.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>Robin coordinates three specialized bird-named agents, with a human running the wet-lab steps in between. It is semi-autonomous by design: humans execute the experiments and review the ranked candidates, and every hit is treated as a hypothesis that still needs standard pre-clinical and clinical validation.</p>
+<ul>
+<li><strong>The agents are split by job.</strong> Crow and Falcon are literature-search agents — Crow runs concise searches, Falcon deep ones — with access to the scientific literature, clinical-trial reports, and the <a href="https://platform.opentargets.org/">Open Targets Platform</a>. Finch is the data-analysis agent, writing and running its own code in a Jupyter notebook to analyze flow-cytometry and RNA sequencing (RNA-seq) data. Robin is not a single model: Crow and Falcon run on OpenAI’s o4-mini to synthesize what they retrieve, while Anthropic’s Claude 3.7 Sonnet serves as the ranking judge and as Finch’s base model.</li>
+<li><strong>The loop.</strong> Given only a disease name, Robin uses Crow to propose candidate mechanisms, each paired with an in vitro model to test it, ranks those reports, and runs the top one as its assay (a lab test that measures a specific biological activity). Falcon then evaluates drug candidates, ranked by the strength of the scientific rationale, the pharmacological profile, and the quality of the supporting literature. Ranking is pairwise: the LLM judge compares reports two at a time (round-robin for 25 or fewer, otherwise 300 sampled pairs), and a <a href="https://en.wikipedia.org/wiki/Bradley–Terry_model">Bradley-Terry-Luce model</a> — the standard way to turn pairwise win/loss records into a single strength score per item — produces the ranking. A human runs the top picks in the lab, Finch analyzes the returned data, and Robin interprets the result to seed the next round.</li>
+<li><strong>Consensus over many analysis runs.</strong> Because reading biological data is ambiguous and the agents are stochastic, Finch runs several independent analysis trajectories and a meta-analysis reconciles them into a consensus before Robin acts on it.</li>
+<li><strong>Throughput.</strong> Robin analyzed 551 papers in about 30 minutes against an estimated 540 hours for a human, roughly a 200-fold reduction over running the workflow by hand.</li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The team pointed Robin at dry AMD as a proof of concept.</p>
+<ul>
+<li><strong>Robin picked a phagocytosis assay and ran the screen.</strong> From an initial review of 151 papers it proposed boosting retinal pigment epithelium (RPE) phagocytosis and chose that assay over four alternatives (Figure 2a), then read about 400 more papers to rank 30 drug candidates. The assay doses cells, adds pH-sensitive (pHrodo) beads, and reads uptake by flow cytometry (2b); Finch wrote the gating code to isolate live single cells (2c–e) and scored each drug’s fold-change in fluorescence against a DMSO (solvent) control, where the Rho-kinase (ROCK) inhibitor Y-27632 came out significant (2f). <em>Plainly: the cells that keep the retina clean normally swallow up debris; Robin bet that helping them do more of it would treat the disease, built a dish test for that swallowing, and found a compound (Y-27632) that boosted it.</em></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-robin-multi-agent-scientific-discovery/figure2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>A follow-up RNA-seq experiment pointed at ABCA1.</strong> To explain why Y-27632 worked, Robin proposed sequencing treated RPE cells. Finch’s differential-expression analysis found a 3-fold upregulation of <em>ABCA1</em>, a lipid efflux pump (Figure 3b), agreed across most of its analysis trajectories (3c), with gene-ontology (GO) enrichment in actin-filament organization, small-GTPase signaling, and autophagy (3d) — consistent with a cytoskeletal route to the phagocytic boost. <em>Plainly: to learn why that compound helped, Robin read which genes the treated cells switched on, and a fat-transport gene called ABCA1 stood out — hinting that the cells’ internal scaffolding is what changed.</em></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-robin-multi-agent-scientific-discovery/figure3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Ripasudil outperformed Y-27632 and validated in primary cells.</strong> In a second round Robin proposed ripasudil, a ROCK inhibitor approved for glaucoma in Japan and never before proposed for dAMD (Figure 4a). It raised phagocytosis 1.89-fold over DMSO (4b) and was more potent than Y-27632 in a dose-response (4c). Re-screening in stem-cell-derived primary human RPE confirmed both as hits, ripasudil again the stronger (4d–e), alongside KL001, a circadian-clock modulator. <em>Plainly: next Robin proposed ripasudil, an existing glaucoma drug, which worked even better and kept working in real human cells — as did KL001, a drug that acts on the body clock.</em></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-robin-multi-agent-scientific-discovery/figure4.jpg" class="img-fluid figure-img" data-lightbox-src="figure4-full.jpg"></p>
+<figcaption>Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Ablations confirmed the literature search mattered.</strong> Stripping the retrieval out from under Crow and Falcon — leaving the same o4-mini model to answer on its own — drove hallucinated references from 0% to 44.5%, and OpenAI’s Deep Research, given the same prompt, generated candidates that produced no hits in the assay [1]. <em>Plainly: when the same model had to work without Robin’s literature tools, it invented fake references and its drug picks failed — the careful reading was what made the difference.</em></li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Robin and Co-Scientist refine hypotheses in opposite directions.</strong> <a href="../../posts/20260606-co-scientist-scientific-discovery/">Google’s Co-Scientist</a> [2] improves its hypotheses internally and scales their quality with more test-time compute, but the quality signal is the model scoring its own debates — an internal-consistency measure, with experimental validation left to humans. Robin improves them externally instead, feeding Finch’s analysis of real wet-lab data back into the next round. The improvement is anchored to different things: for Co-Scientist, a self-evaluated score; for Robin, experimental results. By the Robin paper’s own framing, analyzing those results and re-hypothesizing on them is the step prior systems, Co-Scientist among them, did not automate [1].</p></li>
+<li><p><strong>Grounding the literature search is what mattered.</strong> Robin’s own ablations are the clearest evidence: strip the retrieval out and the references hallucinate, swap in a general-purpose research agent and the drug picks all miss in the assay. Co-Scientist relied on the same move: its Reflection agent called external search to hold implausible hypotheses down. Two independently built systems converging on literature-grounded retrieval over a bare general model is the quietly useful part.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Ghareeb, Ali Essam, Chang, Benjamin, Mitchener, Ludovico, Yiu, Angela, Szostkiewicz, Caralyn J., Shved, Dmytro, Gyimesi, Gavin J., Laurent, Jon M., Wright, Samantha M., Razzak, Muhammed T., White, Andrew D., Finnemann, Silvia C., Hinks, Michaela M., Rodriques, Samuel G. “A multi-agent system for automating scientific discovery.” <em>Nature</em> (DOI 10.1038/s41586-026-10652-y), May 19, 2026. <a href="https://doi.org/10.1038/s41586-026-10652-y" class="uri">https://doi.org/10.1038/s41586-026-10652-y</a></li>
+<li><a id="ref-2"></a>Gottweis, Juraj, Weng, Wei-Hung, Daryin, Alexander, Tu, Tao, et al.&nbsp;“Accelerating scientific discovery with Co-Scientist.” <em>Nature</em> (DOI 10.1038/s41586-026-10644-y), May 19, 2026. <a href="https://doi.org/10.1038/s41586-026-10644-y" class="uri">https://doi.org/10.1038/s41586-026-10644-y</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20200223-antibiotic-halicin/">A Deep Learning Approach to Antibiotic Discovery</a>: the AI-drug-discovery precedent Robin extends, from screening molecules to an agent that forms the hypothesis, designs the assay, and validates dry-AMD candidates.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: the failure modes, including weak verification and inter-agent misalignment, that Robin’s consensus trajectories, human-in-the-loop checks, and retrieval grounding are built to avoid.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: treats the agent topology itself as the thing to optimize, where Robin instead fixes a hand-designed topology and grounds it in wet-lab feedback.</li>
+<li><a href="../../posts/20260508-import-ai-455-automating-ai-research/">Are AI Systems About to Start Building Themselves?</a>: the case for automating the research pipeline, with Robin a data point on the science side that automates hypothesis search and analysis while humans run the lab.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260606-robin-multi-agent-scientific-discovery/</guid>
+  <pubDate>Sat, 06 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260606-robin-multi-agent-scientific-discovery/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Co-Scientist: Gemini Agents That Generate and Rank Hypotheses</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260606-co-scientist-scientific-discovery/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2207,33 +2304,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260530-magnifica-humanitas/</guid>
   <pubDate>Sat, 30 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260530-magnifica-humanitas/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>My 101st Parkrun, 45F and a VO2max Rebound</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260530-my-101-parkrun/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260530-my-101-parkrun/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>My 101st parkrun today – 45F in the morning!</p>
-<p>Getting faster now, but still a long way to climb back to sub 22’ since injuries. My VO2max recovered from rock bottom 45.3 to today’s 48.6 in two weeks though!</p>
-<p><img src="https://benjaminhan.net/posts/20260530-my-101-parkrun/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260530-my-101-parkrun/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260530-my-101-parkrun/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260530-my-101-parkrun/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116665493976464225">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260530-my-101-parkrun/</guid>
-  <pubDate>Sat, 30 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260530-my-101-parkrun/image-3.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

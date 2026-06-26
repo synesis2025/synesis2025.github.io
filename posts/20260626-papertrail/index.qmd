@@ -1,0 +1,77 @@
+---
+title: "PaperTrail: A Claim-Evidence Interface for Grounding Provenance in LLM-based Scholarly Q&A"
+description: "A CHI 2026 interface decomposes LLM answers and their source papers into matched claims and evidence, and in a 26-researcher study it lowered trust in the answers without changing how much people relied on them."
+author: synesis
+date: "2026-06-26"
+image: cover.jpg
+---
+
+![PaperTrail's three-stage pipeline for argument-grounded provenance: paper PDFs and the user-LLM dialog feed an Argument Extraction Engine that decomposes both into claims and evidence, producing the claim-evidence annotations that drive the interface. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In *PaperTrail* [[1]](#ref-1) (CHI 2026), [Anna Martin-Boyle](https://scholar.google.com/citations?user=xTgRJhcAAAAJ) and [Harmanpreet Kaur](https://harmankaur.com/) (University of Minnesota), with [Cara Leckey](https://dblp.org/pid/430/9043.html) and [Martha Brown](https://dblp.org/pid/431/0379.html) at NASA Langley Research Center, build an interface that decomposes both an LLM's answer and its source papers into claims and evidence, and find that showing researchers this finer-grained provenance lowered their trust in the answers without changing how much they relied on them.
+
+> Large language models (LLMs) are increasingly used in scholarly question-answering (QA) systems to help researchers synthesize vast amounts of literature. However, these systems often produce subtle errors (e.g., unsupported claims, errors of omission), and current provenance mechanisms like source citations are not granular enough for the rigorous verification that scholarly domain requires. To address this, we introduce PaperTrail, a novel interface that *decomposes both LLM answers and source documents into discrete claims and evidence, mapping them to reveal supported assertions, unsupported claims, and information omitted from the source texts*. We evaluated PaperTrail in a within-subjects study with 26 researchers who performed two scholarly editing tasks using PaperTrail and a baseline interface. Our results show that *PaperTrail significantly lowered participants' trust compared to the baseline*. However, *this increased caution did not translate to behavioral changes, as people continued to rely on LLM-generated scholarly edits to avoid a cognitively burdensome task*. We discuss the value of claim-evidence matching for understanding LLM trustworthiness in scholarly settings, and present design implications for cognition-friendly communication of provenance information.
+
+## Methods
+
+PaperTrail's backend turns both the source papers and the LLM's answer into matched claim-evidence pairs through a three-stage pipeline, then the frontend renders the matches so a reader can see what is supported, what is unsupported, and what the answer left out:
+
+- **Stage 1, paper-level extraction (offline).** Each source paper is preprocessed into structured claims and supporting evidence.
+- **Stage 2, answer-level extraction (real-time).** The LLM's generated answer is decomposed into its own claims and evidence as it is produced.
+- **Stage 3, claim-evidence matching (real-time).** Similarity search retrieves the candidate paper claims relevant to the question, and an LLM aligns the answer's claims with them, marking each supported, unsupported, or an omission, plus an overall claim-coverage indicator.
+
+The choice of method is fixed per step at design time, judged by whether a user query is available to guide relevance, whether the step runs offline or in real time, and how much text it must process. In the evaluated system, Stage 1 extracts paper claims with an LLM and attaches their evidence by similarity, Stage 2 decomposes the answer with an LLM, and Stage 3 does claim-level retrieval: similarity search over the corpus of individual paper claims pulls the candidates relevant to the question, and an LLM then aligns the answer's claims with them. The paper calls Stage 3 RAG, but the unit retrieved is a single claim and the LLM only selects among the candidates, so nothing is generated.
+
+The claim-extraction backend is validated offline by scoring its extracted claims against two reference datasets: SciClaimHunt [[2]](#ref-2), the development set (precision 0.69, recall 0.62, F1 0.65), and BioClaimDetect [[3]](#ref-3), a human-annotated out-of-distribution test of whether the pipeline generalizes (precision 0.63, recall 0.88, F1 0.73). The lower precision on BioClaimDetect comes from the pipeline splitting sentences into finer atomic claims than the human annotators did, which manual inspection confirmed were valid claims rather than extraction errors.
+
+![The Argument Extraction Engine and the extraction methods used at each pipeline stage. The three methods (top) are ordered by computational cost and capability: similarity-based (cheapest), RAG-based, and LLM-based (most capable). Stage 1 extracts paper claims and evidence offline, Stage 2 decomposes the LLM answer in real time, and Stage 3 matches answer claims to paper claims. Figure 2 from the paper [[1]](#ref-1).](figure2.webp){fig-align="center" data-lightbox-src="figure2-full.png"}
+
+![PaperTrail's interface (left) against the baseline (right). PaperTrail shows interactive answer claims that, when clicked, highlight the matched paper claim and an overall claim-coverage readout. The baseline shows only a sentence-level source highlight that opens the verbatim passage. Figure 3 from the paper [[1]](#ref-1).](figure3.webp){fig-align="center" data-lightbox-src="figure3-full.png"}
+
+## Results
+
+The evaluation has two parts: an offline check that the backend extracts and matches claims well enough to trust, and a within-subjects user study with 26 researchers who completed two scholarly editing tasks, once with PaperTrail and once with a baseline that offers only sentence-level source highlighting. The study tracked three primary measures and two secondary ones, then ran Spearman correlations across them:
+
+- **Trust** (primary): subjective trust in the LLM, on the validated 1–7 TXAI (Trust in Explainable AI) scale [[4]](#ref-4), asked after each task.
+- **Reliance** (primary): a behavioral measure of how much of the LLM's draft survived into the final text, computed as 1 minus the normalized token-level Levenshtein edit distance [[5]](#ref-5) between the draft and the participant's final text. A value of 1 means no edits (full reliance), lower means more rewriting.
+- **Confidence** (primary): subjective confidence in the edits made and in the final text, averaged over two 1–7 items.
+- **Usability** (secondary): the SUPR-Q usability questionnaire [[6]](#ref-6).
+- **Cognitive load** (secondary): the raw NASA-TLX (Task Load Index) workload score [[7]](#ref-7).
+
+The findings, by the paper's result sections:
+
+- **§6.1, primary measures: trust fell, reliance and confidence held.** PaperTrail significantly lowered trust in the LLM's answers (mean 4.22 to 3.68, p = .015, d = 0.44), the intended effect of laying out unsupported claims and omissions. Reliance barely moved (0.73 vs 0.75, p = .313), and confidence held (4.27 vs 4.05, p = .525). Readers grew more skeptical without accepting any less.
+- **§6.2, secondary measures: usability dropped, effort did not.** Perceived usability was significantly lower with PaperTrail (5.05 to 4.48, p = .026, d = 0.52), while self-reported cognitive load was flat (4.10 vs 4.12, p = .838) and behavioral effort showed no significant change in clicks (8.26 vs 12.47, p = .137) or messages (3.67 vs 4.08, p = .438). The finer provenance felt harder to use without measurably raising workload.
+- **§6.3, correlation analysis: reliance decoupled from trust.** In the baseline, reliance rose with trust (r = 0.57, p < .01) and usability (r = 0.60, p < .05), so people who trusted the system more leaned on it more. With PaperTrail, that coupling vanished: reliance no longer rose with trust. The trust-behavior gap shows up here as a broken correlation. More-educated participants also reported lower confidence with PaperTrail (r = -0.41, p < .05), a sign they were more sensitive to the provenance laid out for them.
+- **The authors call this a trust-behavior gap, and they surmise why.** Verifying claims is slow, deliberate work, and under load people fall back on fast, automatic acceptance, so a richer provenance display can feel like understanding without prompting an actual check. The most-cited barrier in participant feedback was time: the roughly 20-minute task plus slow system latency left no room to verify, and several participants said the time pressure made them lean on the LLM more rather than less. The authors' reframe is from measuring trust to measuring trustworthiness, with claim-evidence matching offered as one such signal.
+
+## My Notes
+
+- **The trust-behavior gap is partly the tool's fault.** It is also bad news for provenance-as-fix in general: a large literature assumes better explanations or citations will calibrate reliance, but here a strictly more informative display made people more skeptical without changing what they did. Some of that is human (automation bias under time pressure), but some is the design: PaperTrail flags which claims are unsupported or omitted without coupling those flags to a cheaper next action, no suggested fix, no prioritized list of what to check first, no one-click correction, so noticing a problem and resolving it still cost the reader the same. The authors half-concede this, proposing two fixes: adaptive provenance that adjusts detail by context, and progressive engagement that trains verification skill over time.
+
+- **PaperTrail catches the two errors the companion schema paper flags most.** Those are unsupported claims and omissions. That paper [[8]](#ref-8) catalogs how scholarly-QA answers go wrong, and PaperTrail decomposes both the answer and its sources into claims to flag exactly those. The two were released together but neither cites the other, so the pairing is mine: one names the failure modes, the other is built to catch them.
+
+- **PaperTrail reuses ExpertQA's grading primitive for reading.** [ExpertQA](/posts/20260609-expertqa/) [[9]](#ref-9) split answers into claims paired with evidence so experts could grade attribution after the fact. PaperTrail runs the same decomposition in real time and puts it in front of the reader. The same claim-evidence unit works for both scoring and reading LLM answers, not just for benchmarking.
+
+- **Omissions are what a citation checker misses.** Source-citation tools verify that what was said is supported. PaperTrail also flags what the source contained but the answer dropped, the same recall-side failure that [rubric-coverage benchmarks](/posts/20260625-researchqa/) [[10]](#ref-10) measure. Putting omission detection in a live editing interface is the novel move, since omission is precisely the error a reader cannot catch by checking the citations that are present.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Martin-Boyle, A.](https://scholar.google.com/citations?user=xTgRJhcAAAAJ), [Leckey, C. A. C.](https://dblp.org/pid/430/9043.html), [Brown, M. C.](https://dblp.org/pid/431/0379.html), [Kaur, H.](https://harmankaur.com/). "PaperTrail: A Claim-Evidence Interface for Grounding Provenance in LLM-based Scholarly Q&A." *CHI 2026* (arXiv:2602.21045), February 24, 2026. <https://arxiv.org/abs/2602.21045>
+2. <a id="ref-2"></a>Kumar, S., Sharma, A., Khincha, S. H., Shroff, G., Singh, S. R., Mishra, R. "SciClaimHunt: A Large Dataset for Evidence-Based Scientific Claim Verification." *arXiv preprint* (arXiv:2502.10003), February 14, 2025. <https://arxiv.org/abs/2502.10003>
+3. <a id="ref-3"></a>Achakulvisut, T., Bhagavatula, C., Acuna, D., Kording, K. "Claim Extraction in Biomedical Publications using Deep Discourse Model and Transfer Learning." *arXiv preprint* (arXiv:1907.00962), July 1, 2019. <https://arxiv.org/abs/1907.00962>
+4. <a id="ref-4"></a>Hoffman, R. R., Mueller, S. T., Klein, G., Litman, J. "Measures for Explainable AI: Explanation Goodness, User Satisfaction, Mental Models, Curiosity, Trust, and Human-AI Performance." *Frontiers in Computer Science* 5, 2023. <https://doi.org/10.3389/fcomp.2023.1096257>
+5. <a id="ref-5"></a>Levenshtein, V. I. "Binary Codes Capable of Correcting Deletions, Insertions, and Reversals." *Soviet Physics Doklady* 10 (8), 1966.
+6. <a id="ref-6"></a>Sauro, J. "SUPR-Q: A Comprehensive Measure of the Quality of the Website User Experience." *Journal of Usability Studies* 10 (2), 2015.
+7. <a id="ref-7"></a>Hart, S. G., Staveland, L. E. "Development of NASA-TLX (Task Load Index): Results of Empirical and Theoretical Research." *Advances in Psychology* 52, 1988. <https://doi.org/10.1016/S0166-4115(08)62386-9>
+8. <a id="ref-8"></a>Martin-Boyle, A., Humphreys, W., Brown, M., Leckey, C., [Kaur, H.](https://harmankaur.com/). "An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems." *CHI 2026* (arXiv:2602.21059), February 24, 2026. <https://arxiv.org/abs/2602.21059>
+9. <a id="ref-9"></a>[Malaviya, C.](https://chaitanyamalaviya.github.io/), [Lee, S.](https://www.linkedin.com/in/subin-lee-penn), [Chen, S.](https://sihaoc.github.io/), Sieber, E., [Yatskar, M.](https://www.seas.upenn.edu/~myatskar/), [Roth, D.](https://www.cis.upenn.edu/~danroth/). "ExpertQA: Expert-Curated Questions and Attributed Answers." *NAACL 2024* (arXiv:2309.07852), September 14, 2023. <https://arxiv.org/abs/2309.07852>
+10. <a id="ref-10"></a>Li S. Yifei, Allen Chang, [Malaviya, C.](https://chaitanyamalaviya.github.io/), [Yatskar, M.](https://www.seas.upenn.edu/~myatskar/). "ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics." *arXiv preprint* (arXiv:2509.00496), August 30, 2025. <https://arxiv.org/abs/2509.00496>
+
+## Related Posts
+
+- [ExpertQA: Expert-Curated Questions and Attributed Answers](/posts/20260609-expertqa/): the benchmark that established claim-evidence decomposition for grading attribution, the primitive PaperTrail moves into a live interface.
+- [Language Models with Conformal Factuality Guarantees](/posts/20260505-conformal-factuality/): a complementary approach that removes unsupported claims automatically rather than surfacing them for a human to judge.
+- [AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries](/posts/20240531-legal-ai-hallucinations/): another high-stakes domain where unsupported claims slip past readers who only check the citations that are present.
