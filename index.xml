@@ -22,6 +22,77 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Fri, 26 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Harness Engineering</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260626-harness-engineering/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260626-harness-engineering/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260626-harness-engineering/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Layered domain architecture with explicit cross-cutting boundaries, the rigid layering OpenAI enforces mechanically so agents can move fast without drift. Image from <a href="https://openai.com/index/harness-engineering/">OpenAI</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://github.com/lopopolo">Ryan Lopopolo</a>, writing for <a href="https://openai.com/">OpenAI</a>, reports on an experiment in <a href="https://openai.com/index/harness-engineering/">Harness Engineering: Leveraging Codex in an Agent-First World</a>: over five months a small team shipped an internal product of roughly a million lines of code with zero manually-written lines, every line produced by <a href="https://openai.com/index/introducing-codex/">Codex</a> while humans steered.</p>
+<p>What the article reports:</p>
+<ul>
+<li><p><strong>Starting from an empty repository</strong>: the first commit landed in late August 2025, and Codex generated the initial scaffold, including the <code>AGENTS.md</code> that tells agents how to work there. Over five months it grew to roughly a million lines across about 1,500 merged pull requests, with the team going from three engineers to seven at around 3.5 PRs per engineer per day. The core rule held throughout: no manually-written code.</p></li>
+<li><p><strong>Redefining the engineer’s role</strong>: early progress was slow not because Codex was incapable but because the environment was underspecified, so the job became enabling the agent. Work went depth-first, and when something failed the question was “what capability is missing, and how do we make it both legible and enforceable for the agent?” Humans interact almost entirely through prompts, and review was pushed agent-to-agent, with Codex reviewing its own changes and requesting further agent reviews in a loop until the reviewers are satisfied.</p></li>
+<li><p><strong>Making the application legible</strong>: as throughput rose, human QA capacity became the bottleneck, so the team exposed the running app to Codex. The app is bootable per git worktree, the Chrome DevTools Protocol is wired into the agent runtime, and logs and metrics are queryable via LogQL and PromQL. Prompts like “ensure service startup completes in under 800ms” become checkable, and single runs work a task for six hours or more, often overnight.</p></li>
+<li><p><strong>Repository knowledge as the system of record</strong>: one big <code>AGENTS.md</code> failed, since it crowded out the task, rotted into stale rules, and resisted mechanical checks. It became a roughly 100-line table of contents pointing into a structured <code>docs/</code> tree of design docs, plans, and references. Plans are first-class versioned artifacts, the layout supports progressive disclosure, and linters plus a recurring “doc-gardening” agent keep it current.</p></li>
+<li><p><strong>Agent legibility as the goal</strong>: the repository is optimized first for what Codex can read, on the principle that “<em>anything it can’t access in-context while running effectively doesn’t exist</em>,” so knowledge in Slack, Google Docs, or people’s heads has to be pushed into the repo. They favored “boring,” composable technologies the agent can model, and sometimes reimplemented a subset of a library, such as their own concurrency helper instead of a generic package, rather than wrap opaque upstream behavior.</p></li>
+<li><p><strong>Enforcing invariants, not implementations</strong>: a rigid layered architecture (Types → Config → Repo → Service → Runtime → UI, with cross-cutting concerns entering through Providers) is enforced mechanically by custom, agent-written linters and structural tests, alongside “taste invariants” like structured logging and file-size limits. The principle is to <em>enforce boundaries centrally and allow autonomy locally</em>, and output that doesn’t match human style is fine as long as it stays correct, maintainable, and legible to the next agent run.</p></li>
+<li><p><strong>Throughput changes the merge philosophy</strong>: with agent output far exceeding human attention, <em>the repository runs with minimal blocking merge gates</em>, short-lived pull requests, and test flakes handled by follow-up runs rather than blocking. Corrections are cheap and waiting is expensive, a tradeoff they call irresponsible at low throughput and often correct here.</p></li>
+<li><p><strong>What “agent-generated” covers</strong>: everything, including product code and tests, CI and release tooling, internal developer tools, documentation, evaluation harnesses, review comments, repository-management scripts, and dashboard definitions. Humans stay in the loop at a higher layer, prioritizing work, translating user feedback into acceptance criteria, and validating outcomes.</p></li>
+<li><p><strong>Crossing into end-to-end autonomy</strong>: from a single prompt, Codex can now validate the codebase, reproduce a reported bug, record a video of the failure, implement and validate a fix, record a second video, open a pull request, respond to feedback, remediate build failures, escalate only when judgment is required, and merge. <em>The report cautions this depends on the repository’s specific structure and tooling and should not be assumed to generalize without similar investment.</em></p></li>
+<li><p><strong>Entropy and garbage collection</strong>: full autonomy means Codex replicates existing patterns, including the bad ones, so the codebase drifts. The team used to spend a fifth of every week hand-cleaning “AI slop,” then replaced that with encoded “golden principles” and recurring cleanup agents that scan for deviations and open small refactors, treating technical debt like a high-interest loan paid down continuously.</p></li>
+<li><p><strong>What they are still unsure of</strong>: the approach has held through internal launch and adoption, but they don’t yet know how architectural coherence evolves over years in a fully agent-generated system, where human judgment matters most, or how it changes as models improve. Their summary is that <em>the discipline now shows up in the environment and feedback loops more than in the code</em>.</p></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260626-harness-engineering/devtools-loop.jpg" class="img-fluid figure-img" data-lightbox-src="devtools-loop-full.jpg"></p>
+<figcaption>Codex drives the app through the Chrome DevTools Protocol to reproduce a bug and validate its own fix in a loop. Image from <a href="https://openai.com/index/harness-engineering/">OpenAI</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260626-harness-engineering/agent-knowledge.jpg" class="img-fluid figure-img" data-lightbox-src="agent-knowledge-full.jpg"></p>
+<figcaption>What Codex can’t see doesn’t exist: knowledge in Google Docs, Slack, or people’s heads is invisible to the agent until it is encoded into the repository. Image from <a href="https://openai.com/index/harness-engineering/">OpenAI</a>.</figcaption>
+</figure>
+</div>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Two views of the same problem</strong>: this report and a source-level read of Anthropic’s Claude Code, <a href="../../posts/20260623-claude-code-design-space/">Dive into Claude Code: The Design Space of Today’s and Future AI Agent Systems</a>, emphasize different halves of the same system. OpenAI’s account is mostly about the environment the agent works in (the repository as system of record, enforced layering, agent-to-agent review), and the Claude Code read is mostly about the agent program itself (a single agent loop, the permission system, the tools it exposes). Where they meet is the bet that the real engineering lives in the structure around the model rather than the model itself, which is also why the Claude Code analysis finds the loop nearly trivial and almost all the code in the systems wrapped around it.</p></li>
+<li><p><strong>The scarce resource is human attention</strong>: the entire design treats human time and attention as the fixed constraint and reorganizes everything else around it. Legible logs, progressive-disclosure docs, a map instead of a manual: these are all ways to spend less human attention per unit of agent work. It’s the same context-engineering discipline the field has been converging on, here applied at repository scale, and it generalizes past coding to any agentic pipeline. The move from a retrieval flow to a navigable repository the agent investigates on its own is the same reframing as <a href="../../posts/20260404-filesystem-vs-rag/">Filesystems vs.&nbsp;RAG</a>.</p></li>
+<li><p><strong>The engineers moved up a layer</strong>: the headline (a million lines, zero hand-written, a tenth of the time) is the part everyone repeats, but the report is careful that the end-to-end autonomy “depends heavily on the specific structure and tooling of this repository and should not be assumed to generalize without similar investment.” Humans went from writing code to specifying intent, encoding invariants, and validating outcomes, which is the same division of labor argued in <a href="../../posts/20251124-skills-not-software-engineering/">“Skills” Are Not Software Engineering</a>: the model proposes, and a deterministic layer of linters and structural tests enforces correctness.</p></li>
+<li><p><strong>Constraints enable the speed</strong>: the team front-loaded the kind of rigid architecture you normally postpone until you have hundreds of engineers, because for agents the constraints are what allow speed without decay. The operational detail worth stealing is that the custom lint error messages are written to inject remediation instructions into the agent’s context, so <em>the guardrail doubles as a teaching signal</em>. In a human workflow these rules would feel pedantic. With agents, once encoded they apply everywhere at once.</p></li>
+<li><p><strong>Autonomous generation produces entropy</strong>: Codex replicates whatever patterns already exist, including the bad ones, so the codebase drifts. The team spent a fifth of every week hand-cleaning “AI slop” until that obviously didn’t scale, then replaced it with encoded “golden principles” and recurring cleanup agents. A million lines in five months is also a million lines no human has read line by line, and the bet is that agent-legibility plus tests substitute for that reading. Whether that holds over years is exactly what the report says it doesn’t yet know, the same gap between production and understanding that <a href="../../posts/20260422-proof-generation-vs-digestion/">Proof Generation vs Digestion</a> names for mathematics.</p></li>
+</ul>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260623-claude-code-design-space/">Dive into Claude Code: The Design Space of Today’s and Future AI Agent Systems</a>: a source-level read of how a coding agent is actually architected, the design-space view this report’s practices fit into.</li>
+<li><a href="../../posts/20251124-skills-not-software-engineering/">“Skills” Are Not Software Engineering</a>: the model-proposes, runtime-ensures-correctness split that the enforced invariants and linters here implement.</li>
+<li><a href="../../posts/20260404-filesystem-vs-rag/">Filesystems vs.&nbsp;RAG</a>: repository-as-context and “give Codex a map,” the same reframing the report’s knowledge base makes.</li>
+<li><a href="../../posts/20260422-proof-generation-vs-digestion/">Proof Generation vs Digestion</a>: production outrunning understanding, the open question behind a million unread lines.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260626-harness-engineering/</guid>
+  <pubDate>Fri, 26 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260626-harness-engineering/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260626-expert-schema-scholarly-qa/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1734,36 +1805,6 @@
   <guid>https://benjaminhan.net/posts/20260613-saturday-walk-jog/</guid>
   <pubDate>Sat, 13 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260613-saturday-walk-jog/cover.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Last Week’s Parkrun, and a Fall on Seattle’s South Side</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>Last week’s parkrun.</p>
-<p><img src="https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p>This week’s parkrun is a long story: two days ago I wanted to explore the south side of Seattle. As I just started running into the industrial district, I tripped over on the sidewalk. This is the first time I fell w/o any anticipation - I was in a zone and only realized I fell after I hit the ground! With bloody knees I still managed to finish 6.4mi.</p>
-<p>But my swollen knees today prevented me from running – so I only walked 5K. 😢</p>
-<p>I shall come back tomorrow for Long Run Sunday!</p>
-<p><img src="https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116744108043167053">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/</guid>
-  <pubDate>Sat, 13 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260613-a-fall-on-seattles-south-side/image-1.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
