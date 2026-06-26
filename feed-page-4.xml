@@ -21,7 +21,65 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 25 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 26 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Dynamic Workflows in Claude Code</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260529-dynamic-workflows-claude-code/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260529-dynamic-workflows-claude-code/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-dynamic-workflows-claude-code/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>A dynamic workflow mid-run: a Zig-to-Rust migration split into phases (Inventory, Pattern Analysis, Infrastructure, Migrate Core, Migrate App, Verify &amp; Report) with 28 of 35 subagents working in parallel across the codebase. Image from <a href="https://claude.com/blog/introducing-dynamic-workflows-in-claude-code">Claude’s blog</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://www.anthropic.com/">Anthropic</a> has <a href="https://claude.com/blog/introducing-dynamic-workflows-in-claude-code">introduced dynamic workflows</a> in <a href="https://claude.com/product/claude-code">Claude Code</a>, a research-preview feature for the tasks too big for a single pass — work you’d normally plan in quarters, done in days. What the announcement describes:</p>
+<ul>
+<li><strong>What it is.</strong> Claude writes an orchestration script that breaks a task into subtasks and fans them out across tens to hundreds of subagents running in parallel within one session, checking each result before folding it in and returning a single coordinated answer.</li>
+<li><strong>How it converges.</strong> Agents attack the problem from independent angles while other agents try to refute what they find, and the run keeps iterating until the answers agree. That redundancy-plus-refutation loop is, per the post, how a workflow “reaches results a single pass can’t.”</li>
+<li><strong>What it’s for.</strong> Codebase-wide bug hunts, profiler-guided optimization and security audits, and hardening passes (auth checks, input validation, unsafe patterns); large migrations and language ports spanning thousands of files; and high-stakes work you want checked twice, with adversarial agents trying to break the result before you see it.</li>
+<li><strong>Long-running and resumable.</strong> It is built for jobs that run for hours or days. Progress is saved as the run goes, so an interrupted job resumes instead of restarting, and because the coordination lives outside the conversation the plan holds its shape as the task grows.</li>
+<li><strong>Where it runs.</strong> Research preview in the Claude Code CLI, desktop app, and VS Code extension on Max, Team, and Enterprise (admin-enabled) plans, plus the Claude API, Amazon Bedrock, Vertex AI, and Microsoft Foundry.</li>
+<li><strong>How to start.</strong> Ask Claude to “create a workflow,” or turn on the new <code>ultracode</code> setting (the effort menu’s maximum, <code>xhigh</code>), which lets Claude decide for itself when a task warrants one. It is on by default on Max, Team, and the API, and off by default on Enterprise at launch. Anthropic warns it consumes substantially more tokens than a normal session, so the first run pauses for confirmation and admins can disable it.</li>
+</ul>
+<section id="case-study-rewriting-bun" class="level3">
+<h3 class="anchored" data-anchor-id="case-study-rewriting-bun">Case study: rewriting Bun</h3>
+<p>The announcement’s marquee example is the rewrite of <a href="https://bun.sh/">Bun</a>, the JavaScript runtime. <a href="https://github.com/Jarred-Sumner">Jarred Sumner</a> used dynamic workflows to port it from <a href="https://ziglang.org/">Zig</a> to <a href="https://www.rust-lang.org/">Rust</a>: roughly 750,000 lines of Rust, 99.8% of the existing test suite passing, eleven days from first commit to merge. One workflow mapped the right Rust lifetime for every struct field in the Zig code; the next wrote each <code>.rs</code> file as a behavior-identical port of its <code>.zig</code> counterpart, hundreds of agents in parallel with two reviewers on each file; a fix loop then drove the build and test suite until both ran clean; and an overnight workflow opened a separate PR for each unnecessary data copy it found. The post notes the result is not yet in production, so the 99.8% is a test-pass rate on a port rather than a measure of shipped software running under load.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The script makes the run inspectable.</strong> Claude writes the coordination as an explicit script instead of burying it in one long completion. So you can read the plan, the subtasks, and what each subagent was told. When a long run goes wrong, you can find the step that broke it, and you can approve or fix the plan before hundreds of agents act on it. That matters more as runs get longer and costlier to redo.</p></li>
+<li><p><strong>Convergence is not correctness.</strong> The run stops when the agents and their refuters agree, and that agreement is reported as a verified result. But they are the same base model reading the same context, so they share blind spots: wrong answers can converge as cleanly as right ones. The claim only holds if the refuters are genuinely adversarial, not just agreeable, and that is the part still to be proven.</p></li>
+<li><p><strong>Dynamic authoring replaces topology search.</strong> Earlier multi-agent work searched for good agent topologies offline (ADAS, AFlow, and <a href="../../posts/20260430-multi-agent-system-search/">MASS</a>, which found topology matters <em>least</em>, behind the prompts at both ends). Dynamic workflows have Claude write the orchestration fresh for each task. That swaps an expensive offline search for per-task generation, but the risk moves rather than vanishes: whether a generated plan beats a tuned fixed one, when a bad plan costs hours of parallel compute, is the open question.</p></li>
+<li><p><strong>It is the Ralph loop, grown up.</strong> The cheapest version of this idea is the <a href="https://ghuntley.com/ralph/">Ralph loop</a>: one agent in a <code>while true</code> shell loop, fed the same prompt until the repo looks done, with git as the only memory. Dynamic workflows keep that deterministic outer loop but let Claude write it, fan the work across parallel agents, and add agents whose job is to attack the results. The Ralph loop trusts repetition to converge; this trusts refutation. What is unproven is whether the extra machinery, and the much larger token bill, earns its keep on tasks a plain loop would have finished anyway.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: the offline topology search dynamic workflows replace with per-task authoring, cited inline here.</li>
+<li><a href="../../posts/20260529-langchain-deep-agents/">LangChain’s Deep Agents: A Batteries-Included Agent Harness</a>: a competing take on the same planning-plus-parallel-subagents pattern, packaged as a model-agnostic library rather than a Claude Code feature.</li>
+<li><a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</a>: studies the bare Ralph loop dynamic workflows grow out of, and the supervision it needs to converge.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: catalogs the failure modes a fan-out-and-refute run has to avoid, a check on the “convergence is correctness” claim.</li>
+<li><a href="../../posts/20260529-claude-code-mastery/">Claude Code Beyond the Prompt</a>: the field guide whose parallel-worktree and <code>/goal</code> habits this feature folds into the harness.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260529-dynamic-workflows-claude-code/</guid>
+  <pubDate>Fri, 29 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260529-dynamic-workflows-claude-code/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Claude Code Beyond the Prompt</title>
   <dc:creator>synesis </dc:creator>
@@ -2545,133 +2603,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260523-what-is-jepa/</guid>
   <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260523-what-is-jepa/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>TRIAGE: Evaluating Prospective Metacognitive Control in LLMs Under Resource Constraints</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260523-triage-metacognitive-control/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Triage efficiency across models and benchmarks at moderate budget (<img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>). Figure 1 from the paper [1]. Image from <a href="https://arxiv.org/abs/2605.13414">arXiv</a>.</figcaption>
-</figure>
-</div>
-<p>In <em>TRIAGE: Evaluating Prospective Metacognitive Control in LLMs under Resource Constraints</em> [1], <a href="https://scholar.google.com/citations?user=Fd1-G4YAAAAJ">Zabir Al Nazi</a> (UC Riverside) and <a href="https://scholar.google.com/citations?user=j2ElsNIAAAAJ">Shubhashis Roy Dipta</a> (UMBC) introduce a benchmark that scores 20 frontier and open-source models on whether they can plan <em>token-budget allocation</em> across a queue of problems before any of them is attempted, and find that most cannot.</p>
-<blockquote class="blockquote">
-<p>Deploying language models as autonomous agents requires more than per-task accuracy: when an agent faces a queue of problems under a finite token budget, it must decide which to attempt, in what order, and how much compute to commit to each, all before any execution feedback is available. This is the prospective form of metacognitive control studied for decades in human cognition, yet whether language models possess it remains untested. We introduce <em>TRIAGE</em>, an evaluation framework in which a model receives a task pool and a token budget calibrated to its own baseline cost, and <em>commits to a single ordered plan that jointly encodes selection, sequencing, and per-problem allocation</em>. Plans are scored against an oracle with full knowledge of the model’s solvability and cost on each problem, yielding a triage efficiency ratio on a common scale. We evaluate frontier and open-source models, with and without reasoning enabled, across competition mathematics, graduate-level science, code generation, and expert multidisciplinary knowledge, and find that <em>current language models exhibit substantial gaps in prospective metacognitive control</em>, revealing a previously unmeasured capability dimension with direct implications for resource-efficient agent deployment.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>TRIAGE operationalizes the <a href="https://en.wikipedia.org/wiki/Metamemory#Nelson_and_Narens'_metamemory_framework">Nelson &amp; Narens (1990)</a> distinction between metacognitive monitoring (judging whether a problem is solvable) and metacognitive control (acting on those judgments to allocate effort), focusing on the prospective form: every decision is committed before any task is attempted. The harness has two stages.</p>
-<p>Intuitively, the setup is a competition-style budget allocation. The model sees a list of problems with point values and a shared token budget; without trying any of them, it must choose which to attempt, in what order, and how many tokens to spend on each. The plan is then executed and scored against an oracle that knew in advance which problems were solvable for <em>this</em> model and how expensive each would be. A model that’s good at planning skips the items it can’t solve and pours its budget into the ones it can; a model that’s bad at planning chases unsolvable problems and runs out of tokens.</p>
-<p>Scoring uses a triage efficiency ratio. Let <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> be the model’s plan and <img src="https://benjaminhan.net/feed-assets/7365b8651c9bc387.svg" alt="V(\pi)" class="feed-math-inline"/> the achieved value — the sum of point values <img src="https://benjaminhan.net/feed-assets/20ab901f1c796c36.svg" alt="v_i" class="feed-math-inline"/> over problems <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> actually solved within budget. The main protocol fixes <img src="https://benjaminhan.net/feed-assets/0118800d2c7d0f60.svg" alt="v_i = 1" class="feed-math-inline"/> for every problem — uniform by design, so the planner cannot read difficulty off the point values and must infer it from problem text alone. The ratio normalizes <img src="https://benjaminhan.net/feed-assets/7365b8651c9bc387.svg" alt="V(\pi)" class="feed-math-inline"/> against two references:</p>
-<p><img src="https://benjaminhan.net/feed-assets/ff9313cc24a25835.svg" alt="\eta = \frac{V(\pi) - V_{\text{random}}}{V_{\text{oracle}} - V_{\text{random}}}" class="feed-math-inline"/></p>
-<p>where <img src="https://benjaminhan.net/feed-assets/af31c6e476458381.svg" alt="V_{\text{oracle}}" class="feed-math-inline"/> is the best feasible plan with full knowledge of each problem’s solvability and cost, and <img src="https://benjaminhan.net/feed-assets/e089d81557e05599.svg" alt="V_{\text{random}}" class="feed-math-inline"/> is the expected value of a budget-feasible plan drawn uniformly. So <img src="https://benjaminhan.net/feed-assets/1be1120c657e14f0.svg" alt="\eta = 1" class="feed-math-inline"/> matches the oracle, <img src="https://benjaminhan.net/feed-assets/dd34cc072e8a22b9.svg" alt="\eta = 0" class="feed-math-inline"/> matches uninformed random selection, and <img src="https://benjaminhan.net/feed-assets/739fda5c1ba1295c.svg" alt="\eta &lt; 0" class="feed-math-inline"/> is worse than random.</p>
-<ul>
-<li><strong>Plan.</strong> The shared budget is <img src="https://benjaminhan.net/feed-assets/fc8b8c77176cc923.svg" alt="B = \alpha \cdot B_{\text{baseline}}" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/4317422e65c3c884.svg" alt="B_{\text{baseline}}" class="feed-math-inline"/> is the model’s own measured cost on a prior baseline run and <img src="https://benjaminhan.net/feed-assets/6393857280e718e9.svg" alt="\alpha \in \{0.25, 0.5, 0.75, 1.0\}" class="feed-math-inline"/> is the budget pressure — <img src="https://benjaminhan.net/feed-assets/dc7b57c17ce0e9b7.svg" alt="\alpha = 1.0" class="feed-math-inline"/> supplies the full baseline budget (every item fits, in principle); <img src="https://benjaminhan.net/feed-assets/562919ffe9ec1521.svg" alt="\alpha = 0.25" class="feed-math-inline"/> supplies a quarter of it, forcing the planner to skip most items.</li>
-<li><strong>Execute.</strong> The plan <img src="https://benjaminhan.net/feed-assets/1ea6a2cabc810e59.svg" alt="\pi" class="feed-math-inline"/> is run in plan order under one of two regimes, yielding two scores:
-<ul>
-<li><em>Advisory</em> — each problem runs to its natural completion; the queue stops once the next item’s true cost would exceed the remaining <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>. Yields <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>.</li>
-<li><em>Enforced</em> — each problem is hard-capped at its declared <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> (over-budget attempts score zero, and <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> is still spent from <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>); the queue stops once the next item’s <img src="https://benjaminhan.net/feed-assets/c3c12f1a1c3fab26.svg" alt="a_i" class="feed-math-inline"/> would exceed the remaining <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/>. Yields <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>.</li>
-</ul></li>
-</ul>
-<p>To diagnose the source of bad plans, the framework decomposes them along two axes:</p>
-<ul>
-<li><strong>Detection</strong> asks: did the planner correctly skip the unsolvables? <em>Higher is better.</em> Formally: <img src="https://benjaminhan.net/feed-assets/414a1282c07a05ce.svg" alt="D = |U \setminus S| / |U|" class="feed-math-inline"/>, the fraction of unsolvable problems correctly excluded from the plan, where <img src="https://benjaminhan.net/feed-assets/2f90ffabbf86aaab.svg" alt="S = \{i : a_i &gt; 0\}" class="feed-math-inline"/> is the planned set and <img src="https://benjaminhan.net/feed-assets/3676ddf98403b5ad.svg" alt="U" class="feed-math-inline"/> is the set of unsolvable items.</li>
-<li><strong>Waste</strong> asks: of the tokens it did spend, how many went to lost causes? <em>Lower is better.</em> Formally: <img src="https://benjaminhan.net/feed-assets/63424a6e033ef9f7.svg" alt="W = \sum_{i \in S \cap U} a_i / \sum_{i \in S} a_i" class="feed-math-inline"/>, the fraction of allocated tokens spent on unsolvable items.</li>
-</ul>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The evaluation covers 20 model architectures: 4 standard LLMs and 16 reasoning-augmented LLMs, with each reasoning-augmented model run twice — once with extended reasoning enabled (marked <code>[ext]</code> in the heatmaps) and once without (<code>[std]</code>). Benchmarks: <a href="https://artofproblemsolving.com/wiki/index.php/AIME">AIME</a> 2024–2025, <a href="https://arxiv.org/abs/2311.12022">GPQA Diamond</a> [2], <a href="https://livecodebench.github.io/">LiveCodeBench</a> [3], and <a href="https://lastexam.ai/">Humanity’s Last Exam</a> (HLE) [4]. The cover figure at the top of the post (Figure 1 in the paper) summarizes the headline finding at <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>: solid bars are advisory <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>, hatched bars are enforced <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, and red dashed lines mark baseline accuracy. Three findings across budgets and benchmarks:</p>
-<ul>
-<li><strong>Most models plan worse than random.</strong> Both <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> are widely negative; only a handful of (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset) combinations reach positive <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> at all.</li>
-<li><strong>The advisory-vs-enforced gap is large.</strong> Models routinely declare per-problem budgets they then ignore — when allocations are merely advisory, planning skill (<img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>) is meaningfully higher than under enforcement (<img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>).</li>
-<li><strong>Reasoning-augmented modes often plan worse than standard.</strong> The <code>[ext]</code> rows in the heatmap below are systematically below the matching <code>[std]</code> rows, consistent with prior findings that reasoning training does not improve abstention behavior.</li>
-</ul>
-<p>The two heatmaps below show <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> across the full (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset) grid. The <img src="https://benjaminhan.net/feed-assets/dc7b57c17ce0e9b7.svg" alt="\alpha = 1.0" class="feed-math-inline"/> column should be read with caution: η loses resolution there because the oracle-random gap collapses (every item fits, so both oracle and random plans attempt nearly everything). The paper recommends its alternative <em>normalized regret</em> <img src="https://benjaminhan.net/feed-assets/4e7892edc9b101af.svg" alt="\tilde{R} = (V_{\text{oracle}} - V) / V_{\text{oracle}}" class="feed-math-inline"/> for that regime — bounded in <img src="https://benjaminhan.net/feed-assets/96fc4f656a64e575.svg" alt="[0, 1]" class="feed-math-inline"/> (<img src="https://benjaminhan.net/feed-assets/e404e936a6872228.svg" alt="\tilde{R} = 0" class="feed-math-inline"/> matches the oracle, <img src="https://benjaminhan.net/feed-assets/2060a3361b13d16f.svg" alt="\tilde{R} = 1" class="feed-math-inline"/> captures no value), so it stays stable when η doesn’t. Treat α=1.0 cells in the heatmaps as “metric saturated,” not “model planned well.”</p>
-<p>Figure 2 below is the <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> companion to the cover Figure 1 at the same <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/> anchor — solid bars are <img src="https://benjaminhan.net/feed-assets/6aed2e04a7e4b9f5.svg" alt="\tilde{R}_U" class="feed-math-inline"/> (advisory), hatched are <img src="https://benjaminhan.net/feed-assets/fb57592a36a60062.svg" alt="\tilde{R}_E" class="feed-math-inline"/> (enforced), red dashed lines mark baseline accuracy. The same configurations that lead in η lead in <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> (lower is better here); the bounded scale also lets you see how close models come to capturing zero value in the enforced regime, where many <img src="https://benjaminhan.net/feed-assets/fb57592a36a60062.svg" alt="\tilde{R}_E" class="feed-math-inline"/> values land near 1.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure2.png" class="img-fluid figure-img"></p>
-<figcaption>Normalized triage regret <img src="https://benjaminhan.net/feed-assets/733e5b74a0d4623c.svg" alt="\tilde{R}" class="feed-math-inline"/> across models and benchmarks at moderate budget (<img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>). Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>Returning to η in heatmap form, Figure 5 shows the advisory regime (<img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>) across all four α values:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure5.webp" class="img-fluid figure-img" data-lightbox-src="figure5-full.png"></p>
-<figcaption>Triage skill in the advisory-budget regime, <img src="https://benjaminhan.net/feed-assets/863b279070d466f8.svg" alt="\eta_U" class="feed-math-inline"/>, per (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset). Figure 5 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>Figure 6 shows the same grid for the enforced regime, <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, where per-problem allocations are binding. The pattern is markedly worse: <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> is negative for the large majority of configurations at <img src="https://benjaminhan.net/feed-assets/88abc50aff1d5e97.svg" alt="\alpha = 0.5" class="feed-math-inline"/>, with most cells deep into anti-skill territory. Across all 30 configurations tested, only Gemini 2.5 Flash (standard) achieves positive <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/> on every benchmark, and only it and Qwen 3.5 27B (standard) achieve usable enforced-regime performance on more than one.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure6.webp" class="img-fluid figure-img" data-lightbox-src="figure6-full.png"></p>
-<figcaption>Triage skill in the enforced-budget regime, <img src="https://benjaminhan.net/feed-assets/8dda90fc0a783928.svg" alt="\eta_E" class="feed-math-inline"/>, per (model, <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, dataset); color encoding identical to Figure 5. Figure 6 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>A focused detection experiment traces four models — Gemini 2.5 Flash (think), Qwen 2.5 32B, Qwen 3 32B (think), and GPT-OSS 20B (think) — through <img src="https://benjaminhan.net/feed-assets/09a33a403e620604.svg" alt="(D, W)" class="feed-math-inline"/> space on two benchmarks (GPQA-Abstain, MMLU-Math-Abstain) as the injection ratio <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/> — the fraction of the pool replaced by guaranteed-unsolvable problems drawn from <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> [7], with pool size held constant — varies from 0.25 to 1.0 (marker size grows with <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/>). Three findings:</p>
-<ul>
-<li><strong>Cluster split.</strong> Gemini 2.5 Flash and standard Qwen 2.5 32B stay near the high-<img src="https://benjaminhan.net/feed-assets/a247d4edb2cf86f8.svg" alt="D" class="feed-math-inline"/>, low-<img src="https://benjaminhan.net/feed-assets/25ad314822ebb606.svg" alt="W" class="feed-math-inline"/> corner; the two reasoning-trained models drift away from it.</li>
-<li><strong>Within-family probe.</strong> The Qwen pair is the cleanest test: at <img src="https://benjaminhan.net/feed-assets/5acec64972bb35ba.svg" alt="r = 0.25" class="feed-math-inline"/> the standard 32B detects most unsolvables (<img src="https://benjaminhan.net/feed-assets/5235c6118e6d5dd5.svg" alt="D = 0.67" class="feed-math-inline"/> on GPQA, <img src="https://benjaminhan.net/feed-assets/3f5f6965784330e3.svg" alt="D = 0.88" class="feed-math-inline"/> on MMLU-Math), while the reasoning-trained 32B at the same ratio detects far fewer (<img src="https://benjaminhan.net/feed-assets/b23f7376b819cd80.svg" alt="D = 0.08" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/5030049e6958eff9.svg" alt="D = 0.54" class="feed-math-inline"/>) — reproducing the AbstentionBench finding inside a single architecture family.</li>
-<li><strong>Mechanism gap.</strong> The paper documents the pattern but does not propose a mechanism, and explicitly hedges that the effect isn’t uniform across families (Gemini 2.5 Flash is also reasoning-augmented and retains detection across the range). The same shape — reasoning-trained models doing worse on a metacognitive task than non-reasoning siblings — also surfaces in the <a href="../../posts/20260522-compliance-trap/">Compliance Trap</a>’s “capability inversion” result (more-capable reasoning models suffer the worst degradation under compliance-forcing prompts), suggesting it isn’t an artifact of one benchmark family. A plausible mechanism appears in My Notes below.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/figure3.png" class="img-fluid figure-img"></p>
-<figcaption>Trajectories through <img src="https://benjaminhan.net/feed-assets/09a33a403e620604.svg" alt="(D, W)" class="feed-math-inline"/> space across four models and two benchmarks; marker size grows with <img src="https://benjaminhan.net/feed-assets/963519b7ee358363.svg" alt="r" class="feed-math-inline"/>, and the star marks the ideal corner. Figure 3 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>A separate budget-aware re-solve experiment probes the planning failure’s deeper layer: when the model is shown its own per-problem budget in the prompt and re-attempts the problem, accuracy lifts modestly across three tested models (Gemini 2.5 Flash +1.9pp, Kimi K2.5 +4.9pp, GLM 5.1 +8.3pp) — but compliance is poor (37%, 6%, 16% respectively). The paper’s interpretation: stating the budget in the prompt functions not as a respected constraint but as length pressure that prompts earlier commitment.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>Measures the control axis, not just monitoring.</strong> <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar’s position paper</a> [5] named three components of metacognitive learning (knowledge, planning, evaluation) and argued that today’s self-improving agents lean on hand-designed extrinsic loops rather than intrinsic ones. TRIAGE doesn’t directly fill that gap (it uses the Nelson-Narens <em>monitoring vs.&nbsp;control</em> split rather than the Liu/vdSchaar terminology), but the design is in the same spirit: scoring what the model <em>does</em> under resource constraints, not what it verbally claims to know. Within that split, <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.’s “Mostly Know”</a> [6] sits on the monitoring side (predicting per-question correctness) and <a href="../../posts/20260522-metacognitive-harness/">Cao et al.’s metacognitive harness</a> [8] sits on the test-time control side (gating retry, stop, and aggregate decisions during inference); TRIAGE adds the prospective-control corner that neither covers.</li>
-<li><strong>Pre-commitment is what makes control measurable.</strong> Retrospective measures (post-hoc confidence, abstention after a partial attempt) collapse monitoring and control because the model can adjust mid-stream. By committing the plan ex ante — before any execution feedback — TRIAGE removes that mid-stream channel and forces the model to act on its prior estimate of its own cost and solvability. The same logic generalizes: only when self-assessment is locked in <em>before</em> observing partial output can it be cleanly separated from in-stream adjustment.</li>
-<li><strong>Why do reasoning models fare worse?</strong> <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">Kirichenko et al.’s AbstentionBench</a> [7] reports the upstream finding: reasoning fine-tuning degrades abstention by roughly 24% across 20 unanswerable-question datasets. The mechanism is plausible: RLHF/RLVR rewards arriving at <em>some</em> answer, so the trained policy learns to spend tokens rather than skip. A useful follow-up would isolate whether the gap closes when the reward function explicitly prices abstention, e.g.&nbsp;by training on the TRIAGE objective itself rather than per-problem accuracy.</li>
-<li><strong>Models lack a reliable internal token-counter.</strong> Length-controlled generation has been studied for instruction-following, but those benchmarks measure verbalized length compliance for human-readable outputs, not self-imposed compute budgets. The compliance numbers above suggest the gap runs deeper: no plan can survive an executor that ignores its own allocations, and the compliance failure deepens the planning failure rather than replacing it.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><p><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=Fd1-G4YAAAAJ">Nazi, Z. A.</a>, &amp; <a href="https://scholar.google.com/citations?user=j2ElsNIAAAAJ">Roy Dipta, S.</a> “TRIAGE: Evaluating Prospective Metacognitive Control in LLMs under Resource Constraints.” <em>arXiv preprint</em> (arXiv:2605.13414), May 13, 2026. <a href="https://arxiv.org/abs/2605.13414" class="uri">https://arxiv.org/abs/2605.13414</a></p></li>
-<li><p><a id="ref-2"></a>Rein, D., Hou, B. L., Stickland, A. C., Petty, J., Pang, R. Y., Dirani, J., Michael, J., &amp; Bowman, S. R. “GPQA: A Graduate-Level Google-Proof Q&amp;A Benchmark.” <em>arXiv preprint</em> (arXiv:2311.12022), November 20, 2023. <a href="https://arxiv.org/abs/2311.12022" class="uri">https://arxiv.org/abs/2311.12022</a></p></li>
-<li><p><a id="ref-3"></a>Jain, N., Han, K., Gu, A., Li, W.-D., Yan, F., Zhang, T., Wang, S., Solar-Lezama, A., Sen, K., &amp; Stoica, I. “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>arXiv preprint</em> (arXiv:2403.07974), March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></p></li>
-<li><p><a id="ref-4"></a>Phan, L., Gatti, A., Han, Z., Li, N., et al.&nbsp;“Humanity’s Last Exam.” <em>arXiv preprint</em> (arXiv:2501.14249), January 24, 2025. <a href="https://arxiv.org/abs/2501.14249" class="uri">https://arxiv.org/abs/2501.14249</a></p></li>
-<li><p><a id="ref-5"></a>Liu, T., &amp; van der Schaar, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>ICML 2025</em> (arXiv:2506.05109). <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></p></li>
-<li><p><a id="ref-6"></a>Kadavath, S., Conerly, T., Askell, A., Henighan, T., Drain, D., Perez, E., Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></p></li>
-<li><p><a id="ref-7"></a>Kirichenko, P., Ibrahim, M., Chaudhuri, K., &amp; Bell, S. J. “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038), June 10, 2025. <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></p></li>
-<li><p><a id="ref-8"></a><a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Cao, Q.</a>, <a href="https://www.semanticscholar.org/author/2108111686">Wang, Y.</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Qin, P.</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Zhang, S.</a>, and <a href="https://pengtaoxie.github.io/">Xie, P.</a> “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></p></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: the upstream finding TRIAGE draws its unsolvable problems from and reproduces — reasoning fine-tuning degrades the model’s ability to skip lost causes.</li>
-<li><a href="../../posts/20260522-metacognitive-harness/">LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</a>: the test-time control approach TRIAGE extends, gating retry/stop/aggregate during inference, where TRIAGE adds the prospective pre-commitment corner.</li>
-<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: names the planning component TRIAGE operationalizes, scoring what the model does under resource constraints rather than what it verbally claims.</li>
-<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the monitoring-side anchor TRIAGE pairs against control, predicting per-question correctness without acting on it.</li>
-<li><a href="../../posts/20260522-compliance-trap/">The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure</a>: shares the capability-inversion result, where more-capable reasoning models do worse on a metacognitive task than their non-reasoning siblings.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260523-triage-metacognitive-control/</guid>
-  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260523-triage-metacognitive-control/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

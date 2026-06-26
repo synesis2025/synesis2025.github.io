@@ -1,0 +1,109 @@
+---
+title: "An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems"
+description: "A CHI 2026 study with NASA scientists builds a schema of 20 LLM error patterns across seven categories for scholarly question-answering, and finds that handing experts the schema helps them catch errors they would otherwise miss."
+author: synesis
+date: "2026-06-26"
+image: cover.jpg
+---
+
+![Distribution of error types across question categories: each row is a question type normalized to sum to 1, each column an error type, with darker shading marking error types that dominate a given question category. The heatmap shows that error profiles differ sharply by question type. Figure 2 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In *An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems* [[1]](#ref-1) (CHI 2026), [Anna Martin-Boyle](https://scholar.google.com/citations?user=xTgRJhcAAAAJ) and [Harmanpreet Kaur](https://harmankaur.com/) (University of Minnesota), with [William Humphreys](https://dblp.org/pid/430/8351.html), [Martha Brown](https://dblp.org/pid/431/0379.html), and [Cara Leckey](https://dblp.org/pid/430/9043.html) at NASA Langley Research Center, build a schema of how working scientists actually judge LLM answers about their own field, arguing that automated metrics miss how they assess those answers.
+
+> Large Language Models (LLMs) are transforming scholarly tasks like search and summarization, but their reliability remains uncertain. Current evaluation metrics for testing LLM reliability are primarily automated approaches that prioritize efficiency and scalability, but lack contextual nuance and fail to reflect how scientific domain experts assess LLM outputs in practice. We developed and validated a schema for evaluating LLM errors in scholarly question-answering systems that reflects the assessment strategies of practicing scientists. In collaboration with domain experts, we *identified 20 error patterns across seven categories through thematic analysis of 68 question-answer pairs*. We validated this schema through contextual inquiries with 10 additional scientists, which showed *not only which errors experts naturally identify but also how structured evaluation schemas can help them detect previously overlooked issues*. Domain experts use systematic assessment strategies, including *technical precision testing, value-based evaluation, and meta-evaluation of their own practices*. We discuss implications for supporting expert evaluation of LLM outputs, including opportunities for personalized, schema-driven tools that adapt to individual evaluation patterns and expertise levels.
+
+## Methods
+
+The study runs a retrieval-augmented QA system over scientific papers (documents are chunked, vectorized, retrieved per question, and fed to an LLM that generates a long-form answer), then examines how domain experts evaluate its output in two phases. The LLM-generated answers are the object of evaluation throughout, and the two phases use different sets of them: the Phase 1 answers became the coded data that built the schema, while in Phase 2 a fresh batch was the material experts evaluated to validate it.
+
+- **Phase 1, schema development.** Three NASA Langley scientists took part. Two posed questions about papers *they had authored* (28 in aeroacoustics, 40 in non-destructive evaluation) and the QA system generated an LLM answer to each, so the ground truth was known to the evaluator. The third wrote no questions and was kept aside to label those answers for errors independently, a perspective the authors kept unbiased by not having that expert author any of the questions. Thematic analysis of the resulting 68 question-answer pairs yielded 20 recurring error patterns, organized into seven categories. The complete schema is in [The Schema](#the-schema) below.
+- **Phase 2, schema validation.** Ten additional scientists each wrote questions about their own papers, and the system generated LLM answers that the experts evaluated in think-aloud contextual inquiries. They evaluated unaided first, then with the schema (the Phase 1 list of 20 error patterns grouped into seven categories) in hand, to test whether it helped them catch errors they had missed.
+
+Across both phases the authors collected 188 expert-posed questions and sorted them into 11 question types (a separate classification from the error schema, grouping the questions rather than the errors):
+
+- **Methodological Inquiry and Improvement**: compares approaches and asks how methods could be transferred or refined.
+- **Meta-Analysis and Contextualization**: asks about institutional motivations and synthesizes insights across multiple papers.
+- **Critical Evaluation and Validation**: probes assumptions and biases, and whether research choices were adequately justified.
+- **Application and Practical Implications**: asks how findings translate to real-world use and what tradeoffs implementation brings.
+- **Technical Details and Specifications**: asks for the parameters, equations, or configurations needed to replicate the work.
+- **Definitions and Concepts**: asks to clarify core ideas and key terms.
+- **Future Directions and Extrapolation**: looks past current findings to next steps and where the research is heading.
+- **Binary / Factual Verification**: asks to confirm or deny a discrete fact, without interpretation.
+- **External Context**: asks for knowledge beyond the paper, such as external standards or developments since publication.
+- **Numerical Analysis and Derivation**: asks the system to calculate or reason mathematically with data from the paper.
+- **Procedural Information**: asks how a study was conducted, focusing on the sequence of steps.
+
+They then mapped the error patterns against each question type (Figure 2, the cover heatmap).
+
+![An error one domain expert caught that a model developer missed: a chronological mistake about test sequences that only someone who knew the underlying work would flag. Figure 1 from the paper [[1]](#ref-1).](figure1.webp){fig-align="center" data-lightbox-src="figure1-full.png"}
+
+## The Schema
+
+The full taxonomy, for reference: 20 error patterns under seven categories, paraphrased from the paper's Tables 1 and 2 [[1]](#ref-1). Hallucinations are a single pattern broken out into seven sub-types.
+
+- **Incorrect answer**
+    - *Completely incorrect*: the answer is entirely wrong.
+    - *Partially incorrect*: a mix of right and wrong, covering basic accuracy slips, misinterpreting paper content, self-contradiction, reference confusion, and misread tables or equations.
+    - *Superfluous content*: irrelevant or unnecessary information.
+- **Hallucinations** (plausible-looking content that is fabricated or false)
+    - *Terminology*: invented or wrongly defined terms and acronyms.
+    - *Numerical data*: made-up statistics, measurements, or metrics.
+    - *Mathematical constructs*: invented equations, formulae, or relationships.
+    - *Technical content*: false technical characteristics, properties, limitations, or capabilities.
+    - *External context and world knowledge*: wrong general science or related-literature claims.
+    - *Document structure*: invented page, section, table, or figure numbers.
+    - *Citation information*: fabricated citations or parts of them (authors, dates, titles, venues, DOIs, page numbers).
+- **Incomplete answer**
+    - *Major omissions*: important content left out: an ignored section, a missed main point, an ignored paper in a multi-document question, an incomplete definition, missing references, or chronological gaps.
+    - *Lacking details*: high-level concepts present but lower-level detail missing.
+    - *Multimedia comprehension*: fails to connect formats, for example not linking a table to its caption or in-text reference.
+- **Question interpretation**
+    - *Question misinterpretation*: a wrong reading that leads to a wrong answer.
+    - *Question redirection*: answers a different question than the one asked.
+- **Synthesis issues**
+    - *Document linking failure*: can't tie information to the right document across multiple papers.
+    - *Chronological confusion*: misreads temporal relationships.
+    - *Disjointed response*: fragmented or poorly integrated, for example discussing each paper in isolation.
+    - *Source confusion*: misattributes information across papers.
+- **Formatting issues**
+    - *Verbosity*: unnecessarily wordy or repetitive.
+    - *Notation errors*: incorrect technical notation.
+    - *Language issues*: improper wording, spelling, grammar, or syntax.
+    - *Inconsistent referencing*: inconsistent in how it references content.
+- **System failures**
+    - *LLM limitations*: model-inherent issues such as limited context length, no multi-modal understanding, and no access to external libraries.
+    - *Retrieval failures*: the retriever did not supply the needed context.
+    - *Data structure issues*: internal data-organization problems leaking into outputs.
+
+## Results
+
+Because this is a qualitative HCI study rather than a leaderboard, the results are the schema itself and the evaluation behavior it exposes, validated through the two-phase design (3 experts in development, 10 in validation, all recruited through NASA Langley's internal networks).
+
+- **The schema generalizes to a second expert group.** All seven categories reappeared in Phase 2's independent coding of the 10 new experts' unprompted feedback, which suggests expert error-spotting is consistent across people rather than an artifact of the development team.
+- **Experts evaluate with structured strategies, not gut reaction.** They apply technical precision testing, value-based assessment tied to research use, and meta-evaluation of their own checking process, behavior that automated metrics do not model.
+- **The schema is also a scaffold.** Giving experts the schema during contextual inquiries turned up errors they had overlooked when evaluating unaided. The most common were hallucinated or misattributed citations, but experts also caught missing tables and figures, chronological gaps, disjointed responses, and missed main points once the inventory prompted them to look. The taxonomy does double duty as a checklist for human review.
+- **Error profiles differ by question type** (Figure 2). The 11 question types do not fail the same way, which suggests evaluation and mitigation should be differentiated by question type rather than applied uniformly.
+
+## My Notes
+
+- **This is the human-process complement to the automated-benchmark line, and it is openly skeptical of it.** Benchmarks like [ExpertQA](/posts/20260609-expertqa/) [[2]](#ref-2) and [ResearchQA](/posts/20260625-researchqa/) [[3]](#ref-3) push toward scalable automated scoring, while this paper argues those metrics are too coarse to capture how experts judge, and studies the assessment process itself. The two programs answer different questions, what a good answer should contain versus how a scientist decides whether it does, and the schema is the missing description of the second.
+
+- **Evaluators grading answers about their own papers provides strong but narrow ground truth.** Recruiting scientists to assess QA output on work they authored removes the usual annotator-knowledge gap, since they know what the correct answer is. The cost is scale and breadth: 3 experts in development and 10 in validation, all from one research center, which makes the schema's categories credible but their relative frequencies hard to generalize.
+
+- **The schema-as-scaffold result is the practically useful finding.** That structured prompts help experts catch overlooked errors matches a long line of checklist research in medicine and aviation, where externalizing tacit criteria improves detection. It points at the paper's own proposed direction: schema-driven review tools.
+
+- **Error-by-question-type echoes the cross-benchmark pattern that difficulty is not uniform.** ExpertQA found list, advice, and opinion questions hardest [[2]](#ref-2), and this paper independently finds error profiles vary by question type. The convergence across an automated benchmark and a qualitative study is the stronger signal: question type, not just domain, is a primary driver of LLM-QA difficulty.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Martin-Boyle, A.](https://scholar.google.com/citations?user=xTgRJhcAAAAJ), [Humphreys, W.](https://dblp.org/pid/430/8351.html), [Brown, M.](https://dblp.org/pid/431/0379.html), [Leckey, C.](https://dblp.org/pid/430/9043.html), [Kaur, H.](https://harmankaur.com/). "An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems." *CHI 2026* (arXiv:2602.21059), February 24, 2026. <https://arxiv.org/abs/2602.21059>
+2. <a id="ref-2"></a>[Malaviya, C.](https://chaitanyamalaviya.github.io/), [Lee, S.](https://www.linkedin.com/in/subin-lee-penn), [Chen, S.](https://sihaoc.github.io/), Sieber, E., [Yatskar, M.](https://www.seas.upenn.edu/~myatskar/), [Roth, D.](https://www.cis.upenn.edu/~danroth/). "ExpertQA: Expert-Curated Questions and Attributed Answers." *NAACL 2024* (arXiv:2309.07852), September 14, 2023. <https://arxiv.org/abs/2309.07852>
+3. <a id="ref-3"></a>Li S. Yifei, Allen Chang, [Malaviya, C.](https://chaitanyamalaviya.github.io/), [Yatskar, M.](https://www.seas.upenn.edu/~myatskar/). "ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics." *arXiv preprint* (arXiv:2509.00496), August 30, 2025. <https://arxiv.org/abs/2509.00496>
+
+## Related Posts
+
+- [ExpertQA: Expert-Curated Questions and Attributed Answers](/posts/20260609-expertqa/): the automated benchmark this study implicitly critiques, and the source of the matching question-type-difficulty finding.
+- [TruthfulQA: Are Larger LLMs More Truthful?](/posts/20230226-truthfulqa-llm-truthfulness/): an early factuality benchmark whose single-metric framing this paper argues is too coarse for how experts actually judge answers.
+- [AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries](/posts/20240531-legal-ai-hallucinations/): another domain (law) where expert-grounded error analysis exposes failures automated scoring understates.
