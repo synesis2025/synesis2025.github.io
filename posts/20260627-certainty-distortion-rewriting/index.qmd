@@ -1,0 +1,83 @@
+---
+title: "From 'May' to 'Is': Certainty Distortion in Language Model Rewriting"
+description: "A new metric finds language models inflate the expressed certainty of text they rewrite in up to 75% of cases, a bias that compounds over repeated paraphrasing."
+author: synesis
+date: "2026-06-27"
+image: cover.jpg
+---
+
+![A radiologist's hedged impression ("could be secondary to COPD") becomes a confident attribution ("is attributed to COPD") after the model paraphrases it, moving a reader from a tentative diagnostic toward a definite clinical conclusion. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *From 'May' to 'Is': Certainty Distortion in Language Model Rewriting* [[1]](#ref-1) (arXiv preprint, June 2026), [Catarina G. Belém](https://dblp.org/pid/377/3756), Shang Wu, Hongyu Yao, [Mark Steyvers](https://dblp.org/pid/47/4456), [Sameer Singh](https://sameersingh.org/), and [Padhraic Smyth](https://www.ics.uci.edu/~smyth/) (UC Irvine + MIT) show that when language models paraphrase, simplify, or summarize scientific and medical text, they tend to strengthen how confidently a claim is stated even while keeping its meaning intact, turning a hedged "may" into a flat "is."
+
+> Humans increasingly turn to Language Models (LMs) in ways that shape beliefs and drive decisions, including discussing, rewriting, and summarizing information from scientific articles, news, and medical reports. However, in these domains, where how confidently a claim is expressed matters, little is known about whether LMs faithfully preserve it. In this work, we investigate *certainty distortion in LMs, defined as meaningful changes in expressed certainty when semantic content is preserved*. We propose *an LM-based evaluation metric that is consistent with population-level judgments of certainty*. Using this metric, we characterize certainty distortion across different sizes and families of models in the context of scientific and medical communication tasks. Our results show that certainty distortion affects *up to 75% of LM outputs* and is systematically asymmetric in rewriting tasks with most LMs being *1.5-2× more likely to increase the expressed certainty than to decrease it*. These effects can compound over repeated paraphrasing: in the medical domain, claude-haiku-4-5 *increases certainty of 20% examples after a single iteration, increasing to 40% after five iterations*. Prompt-based interventions reduce overall certainty distortion but do not eliminate it. Together, these findings reveal a general bias toward inflating expressed certainty, with direct implications for users who rely on LMs in high-stakes domains.
+
+## Methods
+
+The paper defines **certainty distortion (CD)** as a genuine change in how confidently a claim is expressed when the meaning is held fixed, and splits it by direction: **CD-↑** is inflation (the rewrite is judged more certain than the source) and **CD-↓** is deflation (less certain). The hard part is measuring a subjective property at scale, since perceived certainty is a matter of human judgment rather than a fact with an answer key. The metric the paper proposes is an LM-as-judge comparison:
+
+- The judge ($\text{gpt-5.4-mini}$) sees the original text and the rewrite, presented anonymously as Text A and Text B to avoid an order or label bias.
+- It picks which one communicates the main finding with greater certainty on a 5-point scale (Clearly A, A, No clear difference, B, Clearly B), mapped to $\{-2, -1, 0, 1, 2\}$.
+- A clear shift away from zero counts as distortion, signed for direction.
+
+To check that the judge stands in for a reader, the authors run a human study and measure each annotator's agreement with the population consensus (the leave-one-out mean of the other annotators) using the [Kendall $\tau_B$](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient) rank correlation. The LM judge tracks the consensus better than the average individual annotator does ($\tau_B = 0.47$ versus $0.34$), and beats a prior BERT-based certainty estimator ($\tau_B = 0.37$, a gap of $+0.16$ in its favor). A judge that matches the human consensus more closely than individual humans match each other is a counterintuitive result, and part of it comes from how the consensus is computed rather than from the judge being genuinely better, so Figure 2 reads more favorably for the judge than a like-for-like comparison would. I come back to this in [a note below](#judge-edge-note).
+
+![Four certainty estimators ranked by how well they correlate with the human population consensus (Kendall $\tau_B$): a random baseline near zero, individual humans and a prior BERT-based estimator in the middle, and the LM judge correlating highest. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+## Results
+
+The evaluation covers two domains and four content-preserving tasks: paraphrasing, news-style rewriting, simplification, and summarization. In each case a model produces one of these rewrites from a source text, and the judge then compares its output against the original:
+
+- **Science**: **SPICED** [[2]](#ref-2), a dataset of single-sentence scientific findings, each paired with a news and a social-media version. The model rewrites the finding itself, either paraphrasing it or recasting it as a *New York Times* sentence. The paper uses the finding as the source and keeps only those whose paired news version conveys the same information, scoring at least 4 on SPICED's information matching score (an averaged human 1-to-5 rating of whether two texts state the same finding). A new set of 500 academic abstracts across five social- and life-science disciplines adds a document-level summarization task.
+- **Medicine**: the Findings sections of 800 **MIMIC-CXR** [[3]](#ref-3) radiology reports, kept only when they contain at least one hedged sentence so there is certainty to lose, where models either paraphrase or simplify the text.
+
+Five instruction-tuned models are tested: Gemini 3.1 (fl), GPT-5-nano, and Claude Haiku 4.5 as closed models, and Llama 3.3 (70B) and Qwen3 (8B) as open ones. Every output is scored with the validated LM-as-judge metric, and semantic-similarity checks confirm the rewrites preserve meaning.
+
+The main findings:
+
+- **Distortion is common.** Across tasks, average CD ranges from 30.0% (GPT-5-nano) to 49.4% (Llama 3.3 70B), and the worst single setting reaches roughly 75% (Claude Haiku 4.5 at 74.8% and Gemini 3.1 at 75.3% on news rewriting).
+- **The errors point one way.** In four of the five models, inflation outpaces deflation. The obvious confound is where the source starts: a text already stated with high certainty has little room to be inflated (a ceiling) and a very tentative one little room to be deflated (a floor), which on its own would produce a directional skew. Splitting the results by source certainty (low, medium, high) confirms that floor/ceiling pattern, but the magnitudes stay asymmetric, with models inflating uncertain sources more often than they deflate certain ones, so the bias is not just an artifact of the starting point.
+- **It builds up in medicine.** When a model rewrites its own output for up to five turns, scientific text mostly settles after the first rewrite, but radiology reports keep drifting upward: Claude Haiku 4.5 inflates 20% of examples after one turn and 40% after five.
+- **Scale, temperature, and prompting each help only partly.**
+  - **Scale**: larger models within a family distort somewhat less but still substantially (46.1–70% on SPICED, 19–27.4% on MIMIC). On news rewriting, distortion falls from 74.8% to 55.7% across the Claude family while the GPT family barely moves (44.3% to 46.1%).
+  - **Temperature**: no significant effect for most models.
+  - **Prompting**: stacking three constraints lowers paraphrase CD from 50.6% to 40.1% and news CD from 64.3% to 41.9%, but only an explicit instruction to preserve the original certainty comes close to removing the directional bias.
+
+![Directional certainty distortion rates (%) and the inflation-to-deflation ratio R, split by domain (SPICED, MIMIC) and direction (CD-↑ inflation, CD-↓ deflation). R above 1 means the model strengthens certainty more often than it weakens it. Table 2 from the paper [[1]](#ref-1).](table2.png){fig-align="center"}
+
+The ratio (column R) makes the asymmetry concrete: it is the inflation rate divided by the deflation rate (CD-↑ over CD-↓), so a value above 1 means a model strengthens certainty more often than it weakens it. Most models fall between 1.5 and 2.0, meaning they raise certainty 1.5 to 2 times as often as they lower it. Llama 3.3 is the exception, roughly even on science and actually deflating more often than it inflates on medicine (0.6), which shows the bias is a tendency across current models rather than a universal law.
+
+![Certainty distortion across up to five rewriting turns, with inflation (CD-↑) on top and deflation (CD-↓) on the bottom, for SPICED (left) and MIMIC (right). On scientific text most of the shift happens at the first turn and then flattens. On radiology reports the inflation rate keeps climbing turn over turn while deflation stays flat. Figure 4 from the paper [[1]](#ref-1).](figure4.png){fig-align="center"}
+
+## My Notes
+
+- **A different question from self-calibration**: most work on LM certainty asks whether a model's stated confidence tracks its own accuracy, the verbalized-confidence line that runs from [Language Models (Mostly) Know What They Know](/posts/20260504-kadavath-mostly-know/) [[4]](#ref-4) through [Just Ask for Calibration](/posts/20260610-just-ask-calibration/) [[5]](#ref-5). This paper measures something else: whether a model preserves the certainty a *source* chose to express when it rewrites that source's text. A model can be well calibrated about its own answers and still strip the hedges out of someone else's.
+
+- **[The judge's edge over humans is partly an artifact]{#judge-edge-note}**: the validation reports the LM judge correlating with the human consensus at $\tau_B = 0.47$ against $0.34$ for the average annotator, but the two are scored against different targets. Each human is correlated against a leave-one-out consensus, the mean of the *other* annotators with itself removed, while the judge, never in the pool, is correlated against the full annotator mean. The fuller mean is a lower-variance target and spares the judge the self-exclusion penalty each human pays, so both effects favor the model. The paper's own fair comparison is its pairwise metric, judge-to-human against human-to-human consistency (Appendix B), where the judge comes out comparable rather than better.
+
+- **The asymmetry looks like preference tuning**: the paper leaves the mechanism open. One candidate is preference optimization, which rewards direct, fluent, decisive phrasing. The same pressure shows up as overconfidence in verbalized probabilities after human-feedback fine-tuning [[5]](#ref-5) and as sycophancy toward whatever looks like the more assertive answer [[6]](#ref-6). Hedges like "may," "could," and "suggests" are exactly the words a preference model learns to treat as less helpful, so a meaning-preserving rewrite quietly drops them. This is a hypothesis the results are consistent with, not something the paper tests.
+
+- **Rewriting chains launder uncertainty**: the broken-telephone result matters most where text is rewritten repeatedly with no human reading the intermediate steps, such as retrieval-augmented summaries, agent hand-offs, and multi-hop pipelines that paraphrase a paraphrase. Earlier broken-telephone studies tracked properties like toxicity, sentiment, and length. Certainty is more consequential because dropping a hedge changes a claim's epistemic status, turning "may be secondary to COPD" into "is attributed to COPD" [[1]](#ref-1). In the medical setting the drift did not saturate after one pass: Claude Haiku 4.5 doubled its inflation rate from 20% to 40% over five turns.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Belém, Catarina G.](https://dblp.org/pid/377/3756), Wu, Shang, Yao, Hongyu, [Steyvers, Mark](https://dblp.org/pid/47/4456), [Singh, Sameer](https://sameersingh.org/), and [Smyth, Padhraic](https://www.ics.uci.edu/~smyth/). "From 'May' to 'Is': Certainty Distortion in Language Model Rewriting." *arXiv preprint* (arXiv:2606.07951), June 6, 2026. <https://arxiv.org/abs/2606.07951>
+
+2. <a id="ref-2"></a>Wright, Dustin, Pei, Jiaxin, Jurgens, David, and Augenstein, Isabelle. "Modeling Information Change in Science Communication with Semantically Matched Paraphrases." *EMNLP 2022* (arXiv:2210.13001), October 24, 2022. <https://arxiv.org/abs/2210.13001>
+
+3. <a id="ref-3"></a>Johnson, Alistair E. W., Pollard, Tom J., Berkowitz, Seth J., Greenbaum, Nathaniel R., Lungren, Matthew P., Deng, Chih-ying, Mark, Roger G., and Horng, Steven. "MIMIC-CXR, a de-identified publicly available database of chest radiographs with free-text reports." *Scientific Data* 6:317, 2019. <https://doi.org/10.1038/s41597-019-0322-0>
+
+4. <a id="ref-4"></a>Kadavath, S., Conerly, T., Askell, A., et al. "Language Models (Mostly) Know What They Know." *arXiv preprint* (arXiv:2207.05221), July 11, 2022. <https://arxiv.org/abs/2207.05221>
+
+5. <a id="ref-5"></a>Tian, K., Mitchell, E., Zhou, A., Sharma, A., Rafailov, R., Yao, H., Finn, C., and Manning, C. D. "Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback." *EMNLP 2023* (arXiv:2305.14975), May 24, 2023. <https://arxiv.org/abs/2305.14975>
+
+6. <a id="ref-6"></a>Sharma, M., Tong, M., Korbak, T., et al. "Towards Understanding Sycophancy in Language Models." *ICLR 2024* (arXiv:2310.13548), October 20, 2023. <https://arxiv.org/abs/2310.13548>
+
+## Related Posts
+
+- [Just Ask for Calibration](/posts/20260610-just-ask-calibration/): human-feedback fine-tuning leaves models overconfident in the probabilities they state. The inflation bias here is that same overconfidence showing up when a model rewrites text rather than answers a question.
+- [Linguistic Calibration of Long-Form Generations](/posts/20260505-linguistic-calibration/): trains models to express calibrated uncertainty in their own words, the constructive flip side of faithfully preserving someone else's expressed certainty.
+- [SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?](/posts/20260430-selfreflect-internal-distribution/): asks whether a model can put its own uncertainty into words, where this paper asks whether it preserves a source's uncertainty across a rewrite.
+- [Improving Metacognition and Uncertainty Communication in Language Models](/posts/20260525-metacognition-uncertainty-sft/): a training-side remedy aimed at the same failure, getting models to communicate uncertainty more faithfully.

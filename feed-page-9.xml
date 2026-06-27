@@ -21,7 +21,128 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 26 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 27 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-evoprompt/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-evoprompt/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Normalized per-task scores on 22 BBH tasks comparing APE against EvoPrompt (GA) and EvoPrompt (DE). Each bar is the gain over the baseline on one task; EvoPrompt’s two variants beat APE on most tasks, with DE topping the list. Figure 8 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</em> [1] (ICLR 2024), Qingyan Guo et al.&nbsp;(Tsinghua University, Microsoft Research) propose using LLMs to implement the crossover and mutation operators of evolutionary algorithms over a population of discrete prompts, gradient-free.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) excel in various tasks, but they rely on carefully crafted prompts that often demand substantial human effort. To automate this process, in this paper, we propose a novel framework for discrete prompt optimization, called <em>EvoPrompt</em>, which borrows the idea of evolutionary algorithms (EAs) as they exhibit good performance and fast convergence. To enable EAs to work on discrete prompts, which are natural language expressions that need to be coherent and human-readable, we <em>connect LLMs with EAs</em>. This approach allows us to simultaneously leverage the powerful language processing capabilities of LLMs and the efficient optimization performance of EAs. Specifically, <em>abstaining from any gradients or parameters</em>, EvoPrompt starts from a population of prompts and iteratively generates new prompts with LLMs based on the evolutionary operators, improving the population based on the development set. We optimize prompts for both closed- and open-source LLMs including GPT-3.5 and Alpaca, on 31 datasets covering language understanding, generation tasks, as well as BIG-Bench Hard (BBH) tasks. <em>EvoPrompt significantly outperforms human-engineered prompts and existing methods for automatic prompt generation (e.g., up to 25% on BBH)</em>. Furthermore, EvoPrompt demonstrates that <em>connecting LLMs with EAs creates synergies</em>, which could inspire further research on the combination of LLMs and conventional algorithms.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The setup is an evolutionary search over natural-language prompts. Maintain a population of N prompts (N = 10 in most experiments), run for T iterations, and at each step: sample parent prompts, call an LLM to produce a child via an evolutionary operator, score the child on a held-out development set, and keep the top N. The non-standard piece is the operator. Instead of a token-level rewriting rule, the operator is itself an LLM prompt. The paper compares two variants. The genetic-algorithm (GA) variant asks the LLM to perform crossover and mutation on two parent prompts. The differential-evolution (DE) variant asks the LLM to identify the difference between two parents and apply that difference on top of a third base prompt, borrowing the structure of classical differential evolution.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/figure1.png" class="img-fluid figure-img"></p>
+<figcaption>Genetic-algorithm process implemented by an LLM. Step 1: the LLM performs crossover on two parent prompts (orange and blue words inherited from each). Step 2: the LLM mutates the resulting child. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>Differential-evolution process implemented by an LLM. Step 1: the LLM identifies the differing words between two prompts (the “<img src="https://benjaminhan.net/feed-assets/098c89f219e509c7.svg" alt="\mathbf{b - c}" class="feed-math-inline"/>” diff in DE terms). Step 2: the LLM applies a mutation that combines the diff with a third base prompt. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>EvoPrompt is evaluated across 31 datasets: seven language-understanding classification tasks (SST-2, CR, MR, SST-5, AG’s News, TREC, Subj), one dialogue-summarization task (SAMSum), one simplification task (ASSET), and 23 Big-Bench Hard (BBH) reasoning tasks. Alpaca-7B is the base model for classification and generation; GPT-3.5 is the base for BBH. On the seven classification tasks (Alpaca-7B), EvoPrompt (DE) averages 77.05 accuracy versus APE’s (Zhou et al., 2022) 73.80. On the 23 BBH tasks (GPT-3.5), EvoPrompt (DE) averages 75.03 versus APE’s 71.85 and the no-optimization baseline’s 71.49. The peak per-task improvement on BBH is around 25%, visible in Figure 3 as the tallest bar at the right.</p>
+<table class="caption-top table">
+<caption>Average BBH accuracy across 23 tasks. Table 12 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Avg. accuracy on 23 BBH tasks (GPT-3.5)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Baseline (manual)</td>
+<td>71.49</td>
+</tr>
+<tr class="even">
+<td>APE (Zhou et al., 2022)</td>
+<td>71.85</td>
+</tr>
+<tr class="odd">
+<td>EvoPrompt (GA)</td>
+<td>74.18</td>
+</tr>
+<tr class="even">
+<td>EvoPrompt (DE)</td>
+<td><strong>75.03</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Per-task normalized scores on 23 BBH tasks for EvoPrompt (GA) and EvoPrompt (DE). Each bar is the gain over the baseline on one task. The peak on the right is where the “up to 25%” headline comes from. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Beyond the main results, the paper ablates population size. Figure 6 sweeps population size from 4 to 12 on three datasets: SST-5 (five-way sentiment classification), Subj (subjectivity classification), and ASSET (simplification). The three curves have noticeably different shapes.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-evoprompt/figure6.png" class="img-fluid figure-img"></p>
+<figcaption>Effect of population size on SST-5 (left), Subj (middle), and ASSET (right). The simple generation task (ASSET) plateaus early; the harder classification task (Subj) keeps benefiting from larger populations. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>One of the earliest clean instances of “LLM as optimization operator.”</strong> EvoPrompt (September 2023) is among the cleanest early examples of using an LLM not as the <em>thing being optimized</em> but as the <em>operator that performs the optimization step</em>. Token-level random mutation produces incoherent prompts; an LLM mutation operator preserves semantics. Pryzant et al.’s APO [2] (textual gradients, EMNLP 2023) makes a parallel move from the gradient-descent direction. The same pattern then shows up across the prompt-and-agent-design literature: <a href="../../posts/20260430-multi-agent-system-search/">MASS’s prompt + topology stages</a> [3] and <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO’s bilevel meta-learning loop</a> [4] are LLM-as-optimizer with different staging.</p></li>
+<li><p><strong>Why DE vs GA matters for prompts specifically.</strong> The paper compares Genetic Algorithm (GA) and Differential Evolution (DE) variants, and DE wins on most BBH tasks. Both operators are implemented by the LLM, so the contrast is semantic rather than tokenwise: GA’s LLM-prompt asks for a child that inherits from two parents, while DE’s LLM-prompt asks the model to apply the <em>difference</em> between two parent prompts on top of a third base. DE’s “find what’s distinctive and graft it onto the current best” maps more cleanly onto prompt refinement than GA’s “combine bits of each.” Subsequent prompt-optimization papers tend to describe everything as “evolutionary” without specifying which operator.</p></li>
+<li><p><strong>DE’s advantage reverses on simple generation tasks.</strong> On ASSET (a sentence-simplification benchmark: rewrite a sentence more accessibly while preserving meaning, scored by SARI against human references), Figure 6 shows GA matching or edging out DE across several population sizes. The mechanism is consistent with the rest of the paper: DE’s “apply the difference” move pays off only when the population encodes meaningful task-specific variation. ASSET’s good-prompt space is narrow (the useful phrasings all look like “simplify this while preserving meaning”), so the differences between parents are small or noisy, and applying that noise on top of a base destabilizes a prompt that was already near-optimal. GA’s conservative interpolation stays inside the narrow good-prompt band. Practical takeaway: if the task has a narrow good-prompt manifold (simple generation, canonical phrasings), default to GA; DE is the better fit when prompt diversity carries real signal (hard classification, reasoning).</p></li>
+<li><p><strong>The 25% headline is a single-task peak; the average is closer to 3.5%.</strong> The “up to 25% on BBH” claim in the abstract is EvoPrompt (DE)’s best per-task improvement across 23 BBH tasks; the average gain over the baseline is closer to 3.5% (Table 12). BBH in this paper is run on GPT-3.5, not Alpaca-7B. Alpaca is used only for classification and generation tasks. That raises a question this paper does not answer: as base-model capability rises, do prompt-optimization gains shrink, and does this whole direction have diminishing returns at GPT-4-class capability?</p></li>
+<li><p><strong>Population size depends on task complexity.</strong> Figure 6 sweeps population sizes from 4 to 12 on SST-5, Subj, and ASSET. For the simple generation task (ASSET), population 6 matches population 10 at roughly 2.5× less compute; for the harder classification task (Subj), larger populations with more diversity keep helping. Most LLM-as-optimizer papers default to population sizes of 10 to 30 without an ablation. Practical takeaway: tune population to task complexity rather than defaulting upward.</p></li>
+<li><p><strong>All of this is extrinsic by Liu and van der Schaar’s definition.</strong> The <a href="../../posts/20260430-intrinsic-metacognitive-learning/">position paper on intrinsic metacognitive learning</a> [5] argues that today’s “self-improving” pipelines rely on hand-designed loops: the search algorithm, what to optimize, against what objective, in what order, all wired in by the system designer. EvoPrompt is a clean instance. Humans pick the population structure, the GA-vs-DE operator, the development-set scoring, the termination criterion. The agent only generates candidates; it doesn’t choose what’s being optimized. None of this makes the result wrong, but it bounds the long-term claim: whatever the strongest extrinsic prompt-optimizer turns out to be, the position-paper bet is that an architecture which lets the agent decide how to optimize itself will eventually overtake it.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://lemon0830.github.io/">Guo</a>, Q., Wang, R., Guo, J., <a href="https://libeineu.github.io/">Li</a>, B., <a href="https://www.microsoft.com/en-us/research/people/kaitaosong/">Song</a>, K., <a href="https://www.microsoft.com/en-us/research/people/xuta/">Tan</a>, X., Liu, G., <a href="https://sites.google.com/view/jiangbian">Bian</a>, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532, September 15, 2023. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
+<li><a id="ref-2"></a><a href="https://cs.stanford.edu/people/rpryzant/">Pryzant</a>, R., <a href="https://daniter-cu.github.io/">Iter</a>, D., <a href="https://jerryzli.github.io/">Li</a>, J., <a href="https://yintat.com/">Lee</a>, Y., <a href="https://cs.stanford.edu/~cgzhu/">Zhu</a>, C., Zeng, M. “Automatic Prompt Optimization with ‘Gradient Descent’ and Beam Search.” <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing</em>, 2023. <a href="https://arxiv.org/abs/2305.03495" class="uri">https://arxiv.org/abs/2305.03495</a></li>
+<li><a id="ref-3"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>arXiv preprint</em> (arXiv:2502.02533), February 4, 2025. <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
+<li><a id="ref-4"></a>Choi, Y., <a href="https://jinheonbaek.github.io/">Baek</a>, J., <a href="https://www.mlai-kaist.com/">Hwang</a>, S. J. “System Prompt Optimization with Meta-Learning.” <em>arXiv preprint</em> (arXiv:2505.09666), May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
+<li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, T., <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>arXiv preprint</em> (arXiv:2506.05109), June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260515-promptbreeder/">Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution</a>: the next step in LLM-driven evolutionary prompt search, co-evolving the mutation prompts alongside the task prompts EvoPrompt mutates by hand-fixed operators.</li>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: moves optimization above the string-template level EvoPrompt works at, treating whole pipelines rather than isolated prompts as the search target.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: the same LLM-as-optimizer idea staged across prompt and topology levels, with EvoPrompt as one of the prompt-optimization predecessors it builds on.</li>
+<li><a href="../../posts/20260513-gepa/">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a>: another evolutionary prompt optimizer, swapping EvoPrompt’s crossover/mutation operators for reflective rewrites from natural-language failure diagnoses.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that names EvoPrompt as a clean instance of the extrinsic optimizer it argues will eventually be overtaken.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-evoprompt/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-evoprompt/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</title>
   <dc:creator>synesis </dc:creator>
@@ -1275,58 +1396,6 @@
   <guid>https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/</guid>
   <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260422-proof-generation-vs-digestion/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Overzealous Coding Models</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 1 from the post — GPT-5.4 rewrites an entire function when the correct fix is changing one number in a <code>range()</code> call. Image from <a href="https://nrehiew.github.io/blog/minimal_editing/">nrehiew’s blog</a>.</figcaption>
-</figure>
-</div>
-<p>In <a href="https://nrehiew.github.io/blog/minimal_editing/">Coding Models Are Doing Too Much</a>, nrehiew puts a number on a frustration anyone using AI coding tools has felt — the model fixes the bug, then quietly rewrites half the function around it.</p>
-<ul>
-<li><strong>The problem.</strong> Ask a model to fix an off-by-one and get a full rewrite — new helpers, renamed variables, added validation. The fix is correct; the diff is enormous and review-hostile. The post calls this <em>over-editing</em>: structural divergence beyond what the minimal fix requires.</li>
-<li><strong>Measurement.</strong> Rather than have an LLM introduce bugs, the author programmatically corrupts 400 BigCodeBench problems (flip an operator, swap a boolean, etc.), so the ground-truth fix is exactly the reversal. Models are scored on Pass@1, token-level Levenshtein vs.&nbsp;the corrupted input, and added cognitive complexity.</li>
-<li><strong>Frontier results.</strong> GPT-5.4 over-edits the most (Levenshtein 0.39, added CC 2.31) while also being one of the weakest at correctness. Claude Opus 4.6 leads on both axes — highest Pass@1 (0.91) and smallest diffs (Levenshtein 0.06).</li>
-<li><strong>Prompting helps.</strong> A single line — <em>“IMPORTANT: Try to preserve the original code and the logic of the original code as much as possible”</em> — improves both Pass@1 and Levenshtein for almost every model. Reasoning models gain the most.</li>
-<li><strong>Reasoning defaults to over-editing.</strong> On samples where both reasoning and non-reasoning variants get the answer correct, the reasoning version edits <em>more</em> by default in most model pairs — extended thinking buys more “improvements” no one asked for. Claude Opus 4.6 is the notable exception, with its reasoning variant editing substantially less. Once instructed, reasoning models match or undercut their non-reasoning siblings in almost every pair.</li>
-<li><strong>Training.</strong> Starting from Qwen3 4B 2507 Instruct (and validated on Qwen3 14B), plain SFT collapses out-of-domain (Pass@1 drops to 0.46) — the model memorizes corruption-reversals rather than the behavior. RL with a reward combining functional correctness and Levenshtein generalizes cleanly, with no LiveCodeBench regression. <em>LoRA at rank 64 nearly matches the full fine-tune.</em></li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The Opus 4.6 gap is not subtle</strong> — highest Pass@1 <em>and</em> smallest diffs, in both reasoning and non-reasoning modes. Anthropic appears to have trained explicitly against this failure mode, and it shows.</li>
-<li><strong>A single sentence of prompt closes most of the gap for everyone else</strong> — over-editing is a default, not a capability ceiling.</li>
-<li><strong>Style problem, not knowledge problem.</strong> That LoRA at rank 64 nearly matches the full fine-tune is the giveaway — a small parameter delta shifts the behavior without touching the underlying capability.</li>
-<li><strong>The tooling implication is bigger than the model implication.</strong> <em>“Preserve the original code”</em> should be wired into every coding tool’s system prompt by default, and diff-review UI should surface a minimality score alongside the patch.</li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: the broader case against handing a coding agent more latitude than the task needs, which over-editing is the small daily version of.</li>
-<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: the same overreach instinct at its catastrophic end, where doing more than asked stops being a review headache and starts deleting things.</li>
-<li><a href="../../posts/20260514-vibe-coding-and-agentic-engineering/">Vibe Coding and Agentic Engineering Are Getting Closer</a>: where this sits on the spectrum of how much code you let the model own versus keep minimal and reviewable.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260422-overzealous-coding-models/</guid>
-  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
