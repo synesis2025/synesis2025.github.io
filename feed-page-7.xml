@@ -21,7 +21,175 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sat, 27 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 28 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Interaction Models: Training Real-Time Collaboration into the Model</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260512-interaction-models/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260512-interaction-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260512-interaction-models/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Cover <a href="https://youtu.be/A12AVongNN4">video</a> from <a href="https://thinkingmachines.ai/blog/interaction-models/">Thinking Machines Lab</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://thinkingmachines.ai/">Thinking Machines Lab</a>, the OpenAI-alumni startup founded in February 2025 by former OpenAI CTO <a href="https://en.wikipedia.org/wiki/Mira_Murati">Mira Murati</a> with OpenAI cofounder <a href="https://en.wikipedia.org/wiki/John_Schulman">John Schulman</a>, former OpenAI VP of Research <a href="https://scholar.google.com/citations?user=NL_7iTwAAAAJ">Barret Zoph</a>, and former OpenAI VP <a href="https://scholar.google.com/citations?user=dCa-pW8AAAAJ">Lilian Weng</a> on its founding team, has <a href="https://thinkingmachines.ai/blog/interaction-models/">announced</a> a research preview of <em>interaction models</em>: frontier models trained from scratch to take in audio, video, and text concurrently and to think, respond, and act in real time, without a surrounding orchestration harness handling turns, interruptions, or modality switches.</p>
+<p>The argument the announcement makes:</p>
+<ul>
+<li><strong>The bottleneck is the turn.</strong> Today’s commercial general-purpose models experience the world as a single thread. They wait while the user is still typing or speaking, and they freeze perception while generating. That narrow channel forces humans out of the loop, not because the work is autonomous, but because the interface has no room for them.</li>
+<li><strong>Interaction should scale with intelligence.</strong> Most real-time voice systems stitch components together to emulate interruptions, multimodality, and concurrency, a classic orchestration harness. The post invokes Sutton’s bitter lesson [1] to argue that hand-crafted interaction systems will be outpaced by scale, so interactivity has to be part of the model itself.</li>
+</ul>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<section id="capabilities" class="level3">
+<h3 class="anchored" data-anchor-id="capabilities">Capabilities</h3>
+<p>With interaction native to the model rather than the harness, one system provides what normally takes a stack of separate components:</p>
+<ul>
+<li><strong>Seamless dialog management</strong> (<a href="https://youtu.be/Ys6i_MGnjUA">video</a>). The model implicitly tracks whether the speaker is thinking, yielding, self-correcting, or inviting a response, without a separate turn-taking module.</li>
+<li><strong>Verbal and visual interjections</strong> (<a href="https://youtu.be/n2GXGjy41HQ">video</a>). It jumps in when context warrants (“interrupt when I say something wrong”, “tell me when I’ve written a bug”) rather than waiting for the user to finish.</li>
+<li><strong>Simultaneous speech</strong> (<a href="https://youtu.be/2ky5MXBvZP8">video</a>). User and model can talk at the same time, which makes live translation and live commentary straightforward.</li>
+<li><strong>Time awareness</strong> (<a href="https://youtu.be/sqJNfze19jA">video</a>). A direct sense of elapsed time, so “remind me to breathe every four seconds until I ask you to stop” is a first-class request.</li>
+<li><strong>Concurrent tools, search, and generative UI</strong> (<a href="https://youtu.be/ly3GtaiRFyo">video</a>). Web searches, tool calls, and UI generation can run while the model is still speaking and listening, with results folded into the conversation as they arrive.</li>
+</ul>
+</section>
+<section id="approach" class="level3">
+<h3 class="anchored" data-anchor-id="approach">Approach</h3>
+<ul>
+<li><strong>Time-aligned micro-turns.</strong> Input and output are streams chunked into 200 ms windows and continuously interleaved, so silence, overlap, and interruption stay in the model’s context instead of being flattened into an alternating token sequence.</li>
+<li><strong>Two-model split.</strong> A real-time <em>interaction model</em> holds presence with the user; an asynchronous <em>background model</em> handles sustained reasoning, tool use, and longer-horizon work. The interaction model delegates with the full conversation as context and weaves background results back into dialog when the moment fits.</li>
+<li><strong>Encoder-free early fusion.</strong> Audio enters as dMel [2] embeddings, images as 40×40 patches through a light hMLP [3], audio exits via a flow head [4], and every component is co-trained from scratch with the transformer. No standalone <a href="https://openai.com/index/whisper/">Whisper</a>-style encoder or text-to-speech (TTS) decoder.</li>
+<li><strong>Streaming-session inference.</strong> A custom inference path, upstreamed into <a href="https://github.com/sgl-project/sglang">SGLang</a>, appends each 200 ms chunk into a persistent GPU sequence to avoid per-chunk prefill overhead, paired with batch-invariant kernels for bitwise trainer-sampler alignment.</li>
+</ul>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The benchmarks below:</p>
+<ul>
+<li><strong>FD-bench v1</strong> [6]: simple turn-taking latency in seconds; streaming audio, lower is better.</li>
+<li><strong>FD-bench v1.5</strong> [6]: average interaction quality across four scenarios: user interruption, user backchannel, talking to others, and background speech.</li>
+<li><strong>FD-bench v3</strong> [6]: response quality and pass@1 on audio + tool-use tasks.</li>
+<li><strong>Audio MultiChallenge</strong> [7]: turn-based intelligence and instruction-following, scored as Average Pass Rate (APR).</li>
+<li><strong>BigBench Audio</strong> [8]: turn-based accuracy on audio tasks.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260512-interaction-models/fig5-intelligence-interactivity.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 5 from the announcement. “Our model dominates interaction quality while being more intelligent than any non-thinking model. We achieve the best responsiveness measured as a latency between user and model turns.”</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>TML-interaction-small leads interactivity by a wide margin.</strong> On FD-bench v1.5 (interaction quality, average) it scores 77.8, versus 54.3 for the next best (Gemini-3.1-flash-live minimal) and 46–48 for the GPT-realtime-2.0 variants.</li>
+<li><strong>Lowest turn-taking latency measured.</strong> FD-bench v1 puts it at 0.40 s, against 0.57 s for Gemini-flash-live minimal, 1.18 s for GPT-realtime-2.0 minimal, and 1.63 s for GPT-realtime-2.0 xhigh.</li>
+<li><strong>Instant-model Pareto frontier on intelligence too.</strong> Audio MultiChallenge APR is 43.4%, the best among non-thinking realtime models; only thinking variants like GPT-realtime-2.0 xhigh (48.5%) score higher, at the cost of much larger latency.</li>
+<li><strong>Two new in-house proactive-audio benchmarks.</strong> TimeSpeak tests whether the model initiates speech at a user-specified time with correct content; CueSpeak tests whether it speaks at the semantically right moment, including while the user is still talking.</li>
+</ul>
+<p>Headline numbers, one flagship per lineage (excerpted from the <a href="https://thinkingmachines.ai/blog/interaction-models/">full table</a>):</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 29%">
+<col style="width: 14%">
+<col style="width: 17%">
+<col style="width: 19%">
+<col style="width: 19%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">TML-interaction-small*</th>
+<th style="text-align: right;">GPT-realtime-2.0 (xhigh)†</th>
+<th style="text-align: right;">Gemini-3.1-flash-live (high)†</th>
+<th style="text-align: right;">Qwen 3.5 OMNI-plus-realtime*</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>FD-bench v1 turn-taking latency (s, ↓)</td>
+<td style="text-align: right;"><strong>0.40</strong></td>
+<td style="text-align: right;">1.63</td>
+<td style="text-align: right;">0.94</td>
+<td style="text-align: right;">2.14</td>
+</tr>
+<tr class="even">
+<td>FD-bench v1.5 interaction quality (avg, ↑)</td>
+<td style="text-align: right;"><strong>77.8</strong></td>
+<td style="text-align: right;">47.8</td>
+<td style="text-align: right;">45.5</td>
+<td style="text-align: right;">39.0</td>
+</tr>
+<tr class="odd">
+<td>FD-bench v3 response quality / pass@1 (↑)</td>
+<td style="text-align: right;"><strong>82.8 / 68.0</strong></td>
+<td style="text-align: right;">81.0 / 58.0</td>
+<td style="text-align: right;">71.4 / 48.0</td>
+<td style="text-align: right;">60.0 / 50.0</td>
+</tr>
+<tr class="even">
+<td>Audio MultiChallenge APR (%, ↑)</td>
+<td style="text-align: right;">43.4</td>
+<td style="text-align: right;"><strong>48.5</strong></td>
+<td style="text-align: right;">36.1</td>
+<td style="text-align: right;">–</td>
+</tr>
+<tr class="odd">
+<td>BigBench Audio accuracy (%, ↑)</td>
+<td style="text-align: right;">75.7 / <strong>96.5</strong></td>
+<td style="text-align: right;"><strong>96.6</strong></td>
+<td style="text-align: right;"><strong>96.6</strong></td>
+<td style="text-align: right;">73.0</td>
+</tr>
+</tbody>
+</table>
+<p>*Instant (no thinking). †Thinking variant, higher reasoning budget and higher latency. Slashed values show response-quality / pass@1 for FD-bench v3, and “baseline / with background agent” for TML’s BigBench Audio (the 96.5 uses background agent).</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Human-in-the-loop latency deserves its own objective.</strong> Most recent frontier work treats autonomy as the capability that matters and interaction as something you add afterward with voice-activity detection, turn routers, and interruption heuristics. Thinking Machines takes the opposite bet: the right architectural split is <em>human-in-the-loop latency</em> vs.&nbsp;<em>no-human-waiting latency</em>, and the first deserves its own training objective. That parallels <a href="../../posts/20260511-the-inference-shift/">Ben Thompson’s argument</a> that the inference stack is already splitting into answer inference (human waits, latency premium) and agentic inference (no human waits, memory capacity wins), with different hardware and latency profiles. The claim here extends the same split up into training objectives and model families. The awkward case is the middle: today’s chat interfaces, which are neither fully autonomous nor genuinely real-time.</li>
+<li><strong>In-model interaction isn’t a new ambition.</strong> Moshi [5] (Kyutai, 2024), <a href="https://platform.openai.com/docs/guides/realtime">GPT-Realtime</a>, and <a href="https://developer.nvidia.com/nemotron-voicechat-early-access">Nemotron VoiceChat</a> trained full-duplex audio into the model rather than bolting it on. Rabbit Inc.&nbsp;pitched an analogous framing for UI actions with its <a href="https://rabbit.tech/research">“Large Action Model”</a>, though <a href="https://arstechnica.com/gadgets/2024/05/rabbit-r1-ai-box-is-just-an-android-app-and-the-software-can-run-on-a-phone/">how much of the shipped r1 was actually a trained action model versus scripted Android automation became contested</a>. The preview extends the in-model claim to video, text, and tool use alongside audio, with enough general capability to compete on intelligence benchmarks. The 200 ms micro-turn design is tuned for sub-second exchange; whether it also scales to agentic work running for minutes or hours is the open architectural question.</li>
+<li><strong>Pointing is the same question at the input layer.</strong> <a href="../../posts/20260512-pointing-for-ai/">DeepMind’s AI-enabled pointer</a>, announced the day after this post, attacks the same bottleneck from the input side: today’s chat box forces users to drag their world into a small window, so the fix is to let humans gesture at what they mean. Point at a PDF, say “summarize this”; hover over a table, say “pie chart.” Thinking Machines trains interactivity into the model. DeepMind builds it into the input modality. Both bets assume today’s text-prompt interface is the bottleneck, but they disagree on which layer to unbottleneck.</li>
+<li><strong>Evaluation is the hard part.</strong> Every widely-used LLM benchmark is turn-based. The post introduces TimeSpeak, CueSpeak, and the FD-bench family as interactivity metrics, but these are in-house and not yet standard across labs. Without a cross-lab metric for “good collaborator,” effort keeps flowing to the measurable thing (the existing intelligence benchmarks) and the interactivity side keeps being filed under “qualitative.”</li>
+<li><strong>UX is the bottleneck; labor displacement is its consequence.</strong> Today’s chat UX fits turn-based question-and-answer, not continuous collaboration, so for work that would benefit from sustained human presence capable models default to autonomous use, which looks like labor substitution. Interaction models are Thinking Machines’ attempt to change that bottleneck: a model trained for real-time collaboration recasts the <a href="../../posts/20260502-2028-intelligence-crisis/">substitute-vs-augment debate</a> as a UX problem that can be solved, not a capability fact that has to be accepted. The test is whether the result stays closer to <a href="https://www.youtube.com/watch?v=ob_GX50Za6c">“a bicycle for the mind”</a>, amplifying the human in the loop, or drifts into a tool that works best when the human is absent.</li>
+<li><strong>The founder’s framing, a month on.</strong> In a <a href="../../posts/20260605-interaction-model-interviews/">June 2026 Bloomberg Tech interview</a>, Murati described interaction models as the first concrete step of Thinking Machines’ human-in-the-loop bet and granted that the autonomy-first path is the faster way to advance AI — a useful gloss on why the lab is putting the interaction objective first.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Sutton, Richard. “The Bitter Lesson.” Personal blog, March 13, 2019. <a href="http://www.incompleteideas.net/IncIdeas/BitterLesson.html" class="uri">http://www.incompleteideas.net/IncIdeas/BitterLesson.html</a></li>
+<li><a id="ref-2"></a>Bai, Richard He, Tatiana Likhomanenko, Ruixiang Zhang, Zijin Gu, Zakaria Aldeneh, and Navdeep Jaitly. “dMel: Speech Tokenization made Simple.” <em>arXiv preprint</em> (arXiv:2407.15835), July 22, 2024. <a href="https://arxiv.org/abs/2407.15835" class="uri">https://arxiv.org/abs/2407.15835</a></li>
+<li><a id="ref-3"></a>Touvron, Hugo, Matthieu Cord, Alaaeldin El-Nouby, Jakob Verbeek, and Hervé Jégou. “Three things everyone should know about Vision Transformers.” <em>arXiv preprint</em> (arXiv:2203.09795), March 18, 2022. <a href="https://arxiv.org/abs/2203.09795" class="uri">https://arxiv.org/abs/2203.09795</a></li>
+<li><a id="ref-4"></a>Lipman, Yaron, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel, and Matt Le. “Flow Matching for Generative Modeling.” <em>International Conference on Learning Representations (ICLR)</em>, 2023. arXiv:2210.02747. <a href="https://arxiv.org/abs/2210.02747" class="uri">https://arxiv.org/abs/2210.02747</a></li>
+<li><a id="ref-5"></a>Défossez, Alexandre, Laurent Mazaré, Manu Orsini, Amélie Royer, Patrick Pérez, Hervé Jégou, Edouard Grave, and Neil Zeghidour. “Moshi: a speech-text foundation model for real-time dialogue.” <em>arXiv preprint</em> (arXiv:2410.00037), September 17, 2024. <a href="https://arxiv.org/abs/2410.00037" class="uri">https://arxiv.org/abs/2410.00037</a></li>
+<li><a id="ref-6"></a>Lin, Guan-Ting, Jiachen Lian, Tingle Li, Qirui Wang, Gopala Anumanchipalli, Alexander H. Liu, and Hung-yi Lee. “Full-Duplex-Bench: A Benchmark to Evaluate Full-duplex Spoken Dialogue Models on Turn-taking Capabilities.” <em>arXiv preprint</em> (arXiv:2503.04721), March 6, 2025. <a href="https://arxiv.org/abs/2503.04721" class="uri">https://arxiv.org/abs/2503.04721</a></li>
+<li><a id="ref-7"></a>Gosai, Advait, Tyler Vuong, Utkarsh Tyagi, Steven Li, Wenjia You, Miheer Bavare, Arda Uçar, Zhongwang Fang, Brian Jang, et al.&nbsp;“Audio MultiChallenge: A Multi-Turn Evaluation of Spoken Dialogue Systems on Natural Human Interaction.” <em>arXiv preprint</em> (arXiv:2512.14865), 2025. <a href="https://arxiv.org/abs/2512.14865" class="uri">https://arxiv.org/abs/2512.14865</a></li>
+<li><a id="ref-8"></a>Artificial Analysis. “Introducing Big Bench Audio: A new benchmark for large audio models.” Hugging Face blog, December 2024. <a href="https://huggingface.co/blog/big-bench-audio-release" class="uri">https://huggingface.co/blog/big-bench-audio-release</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260511-the-inference-shift/">The Inference Shift</a>: the same human-waits vs.&nbsp;no-human-waits split, applied to the hardware stack rather than to training objectives and model families.</li>
+<li><a href="../../posts/20260512-pointing-for-ai/">Pointing for AI</a>: the same chat-box bottleneck attacked from the input side, letting humans gesture at what they mean instead of training interactivity into the model.</li>
+<li><a href="../../posts/20260605-interaction-model-interviews/">Mira Murati on Interaction Models and Keeping Humans in the Loop</a>: the founder’s own framing a month on, casting interaction models as the lab’s human-in-the-loop bet against the autonomy-first path.</li>
+<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: the substitute-vs-augment debate this post recasts as a UX problem rather than a capability fact.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260512-interaction-models/</guid>
+  <pubDate>Tue, 12 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260512-interaction-models/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Pointing for AI</title>
   <dc:creator>Ben </dc:creator>
@@ -1694,84 +1862,6 @@
   <guid>https://benjaminhan.net/posts/20260507-averitec/</guid>
   <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260507-averitec/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Influential ChatGPT-in-Education Meta-Analysis Retracted: Where’s the Transparency and Cost?</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://arstechnica.com/ai/2026/05/influential-study-touting-chatgpt-in-education-retracted-over-red-flags/">Ars Technica</a>.</figcaption>
-</figure>
-</div>
-<blockquote class="blockquote">
-<p><strong>Retracted paper:</strong> Jin Wang and <a href="https://orcid.org/0009-0002-7681-0635">Wenxiang Fan</a> (2025), “<a href="https://doi.org/10.1057/s41599-025-04787-y">The effect of ChatGPT on students’ learning performance, learning perception, and higher-order thinking: insights from a meta-analysis</a>,” <em>Humanities and Social Sciences Communications</em>, Hangzhou Normal University. <a href="https://www.nature.com/articles/s41599-026-07310-z">Retracted</a> April 22, 2026.</p>
-</blockquote>
-<p><a href="https://arstechnica.com/author/jeremyhsu/">Jeremy Hsu</a>, <a href="https://arstechnica.com/ai/2026/05/influential-study-touting-chatgpt-in-education-retracted-over-red-flags/">reporting</a> for <em>Ars Technica</em>, walks through the retraction of the <a href="https://doi.org/10.1057/s41599-025-04787-y">Wang and Fan paper</a>, a meta-analysis in <a href="https://www.nature.com/palcomms/"><em>Humanities and Social Sciences Communications</em></a> (Springer Nature) claiming ChatGPT delivers “a large positive impact on improving learning performance,” a “moderately positive impact on enhancing learning perception,” and gains in “fostering higher-order thinking.” The paper pooled effect sizes from 51 prior studies that compared ChatGPT-using experimental groups against non-AI control groups. Springer Nature <a href="https://www.nature.com/articles/s41599-026-07310-z">retracted it</a> on April 22, 2026:</p>
-<blockquote class="blockquote">
-<p>The Editor has decided to retract this paper owing to concerns regarding discrepancies in the meta-analysis. These issues ultimately undermine the confidence the Editor can place in the validity of the analysis and resulting conclusions.</p>
-<p><strong>The authors have not responded to correspondence regarding this retraction.</strong></p>
-</blockquote>
-<p>What the article reports:</p>
-<ul>
-<li>Between publication on May 6, 2025 and retraction nearly a year later, the paper picked up 262 within-publisher citations, 504 total citations, ~500K reads, and a 99th-percentile attention score.</li>
-<li><a href="https://meaningprocessing.com/">Ilkka Tuomi</a>, chief scientist at Meaning Processing Ltd., posted on LinkedIn at the time of original publication that meta-analyses of this kind try to “draw conclusions about incompatible and ill-defined outcomes”: “The only reason to do these studies seems to be that statistics and meta-analysis tools can crunch out numbers that look [like] science.”</li>
-<li><a href="https://www.ed.ac.uk/profile/ben-williamson">Ben Williamson</a>, senior lecturer at the Centre for Research in Digital Education and the Edinburgh Futures Institute at the University of Edinburgh, told Ars the paper appeared to be “synthesizing very poor quality studies, or mixing together findings from studies that simply cannot be accurately compared due to very different methods, populations, and samples.” He also flagged the timing: ChatGPT shipped only two and a half years before publication, and Williamson said it was “not feasible that dozens of high-quality studies about ChatGPT and learning performance could have been conducted, reviewed, and published in that time.”</li>
-<li>The retraction notice attracted little attention until Williamson shared it on Bluesky and LinkedIn, raising the worry that the “headline finding that ChatGPT helps learning performance might persist despite its retraction.”</li>
-</ul>
-<p>The retracted paper’s abstract:</p>
-<blockquote class="blockquote">
-<p>As a new type of artificial intelligence, ChatGPT is becoming widely used in learning. However, academic consensus regarding its efficacy remains elusive. This study aimed to assess the effectiveness of ChatGPT in improving students’ learning performance, learning perception, and higher-order thinking through a meta-analysis of 51 research studies published between November 2022 and February 2025. The results indicate that ChatGPT has a large positive impact on improving learning performance (<img src="https://benjaminhan.net/feed-assets/4ba0f7f8f6d1ac92.svg" alt="g = 0.867" class="feed-math-inline"/>) and a moderately positive impact on enhancing learning perception (<img src="https://benjaminhan.net/feed-assets/93c340d4d5d9e3e1.svg" alt="g = 0.456" class="feed-math-inline"/>) and fostering higher-order thinking (<img src="https://benjaminhan.net/feed-assets/b50dd035fa35552b.svg" alt="g = 0.457" class="feed-math-inline"/>). The impact of ChatGPT on learning performance was moderated by type of course (<img src="https://benjaminhan.net/feed-assets/b344d9b145a8022e.svg" alt="Q_B = 64.249" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/425ab533a358a81d.svg" alt="P &lt; 0.001" class="feed-math-inline"/>), learning model (<img src="https://benjaminhan.net/feed-assets/8e3167ced7b69b13.svg" alt="Q_B = 76.220" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/425ab533a358a81d.svg" alt="P &lt; 0.001" class="feed-math-inline"/>), and duration (<img src="https://benjaminhan.net/feed-assets/95d90f1aa4b3ba6a.svg" alt="Q_B = 55.998" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/425ab533a358a81d.svg" alt="P &lt; 0.001" class="feed-math-inline"/>); its effect on learning perception was moderated by duration (<img src="https://benjaminhan.net/feed-assets/6f541c354c9701f9.svg" alt="Q_B = 19.839" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/425ab533a358a81d.svg" alt="P &lt; 0.001" class="feed-math-inline"/>); and its influence on the development of higher-order thinking was moderated by type of course (<img src="https://benjaminhan.net/feed-assets/fc00cf6d1e5778f7.svg" alt="Q_B = 7.811" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/f00b953fb238ecb5.svg" alt="P &lt; 0.05" class="feed-math-inline"/>) and the role played by ChatGPT (<img src="https://benjaminhan.net/feed-assets/a13408c10f52c255.svg" alt="Q_B = 4.872" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/f00b953fb238ecb5.svg" alt="P &lt; 0.05" class="feed-math-inline"/>). This study suggests that: (1) appropriate learning scaffolds or educational frameworks (e.g., Bloom’s taxonomy) should be provided when using ChatGPT to develop students’ higher-order thinking; (2) <strong>the broad use of ChatGPT at various grade levels and in different types of courses should be encouraged to support diverse learning needs</strong>; (3) <strong>ChatGPT should be actively integrated into different learning modes to enhance student learning, especially in problem-based learning</strong>; (4) <strong>continuous use of ChatGPT should be ensured to support student learning, with a recommended duration of 4–8 weeks for more stable effects</strong>; (5) <strong>ChatGPT should be flexibly integrated into teaching as an intelligent tutor, learning partner, and educational tool</strong>. Finally, due to the limited sample size for learning perception and higher-order thinking, and the moderately positive effect, future studies with expanded scope should further explore how to use ChatGPT more effectively to cultivate students’ learning perception and higher-order thinking.</p>
-</blockquote>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The technical case against the paper has been specific and public from the start.</strong> Tuomi’s <a href="https://www.linkedin.com/pulse/what-went-methodologically-wrong-chatgpt-education-ilkka-tuomi-den0f/">methodological analysis</a> and <a href="https://www.linkedin.com/posts/ilkka-tuomi-30086_the-effect-of-chatgpt-on-students-learning-activity-7327264463550595073-gl_J/">companion post</a>, both posted shortly after the paper appeared, lay it out; Williamson amplified them in <a href="https://www.linkedin.com/posts/ben-williamson-7a501b329_the-effect-of-chatgpt-on-students-learning-activity-7327070885587120128-zRXr/">his own pre-publication LinkedIn warning</a> the same week, telling readers to “check out the two-part analysis by Ilkka Tuomi” before taking the meta-analysis seriously:</p>
-<ul>
-<li>The paper “repeats all the errors from an earlier meta-analysis by Deng et al.,” reusing Deng’s search string without attribution, including a copied spelling error.</li>
-<li>Deng at least tried to score input studies for quality. Wang &amp; Fan say nothing about quality and do not state whether the analyzed studies were peer-reviewed; studies from “0-quality journals (like ‘Mathematics’ from MDPI)” are included.</li>
-<li>Internal validity in randomized and quasi-experimental designs requires control and treatment groups drawn from the same population. The 51 studies pool teachers, medical-practice students, college mathematics, computer programming, and language-learning groups; the “basic criterion for making (internally) valid conclusions is broken before the analysis starts.”</li>
-<li>The funnel: the search strings returned 6,621 papers; abstract filtering left 2,712; “careful review” produced 51. In half the studies the experimental/treatment group had fewer than 35 students; some “claim to make statistically valid conclusions based on groups with 12 students,” and the paper offers no study-power estimate.</li>
-<li>The heterogeneity statistic is reported but not interpreted: “huge, suggesting that there is no ‘it’ in the studies. The external validity is junk.”</li>
-<li>To illustrate what summing effect sizes across incompatible studies looks like, Tuomi compares it to a meta-review of “the impact of electricity on learning outcomes” that would pool teacher commute mode, classroom lighting, and air conditioning into a single average. He calls the pattern “garbage in, gold out”: junk inputs, respected-journal output.</li>
-</ul></li>
-<li><p><strong>Publishers should publish a real account of what went wrong, especially for a paper this widely cited.</strong> Two sentences and a non-responsive-author disclosure is not enough from a Springer Nature title that just retracted a paper with 504 citations and ~500K reads, especially when the technical critique above had been public the entire year. The notice does not say which of the three headline claims are now invalid, what the meta-analysis discrepancies actually were, or whether the failure was in study selection, effect-size aggregation, or both. The <a href="https://publicationethics.org/retraction-guidelines">Committee on Publication Ethics retraction guidelines</a> call for specifics; this notice does not meet that standard. The publisher should also disclose what peer review missed and notify the 262 within-publisher citing authors directly, so the correction reaches them instead of the other way around. Williamson, <a href="https://www.linkedin.com/posts/ben-williamson-7a501b329_retraction-note-the-effect-of-chatgpt-on-activity-7456842986551803904-DBoN/">writing on LinkedIn</a> after the retraction, put it bluntly: the paper “should not have been published in the first place,” and despite the retraction, “this and similar studies have shaped debates about AI in education anyway.”</p></li>
-<li><p><strong>Make get-famous-quick costly for researchers and their institutions.</strong> Publishing fast on a hot topic compounds in upside, while the downside, if it ever arrives, is a thin retraction note years later that does not erase the citations or the attention score. The Wang &amp; Fan paper accumulated nearly 60K accesses and a 200+ altmetric score within three days of publication, per <a href="https://www.linkedin.com/posts/ben-williamson-7a501b329_the-effect-of-chatgpt-on-students-learning-activity-7327070885587120128-zRXr/">Williamson’s update on LinkedIn</a>; by retraction it had reached ~500K reads and 504 citations. Williamson described the broader environment as a “flaky evidentiary culture” in AI-in-education research, “where it’s relatively easy to publish in journals with low-quality peer review and editorial processes, allowing papers of dubious quality to get trawled in a poorly designed meta-analysis and then bundled up as conclusive evidence that gets wildly circulated by big social media accounts.” A few changes would make the asymmetry hurt:</p>
-<ul>
-<li>Institutional misconduct review by the authors’ employer (Hangzhou Normal University in this case), with a published outcome rather than internal-only handling.</li>
-<li>Mandatory reciprocal-citation: any paper citing a retracted work after the retraction date must cite the retraction note alongside it, enforced by the publisher inside the same journal family.</li>
-<li>A publicly searchable retraction registry that travels with the author byline at hiring, grant review, and tenure time. The <a href="https://retractionwatch.com/retraction-watch-database-user-guide/">Retraction Watch Database</a> already exists; funders and search committees should treat it as a default lookup; few currently do.</li>
-<li>A grant-cycle penalty: principal investigators with retracted papers in the prior N years carry a disclosure on every new application, weighted in review.</li>
-</ul>
-<p>As long as retraction costs this little, fast publication on a hot topic with weak data has no real downside for the authors or their institutions. The downside lands elsewhere. Papers like Wang &amp; Fan helped legitimize the AI-in-education investment thesis that is <a href="../../posts/20260424-edu-startups-decline/">now collapsing</a>, and the schools, districts, and ed-tech vendors that bought in carry the cost. The citation residue stays in the literature long after the funding has moved on.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260510-schools-retreat/">Schools Retreat From the Pandemic’s Ed-Tech Buildout</a>: the on-the-ground retreat from the AI-in-education thesis this retracted meta-analysis helped legitimize.</li>
-<li><a href="../../posts/20260424-edu-startups-decline/">The Global Edtech Boom Is Fading as Investors Look Elsewhere</a>: the collapsing investment thesis that weak studies like Wang &amp; Fan propped up.</li>
-<li><a href="../../posts/20240327-generative-ai-peer-reviews/">Generative AI Seeped into Research Peer Reviews</a>: another front in the same research-integrity erosion, here in the review process rather than the published study.</li>
-<li><a href="../../posts/20230712-writing-and-generative-ai/">Scientific Writing in the Age of Generative AI</a>: the wider question of how generative AI is changing what gets published and how, of which a low-quality meta-analysis is one symptom.</li>
-<li><a href="../../posts/20260513-acl2026-hallucinated-refs/">ACL 2026 Desk-Rejects Papers with Hallucinated References</a>: a venue trying to make sloppy AI-assisted scholarship costly up front, the prevention side of the after-the-fact retraction this post argues is too cheap.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/</guid>
-  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260507-chatgpt-education-retraction/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
