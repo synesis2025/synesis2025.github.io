@@ -23,6 +23,98 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 27 Jun 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Advancing Mathematics Research with AI-Driven Formal Proof Search</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260606-ai-formal-proof-search/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>An agent equipped with AlphaProof working Erdős problem #125: the mathematician supplies a Lean theorem with a <code>sorry</code> placeholder, and the prover reasons informally, calls AlphaProof on individual goals, and decomposes what is left into lemmas. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Advancing Mathematics Research with AI-Driven Formal Proof Search</em> [1] (arXiv preprint, May 2026), <a href="https://www.semanticscholar.org/author/2072570293">George Tsoukalas</a>, <a href="https://www.semanticscholar.org/author/2373037002">Anton Kovsharov</a>, <a href="https://www.semanticscholar.org/author/74346544">Sergey Shirobokov</a>, and 15 colleagues at Google DeepMind and Aarhus University — with <a href="https://pushmeet.com/">Pushmeet Kohli</a> and <a href="https://www.cs.utexas.edu/~swarat/">Swarat Chaudhuri</a> as corresponding authors — report the first large-scale evaluation of <a href="https://en.wikipedia.org/wiki/Large_language_model">LLM</a>-driven formal proof search on open mathematical problems.</p>
+<blockquote class="blockquote">
+<p>Large language models (LLMs) increasingly excel at mathematical reasoning, but their unreliability limits their utility in mathematics research. <em>A mitigation is using LLMs to generate formal proofs in languages like Lean.</em> We perform the <em>first large-scale evaluation of this method’s ability to solve open problems.</em> Our most capable agent <em>autonomously resolved 9 of 353 open Erdős problems</em> at the per-problem cost of a few hundred dollars, <em>proved 44/492 OEIS conjectures,</em> and is being deployed in combinatorics, optimization, graph theory, algebraic geometry, and quantum optics research. A basic agent alternating LLM-based generation with Lean-based verification replicated the Erdős successes but proved costlier on the hardest problems. These findings demonstrate the power of AI-aided formal proof search and shed light on the agent designs that enable it.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p><em>AlphaProof Nexus</em> is a framework for agents that query two things in a loop: a frontier LLM that proposes mathematics, and the <a href="https://lean-lang.org/">Lean</a> compiler that checks it. In Lean, definitions, theorems, and proofs are all mechanically verified code. A proof is built from <em>tactics</em>, elementary steps the compiler runs one at a time while tracking the goals still left to prove, and it is complete only when no goals remain. Lean also has a <code>sorry</code> tactic that closes any goal while still passing the type-checker, so proving a theorem reduces to a concrete coding task: rewrite the file until it compiles with no <code>sorry</code> left.</p>
+<p>The agent’s input is a <em>proof sketch</em>: a Lean file holding the target theorem, the definitions and library imports it depends on, and <code>sorry</code> where the proof should go. The mathematician can add natural-language context and domain knowledge encoded in Lean, and marks which parts of the file the agent may edit, with <code>EVOLVE-BLOCK</code> regions where it can introduce helper lemmas, definitions, and proof steps, and <code>EVOLVE-VALUE</code> regions enclosing parameters whose values it may change. On success the agent returns a <code>sorry</code>-free proof.</p>
+<p>The paper builds four agents on this framework and tests them in four combinations:</p>
+<ul>
+<li><strong>(A) Basic generate-and-verify.</strong> A set of prover subagents run independently with no shared state. Each is a <a href="https://ghuntley.com/ralph/">“Ralph loop”</a>: a sequence of episodes, where an episode is a multi-turn <a href="https://blog.google/technology/google-deepmind/gemini-3/">Gemini 3.1 Pro</a> inference loop that reasons step by step and edits the sketch with a search-and-replace tool. After each turn the subagent compiles the sketch. A Lean error message becomes the instruction for the next turn. If an episode ends with a <code>sorry</code> still in the file, the subagent writes a comment summarizing what it learned, and that annotated sketch seeds the next episode.</li>
+<li><strong>(B) Basic plus AlphaProof.</strong> The prover can hand an unproved goal to <a href="https://deepmind.google/discover/blog/ai-solves-imo-problems-at-silver-medal-level/">AlphaProof</a>, DeepMind’s reinforcement-learning prover for <a href="https://en.wikipedia.org/wiki/International_Mathematical_Olympiad">Olympiad-level</a> Lean. AlphaProof returns a proof, which is substituted straight into the sketch, a disproof showing the goal is false, or a failure message. Disproofs and failures are fed back into the prover’s prompt.</li>
+<li><strong>(C) Basic plus evolution.</strong> Prover subagents draw from and contribute to a shared population of validated sketches, in the style of DeepMind’s <a href="https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/">AlphaEvolve</a>. Formal proof is pass-or-fail, which leaves an evolutionary search nothing to climb, so a pool of cheaper Gemini 3.0 Flash rater subagents ranks sketches by plausibility, clarity, and novelty: an LLM critic compares them in pairwise matches, the results become Elo scores, and a selection rule from Monte Carlo tree search (P-UCB, which favors high-scoring sketches while still exploring less-tried ones) decides which to evolve next.</li>
+<li><strong>(D) Full-featured.</strong> Combines AlphaProof and evolutionary search, and is the agent used for the paper’s main results.</li>
+</ul>
+<p>A validator checks every result before it counts, confirming that the final sketch compiles and that the agent did not quietly weaken the theorem statement to make the proof easier.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>Design of the full-featured agent (D). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The evaluation covers 353 open <a href="https://www.erdosproblems.com/">Erdős problems</a> and 492 conjectures from the <a href="https://oeis.org/">On-Line Encyclopedia of Integer Sequences (OEIS)</a>, with a focused cost comparison run on six Erdős instances. The metric is solve rate against mean inference cost in dollars, swept over <img src="https://benjaminhan.net/feed-assets/cc103df85876842a.svg" alt="K \in \{1, 3, 6, 10\}" class="feed-math-inline"/> independent attempts. The prover is Gemini 3.1 Pro and the rater Gemini 3.0 Flash. Reported costs exclude AlphaProof’s own inference (estimated around $60 per problem), which the authors note does not change the comparison.</p>
+<p>The findings:</p>
+<ul>
+<li><strong>Nine of 353 open Erdős problems</strong> solved by the full-featured agent (D), including two that had been open for 56 years, at a few hundred dollars per problem.</li>
+<li><strong>Forty-four of 492 OEIS conjectures</strong> proved.</li>
+<li><strong>The basic agent (A) solved all nine Erdős problems too</strong>, at higher cost on the hardest ones. On most problems (A) or (B) sat on the cost–performance Pareto frontier, and the full-featured (D) pulled ahead only on the hardest, such as Erdős #125.</li>
+<li><strong>Already in use in active research</strong> across optimization theory, graph theory, algebraic geometry, additive combinatorics, and quantum optics.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
+<figcaption>Solve rate versus mean inference cost across six Erdős instances, for the four agents. Annotations mark the number of independent attempts <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> grouped together. For the basic agents (A, B), each curve traces a cost–performance frontier with diminishing returns at higher budgets. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The base model matters more than the orchestration</strong>: the basic generate-and-verify loop (A) solved all nine Erdős problems on its own. Adding AlphaProof (B) mostly matched it within the margin of error, and the full-featured agent (D) beat them only on the hardest instances (#138 and #125, 2–5x cheaper there) while running about twice as expensive on the rest. Standalone AlphaProof and versions of (A) built on smaller Gemini models solved nothing. The capability comes from the frontier prover, not the evolutionary machinery around it, because the Lean compiler already supplies a hard correctness signal. <a href="../../posts/20260606-co-scientist-scientific-discovery/">Co-Scientist</a> [2] is the opposite case: with no compiler to check its hypotheses, its Elo tournament is the only quality signal it has, so the same machinery that is optional here becomes essential.</p></li>
+<li><p><strong>Humans still formalize the problem and digest the proof</strong>: the agent only starts once someone has written the conjecture as a Lean theorem, and its output is a machine-checked proof that still has to be read back out (“deformalized”) and understood. It is the split <a href="../../posts/20260422-proof-generation-vs-digestion/">Terence Tao named</a>: generation and verification race ahead while digestion lags. It also revives the older question of <a href="../../posts/20230902-computers-write-proofs/">what mathematicians are for</a> once a machine can write the proof.</p></li>
+<li><p><strong>Known answers versus open problems</strong>: the <a href="../../posts/20260606-benchmarks-in-leipzig/">Leipzig benchmark</a> [3] graded models on 100 research-level questions that already had known answers, leaving only two unsolved after three rounds. This paper instead targets open problems with no known answer, where a result counts only when the Lean compiler accepts the proof.</p></li>
+<li><p><strong>A price tag on open problems</strong>: a few hundred dollars to settle a question open for decades makes attempting a conjecture a budgeting decision. Progress now has a unit cost, so you can buy more of it, like the <a href="../../posts/20260508-import-ai-455-automating-ai-research/">broader automation of AI R&amp;D</a>. The bottleneck remains human bandwidth: formalizing the problems and digesting the proofs.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2072570293">Tsoukalas, George</a>, <a href="https://www.semanticscholar.org/author/2373037002">Kovsharov, Anton</a>, <a href="https://www.semanticscholar.org/author/74346544">Shirobokov, Sergey</a>, <a href="https://www.semanticscholar.org/author/2320805568">Surina, Anja</a>, <a href="https://www.semanticscholar.org/author/2292927">Firsching, Moritz</a>, <a href="https://www.semanticscholar.org/author/2333242580">Bérczi, Gergely</a>, <a href="https://www.semanticscholar.org/author/2274226620">Ruiz, Francisco J. R.</a>, <a href="https://www.semanticscholar.org/author/2170091">Suggala, Arun</a>, <a href="https://www.semanticscholar.org/author/2333642957">Wagner, Adam Zsolt</a>, <a href="https://www.semanticscholar.org/author/34422202">Wieser, Eric</a>, <a href="https://www.semanticscholar.org/author/2306950395">Yu, Lei</a>, <a href="https://www.semanticscholar.org/author/1885349">Huang, Aja</a>, <a href="https://www.semanticscholar.org/author/2375823339">Horváth, Miklós Z.</a>, <a href="https://www.semanticscholar.org/author/2438596479">Ferrauiolo, Andrew</a>, <a href="https://www.semanticscholar.org/author/47407464">Michalewski, Henryk</a>, <a href="https://www.semanticscholar.org/author/2554481">Grosu, Codrut</a>, <a href="https://www.semanticscholar.org/author/2067208983">Hubert, Thomas</a>, <a href="https://www.semanticscholar.org/author/2265578914">Balog, Matej</a>, <a href="https://pushmeet.com/">Kohli, Pushmeet</a>, and <a href="https://www.cs.utexas.edu/~swarat/">Chaudhuri, Swarat</a>. “Advancing Mathematics Research with AI-Driven Formal Proof Search.” <em>arXiv preprint</em> (arXiv:2605.22763), May 21, 2026. <a href="https://arxiv.org/abs/2605.22763" class="uri">https://arxiv.org/abs/2605.22763</a></li>
+<li><a id="ref-2"></a>Gottweis, Juraj, Weng, Wei-Hung, Daryin, Alexander, and 48 co-authors. “Accelerating scientific discovery with Co-Scientist.” <em>Nature</em> (DOI 10.1038/s41586-026-10644-y), May 19, 2026. <a href="https://doi.org/10.1038/s41586-026-10644-y" class="uri">https://doi.org/10.1038/s41586-026-10644-y</a></li>
+<li><a id="ref-3"></a>Balakin, Andrei, Bóna, Miklós, Brandenburg, Marie-Charlotte, and 46 co-authors. “Benchmarks in Leipzig.” <em>arXiv preprint</em> (arXiv:2606.05818), June 4, 2026. <a href="https://arxiv.org/abs/2606.05818" class="uri">https://arxiv.org/abs/2606.05818</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260606-model-disproves-discrete-geometry-conjecture/">An OpenAI Model Disproves a Discrete-Geometry Conjecture</a>: the informal counterpart, an Erdős conjecture settled by a general model and checked by a human committee rather than a compiler.</li>
+<li><a href="../../posts/20260427-chatgpt-vibe-math-proof/">Even Experts Are Surprised by AI’s Latest ‘Vibe-Mathing’ Advance</a>: another AI result on a long-open math problem, with the value in a transferable technique rather than the single proof.</li>
+<li><a href="../../posts/20260514-carina-hong-axiom-math-is-agi/">Math Is AGI: Carina Hong on Axiom and Formal Reasoning</a>: the same bet that formal, machine-checkable proof is the path for AI mathematics.</li>
+<li><a href="../../posts/20260602-leiden-declaration-ai-mathematics/">The Leiden Declaration on AI and Mathematics</a>: the governance counterpart, asking for human oversight of AI in mathematical research.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260606-ai-formal-proof-search/</guid>
+  <pubDate>Sat, 06 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>An OpenAI Model Disproves a Discrete-Geometry Conjecture</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260606-model-disproves-discrete-geometry-conjecture/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1905,33 +1997,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260531-my-80th-half-marathon/</guid>
   <pubDate>Sun, 31 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260531-my-80th-half-marathon/cover.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Where Can You Go from Seattle in Under 2 Hours by Car?</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260531-where-can-you-go-from-seattle/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260531-where-can-you-go-from-seattle/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>Is this true?</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260531-where-can-you-go-from-seattle/cover.jpeg" class="img-fluid quarto-figure quarto-figure-center figure-img" data-lightbox-src="cover-full.jpeg"></p>
-</figure>
-</div>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116672980078039581">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260531-where-can-you-go-from-seattle/</guid>
-  <pubDate>Sun, 31 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260531-where-can-you-go-from-seattle/cover.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
