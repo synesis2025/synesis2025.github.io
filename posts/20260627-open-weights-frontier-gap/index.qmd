@@ -1,0 +1,38 @@
+---
+title: "How Far Behind the Closed Frontier Are Open-Weights LLMs?"
+description: "A Doubleword analysis finds open-weights LLMs six months from matching the closed frontier on one benchmark but a steady five months behind across eighteen."
+author: synesis
+date: "2026-06-27"
+image: cover.jpg
+---
+
+![The shrinking gap between open-weights and closed-source LLMs on the Artificial Analysis Intelligence Index. Image from [Doubleword](https://blog.doubleword.ai/frontier-os-llm).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In a [Doubleword](https://www.doubleword.ai/) post, [Jamie Dborin](https://www.linkedin.com/in/jamie-dborin/) takes [a plot making the rounds on Twitter](https://x.com/yaroslavvb/status/2067367657272422584) ([durable version](https://yaroslavvb.github.io/artificial-analysis-oss-lag/)), which shows the shrinking gap between open-weights and closed-source LLMs, and re-runs it across every benchmark [Artificial Analysis](https://artificialanalysis.ai/) publishes to test whether the open-weights frontier is really about to catch up.
+
+What the post reports:
+
+- The gap is measured as a time lag: how many months back the closed-source frontier sat at the level the open-weights frontier reaches today.
+- On the headline [Artificial Analysis Intelligence Index](/posts/20260620-intelligence-benchmarking/), the gap has shrunk reliably since around summer 2024. A line of best fit hits zero *around December 3, 2026*, roughly six months after the post was written.
+- That is one benchmark. Repeating the analysis across all 18 benchmarks Artificial Analysis tracks, the average gap is *almost flat*, just under five months for the whole period, and looks like it may be growing on most datasets.
+- *Coding is the exception*: its gap fell from about 15 months behind to one or two, which accounts for much of the apparent convergence.
+
+![Open-frontier lag across all 18 Artificial Analysis benchmarks, by month. The overall mean regression (black) stays flat near five months for the whole period. Image from [Doubleword](https://blog.doubleword.ai/frontier-os-llm).](lag-by-benchmark.webp){fig-align="center" data-lightbox-src="lag-by-benchmark-full.png"}
+
+## My Notes
+
+- **Months behind is not a clean catch-up estimate**: it describes the past rather than the future. Let $c(t)$ and $o(t)$ be the closed and open frontier performance at time $t$, improving at rates $r_c$ and $r_o$. The plot's lag $\delta$ is defined by $c(\text{now}-\delta) = o(\text{now})$, so $c(\text{now}) = o(\text{now}) + r_c\,\delta$ and
+$$\delta = \frac{c(\text{now}) - o(\text{now})}{r_c}.$$
+The denominator is the *closed* frontier's rate, so a falling $\delta$ can mean the gap shrank (open catching up) or that $r_c$ rose (closed accelerating). The forward question, when open weights actually reach the closed frontier, divides the same gap by the rate *difference* instead:
+$$\tau = \frac{c(\text{now}) - o(\text{now})}{r_o - r_c},$$
+which is positive only when $r_o > r_c$: open weights catch up only by improving faster than the closed frontier, not merely by improving. The article's flat ~5-month average is the telling case: a steady lag means $r_o \approx r_c$, so the gap holds rather than closes and $\tau$ runs to infinity even while "months behind" stays comfortably small.
+
+- **Coding drives the convergence and is the weakest evidence for it**: the apparent catch-up is mostly coding, whose lag fell from about 15 months to one or two. A small *time* lag is not the same as a small *point* gap, though. In today's ranking points the [Artificial Analysis methodology post](/posts/20260620-intelligence-benchmarking/) still puts coding among the widest open-versus-closed gaps. Two further reasons to discount the coding result:
+  - **Optimized and contamination-prone**: coding is the capability open-weights labs invest in most heavily, and coding benchmarks are a known contamination risk. [LiveCodeBench](https://arxiv.org/abs/2403.07974), one of the eighteen benchmarks here, exists to give a contamination-free code evaluation by pulling fresh contest problems after a cutoff date, the same post-cutoff defense the [Leipzig math benchmark](/posts/20260606-benchmarks-in-leipzig/) used.
+  - **Harness may compress the gap (speculative)**: Artificial Analysis runs every model through the same open-source agentic harness (an [E2B](https://e2b.dev/) sandbox, a fixed tool set, up to 250 turns), so the harness is controlled. But the harness does much of the work, and a forgiving one can let a weaker model reach similar end-to-end task outcomes, which *may* reduce the measured gap.
+
+## Related Posts
+
+- [How Artificial Analysis Builds Its Intelligence Index](/posts/20260620-intelligence-benchmarking/): documents the weighting and scoring of the benchmark suite this analysis runs on, and measures the same gap in current ranking points rather than months of lag.
+- [Benchmarks in Leipzig](/posts/20260606-benchmarks-in-leipzig/): a contamination-resistant math benchmark built from post-cutoff unpublished questions, the defense the public coding benchmarks here lack.
+- [Mapping Global Dynamics of Benchmark Creation and Saturation in AI](/posts/20221121-nlp-benchmark-saturation/): how benchmarks saturate over time, the backdrop to why a single index can show convergence that a wider set does not.
