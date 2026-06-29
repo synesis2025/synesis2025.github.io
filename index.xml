@@ -20,7 +20,680 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 28 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 29 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Sakana Fugu: One Model to Command Them All</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260629-fugu-release/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-fugu-release/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-fugu-release/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Sakana Fugu is a single model that routes a query to a pool of other LLMs: closed and open models, plus recursive copies of itself. Image from <a href="https://sakana.ai/fugu-release/">Sakana AI</a>.</figcaption>
+</figure>
+</div>
+<p>In the <em>Sakana Fugu Technical Report</em> [1] (arXiv preprint, June 2026), <a href="https://www.semanticscholar.org/author/2326422916">Yujin Tang</a> and 13 colleagues at <a href="https://sakana.ai/">Sakana AI</a> introduce <em>Sakana Fugu</em> (<em>fugu</em> is Japanese for pufferfish, continuing the lab’s fish-naming line after <em>sakana</em>, “fish”), a family of orchestrator models. A Fugu model is itself a language model, but it is trained not to answer a query directly. Instead it decides which other LLMs to call, hands them sub-tasks, checks their work, and combines the results into one answer, all behind a single API endpoint. The work productizes two of the lab’s ICLR 2026 papers: <em>TRINITY: An Evolved LLM Coordinator</em> [2] and <em>Learning to Orchestrate Agents in Natural Language with the Conductor</em> [3].</p>
+<p>Three terms, defined up front:</p>
+<ul>
+<li><strong>Orchestrator model</strong>: a language model trained to decide <em>which</em> model should handle a query and <em>how</em> to combine the outputs, rather than producing the final answer itself. It can also solve a query directly when no delegation is needed.</li>
+<li><strong>Agent pool</strong>: the set of underlying LLMs the orchestrator can call. The pool is swappable, mixes closed and open models, and includes recursive copies of Fugu itself. A provider can be dropped and the orchestrator routes around it.</li>
+<li><strong>Agentic scaffold</strong>: the per-query plan the orchestrator devises on the fly, including who talks to whom and what each agent is told to do. The scaffold is rebuilt for each query rather than fixed in advance.</li>
+</ul>
+<p>Sakana describes the system this way:</p>
+<blockquote class="blockquote">
+<p>Sakana Fugu is a multi-agent system that <em>behaves like a single model</em>. You send a request to one endpoint, and Fugu decides how to handle it: <em>solving it directly when that is enough, or assembling and coordinating a team of expert models</em> when a task calls for more. It manages <em>model selection, delegation, verification, and synthesis</em> internally, so the complexity of a multi-agent system never reaches your code.</p>
+</blockquote>
+<p>The technical report’s abstract states the contribution:</p>
+<blockquote class="blockquote">
+<p>The capabilities of frontier Large Language Models (LLMs) continue to advance, with different providers increasingly specializing in distinct domains. This raises a natural next objective: how to combine the individual specializations of various LLMs into a collectively intelligent system. To this end, we report the development of Sakana Fugu, <em>a family of orchestrator models that harness and amplify the capabilities of an LLM agent team</em>. Fugu models are themselves language models trained to understand user queries and <em>dynamically devise agentic scaffolds</em> to solve them. Through these adaptive scaffolds, Fugu accesses performance beyond any individual LLM agent, achieving <em>state-of-the-art results compared to other publicly accessible models</em> across a range of challenging tasks, including SWE-Bench Pro, Terminal Bench, LiveCodeBench, GPQA-Diamond, Humanity’s Last Exam, and CharXiv Reasoning. We release two models: Fugu, which balances performance with latency for everyday use, and Fugu-Ultra, which prioritizes answer quality on the hardest problems. We describe our <em>training paradigm, which encompasses large-scale fine-tuning, evolutionary algorithms, and reinforcement learning approaches</em>, along with the infrastructure and core design principles that turn these methods into a production system. We hope this report encourages further research into multi-agent systems and dynamic, query-adaptive agentic scaffolds as a path toward the next frontier of AI capabilities, accessed through collective intelligence.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The report ships two distinct models, each extending one of the lab’s ICLR 2026 papers rather than chaining both into a single pipeline. The abstract lists large-scale fine-tuning, evolutionary algorithms, and reinforcement learning together, but those span the two models’ separate recipes rather than three stages of one:</p>
+<ul>
+<li><strong>Fugu builds on TRINITY</strong> [2]. The everyday model extends <a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY</a>, a roughly 0.6B-parameter language model paired with a 10K-parameter head and optimized with the separable Covariance Matrix Adaptation Evolution Strategy rather than gradient descent. Over multiple turns the coordinator assigns one of three roles, Thinker, Worker, or Verifier, to a selected LLM, offloading the hard skills onto the pool and keeping itself small. TRINITY reports 86.2% on LiveCodeBench. Fugu trains it in two stages: supervised fine-tuning on single-step tasks, then an evolutionary strategy on end-to-end tasks.</li>
+<li><strong>Fugu-Ultra builds on the Conductor</strong> [3]. The quality-first model extends <a href="../../posts/20260629-conductor-llm-orchestrator/">Conductor</a>, a 7B model trained by reinforcement learning to write both the communication topology among agents and the instructions it sends each one, and adds long-horizon function-calling and multi-agent workflows through adaptive agent memory. Letting the Conductor select itself as a worker produces recursive topologies, which the paper calls a form of test-time scaling: spend more orchestration depth on a hard query. This recursive self-call is the mechanism behind the recursive Fugu box in the diagram above.</li>
+<li><strong>Both ship on one OpenAI-compatible API.</strong> Fugu balances quality against latency for everyday use. Fugu-Ultra coordinates a deeper pool when accuracy matters most. Teams with privacy or compliance constraints can opt specific agents out of the pool.</li>
+</ul>
+<p>The learned-coordinator idea is shared with other recent work that searches or trains the structure of a multi-agent system rather than fixing it by hand, including <a href="../../posts/20260430-multi-agent-system-search/">MASS</a>, which searches prompts and topologies, and <a href="../../posts/20260520-adaptive-collaboration-mapo/">MAPO</a>, which trains a deferral policy to decide when to hand off.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The report makes two separate comparisons, each with its own figure.</p>
+<ul>
+<li><strong>Against frontier baselines, Fugu Ultra leads four of eight.</strong> Across eight benchmarks spanning coding, science, reasoning, and agentic tasks, Fugu Ultra takes the top score on LiveCodeBench [4], GPQA-Diamond [5], CharXiv Reasoning [6], and Terminal Bench [7], but Fable 5 wins SWE-Bench Pro [8] (80.0 to 73.7), SciCode [9], and Humanity’s Last Exam [10], and Opus 4.8 edges CTI-REALM [11]. Neither Fable 5 nor Mythos Preview is in Fugu’s pool, since the report says both are not publicly accessible.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-fugu-release/benchmarks-frontier.jpg" class="img-fluid figure-img" data-lightbox-src="benchmarks-frontier-full.jpg"></p>
+<figcaption>Fugu and Fugu Ultra against frontier baselines across eight benchmarks. Figure from the technical report [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Against the models in its own pool, Fugu usually wins, but not always.</strong> Comparing Fugu and Fugu Ultra to Opus 4.8, Gemini 3.1 Pro, and GPT 5.5, a Fugu variant takes the top score on most of the eleven benchmarks, including SWE-Bench Pro (73.7), LiveCodeBench (93.2), and GPQA-Diamond (95.5). The exceptions are worth noting: GPT 5.5 wins MRCRv2 (94.8), and on SciCode, Long Context Reasoning, and τ³ Banking the plain Fugu scores above Fugu Ultra, so the deeper-pool tier is not uniformly the stronger one.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-fugu-release/benchmarks-pool.jpg" class="img-fluid figure-img"></p>
+<figcaption>Fugu and Fugu Ultra against the foundation models in their own pool. Highest score per row is bold, second-highest underlined. Figure from the technical report [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><p><strong>Beyond fixed benchmarks, three end-to-end case studies.</strong> The report also pits Fugu-Ultra against the same three frontier models on open-ended agentic work:</p>
+<ul>
+<li><em>Autonomous ML research (AutoResearch).</em> An agent edits a small GPT training pipeline over 123 autonomous experiments to drive down validation bits-per-byte (lower is better). Fugu-Ultra reaches the lowest mean (0.9774 against 0.9781, 0.9793, and 0.9822) and pulls ahead after mid-training.</li>
+<li><em>Classical Japanese reading order.</em> Recovering the reading order of scattered classical kana has no training data, so Fugu writes and beam-searches a predictor instead of learning one. Fugu-Ultra tops every frontier baseline (0.776 mean normalized edit distance against 0.642 for the strongest).</li>
+<li><em>CAD generation.</em> Asked to generate a working camera-aperture iris, Fugu-Ultra produced the only design whose blades fully open and close.</li>
+</ul>
+<p>These are single-instance demonstrations rather than powered comparisons, and the authors note results vary across prompts and trials.</p></li>
+<li><p><strong>A beta of close to 500 users tested it on long tasks.</strong> Reported applications include automated data-science research, paper reproduction, security assessment, and literature and patent investigation, the kind of multi-step work where progress comes from many steps rather than one good answer.</p></li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The parity claim dates faster than the vendor hedge.</strong> Sakana leads with two claims: Fugu matches frontier models, and it hedges against single-vendor dependency. The parity claim won’t hold for long. An orchestrator built on Opus, Gemini, and GPT inherits their gains, but also their ceiling, and the frontier labs are building their own orchestration. The swappable-pool argument does not decay the same way: if access to one provider changes, routing around it is useful no matter how the underlying models move. The report presents both as strengths without ranking them.</p></li>
+<li><p><strong>The hedge needs strong fallback models.</strong> Fugu can route around a restricted provider, but its winning scores lean on the strongest pool members, Opus 4.8, Gemini 3.1 Pro, and GPT 5.5. If those are the ones that become unavailable, the fallback pool is weaker, and the parity numbers would move with it. The report does not show what Fugu scores when the top pool models are removed, which is the scenario the sovereignty argument is built for.</p></li>
+<li><p><strong>Deeper orchestration can cost accuracy.</strong> Fugu Ultra loses to plain Fugu on SciCode, Long Context Reasoning, and τ³ Banking. Coordinating a deeper pool adds rounds of delegation, verification, and synthesis, and each handoff is a place for context to drop or errors to propagate, exactly the failure modes catalogued in <a href="../../posts/20250802-mast-multi-agent-failures/">MAST</a>. A single API that hides the multi-agent system hides those failures rather than removing them.</p></li>
+<li><p><strong>The cost of the abstraction is unstated.</strong> Collapsing a multi-agent system into one endpoint is the real product move. But orchestrating several frontier calls per query costs more tokens and latency than a single call, and the report gives benchmark scores without a cost or latency comparison. The economical version of this idea runs the other direction, <a href="../../posts/20260429-frontier-model-lower-bill/">routing cheap models first and escalating only when needed</a>. Fugu Ultra escalates by default, which is the right call for hard problems but not obviously for everyday ones.</p></li>
+</ul>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Tang, Yujin, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, <a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, Richard, Vincent, Goda, Haruto, Tymchenko, Iaroslav, Nguyen, Nhan, Lee, Hyunin, Ashiga, Mari, Kotyan, Shashank, Kuroki, So, and Clanuwat, Tarin. “Sakana Fugu Technical Report.” <em>arXiv preprint</em> (arXiv:2606.21228), June 19, 2026. Release announcement: <a href="https://sakana.ai/fugu-release/" class="uri">https://sakana.ai/fugu-release/</a>. Report: <a href="https://arxiv.org/abs/2606.21228" class="uri">https://arxiv.org/abs/2606.21228</a></li>
+<li><a id="ref-2"></a>Xu, Jinglue, Sun, Qi, Schwendeman, Peter, Nielsen, Stefan, Cetin, Edoardo, and Tang, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
+<li><a id="ref-3"></a>Nielsen, Stefan, Cetin, Edoardo, Schwendeman, Peter, Sun, Qi, Xu, Jinglue, and Tang, Yujin. “Learning to Orchestrate Agents in Natural Language with the Conductor.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04388. <a href="https://arxiv.org/abs/2512.04388" class="uri">https://arxiv.org/abs/2512.04388</a></li>
+<li><a id="ref-4"></a>Jain, Naman, Han, King, Gu, Alex, Li, Wen-Ding, Yan, Fanjia, Zhang, Tianjun, Wang, Sida, Solar-Lezama, Armando, Sen, Koushik, and Stoica, Ion. “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2403.07974, March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></li>
+<li><a id="ref-5"></a>Rein, David, Hou, Betty Li, Stickland, Asa Cooper, Petty, Jackson, Pang, Richard Yuanzhe, Dirani, Julien, Michael, Julian, and Bowman, Samuel R. “GPQA: A Graduate-Level Google-Proof Q&amp;A Benchmark.” <em>Conference on Language Modeling (COLM)</em>, 2024. arXiv:2311.12022, November 20, 2023. <a href="https://arxiv.org/abs/2311.12022" class="uri">https://arxiv.org/abs/2311.12022</a></li>
+<li><a id="ref-6"></a>Wang, Zirui, Xia, Mengzhou, He, Luxi, Chen, Howard, Liu, Yitao, Zhu, Richard, Liang, Kaiqu, Wu, Xindi, Liu, Haotian, Malladi, Sadhika, Chevalier, Alexis, Arora, Sanjeev, and Chen, Danqi. “CharXiv: Charting Gaps in Realistic Chart Understanding in Multimodal LLMs.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2024. arXiv:2406.18521, June 26, 2024. <a href="https://arxiv.org/abs/2406.18521" class="uri">https://arxiv.org/abs/2406.18521</a></li>
+<li><a id="ref-7"></a>Merrill, Mike A., Shaw, Alexander G., Carlini, Nicholas, et al.&nbsp;“Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in Command Line Interfaces.” <em>arXiv preprint</em> (arXiv:2601.11868), January 17, 2026. <a href="https://arxiv.org/abs/2601.11868" class="uri">https://arxiv.org/abs/2601.11868</a></li>
+<li><a id="ref-8"></a>Deng, Xiang, Da, Jeff, Pan, Edwin, He, Yannis Yiming, Ide, Charles, et al.&nbsp;“SWE-Bench Pro: Can AI Agents Solve Long-Horizon Software Engineering Tasks?” <em>arXiv preprint</em> (arXiv:2509.16941), September 21, 2025. <a href="https://arxiv.org/abs/2509.16941" class="uri">https://arxiv.org/abs/2509.16941</a></li>
+<li><a id="ref-9"></a>Tian, Minyang, Gao, Luyu, Zhang, Shizhuo Dylan, Chen, Xinan, Fan, Cunwei, et al.&nbsp;“SciCode: A Research Coding Benchmark Curated by Scientists.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2024. arXiv:2407.13168, July 18, 2024. <a href="https://arxiv.org/abs/2407.13168" class="uri">https://arxiv.org/abs/2407.13168</a></li>
+<li><a id="ref-10"></a>Phan, Long, Gatti, Alice, Han, Ziwen, Li, Nathaniel, Hu, Josephina, et al.&nbsp;“Humanity’s Last Exam.” <em>arXiv preprint</em> (arXiv:2501.14249), January 24, 2025. <a href="https://arxiv.org/abs/2501.14249" class="uri">https://arxiv.org/abs/2501.14249</a></li>
+<li><a id="ref-11"></a>Chakraborty, Arjun, Ho, Sandra, Cook, Adam, and Meléndez, Manuel. “CTI-REALM: Benchmark to Evaluate Agent Performance on Security Detection Rule Generation Capabilities.” <em>arXiv preprint</em> (arXiv:2603.13517), March 13, 2026. <a href="https://arxiv.org/abs/2603.13517" class="uri">https://arxiv.org/abs/2603.13517</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: the 14 ways multi-agent systems break, which Fugu’s single-API abstraction hides rather than removes.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: MASS searches the prompts and topologies of a multi-agent system, the same structure Conductor learns by reinforcement learning.</li>
+<li><a href="../../posts/20260520-adaptive-collaboration-mapo/">Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs</a>: trains a policy to decide when to defer, the same delegation decision Fugu’s orchestrator makes per query.</li>
+<li><a href="../../posts/20260429-frontier-model-lower-bill/">Frontier Model, Lower Bill: The Triager Pattern</a>: routes cheap models first and escalates only when needed, the cost-aware inverse of Fugu Ultra’s escalate-by-default design.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260629-fugu-release/</guid>
+  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260629-fugu-release/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Learning to Orchestrate Agents in Natural Language with the Conductor</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The 7B Conductor (leftmost, solid bars) tops GPT-5, Gemini 2.5 Pro, DeepSeek R1, and Claude Opus 4 on both GPQA-Diamond and LiveCodeBench, despite being far smaller than any of the models it coordinates. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Learning to Orchestrate Agents in Natural Language with the Conductor</em> [1] (ICLR 2026), <a href="https://www.semanticscholar.org/author/2396336821">Stefan Nielsen</a>, <a href="https://www.semanticscholar.org/author/2326294214">Edoardo Cetin</a>, <a href="https://www.semanticscholar.org/author/2396352279">Peter Schwendeman</a>, <a href="https://www.semanticscholar.org/author/2326487319">Qi Sun</a>, <a href="https://www.semanticscholar.org/author/2397339171">Jinglue Xu</a>, and <a href="https://www.semanticscholar.org/author/2326422916">Yujin Tang</a> (Sakana AI, University of Michigan, and Institute of Science Tokyo) train a 7B <em>conductor</em> with reinforcement learning to plan how a pool of LLMs should talk to each other and what to tell each one, and then let it call itself recursively to spend more compute on hard queries.</p>
+<blockquote class="blockquote">
+<p>Powerful large language models (LLMs) from different providers have been expensively trained and finetuned to specialize across varying domains. In this work, we introduce <em>a new kind of Conductor model trained with reinforcement learning</em> to automatically discover powerful coordination strategies among LLMs. Our Conductor learns not only to <em>design targeted communication topologies for effective agent-to-agent collaboration, but also to prompt engineer focused instructions</em> to the LLMs to maximally leverage their individual capabilities. We show that, by learning optimal coordination strategies over pools of powerful worker LLMs, <em>a 7B Conductor achieves significant performance gains beyond any individual worker, attaining state-of-the-art results in challenging reasoning benchmarks</em>, such as LiveCodeBench and GPQA. By training with randomized agent pools, our conductor effectively adapts to arbitrary sets of open- and closed-source agents, meeting any user requirements. Furthermore, allowing the Conductor to select itself as a worker gives rise to <em>recursive topologies, elevating performance with a new form of dynamic test-time scaling</em> through online iterative adaptation. More broadly, ours is among the early work demonstrating <em>language model coordination can be unlocked through RL</em>, where powerful coordination strategies emerge naturally in LLMs through pure end-to-end reward maximization.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The Conductor is itself an LLM, a 7B model finetuned from a Qwen2.5-Coder checkpoint [2], with no architectural change to the transformer. The novelty is not the model but what it is trained to <em>output</em>: instead of answering a query, it emits a <em>complete agentic workflow in natural language</em>, which an outer loop then executes by calling the worker models.</p>
+<section id="what-the-conductor-outputs" class="level3">
+<h3 class="anchored" data-anchor-id="what-the-conductor-outputs">What the Conductor outputs</h3>
+<ul>
+<li><strong>The output is a parsed workflow.</strong> After its chain-of-thought, the Conductor emits up to five workflow steps as three aligned Python lists: the natural-language subtask for each step, the integer id of the worker assigned to it, and an <em>access list</em> naming which earlier steps’ outputs that worker may see. The harness parses these lists and runs the steps in order, prompting each named worker with its subtask plus only the prior responses its access list grants. The Conductor produces no answer content of its own. It writes the plan, the workers do the work.</li>
+<li><strong>Natural language as the output medium is the design choice.</strong> Prior multi-agent routers pick from a set of pre-specified topologies. Emitting the workflow as free-form text instead gives what the authors call complete specification freedom, letting one model express best-of-N, sequential chains, or arbitrary parallel trees within the same format. Both halves of an agentic step, which worker to call and what exact instruction it gets, are learned jointly, so the Conductor does prompt engineering rather than only routing.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>The Conductor’s output for a coding problem: a short plan, then three aligned lists, the per-step subtasks, the worker <code>model_id</code> assigned to each, and the <code>access_list</code> controlling what each worker sees. Here worker 2 designs an algorithm and worker 0 implements it in Python with worker 2’s output in context. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="how-it-is-trained" class="level3">
+<h3 class="anchored" data-anchor-id="how-it-is-trained">How it is trained</h3>
+<ul>
+<li><strong>End-to-end with GRPO on the executed workflow’s reward.</strong> Training uses GRPO [3] with a two-part reward: 0 if the three lists can’t be parsed, then 1 if the <em>executed</em> workflow’s final output matches the ground-truth solution and 0.5 otherwise. The signal comes only from running the whole plan to completion, with no supervised labels for who-should-do-what. From that single reward the authors observe problem breakdowns, worker-matched instructions, and communication topologies emerge on their own.</li>
+<li><strong>The training set is 960 deliberately-hard problems.</strong> The Conductor trains on 960 problems across four domains: MATH500 [4] (math), MMLU [5] (multitask knowledge), LiveCodeBench [6] (code), and RLPR [7] (general reasoning). The authors pick the harder variants of benchmarks common in multi-agent work, using AIME-style difficulty over GSM8K [8] and pairing LiveCodeBench’s oldest version for training with its newest for testing, which guards against contamination.</li>
+<li><strong>Randomized agent pools during training.</strong> The available worker set is resampled at each training step, so the Conductor learns to coordinate arbitrary mixes of open and closed models rather than memorizing one fixed roster. At test time a user can hand it any pool, including one with no paid API calls.</li>
+</ul>
+</section>
+<section id="recursion-at-test-time" class="level3">
+<h3 class="anchored" data-anchor-id="recursion-at-test-time">Recursion at test time</h3>
+<ul>
+<li><strong>Recursive self-calls buy more test-time compute.</strong> Letting the Conductor name itself as a worker produces recursive topologies: an inner call receives its parent’s output together with the previous agent’s response. Recursion is unlocked by a short finetune that instantiates one recursion call for half the samples in each batch, and is capped at a maximum depth. Spending more recursive depth raises accuracy on hard queries.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/figure11.webp" class="img-fluid figure-img" data-lightbox-src="figure11-full.png"></p>
+<figcaption>Conductor schematic: the model reads a user query, then coordinates specialized workers (here Qwen, DeepSeek, Gemini, and GPT) with per-agent instructions to solve a task that mixes mathematical reasoning and translation. Figure 11 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The Conductor is evaluated in-domain on held-out questions from its four training tasks and out-of-domain on AIME 2025 [9], BigCodeBench [10], and GPQA-Diamond [11]. Baselines include the strongest single models (Claude Sonnet 4, Gemini 2.5 Pro, GPT-5, and several open models), multi-agent methods (Mixture-of-Agents [12], MASRouter [13], Smoothie [14], RouterDC [15]), and single-model self-reflection, with cost tracked as the average number of model calls per query.</p>
+<section id="accuracy" class="level3">
+<h3 class="anchored" data-anchor-id="accuracy">Accuracy</h3>
+<ul>
+<li><strong>Beats each pool member alone, averaged across seven tasks.</strong> The 7B Conductor averages 77.27 across the four in-domain and three out-of-domain tasks, ahead of GPT-5 (74.78), Gemini 2.5 Pro (70.97), and Claude Sonnet 4 (65.69), and it sets the best score on GPQA-Diamond (87.5) and LiveCodeBench (83.93) [1]. These single models are the Conductor’s own workers, so the comparison pits the orchestrated pool against each member run alone rather than against an outside frontier. The gain comes from routing and composing models the Conductor already has, with no added capability of its own.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/table1.png" class="img-fluid figure-img"></p>
+<figcaption>The full comparison: the 7B Conductor (bottom row) against open and closed single models across the four in-domain tasks (MATH500, MMLU, RLPR, LiveCodeBench) and three unseen tasks (AIME25, BigCodeBench, GPQA-Diamond). It posts the best seven-task average (77.27) and the top score on every column shown. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>In-domain (MATH500, MMLU, RLPR, LiveCodeBench) and unseen-task accuracy: the Conductor (leftmost, bold) clears every single-model and multi-agent baseline, including 5-turn reflection agents. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="cost-efficiency" class="level3">
+<h3 class="anchored" data-anchor-id="cost-efficiency">Cost efficiency</h3>
+<ul>
+<li><strong>Beats multi-agent baselines at a fraction of the cost.</strong> Averaged across tasks the Conductor lands above Mixture-of-Agents, Smoothie, MASRouter, and RouterDC while making far fewer calls, roughly three per query against Mixture-of-Agents’ eight (Figure 5) [1].</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Performance against average number of model calls: the Conductor reaches the highest average performance at roughly three calls per query, above Mixture-of-Agents (MoA), Smoothie, and MASRouter, which cost more per query, and RouterDC, which is cheaper but far weaker. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="scaling-and-adaptivity" class="level3">
+<h3 class="anchored" data-anchor-id="scaling-and-adaptivity">Scaling and adaptivity</h3>
+<ul>
+<li><strong>The 7B’s edge over the 3B is better instructions.</strong> A 3B Conductor already learns to concentrate calls on the three strongest models, and scaling to 7B adds further gains even when the agent selection is held fixed, which the authors attribute to better-written instructions. The Conductor also matches compute to difficulty, using two agents on MMLU and three or four on LiveCodeBench.</li>
+</ul>
+</section>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>RL works here, where Trinity’s did not.</strong> The Conductor trains a coordinator with reinforcement learning, while the sibling <a href="../../posts/20260629-trinity-llm-coordinator/">Trinity</a> [16] found REINFORCE too low-signal to learn from and switched to an evolutionary strategy. The split is scale and action space: the Conductor is a full 7B model emitting natural-language topologies and prompts, a rich space reward signals can shape, whereas Trinity optimized a ~10K-parameter head over a discrete pick-a-model-and-role choice. The two papers map opposite corners of the same coordinator-training problem, and Sakana ships both as separate models behind one endpoint in <a href="../../posts/20260629-fugu-release/">Sakana Fugu</a> [17]: the quality-first Fugu-Ultra builds on the Conductor, while the everyday Fugu builds on Trinity. They are not two stages of one orchestrator.</li>
+<li><strong>Recursion beats reflection as a scaling knob.</strong> A self-reflection loop re-runs one model on its own output. The Conductor’s recursive self-call instead re-plans the whole topology with fresh instructions, and it shifts toward the strongest workers (Claude and Gemini) in deeper rounds. That makes recursion depth a compute dial the user can turn up, and it is the mechanism <a href="../../posts/20260629-fugu-release/">Sakana Fugu</a> [17] later exposes as its higher-effort Fugu-Ultra tier.</li>
+<li><strong>Accuracy reported per call.</strong> Most multi-agent papers report only accuracy. The Conductor’s Figure 5 puts accuracy against average model calls, and its win arrives at roughly three calls against Mixture-of-Agents’ eight. This is the economy the <a href="../../posts/20260429-frontier-model-lower-bill/">triager pattern</a> chases from the cost side, escalating only when needed, reached here by learning when fewer agents suffice. <a href="../../posts/20260520-adaptive-collaboration-mapo/">MAPO</a> [18] trains a closely related decision about when to defer.</li>
+<li><strong>The pool sets the ceiling.</strong> The single models the Conductor beats are its own workers, so the result measures the orchestrated pool against each member alone rather than against an outside frontier. The 7B adds no answer capability of its own. On AIME, where GPT-5 is already the best worker, the paper says the full-pool Conductor only matches its own GPT-5-only variant, which bounds the gain: orchestration helps when the right answer is split across different models, and reduces to picking the single best worker when one model already dominates. This is the same limit <a href="../../posts/20260629-trinity-llm-coordinator/">Trinity</a> [16] hits against its per-question-best oracle.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “Learning to Orchestrate Agents in Natural Language with the Conductor.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04388, December 4, 2025. <a href="https://arxiv.org/abs/2512.04388" class="uri">https://arxiv.org/abs/2512.04388</a></li>
+<li><a id="ref-2"></a>Hui, Binyuan, Yang, Jian, Cui, Zeyu, Yang, Jiaxi, Liu, Dayiheng, Zhang, Lei, Liu, Tianyu, Zhang, Jiajun, Yu, Bowen, Lu, Keming, et al.&nbsp;“Qwen2.5-Coder Technical Report.” <em>arXiv preprint</em> (arXiv:2409.12186), September 18, 2024. <a href="https://arxiv.org/abs/2409.12186" class="uri">https://arxiv.org/abs/2409.12186</a></li>
+<li><a id="ref-3"></a>Shao, Zhihong, Wang, Peiyi, Zhu, Qihao, Xu, Runxin, Song, Junxiao, Bi, Xiao, Zhang, Haowei, Zhang, Mingchuan, Li, Y. K., Wu, Y., and Guo, Daya. “DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.” <em>arXiv preprint</em> (arXiv:2402.03300), February 5, 2024. <a href="https://arxiv.org/abs/2402.03300" class="uri">https://arxiv.org/abs/2402.03300</a></li>
+<li><a id="ref-4"></a>Lightman, Hunter, Kosaraju, Vineet, Burda, Yura, Edwards, Harri, Baker, Bowen, Lee, Teddy, Leike, Jan, Schulman, John, Sutskever, Ilya, and Cobbe, Karl. “Let’s Verify Step by Step.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2305.20050, May 31, 2023. <a href="https://arxiv.org/abs/2305.20050" class="uri">https://arxiv.org/abs/2305.20050</a></li>
+<li><a id="ref-5"></a>Hendrycks, Dan, Burns, Collin, Basart, Steven, Zou, Andy, Mazeika, Mantas, Song, Dawn, and Steinhardt, Jacob. “Measuring Massive Multitask Language Understanding.” <em>International Conference on Learning Representations (ICLR)</em>, 2021. arXiv:2009.03300, September 7, 2020. <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></li>
+<li><a id="ref-6"></a>Jain, Naman, Han, King, Gu, Alex, Li, Wen-Ding, Yan, Fanjia, Zhang, Tianjun, Wang, Sida, Solar-Lezama, Armando, Sen, Koushik, and Stoica, Ion. “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2403.07974, March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></li>
+<li><a id="ref-7"></a>Yu, Tianyu, Ji, Bo, Wang, Shouli, Yao, Shu, Wang, Zefan, Cui, Ganqu, Yuan, Lifan, Ding, Ning, Yao, Yuan, Liu, Zhiyuan, Sun, Maosong, and Chua, Tat-Seng. “RLPR: Extrapolating RLVR to General Domains without Verifiers.” <em>arXiv preprint</em> (arXiv:2506.18254), June 23, 2025. <a href="https://arxiv.org/abs/2506.18254" class="uri">https://arxiv.org/abs/2506.18254</a></li>
+<li><a id="ref-8"></a>Cobbe, Karl, Kosaraju, Vineet, Bavarian, Mohammad, Chen, Mark, Jun, Heewoo, Kaiser, Lukasz, Plappert, Matthias, Tworek, Jerry, Hilton, Jacob, Nakano, Reiichiro, Hesse, Christopher, and Schulman, John. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
+<li><a id="ref-9"></a>Veeraboina, Hemish. “AIME Problem Set 1983–2024.” 2023. <a href="https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination" class="uri">https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination</a></li>
+<li><a id="ref-10"></a>Zhuo, Terry Yue, Vu, Minh Chien, Chim, Jenny, Hu, Han, Yu, Wenhao, Widyasari, Ratnadira, et al.&nbsp;“BigCodeBench: Benchmarking Code Generation with Diverse Function Calls and Complex Instructions.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2406.15877, June 22, 2024. <a href="https://arxiv.org/abs/2406.15877" class="uri">https://arxiv.org/abs/2406.15877</a></li>
+<li><a id="ref-11"></a>Rein, David, Hou, Betty Li, Stickland, Asa Cooper, Petty, Jackson, Pang, Richard Yuanzhe, Dirani, Julien, Michael, Julian, and Bowman, Samuel R. “GPQA: A Graduate-Level Google-Proof Q&amp;A Benchmark.” <em>Conference on Language Modeling (COLM)</em>, 2024. arXiv:2311.12022, November 20, 2023. <a href="https://arxiv.org/abs/2311.12022" class="uri">https://arxiv.org/abs/2311.12022</a></li>
+<li><a id="ref-12"></a>Wang, Junlin, Wang, Jue, Athiwaratkun, Ben, Zhang, Ce, and Zou, James. “Mixture-of-Agents Enhances Large Language Model Capabilities.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2406.04692, June 7, 2024. <a href="https://arxiv.org/abs/2406.04692" class="uri">https://arxiv.org/abs/2406.04692</a></li>
+<li><a id="ref-13"></a>Yue, Yanwei, Zhang, Guibin, Liu, Boyang, Wan, Guancheng, Wang, Kun, Cheng, Dawei, and Qi, Yiyan. “MasRouter: Learning to Route LLMs for Multi-Agent Systems.” <em>arXiv preprint</em> (arXiv:2502.11133), February 16, 2025. <a href="https://arxiv.org/abs/2502.11133" class="uri">https://arxiv.org/abs/2502.11133</a></li>
+<li><a id="ref-14"></a>Guha, Neel, Chen, Mayee F., Chow, Trevor, Khare, Ishan S., and Ré, Christopher. “Smoothie: Label Free Language Model Routing.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2024. arXiv:2412.04692, December 6, 2024. <a href="https://arxiv.org/abs/2412.04692" class="uri">https://arxiv.org/abs/2412.04692</a></li>
+<li><a id="ref-15"></a>Chen, Shuhao, Jiang, Weisen, Lin, Baijiong, Kwok, James, and Zhang, Yu. “RouterDC: Query-Based Router by Dual Contrastive Learning for Assembling Large Language Models.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2024. arXiv:2409.19886, September 30, 2024. <a href="https://arxiv.org/abs/2409.19886" class="uri">https://arxiv.org/abs/2409.19886</a></li>
+<li><a id="ref-16"></a><a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695, December 4, 2025. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
+<li><a id="ref-17"></a>Tang, Yujin, Cetin, Edoardo, Xu, Jinglue, Sun, Qi, Nielsen, Stefan, Richard, Vincent, Goda, Haruto, Tymchenko, Iaroslav, Nguyen, Nhan, Lee, Hyunin, Ashiga, Mari, Kotyan, Shashank, Kuroki, So, and Clanuwat, Tarin. “Sakana Fugu Technical Report.” <em>arXiv preprint</em> (arXiv:2606.21228), June 19, 2026. <a href="https://arxiv.org/abs/2606.21228" class="uri">https://arxiv.org/abs/2606.21228</a></li>
+<li><a id="ref-18"></a>Yang, Wei, <a href="https://defucao.github.io/">Cao</a>, Defu, Pang, Jiacheng, Weng, Muyan, and <a href="https://viterbi-web.usc.edu/~yanliu/">Liu</a>, Yan. “Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2603.07972, March 9, 2026. <a href="https://arxiv.org/abs/2603.07972" class="uri">https://arxiv.org/abs/2603.07972</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY: An Evolved LLM Coordinator</a>: the same group’s sibling, which evolves a 0.6B coordinator head instead of training a 7B one with reinforcement learning.</li>
+<li><a href="../../posts/20260629-fugu-release/">Sakana Fugu: One Model to Command Them All</a>: the product whose two models extend this pair separately — Fugu-Ultra builds on the Conductor (with recursion exposed as its higher tier), Fugu builds on Trinity — behind one endpoint.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: searches prompts and topologies offline, the same structure the Conductor instead learns by reinforcement learning.</li>
+<li><a href="../../posts/20260520-adaptive-collaboration-mapo/">Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs</a>: trains a deferral policy, a learned cousin of the Conductor’s decision about how many agents to involve.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: catalogs how multi-agent pipelines break, the failure modes a learned conductor has to avoid.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/</guid>
+  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260629-conductor-llm-orchestrator/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>TRINITY: An Evolved LLM Coordinator</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Trinity (bold, rightmost in each panel) tops every single-model and multi-agent baseline across MATH500, MMLU, RLPR, and LiveCodeBench, approaching the per-question-best oracle. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>TRINITY: An Evolved LLM Coordinator</em> [1] (ICLR 2026), <a href="https://www.semanticscholar.org/author/2397339171">Jinglue Xu</a>, <a href="https://www.semanticscholar.org/author/2326487319">Qi Sun</a>, <a href="https://www.semanticscholar.org/author/2396352279">Peter Schwendeman</a>, <a href="https://www.semanticscholar.org/author/2396336821">Stefan Nielsen</a>, <a href="https://www.semanticscholar.org/author/2326294214">Edoardo Cetin</a>, and <a href="https://www.semanticscholar.org/author/2326422916">Yujin Tang</a> (Sakana AI, University of Michigan, and Institute of Science Tokyo) train a 0.6B <em>coordinator</em> that learns to delegate each turn of a query to one of seven larger LLMs and assign it a role, instead of answering the query itself.</p>
+<blockquote class="blockquote">
+<p>Combining diverse foundation models is promising, but weight-merging is limited by mismatched architectures and closed APIs. Trinity addresses this with <em>a lightweight coordinator that orchestrates collaboration among large language models (LLMs)</em>. The coordinator, comprising a compact language model (approximately <img src="https://benjaminhan.net/feed-assets/3e35e2941f157930.svg" alt="0.6" class="feed-math-inline"/>B parameters) and a lightweight head (approximately <img src="https://benjaminhan.net/feed-assets/003856bcc103f21a.svg" alt="10" class="feed-math-inline"/>K parameters), is optimized with an <em>evolutionary strategy</em> for efficient and adaptive delegation. Trinity processes queries over multiple turns, where at each turn the coordinator <em>assigns one of three roles (Thinker, Worker, or Verifier) to a selected LLM</em>, effectively offloading complex skill acquisition from the coordinator itself. Experiments show that Trinity consistently outperforms individual models and existing methods across coding, math, reasoning, and domain knowledge tasks, and generalizes robustly to out-of-distribution tasks. On standard benchmarks, Trinity achieves state-of-the-art results, including <em>a score of 86.2% on LiveCodeBench</em>. Theoretical and empirical analyses identify two main factors behind this performance: (1) the coordinator’s hidden-state representations provide rich contextualization of inputs, and (2) under high dimensionality and strict budget constraints, <em>the separable Covariance Matrix Adaptation Evolution Strategy</em> offers advantages over reinforcement learning, imitation learning, and random search by exploiting potential <em>block-<img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>-separability</em>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The contribution is a small, cheap-to-train coordinator placed in front of a pool of larger models, deciding who does what each turn. The harder problem is how to train it, because the right decision has no labels. The paper rules out supervised fine-tuning and reinforcement learning in turn, then trains the coordinator with a black-box evolution strategy.</p>
+<section id="the-coordinator" class="level3">
+<h3 class="anchored" data-anchor-id="the-coordinator">The coordinator</h3>
+<ul>
+<li><strong>A 0.6B coordinator with a ~10K-parameter head.</strong> The coordinator is a Qwen3-0.6B small language model (SLM) with a lightweight head (~10K parameters) running beside the usual language-model head. At each turn the head reads the hidden state at the penultimate output-token position and emits two sets of logits: one selects an LLM from the pool, the other assigns it a <em>role</em>. The method also fine-tunes the singular-value scales of the SLM’s weight matrices and leaves the rest of the base model frozen. This singular value fine-tuning (SVF) is carried over from the same group’s earlier <a href="../../posts/20260629-transformer-squared/"><em>Transformer-Squared</em></a> [2], which adapts a model by rescaling the singular values of its existing weight matrices rather than adding new parameters.</li>
+<li><strong>Three roles, assigned per turn.</strong> A query runs over up to five turns. On each turn the chosen LLM is cast as a <em>Thinker</em> (decompose the problem), a <em>Worker</em> (perform a step), or a <em>Verifier</em> (check the running answer and flag edge cases), and a message-processing module injects the matching role prompt before the call. Figure 1 walks through a depreciation problem: a Thinker decomposes it on turn 1, a Worker computes on turn 2, a Verifier checks the result on turn 3.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>The coordination architecture (left) and a worked three-turn example (right): a compact SLM plus a lightweight head select an LLM and a role each turn, then route the role-specific prompt to the chosen model. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>The coordinator’s parametrization: the lightweight head runs beside the base model’s LM head and reads the penultimate output-token hidden state, emitting one set of logits to select an LLM and another to assign a role. The singular-value scales of the SLM’s weight matrices (red diagonals) are also fine-tuned. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>A linear head is enough, because the representation is already separable.</strong> A linear SVM sorts the SLM’s penultimate-token hidden states into the four task types at 100%, far above the 25% chance line (Figure 5). With the representation that well-structured, a small linear head has enough signal to read off coordination decisions.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/figure5.webp" class="img-fluid figure-img" data-lightbox-src="figure5-full.png"></p>
+<figcaption>Task-type separability of the SLM’s penultimate-token hidden states. Left: a linear SVM separates the four task types at 100%, far above the 25% chance line. Right: t-SNE shows the same four types as clean clusters. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="why-an-evolution-strategy-not-rl-or-sft" class="level3">
+<h3 class="anchored" data-anchor-id="why-an-evolution-strategy-not-rl-or-sft">Why an evolution strategy, not RL or SFT</h3>
+<p>This is the paper’s central design choice. The coordinator’s target, which LLM to call and which role to assign each turn, has no ground truth. The only signal is a binary pass/fail reward earned by running the full multi-turn pipeline end to end, so there is nothing to fit with supervised learning directly. The paper works through the alternatives:</p>
+<ul>
+<li><strong>Synthetic labels plus SFT: ruled out by cost.</strong> One option is to manufacture labels, running the whole pool on each question and taking the per-question-best model, then fine-tuning on them. That is feasible for a single step but explodes in the multi-turn setting (up to five turns, seven models, three roles), where the paper estimates label generation at roughly <img src="https://benjaminhan.net/feed-assets/4c3a43cdd45751bf.svg" alt="10^{11}" class="feed-math-inline"/> LLM calls.</li>
+<li><strong>Reinforcement learning: ruled out by low-signal gradients.</strong> REINFORCE is the natural label-free optimizer, but the ~10K parameters are weakly coupled, so each one barely moves the scalar reward. Under a binary reward and a tight budget its per-parameter gradients are too low-signal to learn from, and random search does worse, collapsing onto a single agent and role.</li>
+<li><strong>The choice: separable CMA-ES.</strong> Trinity trains the head and the singular-value scales with the separable <a href="../../posts/20260629-cma-es-primer/">Covariance Matrix Adaptation Evolution Strategy</a> (sep-CMA-ES): keep a Gaussian over the parameters, sample candidate vectors, score each by running the coordinator, and shift the Gaussian toward the ones that scored better. It needs no labels and no gradient, and because it ranks whole parameter vectors instead of estimating a per-parameter gradient, it sidesteps the exact low-signal problem that makes REINFORCE ineffective here.
+<ul>
+<li><strong>Block-<img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>-separability lets the cheap diagonal variant suffice.</strong> The paper argues the objective splits into near-independent blocks, one per agent and role choice, that interact only weakly. The <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> in the name bounds how much residual coupling remains across blocks. When that coupling is small, a diagonal covariance gives up almost nothing against a full one, so the cheap <img src="https://benjaminhan.net/feed-assets/365579f8b6aa11b4.svg" alt="O(n)" class="feed-math-inline"/> sep-CMA-ES matches a full-covariance search that would cost <img src="https://benjaminhan.net/feed-assets/caab106d41dfeaed.svg" alt="O(n^2)" class="feed-math-inline"/>.</li>
+</ul></li>
+</ul>
+<p>The ablation in the Results section makes the choice concrete: at matched budget, sep-CMA-ES clears the REINFORCE, random-search, and SFT baselines on every in-distribution task.</p>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Trinity coordinates a pool of seven LLMs: three closed (GPT-5, Gemini 2.5 Pro, Claude 4 Sonnet) and four open (Gemma 3 27B-IT, DeepSeek-R1-Distill-Qwen-32B, and Qwen3-32B in direct and reasoning modes). It is trained and evaluated on four in-distribution tasks (MATH500 [3], MMLU [4], RLPR [5], and LiveCodeBench [6]) and tested zero-shot on four held-out tasks (AIME 2025 [7], BigCodeBench [8], MT-Bench [9], and GPQA-Diamond [10]). The baselines:</p>
+<ul>
+<li>each single model at its base budget and at a 5× context budget</li>
+<li>single-model five-turn self-reflection</li>
+<li>multi-agent methods: Mixture-of-Agents, RouterDC, and Smoothie</li>
+</ul>
+<p>A per-question-best oracle (the union of correct answers across all seven models) marks the ceiling no coordinator over this pool can pass.</p>
+<ul>
+<li><strong>Beats every single model and multi-agent baseline in-distribution.</strong> On the four training tasks Trinity tops all baselines (Figure 3, the cover) and comes close to the per-question-best oracle on MATH500 (0.88 against 0.91), MMLU (0.92 against 0.97), and LiveCodeBench (0.61 against 0.65). The gap to the oracle is widest on RLPR (0.41 against 0.61) [1].</li>
+<li><strong>Generalizes zero-shot to held-out tasks.</strong> Averaged over the four held-out tasks (Table 1), Trinity scores 54.21, ahead of the strongest single models Gemini 2.5 Pro (52.34) and GPT-5 (51.07). It takes the top spot on AIME (50.00), MT-Bench (9.60), and GPQA-Diamond (76.82), and ties for first on BigCodeBench (35.80) [1].</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
+<figcaption>Results on the four held-out tasks, best per column in bold. Trinity (bottom row) posts the best average at 54.21, tops AIME, MT-Bench, and GPQA-Diamond, and ties Claude 4 Sonnet on BigCodeBench. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Sets a LiveCodeBench record unconstrained.</strong> In the unconstrained setting (Figure 4), Trinity reaches a pass@1 of 86.2% on LiveCodeBench V6 (newly released questions spanning January to April 2025), a new state of the art, and the score rises with the per-query turn budget.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>LiveCodeBench at full power: Trinity reaches a state-of-the-art pass@1 of 86.2% (top), and the score increases as the per-query turn budget grows (bottom). Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Every component contributes to the score.</strong> An ablation on the in-distribution tasks removes one piece at a time (Table 2): dropping the singular-value fine-tuning, the Thinker role, the tri-role selection, or the penultimate-token readout each lowers Trinity’s average, and Trinity outscores all three closed single models head-to-head [1].</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Trinity (top) against four ablations and the three closed single models on the in-distribution tasks. Removing the singular-value fine-tuning, the Thinker role, the tri-role selection, or the penultimate-token readout each lowers the average, and Trinity beats all three single models. Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The evolution strategy beats their RL baseline at matched budget.</strong> Trinity’s optimizer comparison runs the same coordinator under four training methods at matched budget: REINFORCE scores 0.25 on LiveCodeBench and 0.46 on MATH500, while sep-CMA-ES reaches 0.62 and 0.88 [1]. That ordering matches a long-standing finding that evolution strategies stay competitive with policy-gradient reinforcement learning when the reward is sparse or binary [11]. It fits the regime here: a high-dimensional search over ~10K weakly coupled parameters, where REINFORCE’s per-parameter gradients are too low-signal to learn from, against a pass/fail task reward. Sakana ships this evolution-trained coordinator as <a href="../../posts/20260629-fugu-release/">Sakana Fugu</a> [12], the everyday model in the product’s two-model line: Fugu builds on Trinity, while the heavier Fugu-Ultra builds on the RL-trained <a href="../../posts/20260629-conductor-llm-orchestrator/">Conductor</a> [15]. The two are separate models behind one endpoint rather than two stages of one orchestrator.</li>
+<li><strong>The 0.6B coordinator adds almost no capability of its own.</strong> It trains only the ~10K head and freezes the base model, so the answer quality comes from the frontier models it calls. Trinity therefore cannot beat the per-question-best oracle, the best any single model in the pool already gets right. It applies the routing idea behind a <a href="../../posts/20260429-frontier-model-lower-bill/">cost-routing triager</a> to quality, and has the same limitation: it helps only when a capable model is already in the pool.</li>
+<li><strong>The coordinator builds the agentic graph dynamically, turn by turn.</strong> Choosing an LLM and a role at each turn is the same as constructing the multi-agent topology on the fly: every step adds the next node for that specific query, rather than running a structure fixed in advance. Trinity is one of several recent systems that learn this structure rather than hand-build it: <a href="../../posts/20260430-multi-agent-system-search/">MASS</a> searches prompts and topologies offline into a fixed design [13], <a href="../../posts/20260520-adaptive-collaboration-mapo/">MAPO</a> trains a policy for when to defer [14], and Sakana’s own pair builds it online, by reinforcement learning in <a href="../../posts/20260629-conductor-llm-orchestrator/">Conductor</a> [15] and by an evolution strategy here, then ships both behind one endpoint in <a href="../../posts/20260629-fugu-release/">Sakana Fugu</a> [12].</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695, December 4, 2025. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
+<li><a id="ref-2"></a><a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “Transformer-Squared: Self-adaptive LLMs.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2501.06252, January 9, 2025. <a href="https://arxiv.org/abs/2501.06252" class="uri">https://arxiv.org/abs/2501.06252</a></li>
+<li><a id="ref-3"></a>Lightman, Hunter, Kosaraju, Vineet, Burda, Yura, Edwards, Harri, Baker, Bowen, Lee, Teddy, Leike, Jan, Schulman, John, Sutskever, Ilya, and Cobbe, Karl. “Let’s Verify Step by Step.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2305.20050, May 31, 2023. <a href="https://arxiv.org/abs/2305.20050" class="uri">https://arxiv.org/abs/2305.20050</a></li>
+<li><a id="ref-4"></a>Hendrycks, Dan, Burns, Collin, Basart, Steven, Zou, Andy, Mazeika, Mantas, Song, Dawn, and Steinhardt, Jacob. “Measuring Massive Multitask Language Understanding.” <em>International Conference on Learning Representations (ICLR)</em>, 2021. arXiv:2009.03300, September 7, 2020. <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></li>
+<li><a id="ref-5"></a>Yu, Tianyu, Ji, Bo, Wang, Shouli, Yao, Shu, Wang, Zefan, Cui, Ganqu, Yuan, Lifan, Ding, Ning, Yao, Yuan, Liu, Zhiyuan, Sun, Maosong, and Chua, Tat-Seng. “RLPR: Extrapolating RLVR to General Domains without Verifiers.” <em>arXiv preprint</em> (arXiv:2506.18254), June 23, 2025. <a href="https://arxiv.org/abs/2506.18254" class="uri">https://arxiv.org/abs/2506.18254</a></li>
+<li><a id="ref-6"></a>Jain, Naman, Han, King, Gu, Alex, Li, Wen-Ding, Yan, Fanjia, Zhang, Tianjun, Wang, Sida, Solar-Lezama, Armando, Sen, Koushik, and Stoica, Ion. “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2403.07974, March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></li>
+<li><a id="ref-7"></a>Veeraboina, Hemish. “AIME Problem Set 1983–2024.” 2023. <a href="https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination" class="uri">https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination</a></li>
+<li><a id="ref-8"></a>Zhuo, Terry Yue, Vu, Minh Chien, Chim, Jenny, Hu, Han, Yu, Wenhao, Widyasari, Ratnadira, et al.&nbsp;“BigCodeBench: Benchmarking Code Generation with Diverse Function Calls and Complex Instructions.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2406.15877, June 22, 2024. <a href="https://arxiv.org/abs/2406.15877" class="uri">https://arxiv.org/abs/2406.15877</a></li>
+<li><a id="ref-9"></a>Bai, Ge, Liu, Jie, Bu, Xingyuan, He, Yancheng, Liu, Jiaheng, Zhou, Zhanhui, Lin, Zhuoran, Su, Wenbo, Ge, Tiezheng, Zheng, Bo, and Ouyang, Wanli. “MT-Bench-101: A Fine-Grained Benchmark for Evaluating Large Language Models in Multi-Turn Dialogues.” <em>Association for Computational Linguistics (ACL)</em>, 2024. arXiv:2402.14762, February 22, 2024. <a href="https://arxiv.org/abs/2402.14762" class="uri">https://arxiv.org/abs/2402.14762</a></li>
+<li><a id="ref-10"></a>Rein, David, Hou, Betty Li, Stickland, Asa Cooper, Petty, Jackson, Pang, Richard Yuanzhe, Dirani, Julien, Michael, Julian, and Bowman, Samuel R. “GPQA: A Graduate-Level Google-Proof Q&amp;A Benchmark.” <em>Conference on Language Modeling (COLM)</em>, 2024. arXiv:2311.12022, November 20, 2023. <a href="https://arxiv.org/abs/2311.12022" class="uri">https://arxiv.org/abs/2311.12022</a></li>
+<li><a id="ref-11"></a>Salimans, Tim, Ho, Jonathan, Chen, Xi, Sidor, Szymon, and Sutskever, Ilya. “Evolution Strategies as a Scalable Alternative to Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:1703.03864), March 10, 2017. <a href="https://arxiv.org/abs/1703.03864" class="uri">https://arxiv.org/abs/1703.03864</a></li>
+<li><a id="ref-12"></a>Tang, Yujin, Cetin, Edoardo, Xu, Jinglue, Sun, Qi, Nielsen, Stefan, Richard, Vincent, Goda, Haruto, Tymchenko, Iaroslav, Nguyen, Nhan, Lee, Hyunin, Ashiga, Mari, Kotyan, Shashank, Kuroki, So, and Clanuwat, Tarin. “Sakana Fugu Technical Report.” <em>arXiv preprint</em> (arXiv:2606.21228), June 19, 2026. <a href="https://arxiv.org/abs/2606.21228" class="uri">https://arxiv.org/abs/2606.21228</a></li>
+<li><a id="ref-13"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2502.02533, February 4, 2025. <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
+<li><a id="ref-14"></a>Yang, Wei, <a href="https://defucao.github.io/">Cao</a>, Defu, Pang, Jiacheng, Weng, Muyan, and <a href="https://viterbi-web.usc.edu/~yanliu/">Liu</a>, Yan. “Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2603.07972, March 9, 2026. <a href="https://arxiv.org/abs/2603.07972" class="uri">https://arxiv.org/abs/2603.07972</a></li>
+<li><a id="ref-15"></a><a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “Learning to Orchestrate Agents in Natural Language with the Conductor.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04388, December 4, 2025. <a href="https://arxiv.org/abs/2512.04388" class="uri">https://arxiv.org/abs/2512.04388</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: the same group’s sibling, which learns coordination by reinforcement learning at 7B rather than the evolution strategy Trinity runs on a 0.6B head.</li>
+<li><a href="../../posts/20260629-fugu-release/">Sakana Fugu: One Model to Command Them All</a>: the product whose two models extend this pair separately — the everyday Fugu builds on Trinity, the quality-first Fugu-Ultra builds on Conductor — behind one endpoint.</li>
+<li><a href="../../posts/20260629-cma-es-primer/">A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</a>: the standing primer on the optimizer Trinity is trained with, covering what sep-CMA-ES is, why it beats gradient methods in this low-budget regime, and the diagonal variant Trinity uses.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: searches the prompts and topologies of a multi-agent system offline, the design Trinity instead learns online.</li>
+<li><a href="../../posts/20260520-adaptive-collaboration-mapo/">Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs</a>: trains a policy for when to defer, the delegation decision Trinity’s coordinator makes every turn.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: catalogs how multi-agent pipelines break, the failure modes a learned coordinator has to route around.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/</guid>
+  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Transformer²: Self-Adaptive LLMs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260629-transformer-squared/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-transformer-squared/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Overview of Transformer². Training tunes the singular values of the weight matrices to produce a set of task-specific “expert” vectors. Inference runs a two-pass process that first identifies the task, then applies the matching expert before generating the answer. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Transformer²: Self-Adaptive LLMs</em> [1] (ICLR 2025), <a href="https://www.semanticscholar.org/author/2326487319">Qi Sun</a>, <a href="https://www.semanticscholar.org/author/2326294214">Edoardo Cetin</a>, and <a href="https://www.semanticscholar.org/author/2326422916">Yujin Tang</a> (Sakana AI and Institute of Science Tokyo) introduce a self-adaptation framework that fine-tunes only the singular values of a model’s weights into reusable expert vectors, then mixes them at inference to specialize the model per prompt.</p>
+<blockquote class="blockquote">
+<p>Self-adaptive large language models (LLMs) aim to solve the challenges posed by traditional fine-tuning methods, which are often computationally intensive and static in their ability to handle diverse tasks. We introduce Transformer-Squared, a novel self-adaptation framework that adapts LLMs for unseen tasks in real-time by <em>selectively adjusting only the singular components of their weight matrices</em>. During inference, Transformer-Squared employs a <em>two-pass mechanism</em>: first, a dispatch system identifies the task properties, and then task-specific ‘expert’ vectors, <em>trained using reinforcement learning</em>, are dynamically mixed to obtain targeted behavior for the incoming prompt. Our method <em>consistently outperforms ubiquitous approaches such as LoRA, with fewer parameters and greater efficiency</em>. Furthermore, Transformer-Squared demonstrates versatility across different LLM architectures and modalities, including vision-language tasks. Transformer-Squared represents a significant leap forward, offering a scalable, efficient solution for enhancing the adaptability and task-specific performance of LLMs, paving the way for truly dynamic, self-organizing AI systems.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The framework has two parts: a parameter-efficient way to build task experts, and a two-pass scheme to deploy them at inference.</p>
+<ul>
+<li><strong>Singular value fine-tuning (SVF).</strong> Take the singular value decomposition of each weight matrix, <img src="https://benjaminhan.net/feed-assets/eaf28e36988304ef.svg" alt="W = U\Sigma V^\top" class="feed-math-inline"/>, and learn a small vector <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> that rescales the singular values, giving <img src="https://benjaminhan.net/feed-assets/b7c8ed73205c360c.svg" alt="W&#x27; = U\,(\Sigma \odot \operatorname{diag}(z))\,V^\top" class="feed-math-inline"/>. Only <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> is trained (one scalar per singular value), so the directions <img src="https://benjaminhan.net/feed-assets/94f4019aeea3bf33.svg" alt="U, V" class="feed-math-inline"/> stay frozen and the parameter count is a fraction of LoRA’s <img src="https://benjaminhan.net/feed-assets/5e65d0f688a98708.svg" alt="(m+n)\times r" class="feed-math-inline"/> per matrix. SVF is trained with reinforcement learning on the task reward, which lets it learn from datasets that give only a final answer (for example GSM8K [2], where there is no explanatory text for next-token fine-tuning to imitate).</li>
+<li><strong>Expert vectors, one per domain.</strong> Running SVF on each training domain (math, coding, reasoning, vision-language) yields a set of compact “expert” vectors <img src="https://benjaminhan.net/feed-assets/6ca85812ad78bfbd.svg" alt="z^{1:K}" class="feed-math-inline"/>, each specializing the base model toward one capability.</li>
+<li><strong>Two-pass inference.</strong> On a new prompt, the first pass classifies the task and the second pass applies the matching expert (or a mix of experts) to the frozen base weights, then generates the answer. The paper gives three dispatch strategies: a prompt-based classifier, a trained classification expert, and a few-shot mixture that blends experts by learned weights. An explicit “others” category falls back to the unmodified base model when no expert fits.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Method overview. Left: at training time, SVF plus RL learns the expert vectors <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> that scale the singular values of the weight matrices. Right: at inference time, three strategies adaptively select or combine the learned experts. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper evaluates SVF and the full Transformer² framework on three base models across different families and sizes (Llama3-8B-Instruct, Mistral-7B-Instruct-v0.3, Llama3-70B-Instruct), on math (GSM8K), coding (MBPP-Pro [3]), and reasoning (ARC-Easy [4]), plus a vision-language setting (TextVQA [5]). The main baseline is LoRA [6], trained on the same domains, and scores in parentheses are normalized to the base model.</p>
+<p>Trained on domain-specific data, SVF matches or beats LoRA on nearly every model and task while training orders of magnitude fewer parameters, and it avoids the degradations LoRA sometimes shows, most visibly on Llama3-70B, where LoRA drops below the base model on math and coding while SVF holds or improves.</p>
+<table class="caption-top table">
+<caption>Fine-tuning results on the test splits of math, coding, and reasoning, best per base model in bold. SVF matches or beats LoRA in most rows, and on Llama3-70B LoRA degrades the base model while SVF does not. Table 1 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>GSM8K</th>
+<th>MBPP-Pro</th>
+<th>ARC-Easy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Llama3-8B-Instruct</td>
+<td>75.89</td>
+<td>64.65</td>
+<td>88.59</td>
+</tr>
+<tr class="even">
+<td>+ LoRA</td>
+<td>77.18</td>
+<td><strong>67.68</strong></td>
+<td>88.97</td>
+</tr>
+<tr class="odd">
+<td>+ SVF</td>
+<td><strong>79.15</strong></td>
+<td>66.67</td>
+<td><strong>89.56</strong></td>
+</tr>
+<tr class="even">
+<td>Mistral-7B-Instruct-v0.3</td>
+<td>42.83</td>
+<td>49.50</td>
+<td>81.65</td>
+</tr>
+<tr class="odd">
+<td>+ LoRA</td>
+<td>44.66</td>
+<td>51.52</td>
+<td>81.19</td>
+</tr>
+<tr class="even">
+<td>+ SVF</td>
+<td><strong>49.74</strong></td>
+<td><strong>51.52</strong></td>
+<td><strong>85.14</strong></td>
+</tr>
+<tr class="odd">
+<td>Llama3-70B-Instruct</td>
+<td>85.29</td>
+<td>80.81</td>
+<td>89.10</td>
+</tr>
+<tr class="even">
+<td>+ LoRA</td>
+<td>77.26</td>
+<td>68.69</td>
+<td>88.55</td>
+</tr>
+<tr class="odd">
+<td>+ SVF</td>
+<td><strong>88.32</strong></td>
+<td><strong>80.81</strong></td>
+<td>88.47</td>
+</tr>
+</tbody>
+</table>
+<p>The expert vectors also recombine: a two-pass run on unseen tasks transfers gains, SVF experts trained on one model can be reused on another, and applying SVF to a vision-language backbone lifts the base model by over 39%.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>SVF learning curves on Llama3-8B-Instruct. Dashed lines mark the base model’s test performance on each task and red dots mark the checkpoint selected by validation. SVF fine-tunes past the base on each domain. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The technique TRINITY reuses, minus the RL.</strong> Transformer²’s SVF is the same singular-value rescaling that the same group later trains <a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY</a> [7]’s coordinator with. The lineage inverts one choice: here the expert vectors are learned with reinforcement learning, while TRINITY argues RL’s per-parameter gradients are too low-signal in its tight-budget regime and switches to an evolution strategy over the same SVF parameters.</li>
+<li><strong>Cheaper than LoRA because it rescales instead of adds.</strong> LoRA [6] adds a trainable low-rank matrix <img src="https://benjaminhan.net/feed-assets/25590760c309f6c7.svg" alt="BA" class="feed-math-inline"/> of <img src="https://benjaminhan.net/feed-assets/104e7424621d395c.svg" alt="(m+n)\,r" class="feed-math-inline"/> parameters per weight, whereas SVF only scales the <img src="https://benjaminhan.net/feed-assets/8dfc616fe5d05cc7.svg" alt="\min(m,n)" class="feed-math-inline"/> singular values that are already there. That is a much smaller, more constrained edit, and the constraint appears to help rather than hurt: it cannot introduce off-basis directions, which is likely why SVF avoids the base-model regressions LoRA shows on Llama3-70B.</li>
+<li><strong>RL on the reward sidesteps LoRA’s data requirement.</strong> Because SVF is trained against the task reward rather than by next-token imitation, it learns from answer-only datasets where LoRA needs explanatory text to imitate. This is reinforcement learning with verifiable rewards applied at the fine-tuning layer: when the signal is correctness, you can optimize for it directly instead of for a proxy.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “Transformer²: Self-Adaptive LLMs.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2501.06252, January 9, 2025. <a href="https://arxiv.org/abs/2501.06252" class="uri">https://arxiv.org/abs/2501.06252</a></li>
+<li><a id="ref-2"></a>Cobbe, Karl, Kosaraju, Vineet, Bavarian, Mohammad, Chen, Mark, Jun, Heewoo, Kaiser, Lukasz, Plappert, Matthias, Tworek, Jerry, Hilton, Jacob, Nakano, Reiichiro, Hesse, Christopher, and Schulman, John. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
+<li><a id="ref-3"></a>Austin, Jacob, Odena, Augustus, Nye, Maxwell, Bosma, Maarten, Michalewski, Henryk, Dohan, David, Jiang, Ellen, Cai, Carrie, Terry, Michael, Le, Quoc, and Sutton, Charles. “Program Synthesis with Large Language Models.” <em>arXiv preprint</em> (arXiv:2108.07732), August 16, 2021. <a href="https://arxiv.org/abs/2108.07732" class="uri">https://arxiv.org/abs/2108.07732</a></li>
+<li><a id="ref-4"></a>Clark, Peter, Cowhey, Isaac, Etzioni, Oren, Khot, Tushar, Sabharwal, Ashish, Schoenick, Carissa, and Tafjord, Oyvind. “Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge.” <em>arXiv preprint</em> (arXiv:1803.05457), March 14, 2018. <a href="https://arxiv.org/abs/1803.05457" class="uri">https://arxiv.org/abs/1803.05457</a></li>
+<li><a id="ref-5"></a>Singh, Amanpreet, Natarajan, Vivek, Shah, Meet, Jiang, Yu, Chen, Xinlei, Batra, Dhruv, Parikh, Devi, and Rohrbach, Marcus. “Towards VQA Models That Can Read.” <em>IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</em>, 2019. arXiv:1904.08920, April 18, 2019. <a href="https://arxiv.org/abs/1904.08920" class="uri">https://arxiv.org/abs/1904.08920</a></li>
+<li><a id="ref-6"></a>Hu, Edward J., Shen, Yelong, Wallis, Phillip, Allen-Zhu, Zeyuan, Li, Yuanzhi, Wang, Shean, Wang, Lu, and Chen, Weizhu. “LoRA: Low-Rank Adaptation of Large Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2022. arXiv:2106.09685, June 17, 2021. <a href="https://arxiv.org/abs/2106.09685" class="uri">https://arxiv.org/abs/2106.09685</a></li>
+<li><a id="ref-7"></a><a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695, December 4, 2025. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY: An Evolved LLM Coordinator</a>: the same group’s later paper, which trains an LLM coordinator’s singular-value scales with an evolution strategy rather than the reinforcement learning used here.</li>
+<li><a href="../../posts/20260629-cma-es-primer/">A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</a>: the optimizer TRINITY swaps in for RL when training the same SVF parameters under a tight budget.</li>
+<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: the sibling coordinator from the same lab, trained by reinforcement learning at 7B.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260629-transformer-squared/</guid>
+  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260629-transformer-squared/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260629-cma-es-primer/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-cma-es-primer/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-cma-es-primer/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>What the covariance matrix encodes: one-σ density ellipses of three Gaussians over the same objective (thin contour lines). Left, the isotropic <img src="https://benjaminhan.net/feed-assets/2a2e3bb55453fd5f.svg" alt="\mathcal{N}(\mathbf{0}, \sigma^2 \mathbf{I})" class="feed-math-inline"/> searches in a circle. Middle, the axis-aligned <img src="https://benjaminhan.net/feed-assets/4949bf5dacb491ca.svg" alt="\mathcal{N}(\mathbf{0}, \mathbf{D}^2)" class="feed-math-inline"/> stretches along the coordinate axes. Right, the full-covariance <img src="https://benjaminhan.net/feed-assets/53fc8a0183e4ea0f.svg" alt="\mathcal{N}(\mathbf{0}, \mathbf{C})" class="feed-math-inline"/> also rotates to align with the objective’s contours. Here <img src="https://benjaminhan.net/feed-assets/918d7b20a36f8da0.svg" alt="\sigma" class="feed-math-inline"/> is a scalar, <img src="https://benjaminhan.net/feed-assets/4f7beca949deff70.svg" alt="\mathbf{I}" class="feed-math-inline"/> the identity, <img src="https://benjaminhan.net/feed-assets/b5f79db9148e76d8.svg" alt="\mathbf{D}" class="feed-math-inline"/> a diagonal matrix, and <img src="https://benjaminhan.net/feed-assets/83d6f5b72d493460.svg" alt="\mathbf{C}" class="feed-math-inline"/> a full covariance matrix. CMA-ES learns the third, sep-CMA-ES only the second. Figure 1, reproduced from Hansen’s CMA-ES tutorial [1].</figcaption>
+</figure>
+</div>
+<p><em>CMA-ES</em>, the Covariance Matrix Adaptation Evolution Strategy [1], [2], is a derivative-free optimizer for continuous problems: minimize <img src="https://benjaminhan.net/feed-assets/e5e737a72e447b2d.svg" alt="f(x)" class="feed-math-inline"/> over <img src="https://benjaminhan.net/feed-assets/b4d20d1bd6d45889.svg" alt="x \in \mathbb{R}^n" class="feed-math-inline"/> (<img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> the number of variables), when you have no gradient because <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/> is a black box, non-differentiable, noisy, or simply cheaper to <em>probe</em> than to differentiate. It is the method of choice when you can afford a few thousand function evaluations but can’t backpropagate through them, and has long been a standard baseline in black-box and hyperparameter optimization. A recent example in machine learning is <a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY</a> [4], whose 0.6B LLM coordinator is trained with the diagonal sep-CMA-ES variant.</p>
+<section id="intuition" class="level2">
+<h2 class="anchored" data-anchor-id="intuition">Intuition</h2>
+<p>Picture finding the deepest part of a murky lake with nothing but a fishing line and a heavy sinker. From your boat’s current spot, you drop the line at a handful of places scattered around you, keep the few that came back deepest, and row toward them. If those deep spots line up in one direction, say a channel running northeast, you spread your next drops more along that direction and less across it, and bunch them in a tighter cluster as the depths stop improving, since by then the deepest spot is right around you and only precision is left to gain. CMA-ES is that procedure made precise.</p>
+<p>The name <em>CMA-ES</em> has two halves, and so does the method. The <strong>evolution strategy</strong> is the loop you just ran on the lake: each round spawns a population of candidate guesses, keeps the best few, and builds the next round’s guesses from them. This is search by selection rather than by gradient, repeated over generations, which places CMA-ES in the broader family of evolutionary algorithms. The <strong>covariance matrix adaptation</strong> is what makes the loop smart: rather than scattering the next guesses the same way every time, it learns the shape and spread of the region the best ones came from.</p>
+<p>Underneath, the search keeps a <em>cloud</em> of guesses: densest where it is most hopeful, thinning toward the edges. The only things it remembers from one round to the next are where to aim that cloud and how the cloud is spread around the aim point. CMA-ES uses one particular cloud shape, the <em>multivariate Gaussian</em> (the many-dimensional cousin of the bell curve), and a few plain reasons make it the right choice:</p>
+<ul>
+<li><strong>A center and a spread, nothing more</strong>: those two are all the method tracks, and a bell-shaped cloud is exactly the shape they describe. Any other shape would smuggle in detail the method never measured (this is the <a href="https://en.wikipedia.org/wiki/Principle_of_maximum_entropy">maximum-entropy principle</a>: given a mean and covariance, the Gaussian is the least-committal distribution).</li>
+<li><strong>Its spread is an oval you can stretch and tilt</strong>: the cloud need not be a round blob. It can run long and thin in one direction and tilt to any angle, which is just what you want once the deep spots reveal a channel to follow.</li>
+<li><strong>It ignores how the map is oriented</strong>: rotate or stretch the lake map and the cloud is still the same kind of cloud, so the search does equally well no matter which way you happened to call north.</li>
+<li><strong>It is easy to work with</strong>: drawing guesses from a bell-shaped cloud is quick, and the rules for sliding its center and reshaping its oval always leave a sensible cloud behind.</li>
+</ul>
+<p>The one catch: a bell-shaped cloud has a single hump, so the search works one basin at a time. If the lake has two deep holes far apart, it settles into whichever one it drifts into. The usual fix is not a fancier cloud but re-running the search from a few random starting spots and keeping the best result.</p>
+</section>
+<section id="the-core-idea" class="level2">
+<h2 class="anchored" data-anchor-id="the-core-idea">The core idea</h2>
+<p>Formally, that cloud is a multivariate Gaussian, and each round repeats three steps: <strong>sample</strong> a population of candidates from it, <strong>evaluate</strong> <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/> on each, then <strong>move and reshape</strong> the Gaussian toward the candidates that did best. Over generations the mean drifts toward the optimum and the shape stretches to match the local curvature of the objective. The whole algorithm is just <em>how</em> you update that Gaussian.</p>
+<p>The distribution has three parts:</p>
+<p><img src="https://benjaminhan.net/feed-assets/6feba6fd52560e1b.svg" alt="x_i = m + \sigma\, y_i, \qquad y_i \sim \mathcal{N}(0, C)." class="feed-math-inline"/></p>
+<ul>
+<li><img src="https://benjaminhan.net/feed-assets/58a2822c83874f66.svg" alt="m \in \mathbb{R}^n" class="feed-math-inline"/> is the <strong>mean</strong>, the current best guess at the optimum.</li>
+<li><img src="https://benjaminhan.net/feed-assets/0b536fe43320f967.svg" alt="C \in \mathbb{R}^{n\times n}" class="feed-math-inline"/> is the <strong>covariance matrix</strong>, the shape and orientation of the search ellipsoid (the three panels in the figure above).</li>
+<li><img src="https://benjaminhan.net/feed-assets/c2bf8683009d8f3d.svg" alt="\sigma &gt; 0" class="feed-math-inline"/> is the <strong>step size</strong>, an overall scale factor held separate from <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> so the algorithm can grow or shrink the whole search without relearning its shape.</li>
+</ul>
+</section>
+<section id="one-generation-step-by-step" class="level2">
+<h2 class="anchored" data-anchor-id="one-generation-step-by-step">One generation, step by step</h2>
+<p>The equations below follow the notation in Hansen’s tutorial [1].</p>
+<p><strong>Sample and rank.</strong> Draw <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> candidates <img src="https://benjaminhan.net/feed-assets/96c61ea2ca121eff.svg" alt="x_i = m + \sigma\, y_i" class="feed-math-inline"/> from the distribution above, evaluate <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/>, and sort them. Write <img src="https://benjaminhan.net/feed-assets/f7580433f17bc438.svg" alt="x_{i:\lambda}" class="feed-math-inline"/> for the <img src="https://benjaminhan.net/feed-assets/fe3599bc03ddee62.svg" alt="i" class="feed-math-inline"/>-th best (order-statistic notation: the colon-<img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> marks a rank within the <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> samples, best first) and <img src="https://benjaminhan.net/feed-assets/4c941c02a0f8c987.svg" alt="y_{i:\lambda} = (x_{i:\lambda} - m)/\sigma" class="feed-math-inline"/> for the step that produced it. CMA-ES uses only the <em>ranking</em>, never the raw values of <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/>, which is what makes it invariant to any monotonic rescaling of the objective, and robust to noise and outliers.</p>
+<p><strong>Update the mean.</strong> Recombine the <img src="https://benjaminhan.net/feed-assets/abc626df5639f3a4.svg" alt="\mu" class="feed-math-inline"/> best (typically <img src="https://benjaminhan.net/feed-assets/cca8697f1d48f423.svg" alt="\mu = \lambda/2" class="feed-math-inline"/>) as a weighted average:</p>
+<p><img src="https://benjaminhan.net/feed-assets/b85d6298dc01ada2.svg" alt="m \leftarrow \sum_{i=1}^{\mu} w_i\, x_{i:\lambda}, \qquad w_1 \ge \dots \ge w_\mu &gt; 0, \quad \sum_i w_i = 1." class="feed-math-inline"/></p>
+<p>The weights set an effective sample size <img src="https://benjaminhan.net/feed-assets/f0ebe6b7de8c9fc3.svg" alt="\mu_{\text{eff}} = 1 / \sum_i w_i^2" class="feed-math-inline"/>, the recurring “how many points am I really averaging” quantity. The weights themselves are a fixed log-rank recipe (best gets the most, declining with rank), set once from <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> rather than learned. The quantities CMA-ES actually adapts are the cloud’s covariance <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> and step size <img src="https://benjaminhan.net/feed-assets/918d7b20a36f8da0.svg" alt="\sigma" class="feed-math-inline"/>, handled in the next two steps.</p>
+<p><strong>Adapt the covariance.</strong> <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> is nudged to make the steps that just succeeded more likely next time, through two complementary terms:</p>
+<p><img src="https://benjaminhan.net/feed-assets/263de76ca4b97715.svg" alt="C \leftarrow (1 - c_1 - c_\mu)\,C \;+\; \underbrace{c_1\, p_c\, p_c^{\top}}_{\text{rank-one}} \;+\; \underbrace{c_\mu \sum_{i=1}^{\mu} w_i\, y_{i:\lambda}\, y_{i:\lambda}^{\top}}_{\text{rank-}\mu}." class="feed-math-inline"/></p>
+<p>Here <img src="https://benjaminhan.net/feed-assets/fe9e63f85a0ca0db.svg" alt="c_1" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/7526aeab8359d90c.svg" alt="c_\mu" class="feed-math-inline"/> are small fixed learning rates for the rank-one and rank-<img src="https://benjaminhan.net/feed-assets/abc626df5639f3a4.svg" alt="\mu" class="feed-math-inline"/> terms, and <img src="https://benjaminhan.net/feed-assets/613527ead6a786d0.svg" alt="(1 - c_1 - c_\mu)" class="feed-math-inline"/> retains the rest of the old <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/>, so the update is <a href="https://en.wikipedia.org/wiki/Exponential_smoothing">exponential smoothing</a>: it folds a little new evidence into the matrix each round. Like the recombination weights, they are fixed functions of <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/f138e9508f88bd83.svg" alt="\mu_{\text{eff}}" class="feed-math-inline"/> rather than learned, and both shrink roughly like <img src="https://benjaminhan.net/feed-assets/1a4bbe607b64f361.svg" alt="1/n^2" class="feed-math-inline"/> as the dimension grows (the exact rates appear below).</p>
+<p>The <strong>rank-one</strong> term uses an <em>evolution path</em> <img src="https://benjaminhan.net/feed-assets/933b48f8062c5b0e.svg" alt="p_c" class="feed-math-inline"/>, the search’s <em>momentum</em>: an exponentially-weighted accumulation of successive mean shifts that grows long when the mean keeps heading one way and stays short when the steps cancel. The rate <img src="https://benjaminhan.net/feed-assets/bac7a49532acc593.svg" alt="c_c" class="feed-math-inline"/> sets how fast the path forgets old steps:</p>
+<p><img src="https://benjaminhan.net/feed-assets/3cc60d685389a6e3.svg" alt="p_c \leftarrow (1 - c_c)\,p_c + \alpha_c\,\frac{m_{\text{new}} - m_{\text{old}}}{\sigma}." class="feed-math-inline"/></p>
+<p>The coefficient <img src="https://benjaminhan.net/feed-assets/feed76402b90f086.svg" alt="\alpha_c = \sqrt{c_c(2-c_c)\,\mu_{\text{eff}}}" class="feed-math-inline"/> is just a normalization constant: it holds <img src="https://benjaminhan.net/feed-assets/933b48f8062c5b0e.svg" alt="p_c" class="feed-math-inline"/> at unit scale when successive steps point in random directions, so the path’s length is informative. (The <img src="https://benjaminhan.net/feed-assets/2894c8b4e912eb73.svg" alt="\sqrt{c_c(2-c_c)}" class="feed-math-inline"/> factor is the variance-preserving weight that pairs with the <img src="https://benjaminhan.net/feed-assets/d0f51c235afdf010.svg" alt="(1-c_c)" class="feed-math-inline"/> decay, and the <img src="https://benjaminhan.net/feed-assets/b6d70a370fb4aec7.svg" alt="\sqrt{\mu_{\text{eff}}}" class="feed-math-inline"/> undoes the shrinkage from averaging <img src="https://benjaminhan.net/feed-assets/f138e9508f88bd83.svg" alt="\mu_{\text{eff}}" class="feed-math-inline"/> points.) When the mean keeps moving the same way generation after generation, those steps add up and <img src="https://benjaminhan.net/feed-assets/02eea867b79fe136.svg" alt="p_c\, p_c^{\top}" class="feed-math-inline"/> stretches <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> along that ridge. This is where CMA-ES picks up <em>correlations between coordinates over time</em> that one generation’s small sample is too noisy to estimate. The <strong>rank-<img src="https://benjaminhan.net/feed-assets/abc626df5639f3a4.svg" alt="\mu" class="feed-math-inline"/></strong> term, by contrast, works within the current generation: it is the empirical covariance of this round’s successful steps, the shape of the cloud of good points estimated in one shot.</p>
+<p><strong>Adapt the step size.</strong> Separately, a second, conjugate evolution path <img src="https://benjaminhan.net/feed-assets/deb8dcea181f9a33.svg" alt="p_\sigma" class="feed-math-inline"/> (with its own decay rate <img src="https://benjaminhan.net/feed-assets/2162e47262695997.svg" alt="c_\sigma" class="feed-math-inline"/>) tracks step direction after each step is rescaled by <img src="https://benjaminhan.net/feed-assets/ce35e49b49f8055e.svg" alt="C^{-1/2}" class="feed-math-inline"/> to undo the cloud’s shape, turning the oval back into a round, unit-spread blob (the <em>whitening</em> transform). The step size then grows or shrinks by comparing that path’s length to how long it would be if successive steps were uncorrelated:</p>
+<p><img src="https://benjaminhan.net/feed-assets/aa940bee3ddd43d1.svg" alt="p_\sigma \leftarrow (1-c_\sigma)\,p_\sigma + \alpha_\sigma\, C^{-1/2}\frac{m_{\text{new}}-m_{\text{old}}}{\sigma}," class="feed-math-inline"/></p>
+<p><img src="https://benjaminhan.net/feed-assets/3ccabb51d4d129f4.svg" alt="\sigma \leftarrow \sigma \cdot \exp\!\left(\frac{c_\sigma}{d_\sigma}\left(\frac{\lVert p_\sigma\rVert}{\mathbb{E}\lVert\mathcal{N}(0,I)\rVert} - 1\right)\right)." class="feed-math-inline"/></p>
+<p>Here <img src="https://benjaminhan.net/feed-assets/369dc38ade8f1cd3.svg" alt="\alpha_\sigma = \sqrt{c_\sigma(2-c_\sigma)\,\mu_{\text{eff}}}" class="feed-math-inline"/> is the same kind of normalization constant as <img src="https://benjaminhan.net/feed-assets/4814248294a5ad59.svg" alt="\alpha_c" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/782956c5eb291628.svg" alt="d_\sigma" class="feed-math-inline"/> is a damping constant that keeps each change to <img src="https://benjaminhan.net/feed-assets/918d7b20a36f8da0.svg" alt="\sigma" class="feed-math-inline"/> small, and <img src="https://benjaminhan.net/feed-assets/929fa1e46a915352.svg" alt="\mathbb{E}\lVert\mathcal{N}(0,I)\rVert" class="feed-math-inline"/> is the expected length of a random step under no selection (about <img src="https://benjaminhan.net/feed-assets/6507edd84d6a3512.svg" alt="\sqrt{n}" class="feed-math-inline"/>). The logic: if consecutive steps point the same way, the accumulated path is longer than random selection would produce, so you are making consistent progress and take bigger steps. If they zig-zag and cancel, the path is short, you are overshooting, and the step size shrinks. Splitting this off from <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> decouples “how far to move” from “which directions matter,” and is most of why CMA-ES tunes itself with almost no hand-set hyperparameters. Sensible defaults handle the rest: <img src="https://benjaminhan.net/feed-assets/28cee00e807e7e80.svg" alt="\lambda = 4 + \lfloor 3\ln n\rfloor" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/cca8697f1d48f423.svg" alt="\mu = \lambda/2" class="feed-math-inline"/>, and learning rates that scale like <img src="https://benjaminhan.net/feed-assets/98e3fe4d7cc97a99.svg" alt="c_1 \sim 2/n^2" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/7cce01fe626dbfe7.svg" alt="c_\mu \sim \mu_{\text{eff}}/n^2" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/79ae61dc916155f4.svg" alt="c_c, c_\sigma \sim 4/n" class="feed-math-inline"/>.</p>
+</section>
+<section id="what-adapting-the-covariance-buys" class="level2">
+<h2 class="anchored" data-anchor-id="what-adapting-the-covariance-buys">What adapting the covariance buys</h2>
+<p>Near a smooth optimum <img src="https://benjaminhan.net/feed-assets/ef290e04507b9093.svg" alt="x^*" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/> looks quadratic: <img src="https://benjaminhan.net/feed-assets/4dcbfcd62844235e.svg" alt="f(x) \approx \tfrac{1}{2}(x - x^*)^{\top} H (x - x^*)" class="feed-math-inline"/>, with <img src="https://benjaminhan.net/feed-assets/37eac01343cc2eec.svg" alt="H" class="feed-math-inline"/> the <a href="https://en.wikipedia.org/wiki/Hessian_matrix">Hessian</a> (the matrix of second derivatives). By driving <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> toward <img src="https://benjaminhan.net/feed-assets/0ba679b740301fe6.svg" alt="H^{-1}" class="feed-math-inline"/>, CMA-ES learns the local shape from rank information alone, a derivative-free, stochastic cousin of <a href="https://en.wikipedia.org/wiki/Quasi-Newton_method">quasi-Newton</a> methods. That adaptive shape is the whole advantage: it makes the search invariant to rotation and lets it handle <strong>ill-conditioned</strong> objectives (long narrow valleys) that round, same-in-every-direction methods like random search or hill-climbing crawl through. It is also the cost: with <img src="https://benjaminhan.net/feed-assets/ba91a84dea47d4d7.svg" alt="\sim n^2" class="feed-math-inline"/> free parameters and an update rate of about <img src="https://benjaminhan.net/feed-assets/1a4bbe607b64f361.svg" alt="1/n^2" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> is the slow, expensive part of the algorithm. CMA-ES trades speed for the flexibility of a non-spherical search shape.</p>
+</section>
+<section id="sep-cma-es-the-diagonal-variant" class="level2">
+<h2 class="anchored" data-anchor-id="sep-cma-es-the-diagonal-variant">sep-CMA-ES: the diagonal variant</h2>
+<p>A full <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> costs <img src="https://benjaminhan.net/feed-assets/caab106d41dfeaed.svg" alt="O(n^2)" class="feed-math-inline"/> memory and needs a periodic <img src="https://benjaminhan.net/feed-assets/f3419e7c4b8cf7f1.svg" alt="O(n^3)" class="feed-math-inline"/> eigendecomposition to form <img src="https://benjaminhan.net/feed-assets/d7ddf2f4cf21dc44.svg" alt="C^{1/2}" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/ce35e49b49f8055e.svg" alt="C^{-1/2}" class="feed-math-inline"/>. That is fine for <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> up to a few hundred, painful in the thousands, and hopeless at <img src="https://benjaminhan.net/feed-assets/75953460e674d5f6.svg" alt="10^4" class="feed-math-inline"/> and beyond. With <img src="https://benjaminhan.net/feed-assets/ba91a84dea47d4d7.svg" alt="\sim n^2" class="feed-math-inline"/> free parameters and rates <img src="https://benjaminhan.net/feed-assets/b7f08c7537ebc659.svg" alt="\sim 1/n^2" class="feed-math-inline"/>, a full <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> is also slow to learn, a problem when the evaluation budget is tight.</p>
+<p><strong>sep-CMA-ES</strong> [3] restricts <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> to be diagonal, learning one variance per coordinate and discarding all cross-coordinate correlations:</p>
+<p><img src="https://benjaminhan.net/feed-assets/22cb0508778f004c.svg" alt="C = \operatorname{diag}(d_1^2, \dots, d_n^2)." class="feed-math-inline"/></p>
+<p>That drops memory and per-step cost to <img src="https://benjaminhan.net/feed-assets/365579f8b6aa11b4.svg" alt="O(n)" class="feed-math-inline"/> (the matrix square roots become element-wise, with no eigendecomposition), and because there are now only <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> free parameters, the covariance learning rate can be raised, so it converges in far fewer evaluations. Geometrically, it can stretch the search ellipsoid along the coordinate axes (the middle panel of the cover figure) but cannot rotate it (the right panel). The price is the lost correlations: sep-CMA-ES assumes the problem is close to axis-aligned. When coordinates interact strongly, dropping the off-diagonal terms can stall the search where full CMA-ES would not.</p>
+<p>That trade-off is exactly why <a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY</a> [4] reaches for sep-CMA-ES rather than the full algorithm: its coordinator is a roughly 10K-dimensional search under a tight evaluation budget, where a full covariance is both too expensive and too slow to learn, and the paper argues the objective is near-separable enough (it calls this <em>block-<img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>-separability</em>) for the diagonal approximation to hold.</p>
+</section>
+<section id="when-to-reach-for-cma-es" class="level2">
+<h2 class="anchored" data-anchor-id="when-to-reach-for-cma-es">When to reach for CMA-ES</h2>
+<p>CMA-ES fits a specific regime: a continuous problem of low-to-moderate dimension where you can score a candidate but have no usable gradient, because the objective is non-differentiable, noisy, or a black box. Where a gradient <em>is</em> available, gradient descent through backpropagation is almost always faster and scales to millions of parameters, and CMA-ES does not try to compete there.</p>
+<p>Its closest relatives are the gradient-free reinforcement-learning methods. Like <a href="https://en.wikipedia.org/wiki/Policy_gradient_method">policy-gradient RL</a>, CMA-ES searches by trial and reward rather than by differentiating the objective. The difference is that policy gradients still need a low-variance gradient estimate to be useful, while CMA-ES needs only the ranking of scores, which keeps it working when the reward is sparse or binary [5]. The dividing line is dimensionality and structure: a full covariance is practical only up to the hundreds to low thousands of variables, which is what pushes larger problems toward the diagonal sep-CMA-ES variant or back toward reinforcement learning.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=Z8ISh-wAAAAJ">Hansen, N.</a> “The CMA Evolution Strategy: A Tutorial.” <em>arXiv preprint</em> (arXiv:1604.00772), April 4, 2016 (revised 2023). <a href="https://arxiv.org/abs/1604.00772" class="uri">https://arxiv.org/abs/1604.00772</a></li>
+<li><a id="ref-2"></a>Hansen, N. and Ostermeier, A. “Completely Derandomized Self-Adaptation in Evolution Strategies.” <em>Evolutionary Computation</em> 9(2): 159–195, 2001. <a href="https://doi.org/10.1162/106365601750190398" class="uri">https://doi.org/10.1162/106365601750190398</a></li>
+<li><a id="ref-3"></a>Ros, R. and Hansen, N. “A Simple Modification in CMA-ES Achieving Linear Time and Space Complexity.” <em>Parallel Problem Solving from Nature (PPSN X)</em>, LNCS 5199, pp.&nbsp;296–305, Springer, 2008. <a href="https://doi.org/10.1007/978-3-540-87700-4_30" class="uri">https://doi.org/10.1007/978-3-540-87700-4_30</a></li>
+<li><a id="ref-4"></a><a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695, December 4, 2025. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
+<li><a id="ref-5"></a>Salimans, Tim, Ho, Jonathan, Chen, Xi, Sidor, Szymon, and Sutskever, Ilya. “Evolution Strategies as a Scalable Alternative to Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:1703.03864), March 10, 2017. <a href="https://arxiv.org/abs/1703.03864" class="uri">https://arxiv.org/abs/1703.03864</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY: An Evolved LLM Coordinator</a>: trains a 0.6B LLM coordinator with sep-CMA-ES, the diagonal variant covered here, and argues its objective is near-separable enough for the diagonal approximation to hold.</li>
+<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: the sibling that takes the opposite optimizer choice — reinforcement learning at 7B — and so reads as the RL end of the trade-off this primer’s last note describes.</li>
+<li><a href="../../posts/20260629-fugu-release/">Sakana Fugu: One Model to Command Them All</a>: folds the evolution-trained and RL-trained coordinators into one product, so both optimizer regimes ship behind a single endpoint.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260629-cma-es-primer/</guid>
+  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260629-cma-es-primer/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>A 20-Mile Long Run from Redmond to UW</title>
   <dc:creator>Ben </dc:creator>
@@ -1398,423 +2071,6 @@
   <guid>https://benjaminhan.net/posts/20260623-early-token-confidence/</guid>
   <pubDate>Tue, 23 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260623-early-token-confidence/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Pramaana Labs Raises $27M to Bring Formal Verification to AI</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260621-pramaana-formal-verification/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260621-pramaana-formal-verification/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260621-pramaana-formal-verification/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>A Doric temple overlaid with formal measurements and proportions. Image from <a href="https://techcrunch.com/2026/06/17/pramaana-labs-raises-27-million-seed-round-from-khosla-ventures-to-bring-formal-verification-to-ai/">TechCrunch</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://techcrunch.com/2026/06/17/pramaana-labs-raises-27-million-seed-round-from-khosla-ventures-to-bring-formal-verification-to-ai/">TechCrunch</a> reports that <a href="https://pramaanalabs.ai/">Pramaana Labs</a> has raised a $27M seed round led by <a href="https://www.khoslaventures.com/">Khosla Ventures</a> to apply formal verification, specifically the <a href="https://lean-lang.org/">Lean</a> proof language used to check mathematical proofs, as a deterministic layer on top of an LLM. The LLM still answers the natural-language question. A Lean-style system then checks that the answer obeys a formalized rulebook. Pramaana is targeting rule-dense, high-stakes verticals like law, tax preparation, and drug discovery, building a separate verification system per domain with oversight from experts such as former IRS commissioner <a href="https://en.wikipedia.org/wiki/Daniel_Werfel">Danny Werfel</a>. The company was founded by three IIT Madras alumni whose backgrounds run through Google Maps moderation, <a href="https://www.glean.com/">Glean</a>, and <a href="https://deepmind.google/">Google DeepMind</a>’s Gemini team. Co-founder <a href="https://www.linkedin.com/in/ranjan-rajagopalan/">Ranjan Rajagopalan</a> frames the bet this way: “The world’s hardest problems are not unsolvable. They are unformalized.”</p>
-<p>What Pramaana is building:</p>
-<ul>
-<li><strong>The verification stack.</strong> A Domain Formalizer converts regulatory, statutory, and scientific text into machine-checkable specifications, capturing definitions, conditions, exceptions, and dependencies. Provers and solvers then return proof artifacts, proofs, counterexamples, and traceable explanations, showing which rule was used and where the answer follows or fails.</li>
-<li><strong>Tax first.</strong> The opening vertical formalizes tax rules for compliance, advisory, and policy simulation, with legal compliance, clinical safety, software and protocol correctness, and public policy named as later targets.</li>
-<li><strong>An outside-research arm.</strong> A fellowship, <a href="https://pramaanalabs.ai/">Project 1729</a>, invites external teams to formalize high-stakes domains, offering funding, compute, and an embedded Pramaana engineer.</li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The bottleneck moves from the model to the spec.</strong> The deterministic layer checks that the LLM’s output obeys a formalized rulebook, but it cannot check that the rulebook itself is correct or complete. A proof of conformance is only as good as the formalization, and turning law or tax into Lean means making thousands of interpretive choices that can each be wrong. <a href="../../posts/20260413-verified-not-safe/">Verified Doesn’t Mean Nothing Can Go Wrong</a> is the sharp version of this: a Claude agent found a buffer overflow in the Lean runtime under code that was itself formally verified.</p></li>
-<li><p><strong>The verticals are rule-dense, but not equally formalizable.</strong> Law and tax are good fits because they are written rules, and France’s <a href="https://catala-lang.org/">CATALA</a> project already turns much of the French tax and benefit code into executable form. Drug discovery is a harder case: much of it is empirical and statistical rather than a codified rulebook, so the pitch that codifying the rules makes the reasoning deterministic fits tax far better than it fits biology. The ongoing cost is also real, since a formalization of the tax code has to be re-checked every time the code changes.</p></li>
-<li><p><strong>This is a per-domain build, not a horizontal product.</strong> Each vertical gets its own Lean-style system overseen by domain experts: a former IRS commissioner for tax, named professors for cybersecurity and drug discovery. That makes the moat the formalization work and the expert relationships, which reads closer to a high-end services model than to software that scales by adding users. The Project 1729 fellowship, which embeds a Pramaana engineer with each outside team, fits that shape: each new domain is its own formalization project. The same LLM-plus-Lean toolchain is being pushed on open math problems in <a href="../../posts/20260606-ai-formal-proof-search/">Advancing Mathematics Research with AI-Driven Formal Proof Search</a>, where the binding constraint is likewise how much gets formalized, not the model.</p></li>
-<li><p><strong>The competitive landscape, especially in law and tax.</strong> The field splits on what makes a high-stakes answer trustworthy, and Pramaana’s wager is on machine-checkable proof:</p>
-<ul>
-<li><strong>The proof camp</strong> (Pramaana’s own): <strong><a href="../../posts/20260514-carina-hong-axiom-math-is-agi/">Axiom</a></strong>, founder Carina Hong’s Lean-based startup, runs the same deterministic-formal-layer thesis aimed at mathematics. <strong><a href="https://www.imandra.ai/">Imandra</a></strong> sells “reasoning as a service,” applying automated reasoning and formal verification to mission-critical and financial-regulatory decisions, which puts it closest to Pramaana’s professional territory.</li>
-<li><strong>The retrieval camp</strong> (what Pramaana positions against): X’s <strong><a href="https://x.company/blog/posts/moonshot-for-professional-intelligence/">Moonshot for Specialized Professional Intelligence</a></strong> and <strong><a href="https://www.harvey.ai/">Harvey</a></strong> chase the legal market with LLM analysis over private documents, while <strong><a href="../../posts/20240531-legal-ai-hallucinations/">Thomson Reuters and LexisNexis</a></strong> tools still hallucinate more than 17% of the time. In tax, <strong><a href="https://www.blackore.ai/">Black Ore</a></strong>’s “Tax Autopilot” automates tax preparation for CPA (certified public accountant) firms with a claimed 99% accuracy, and France’s CATALA remains the closest formal precedent.</li>
-</ul></li>
-</ul>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260413-verified-not-safe/">“Verified” Doesn’t Mean “Nothing Can Go Wrong”</a>: the direct caution for Pramaana’s pitch, where a bug turned up under formally-verified Lean code, showing verification bounds failure but does not eliminate it.</li>
-<li><a href="../../posts/20260514-carina-hong-axiom-math-is-agi/">Math Is AGI: Carina Hong on Axiom and Formal Reasoning</a>: the closest peer, where Axiom makes the same bet as Pramaana, a deterministic formal-reasoning layer under a probabilistic LLM, aimed at mathematics rather than professional verticals.</li>
-<li><a href="../../posts/20240531-legal-ai-hallucinations/">AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries</a>: the reliability problem in the legal vertical Pramaana targets, and a caution on “hallucination-free” reliability claims.</li>
-<li><a href="../../posts/20260606-ai-formal-proof-search/">Advancing Mathematics Research with AI-Driven Formal Proof Search</a>: the same LLM-plus-Lean approach applied to open math problems, where formalization is again the limiting factor.</li>
-<li><a href="../../posts/20230902-computers-write-proofs/">When Computers Write Proofs, What’s the Point of Mathematicians?</a>: the older case for Lean-style formalization and what it does and does not capture about human reasoning.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260621-pramaana-formal-verification/</guid>
-  <pubDate>Sun, 21 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260621-pramaana-formal-verification/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>My 84th Half Marathon Through Redmond Watershed Preserve</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260621-my-84th-half-marathon/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>This Long Run Sunday I ran an accidental HM, and it was my 84th!</p>
-<p>My goal was to just run 10mi, because I already ran <a href="../../posts/20260619-juneteenth-run-lincoln-park/">~14mi two days ago to Alki beach</a>, and 7mi yesterday including my 103rd parkrun. Plan was simple: 4mi run to a nearby McDonald’s to get my ice cream and iced coffee fix, and then wander around until I hit 10mi!</p>
-<p>But what do you know, runners? Next moment you realize you’re deep in the woods, and the weather and the world were just too wonderful to stop! I ended up running into Redmond Watershed Preserve, which I’d never properly run through before. So this time I did!</p>
-<p>All told, the damage done was 14.40mi with moving time 2:28:23 pace 10’18”/mi, and EG 1,269ft! And I closed this week with the highest weekly mileage and EG year-to-date: 69.45mi and 3,793ft!</p>
-<p>But who cares — those beautiful sights are part of my happy memories now! 🙂</p>
-<p>Oh and happy summer and happy father’s day!</p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-9.jpeg" class="img-fluid" data-lightbox-src="image-9-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-10.jpeg" class="img-fluid" data-lightbox-src="image-10-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-11.jpeg" class="img-fluid" data-lightbox-src="image-11-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-12.jpeg" class="img-fluid" data-lightbox-src="image-12-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116791316042045275">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260621-my-84th-half-marathon/</guid>
-  <pubDate>Sun, 21 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-7.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Estonia Intends to Recognize AI Agents With Digital IDs</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>A page from a 1979 internal IBM training manual. Image via <a href="https://simonwillison.net/2025/Feb/3/a-computer-can-never-be-held-accountable/">Simon Willison</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://www.theregister.com/ai-and-ml/2026/06/18/estonia-intends-to-recognize-ai-agents-with-digital-ids/">The Register</a> reports that Estonia plans to give AI agents their own digital identities, so an agent acting for a person can be verified and audited. The primary source is a <a href="https://www.valitsus.ee/en/news/prime-minister-michal-estonia-become-first-country-create-digital-identities-ai-agents">statement from the Estonian Government Office</a>: at the second meeting of the <a href="http://eesti.ai">Eesti.ai</a> advisory board on 17 June 2026, the board agreed to move forward with digital identities for AI agents, which it calls an “AI ID.” Prime Minister <a href="https://en.wikipedia.org/wiki/Kristen_Michal">Kristen Michal</a> put the goal in terms of one question:</p>
-<blockquote class="blockquote">
-<p>In the future, AI will increasingly carry out digital tasks on our behalf, compiling reports, preparing declarations or interacting with information systems. To that end, it must be clear who is acting on whose behalf with what rights, and who is ultimately responsible.</p>
-</blockquote>
-<p>What the <a href="https://www.valitsus.ee/en/news/prime-minister-michal-estonia-become-first-country-create-digital-identities-ai-agents">proposal</a> says:</p>
-<ul>
-<li><strong>Scoped, controllable authority.</strong> An agent acting for a person or company is given limited and controllable powers, instead of the person granting an AI assistant access to all of their rights, services, and data.</li>
-<li><strong>Per-action permissioning.</strong> The statement is concrete about granularity: it must be possible to specify whether an agent may only view data, prepare a document, draw up a payment, or act solely within a set financial limit.</li>
-<li><strong>Built on the existing e-state.</strong> The government positions the AI ID as the next layer on the trust infrastructure that already runs the country: a national digital identity, the X-Road data-exchange layer, and legally binding digital signatures.</li>
-<li><strong>A commitment, with the mechanics still open.</strong> This is an agreement to proceed, reached at an advisory-board meeting. The authorization and delegation mechanics are not defined, and the “first country in the world” claim is conditional on acting “quickly, and smartly.”</li>
-</ul>
-<p>The Register places the move in a wider scramble over who answers for an agent’s actions. Argentina’s president <a href="https://www.ft.com/content/f93022fe-43f7-437d-abd8-06c457c0a43c">Javier Milei</a> has endorsed “non-human corporations” run by software with limited liability. In commerce, <a href="https://www.target.com/c/terms-conditions/-/N-4sr7l">Target’s terms</a> now treat actions by an agent you authorized as transactions you made, while <a href="https://www.americanexpress.com/en-us/newsroom/articles/innovation/american-express-debuts-agentic-commerce-experiences--ace--devel.html">American Express</a> goes the other way and promises to cover customers when an authorized agent makes a purchase in error. The piece also revives the line from <a href="https://www.ibm.com/think/insights/ai-decision-making-where-do-businesses-draw-the-line">IBM’s 1979 training manual</a>, that a computer can never be held accountable and so must never make a management decision, and notes that courts are filling the gap anyway, holding <a href="https://www.cbc.ca/news/canada/british-columbia/air-canada-chatbot-lawsuit-1.7116416">Air Canada</a> liable for bad chatbot advice.</p>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>A digital ID is really about who to blame.</strong> A software agent can’t be punished the way a person can, as <a href="https://arxiv.org/abs/2508.08544">Mark Riedl and Deven Desai</a> point out: you can fine or jail a human, not a piece of software. So an AI ID doesn’t make the agent answerable. It records who authorized the agent and how much it was allowed to do, so there is finally a clear human to hold responsible when something goes wrong. The commerce terms above are early, ad hoc stabs at the same problem. A national identity layer would settle it the same way every time.</p></li>
-<li><p><strong>Estonia can be first because the hard part is already built.</strong> The AI ID is an increment on e-Estonia’s <a href="https://e-estonia.com/solutions/estonian-e-identity/">digital identity</a>, <a href="https://e-estonia.com/solutions/interoperability-services/x-road/">X-Road data exchange</a>, and digital signatures, not a greenfield project. The same fact makes the “first country” claim credible and the approach hard to copy elsewhere: a state without an e-government foundation would have to stand up the identity layer before it could scope an agent’s powers at all.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: the harm case that per-action scoping is meant to prevent, an agent with unscoped authority taking a catastrophic, state-changing action.</li>
-<li><a href="../../posts/20260618-policy-on-the-ai-exponential/">Policy on the AI Exponential</a>: Dario Amodei’s argument that policy is outrun by capability. Estonia is a government moving early, at the identity-infrastructure layer rather than the model layer.</li>
-<li><a href="../../posts/20260428-openai-agi-principles/">OpenAI’s Five Principles for AGI</a>: private labs publishing voluntary values statements, in contrast to a state building enforceable identity and permission infrastructure for agents.</li>
-<li><a href="../../posts/20230423-agentic-ai-llm-planning-challenges/">The Core Challenges Facing Agentic AI Today</a>: the capability backdrop to delegating real authority, why handing autonomous agents open-ended tasks was already fraught before they could spend money on your behalf.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/</guid>
-  <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Spiking Neural Networks: A Primer</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>A surrogate-gradient spiking network reading a dynamic-vision-sensor (event-camera) gesture stream, with local readout costs at each step. Figure from Neftci, Mostafa &amp; Zenke [1].</figcaption>
-</figure>
-</div>
-<p>Spiking neural networks (SNNs) are often called the “third generation” of neural network models, a term due to Maass [2], after the McCulloch–Pitts threshold unit [3] and the continuous-valued, rate-based units of modern deep learning. The idea is older than the name: the integrate-and-fire neuron goes back to Lapicque in 1907, Hodgkin and Huxley’s 1952 model of the action potential [4] earned a Nobel Prize, and computing <em>with</em> spikes drew sustained interest through the 1990s before energy-efficient neuromorphic hardware revived it in the 2010s. The defining difference: SNN neurons communicate with <em>discrete</em>, <em>asynchronous</em>, <em>binary events</em> called <strong>spikes</strong> placed in continuous time, rather than with real-valued activations exchanged synchronously layer by layer. Computation becomes a function not just of <em>which</em> neurons fire and <em>how much</em>, but of <em>when</em> they fire.</p>
-<section id="research-questions-and-goals" class="level2">
-<h2 class="anchored" data-anchor-id="research-questions-and-goals">Research questions and goals</h2>
-<p>The field is pulled by three partly-overlapping agendas, and it’s worth being explicit about which one a given paper is serving, because the three imply different success criteria.</p>
-<ol type="1">
-<li><p><strong>Energy-efficient computation.</strong> Spikes are sparse and event-driven: a neuron does work only when it receives or emits a spike, and a multiply-accumulate collapses to an accumulate (no weight is multiplied by a graded activation, just an accumulate when a spike arrives). On the right hardware this promises orders-of-magnitude lower energy than dense matrix multiplication. The central question is whether that advantage holds on real tasks at competitive accuracy.</p></li>
-<li><p><strong>Computational neuroscience.</strong> SNNs are the natural modeling substrate for how biological brains actually compute, since real neurons spike. Here the goal is explanatory: understanding coding, plasticity, and dynamics. Biological plausibility is a feature rather than a constraint to relax.</p></li>
-<li><p><strong>Temporal computation.</strong> Because state and timing are intrinsic, SNNs are a candidate substrate for streaming, event-based, low-latency signals (event cameras, audio, sensor streams) where the input is naturally a sparse stream of events rather than a sequence of dense frames.</p></li>
-</ol>
-<p>The hard open problem cutting across all three agendas is <strong>training</strong>. The spike-generating function is a threshold (a step), so its derivative is zero almost everywhere and undefined at threshold, leaving standard backpropagation no gradient to descend. Most methodological research of the last decade is, directly or indirectly, an answer to a handful of open questions:</p>
-<ul>
-<li><strong>The non-differentiability problem.</strong> How do you train a network whose core nonlinearity is a non-differentiable step? The two leading answers are surrogate gradients [1] and conversion from a trained artificial neural network (ANN) [5].</li>
-<li><strong>What should spikes encode?</strong> Rate, precise timing, or something in between? Does that choice change what the network can compute, and how cheaply?</li>
-<li><strong>Can learning be local and online?</strong> Global backpropagation-through-time [6] works but is biologically implausible and awkward for hardware. The leading local alternative is spike-timing-dependent plasticity (STDP), which adjusts each synapse using only the relative timing of its own pre- and post-synaptic spikes [7], [8]. Today it does not close the gap: unsupervised STDP reaches about 95% on MNIST [9] against the 99%+ of backprop-trained networks, and the gap widens sharply on harder benchmarks, with pure STDP yet to produce competitive results on ImageNet. Whether a local rule can ever match backprop on accuracy is the open question.</li>
-<li><strong>Can the accuracy gap close without re-importing the cost?</strong> SNNs still trail conventional networks on large-scale tasks: on ImageNet the best directly-trained SNNs reach roughly 80% top-1 accuracy against the ~90% of leading conventional models (details below). Closing that gap while keeping the sparsity and energy advantage, rather than reintroducing the dense computation that made conventional networks expensive, is the open engineering question.</li>
-</ul>
-</section>
-<section id="techniques-and-the-mathematics" class="level2">
-<h2 class="anchored" data-anchor-id="techniques-and-the-mathematics">Techniques and the mathematics</h2>
-<section id="the-neuron-model" class="level3">
-<h3 class="anchored" data-anchor-id="the-neuron-model">The neuron model</h3>
-<p>The most widely used model is the <strong>leaky integrate-and-fire (LIF)</strong> neuron, whose membrane potential <img src="https://benjaminhan.net/feed-assets/93e90375dbb79a8e.svg" alt="V(t)" class="feed-math-inline"/> integrates incoming current and leaks back toward rest. It is defined by its rate of change:</p>
-<p><img src="https://benjaminhan.net/feed-assets/f77306b1ba898bb2.svg" alt="\frac{dV(t)}{dt} = \frac{-\big(V(t) - V_\text{rest}\big) + R\,I(t)}{\tau_m}" class="feed-math-inline"/></p>
-<p>You integrate this over time to get <img src="https://benjaminhan.net/feed-assets/93e90375dbb79a8e.svg" alt="V(t)" class="feed-math-inline"/>, the “integrate” in integrate-and-fire. (The literature usually writes the equivalent form <img src="https://benjaminhan.net/feed-assets/27b0ccd1d8e10f63.svg" alt="\tau_m\,\frac{dV}{dt} = -(V - V_\text{rest}) + R\,I(t)" class="feed-math-inline"/>, with the time constant multiplying the derivative.)</p>
-<p><em>In plain terms:</em> the voltage leaks steadily back toward its resting level while incoming current pushes it up. When the push wins and the integrated voltage reaches threshold, the neuron fires and resets.</p>
-<p>Here <img src="https://benjaminhan.net/feed-assets/8bf88539ffae5216.svg" alt="I(t)" class="feed-math-inline"/> is the input current (the summed synaptic drive) and <img src="https://benjaminhan.net/feed-assets/81214a487edf79ac.svg" alt="R" class="feed-math-inline"/> the membrane resistance, so <img src="https://benjaminhan.net/feed-assets/08fe6c33c03f159a.svg" alt="R\,I(t)" class="feed-math-inline"/> is the voltage the input would drive the membrane to at rest. When <img src="https://benjaminhan.net/feed-assets/8058ff93fbd3931e.svg" alt="V" class="feed-math-inline"/> crosses a threshold <img src="https://benjaminhan.net/feed-assets/3a8ac3f1c120a41e.svg" alt="V_\text{th}" class="feed-math-inline"/>, the neuron emits a spike and <img src="https://benjaminhan.net/feed-assets/8058ff93fbd3931e.svg" alt="V" class="feed-math-inline"/> is reset (to <img src="https://benjaminhan.net/feed-assets/22365c8ee9d17480.svg" alt="V_\text{rest}" class="feed-math-inline"/> or by subtracting <img src="https://benjaminhan.net/feed-assets/3a8ac3f1c120a41e.svg" alt="V_\text{th}" class="feed-math-inline"/>). The constant <img src="https://benjaminhan.net/feed-assets/b6fbcba152938e97.svg" alt="\tau_m = RC" class="feed-math-inline"/> is the <strong>membrane time constant</strong>, the timescale over which the voltage relaxes back toward rest once input stops, much like an <img src="https://benjaminhan.net/feed-assets/adb636366acb2962.svg" alt="RC" class="feed-math-inline"/> circuit discharging. A large <img src="https://benjaminhan.net/feed-assets/72e0f451cb00f2d7.svg" alt="\tau_m" class="feed-math-inline"/> means a slow leak and a long memory of past input. A small one means the neuron forgets almost immediately and responds only to near-coincident spikes.</p>
-<p>For simulation and training this is discretized. A common form, written as a recurrent unit over time steps <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/>:</p>
-<p><img src="https://benjaminhan.net/feed-assets/f19e0a66a6045f89.svg" alt="U[t] = \beta\,U[t-1] + W X[t] - S[t-1]\,U_\text{th}, \qquad S[t] = \Theta\big(U[t] - U_\text{th}\big)" class="feed-math-inline"/></p>
-<p><em>In plain terms:</em> this is the same leaky neuron rewritten so a computer can step through it in time. At each tick it keeps the previous voltage but shrinks it by the decay <img src="https://benjaminhan.net/feed-assets/b54e315a68f9323a.svg" alt="\beta" class="feed-math-inline"/>, adds the new weighted input <img src="https://benjaminhan.net/feed-assets/fb4c6ea220282e66.svg" alt="W X[t]" class="feed-math-inline"/>, and subtracts the threshold to reset if it fired on the last tick.</p>
-<p>where <img src="https://benjaminhan.net/feed-assets/9160415677ffcd43.svg" alt="U[t]" class="feed-math-inline"/> is the membrane potential at time step <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/> (the discrete-time counterpart of <img src="https://benjaminhan.net/feed-assets/8058ff93fbd3931e.svg" alt="V" class="feed-math-inline"/>), <img src="https://benjaminhan.net/feed-assets/25ad314822ebb606.svg" alt="W" class="feed-math-inline"/> the synaptic weights, <img src="https://benjaminhan.net/feed-assets/7af65baca1fa93f5.svg" alt="X[t]" class="feed-math-inline"/> the input spikes arriving at that step, <img src="https://benjaminhan.net/feed-assets/fc527613ddf653a1.svg" alt="\beta = e^{-\Delta t/\tau_m} \in (0,1)" class="feed-math-inline"/> the decay factor, <img src="https://benjaminhan.net/feed-assets/dcd5d86ede58c32e.svg" alt="S[t]\in\{0,1\}" class="feed-math-inline"/> the output spike, and <img src="https://benjaminhan.net/feed-assets/5df2f539a83c1694.svg" alt="\Theta" class="feed-math-inline"/> the Heaviside step function (<img src="https://benjaminhan.net/feed-assets/167bdf9b400f80fc.svg" alt="\Theta(x) = 1" class="feed-math-inline"/> when <img src="https://benjaminhan.net/feed-assets/1659e93cd9bef86c.svg" alt="x \geq 0" class="feed-math-inline"/>, else <img src="https://benjaminhan.net/feed-assets/e388eb4d353251b5.svg" alt="0" class="feed-math-inline"/>), so the neuron emits a spike (<img src="https://benjaminhan.net/feed-assets/7ed0cab6a394bdec.svg" alt="S[t]=1" class="feed-math-inline"/>) exactly when the potential <img src="https://benjaminhan.net/feed-assets/9160415677ffcd43.svg" alt="U[t]" class="feed-math-inline"/> reaches the threshold <img src="https://benjaminhan.net/feed-assets/b3b5a46197b8865e.svg" alt="U_\text{th}" class="feed-math-inline"/> and stays silent (<img src="https://benjaminhan.net/feed-assets/50bdd2011138d516.svg" alt="S[t]=0" class="feed-math-inline"/>) below it. The last term subtracts the threshold after a spike, implementing reset-by-subtraction. In this form an SNN is essentially a recurrent network with a binary activation and a built-in leak, which is exactly why deep-learning training methods can be brought to bear.</p>
-<p>Other neuron models trade biological fidelity against cost:</p>
-<ul>
-<li><strong>Hodgkin–Huxley</strong> [4] (1952): a system of coupled nonlinear ordinary differential equations (ODEs) modeling ion-channel conductances. Biophysically faithful, expensive.</li>
-<li><strong>Izhikevich</strong> [10] (2003): two coupled equations, <img src="https://benjaminhan.net/feed-assets/ad3610d586d3542a.svg" alt="\dot v = 0.04v^2 + 5v + 140 - u + I" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8908abc2515fa7fc.svg" alt="\dot u = a(bv - u)" class="feed-math-inline"/> with after-spike reset. A celebrated sweet spot: it reproduces a large repertoire of cortical firing patterns (bursting, chattering, fast-spiking) at roughly the cost of LIF.</li>
-<li><strong>Spike Response Model</strong> [11] (Gerstner): an integral, kernel-based reformulation convenient for analysis.</li>
-</ul>
-</section>
-<section id="what-spikes-encode" class="level3">
-<h3 class="anchored" data-anchor-id="what-spikes-encode">What spikes encode</h3>
-<p>A spiking network has to commit to what a spike <em>means</em>: how information is read out of a spike train. Rate and temporal/latency coding are the two ends of a spectrum, differing in how much they rely on the precise <em>timing</em> of spikes rather than their average count, and a real code can sit anywhere between them. Population coding is a separate question (which neurons in a group fire) and combines with either. What matters in practice is how a use case maps the code onto the output format it needs:</p>
-<ul>
-<li><strong>Rate coding → a class label.</strong> Each input (say, a pixel) drives a spike train whose <em>rate</em> is proportional to its value, and a downstream neuron’s firing rate then stands in for a real-valued activation (80 spikes in 100 steps ≈ an activation of 0.8). The output layer has one neuron per class, and the prediction is the output neuron with the highest spike count over the window, the spiking analogue of taking an ANN’s largest logit. This is the default for ANN-to-SNN conversion and deep-SNN image classifiers, where accuracy matters more than latency. The cost is the many time steps needed to estimate each rate, and that <em>when</em> spikes occur is discarded.</li>
-<li><strong>Temporal / latency coding → a fast decision.</strong> Information lives in <em>when</em> a neuron first fires: a stronger or more salient input fires earlier (time-to-first-spike). The readout watches for the earliest output spikes and settles on a class as soon as one fires, often before the full window elapses. That is what suits it to ultra-low-latency, low-power inference (always-on keyword spotting or fast detection on neuromorphic chips) and to models of the brain’s rapid visual categorization. It is sparse (potentially one spike per neuron) but harder to train and more fragile.</li>
-<li><strong>Population coding → a continuous value.</strong> Each neuron has a preferred value (a tuning curve), and a quantity is represented by the <em>pattern</em> of activity across the group. The output is decoded as a weighted combination of the population’s firing (a population vector, or a learned linear decoder), yielding a continuous vector rather than a discrete class. This underlies continuous-variable tasks like motor control and robotics: it is the basis of the Neural Engineering Framework [12] behind Nengo, and of the classic decoding of movement direction from motor-cortex activity [13].</li>
-</ul>
-</section>
-<section id="training-methods" class="level3">
-<h3 class="anchored" data-anchor-id="training-methods">Training methods</h3>
-<p>Three broad families of methods are used to train an SNN.</p>
-<p><strong>ANN-to-SNN conversion.</strong> Train a conventional rectified-linear-unit (ReLU) network normally, then map activations to firing rates and copy the weights into a rate-coded SNN, calibrating thresholds [5], [14]. Achieves near-ANN accuracy and sidesteps the gradient problem entirely, but typically needs many time steps (high latency, eroding the energy win) and only yields rate codes.</p>
-<p><strong>Surrogate gradients.</strong> The dominant direct-training approach. Use the hard step <img src="https://benjaminhan.net/feed-assets/5df2f539a83c1694.svg" alt="\Theta" class="feed-math-inline"/> on the forward pass, but substitute a smooth surrogate derivative on the backward pass, pretending (only for gradient purposes) that the spike function had a soft slope. A common choice is the derivative of a fast sigmoid [15] or a triangular/boxcar function centered at threshold:</p>
-<p><img src="https://benjaminhan.net/feed-assets/539db9cf9170dd98.svg" alt="\frac{\partial S}{\partial U} \;\approx\; \frac{1}{\big(1 + |U - U_\text{th}|\big)^2} \quad\text{(one popular surrogate)}" class="feed-math-inline"/></p>
-<p><em>In plain terms:</em> a real spike is all-or-nothing, so its true slope is zero almost everywhere and undefined at threshold, useless for gradient descent. On the backward pass we pretend the neuron responded smoothly, with sensitivity highest right at threshold and tapering off as the voltage moves away from it.</p>
-<p>Unrolling the LIF recurrence over time and applying backpropagation-through-time then trains the network end-to-end. This is the core idea behind STBP (spatio-temporal backpropagation) [16] and is surveyed definitively by Neftci, Mostafa &amp; Zenke [1]. The broader set of supervised and unsupervised methods is reviewed by Tavanaei et al.&nbsp;[17].</p>
-<p><strong>Local / biologically-inspired plasticity.</strong> <strong>STDP</strong> is an unsupervised, local rule: a synapse strengthens if the presynaptic spike <em>precedes</em> the postsynaptic one (causal, “pre-before-post”) and weakens otherwise. The dependence was characterized experimentally by Markram et al.&nbsp;[8] and Bi &amp; Poo [7]. A standard form:</p>
-<p><img src="https://benjaminhan.net/feed-assets/a60c570ab22c3cbe.svg" alt="\Delta w = \begin{cases} A_+\, e^{-\Delta t/\tau_+} &amp;amp; \Delta t &gt; 0 \ (\text{pre before post}) \\[4pt] -A_-\, e^{\Delta t/\tau_-} &amp;amp; \Delta t &lt; 0 \ (\text{post before pre}) \end{cases}" class="feed-math-inline"/></p>
-<p><em>In plain terms:</em> if the input spike lands just before the neuron fires, the synapse is strengthened (it helped cause the spike). If it lands just after, it is weakened, and either effect fades the further apart in time the two spikes are.</p>
-<p>with <img src="https://benjaminhan.net/feed-assets/a18f1562d9737bcd.svg" alt="\Delta t = t_\text{post} - t_\text{pre}" class="feed-math-inline"/>. STDP needs no labels or global error signal and maps cleanly onto on-chip learning, but on its own it lags supervised methods on accuracy. Diehl &amp; Cook [9] is the canonical demonstration, reaching competitive MNIST accuracy with STDP alone. It remains central to the neuroscience agenda and to online-learning hardware.</p>
-</section>
-</section>
-<section id="how-biologically-realistic-is-it-really" class="level2">
-<h2 class="anchored" data-anchor-id="how-biologically-realistic-is-it-really">How biologically realistic is it, really?</h2>
-<p>SNNs are routinely described as “more biologically realistic” than conventional networks. That’s true, but in a narrower sense than the phrase suggests, and it’s worth separating what holds from what gets oversold.</p>
-<p>The claim holds at the level of <em>signal representation</em>. Real neurons communicate with discrete action potentials whose timing encodes information, and SNNs do the same. Conventional rate-based networks do neither: each unit emits a single continuous value with no temporal structure. SNNs also maintain intrinsic state (membrane potential, leak) and event-driven dynamics that mirror real neural behavior. STDP in particular was discovered experimentally in biology and then imported into SNNs, so that learning rule is genuinely biologically grounded rather than reverse-engineered. By this measure an SNN is unambiguously closer to a brain than a ReLU multilayer perceptron (MLP).</p>
-<p>But “more realistic than an ANN” is a low bar, and most working SNNs clear it and then stop:</p>
-<ul>
-<li>The standard LIF neuron is a gross simplification: a single compartment, no dendritic computation, no ion-channel dynamics, a fixed threshold. Real neurons are closer to small nonlinear networks in themselves. Hodgkin–Huxley is far more biophysically detailed, but its cost and stiff dynamics keep it almost entirely out of <em>trained</em> networks. It lives in computational-neuroscience simulation instead.</li>
-<li>The most <em>successful</em> SNNs are trained with surrogate-gradient backpropagation-through-time, and backprop is exactly the part that is biologically implausible, since it needs a global error signal, symmetric weight transport, and a backward pass the brain has no obvious mechanism for [18]. The systems that perform best are realistic in their neurons and implausible in their learning.</li>
-<li>Rate coding, the easiest regime to train, discards the spike-timing information that motivated the realism argument in the first place, leaving a spiking implementation of essentially rate-based computation.</li>
-<li>Connectivity structure, neuromodulation, glia, conduction delays, the diversity of neuron types: none of it is in a typical SNN.</li>
-</ul>
-<p>Biological realism is really an argument for using SNNs in <em>neuroscience</em> rather than in engineering. For the energy and edge-AI agenda the operative property is sparse, event-driven computation on neuromorphic hardware, an efficiency argument rather than a fidelity one. The two get conflated because “brain-like” sells, but a system can be brain-like in the way that matters for power (sparse spikes) while being quite unbrain-like in how it learns.</p>
-</section>
-<section id="potential-impact" class="level2">
-<h2 class="anchored" data-anchor-id="potential-impact">Potential impact</h2>
-<ul>
-<li><strong>Edge and always-on AI.</strong> Ultra-low-power inference for wearables, hearing aids, keyword spotting, and battery-constrained sensors: the most credible near-term commercial case.</li>
-<li><strong>Event-based vision and robotics.</strong> Pairing with <strong>event cameras</strong> (dynamic vision sensors), which output sparse per-pixel brightness-change events [19], SNNs offer microsecond-latency, low-power perception for drones, autonomous systems, and high-speed tracking.</li>
-<li><strong>Neuroscience.</strong> Large-scale spiking simulations test theories of coding, plasticity, and circuit dynamics, feeding back into our understanding of biological computation.</li>
-<li><strong>Sustainability.</strong> If the energy advantage holds at scale, neuromorphic computing is one of the few proposals that attacks the rising energy cost of AI at the architectural level rather than the process-node level.</li>
-</ul>
-<p>The honest caveat: most efficiency claims are realized only on matched neuromorphic hardware. On a graphics processing unit (GPU), simulating an SNN over many time steps is often <em>slower</em> and <em>more</em> energy-hungry than the equivalent conventional network. The advantage is a hardware–algorithm co-design story, not an algorithm-alone story.</p>
-</section>
-<section id="current-status" class="level2">
-<h2 class="anchored" data-anchor-id="current-status">Current status</h2>
-<p><strong>Hardware</strong> is the most mature dimension. Intel <a href="https://www.intel.com/content/www/us/en/research/neuromorphic-computing.html"><strong>Loihi 2</strong></a> (with the open <a href="https://lava-nc.org/"><strong>Lava</strong></a> software framework), IBM <strong>NorthPole</strong> [20], Manchester <strong>SpiNNaker 2</strong> [21], Heidelberg <strong>BrainScaleS-2</strong> [22], and commercial parts like <a href="https://brainchip.com/"><strong>BrainChip Akida</strong></a> and <a href="https://www.synsense.ai/"><strong>SynSense</strong></a> processors are all available to researchers or in products. These demonstrate real energy and latency wins on sparse, event-driven workloads.</p>
-<p><strong>Software</strong> has matured rapidly: <a href="https://snntorch.readthedocs.io/"><strong>snnTorch</strong></a>, <a href="https://github.com/norse/norse"><strong>Norse</strong></a>, <a href="https://github.com/fangwei123456/spikingjelly"><strong>SpikingJelly</strong></a>, <a href="https://github.com/BindsNET/bindsnet"><strong>BindsNET</strong></a>, and <a href="https://www.nengo.ai/"><strong>Nengo</strong></a> make surrogate-gradient training routine on top of PyTorch, and standardized event-based datasets (N-MNIST [23], DVS-Gesture [24], CIFAR10-DVS [25]) support benchmarking.</p>
-<p><strong>Accuracy.</strong> The gap with conventional networks is narrowing but not yet closed:</p>
-<ul>
-<li><strong>Small-to-medium and event-based tasks:</strong> surrogate-gradient SNNs are now competitive with conventional networks, and the gap is nearly closed.</li>
-<li><strong>Large-scale (ImageNet):</strong> directly-trained SNNs reached about 75% top-1 accuracy in 2023 (Spikformer [26]) and roughly 80–81% by 2024 (Spikformer V2 [27]), against the 85–90%+ of leading vision transformers and convolutional networks, narrowing from wide to a few points but not yet closing.</li>
-<li><strong>Overall:</strong> the synthesis from Roy, Jaiswal &amp; Panda [28] and the Eshraghian et al.&nbsp;tutorial [29]: the building blocks exist and the energy case is real on the right substrate, but no general-purpose, clearly-superior spiking system at scale has arrived yet.</li>
-<li><strong>The frontier:</strong> closing the accuracy gap while preserving sparsity, and developing learning rules that are both effective and hardware-local.</li>
-</ul>
-</section>
-<section id="people-and-institutions" class="level2">
-<h2 class="anchored" data-anchor-id="people-and-institutions">People and institutions</h2>
-<p><strong>Foundations and theory.</strong> Wolfgang Maass (TU Graz) framed spiking networks as the third generation and established much of their computational theory. <a href="https://www.izhikevich.org/">Eugene Izhikevich</a> (then UCSD/NSI) gave the field its most-used efficient neuron model. Wulfram Gerstner (EPFL) co-authored the standard textbook <em>Spiking Neuron Models</em>. <a href="https://en.wikipedia.org/wiki/Terry_Sejnowski">Terrence Sejnowski</a> (Salk Institute) and Sander Bohte (CWI) contributed early coding and learning work.</p>
-<p><strong>Training methodology.</strong> Emre Neftci (now Forschungszentrum Jülich / RWTH Aachen) and <a href="https://zenkelab.org/">Friedemann Zenke</a> (Friedrich Miescher Institute, Basel) are central figures in surrogate-gradient learning. Timothée Masquelier (CNRS, Toulouse) works on STDP and temporal coding. Kaushik Roy (Purdue) leads spike-based deep learning and its hardware co-design. <a href="https://www.jasoneshraghian.com/">Jason Eshraghian</a> (UC Santa Cruz) authored the widely-used snnTorch tutorial-paper and library.</p>
-<p><strong>Neuromorphic hardware.</strong> <a href="https://en.wikipedia.org/wiki/Carver_Mead">Carver Mead</a> (Caltech) coined “neuromorphic” in the 1980s [30]. Giacomo Indiveri (Institute of Neuroinformatics, ETH Zurich / University of Zurich) is a leading mixed-signal neuromorphic engineer. <a href="https://en.wikipedia.org/wiki/Steve_Furber">Steve Furber</a> (University of Manchester) built <strong>SpiNNaker</strong> [31]. The late Karlheinz Meier (Heidelberg) drove <strong>BrainScaleS</strong>. <a href="https://modha.org/">Dharmendra Modha</a> led <strong>IBM TrueNorth</strong> [32] (and later NorthPole [20]). Mike Davies leads Intel’s <strong>Loihi</strong> [33] program. These efforts were heavily catalyzed by the EU <a href="https://en.wikipedia.org/wiki/Human_Brain_Project">Human Brain Project</a> (2013–2023, now continued as the EBRAINS research infrastructure) and the US <a href="https://en.wikipedia.org/wiki/SyNAPSE">DARPA SyNAPSE</a> program (2008–2014).</p>
-<p><strong>Today.</strong> The field’s center of gravity is shifting from big-science programs to a commercial wave: <a href="https://en.wikipedia.org/wiki/BrainChip">BrainChip</a> (Akida), <a href="https://www.synsense.ai/">SynSense</a>, and <a href="https://innatera.com/">Innatera</a> now ship neuromorphic silicon aimed at low-power edge sensing, while the academic side stays active through Intel’s Neuromorphic Research Community and continued SpiNNaker 2 work at Manchester and TU Dresden.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Neftci, E. O., Mostafa, H. &amp; Zenke, F. (2019). <em>Surrogate Gradient Learning in Spiking Neural Networks.</em> <strong>IEEE Signal Processing Magazine</strong>, 36(6), 51–63. arXiv:<a href="https://arxiv.org/abs/1901.09948">1901.09948</a></li>
-<li><a id="ref-2"></a>Maass, W. (1997). <em>Networks of spiking neurons: The third generation of neural network models.</em> <strong>Neural Networks</strong>, 10(9), 1659–1671. DOI: <a href="https://doi.org/10.1016/S0893-6080(97)00011-7">10.1016/S0893-6080(97)00011-7</a></li>
-<li><a id="ref-3"></a>McCulloch, W. S. &amp; Pitts, W. (1943). <em>A logical calculus of the ideas immanent in nervous activity.</em> <strong>Bulletin of Mathematical Biophysics</strong>, 5, 115–133. DOI: <a href="https://doi.org/10.1007/BF02478259">10.1007/BF02478259</a></li>
-<li><a id="ref-4"></a>Hodgkin, A. L. &amp; Huxley, A. F. (1952). <em>A quantitative description of membrane current and its application to conduction and excitation in nerve.</em> <strong>Journal of Physiology</strong>, 117(4), 500–544.</li>
-<li><a id="ref-5"></a>Diehl, P. U., Neil, D., Binas, J., Cook, M., Liu, S.-C. &amp; Pfeiffer, M. (2015). <em>Fast-classifying, high-accuracy spiking deep networks through weight and threshold balancing.</em> <strong>2015 International Joint Conference on Neural Networks (IJCNN)</strong>, 1–8. DOI: <a href="https://doi.org/10.1109/IJCNN.2015.7280696">10.1109/IJCNN.2015.7280696</a></li>
-<li><a id="ref-6"></a>Werbos, P. J. (1990). <em>Backpropagation through time: what it does and how to do it.</em> <strong>Proceedings of the IEEE</strong>, 78(10), 1550–1560. DOI: <a href="https://doi.org/10.1109/5.58337">10.1109/5.58337</a></li>
-<li><a id="ref-7"></a>Bi, G.-Q. &amp; Poo, M.-M. (1998). <em>Synaptic modifications in cultured hippocampal neurons: dependence on spike timing, synaptic strength, and postsynaptic cell type.</em> <strong>Journal of Neuroscience</strong>, 18(24), 10464–10472. DOI: <a href="https://doi.org/10.1523/JNEUROSCI.18-24-10464.1998">10.1523/JNEUROSCI.18-24-10464.1998</a></li>
-<li><a id="ref-8"></a>Markram, H., Lübke, J., Frotscher, M. &amp; Sakmann, B. (1997). <em>Regulation of synaptic efficacy by coincidence of postsynaptic APs and EPSPs.</em> <strong>Science</strong>, 275(5297), 213–215. DOI: <a href="https://doi.org/10.1126/science.275.5297.213">10.1126/science.275.5297.213</a></li>
-<li><a id="ref-9"></a>Diehl, P. U. &amp; Cook, M. (2015). <em>Unsupervised learning of digit recognition using spike-timing-dependent plasticity.</em> <strong>Frontiers in Computational Neuroscience</strong>, 9:99.</li>
-<li><a id="ref-10"></a>Izhikevich, E. M. (2003). <em>Simple model of spiking neurons.</em> <strong>IEEE Transactions on Neural Networks</strong>, 14(6), 1569–1572. DOI: <a href="https://doi.org/10.1109/TNN.2003.820440">10.1109/TNN.2003.820440</a></li>
-<li><a id="ref-11"></a>Gerstner, W. &amp; Kistler, W. M. (2002). <em>Spiking Neuron Models: Single Neurons, Populations, Plasticity.</em> Cambridge University Press.</li>
-<li><a id="ref-12"></a>Eliasmith, C. &amp; Anderson, C. H. (2003). <em>Neural Engineering: Computation, Representation, and Dynamics in Neurobiological Systems.</em> MIT Press.</li>
-<li><a id="ref-13"></a>Georgopoulos, A. P., Schwartz, A. B. &amp; Kettner, R. E. (1986). <em>Neuronal population coding of movement direction.</em> <strong>Science</strong>, 233(4771), 1416–1419. DOI: <a href="https://doi.org/10.1126/science.3749885">10.1126/science.3749885</a></li>
-<li><a id="ref-14"></a>Rueckauer, B., Lungu, I.-A., Hu, Y., Pfeiffer, M. &amp; Liu, S.-C. (2017). <em>Conversion of Continuous-Valued Deep Networks to Efficient Event-Driven Networks for Image Classification.</em> <strong>Frontiers in Neuroscience</strong>, 11:682. DOI: <a href="https://doi.org/10.3389/fnins.2017.00682">10.3389/fnins.2017.00682</a></li>
-<li><a id="ref-15"></a>Zenke, F. &amp; Ganguli, S. (2018). <em>SuperSpike: Supervised Learning in Multilayer Spiking Neural Networks.</em> <strong>Neural Computation</strong>, 30(6), 1514–1541. DOI: <a href="https://doi.org/10.1162/neco_a_01086">10.1162/neco_a_01086</a></li>
-<li><a id="ref-16"></a>Wu, Y., Deng, L., Li, G., Zhu, J. &amp; Shi, L. (2018). <em>Spatio-Temporal Backpropagation for Training High-Performance Spiking Neural Networks.</em> <strong>Frontiers in Neuroscience</strong>, 12:331. arXiv:<a href="https://arxiv.org/abs/1706.02609">1706.02609</a>, DOI: <a href="https://doi.org/10.3389/fnins.2018.00331">10.3389/fnins.2018.00331</a></li>
-<li><a id="ref-17"></a>Tavanaei, A., Ghodrati, M., Kheradpisheh, S. R., Masquelier, T. &amp; Maida, A. (2019). <em>Deep Learning in Spiking Neural Networks.</em> <strong>Neural Networks</strong>, 111, 47–63. arXiv:<a href="https://arxiv.org/abs/1804.08150">1804.08150</a>, DOI: <a href="https://doi.org/10.1016/j.neunet.2018.12.002">10.1016/j.neunet.2018.12.002</a></li>
-<li><a id="ref-18"></a>Lillicrap, T. P., Cownden, D., Tweed, D. B. &amp; Akerman, C. J. (2016). <em>Random synaptic feedback weights support error backpropagation for deep learning.</em> <strong>Nature Communications</strong>, 7:13276. DOI: <a href="https://doi.org/10.1038/ncomms13276">10.1038/ncomms13276</a></li>
-<li><a id="ref-19"></a>Gallego, G., et al.&nbsp;(2022). <em>Event-Based Vision: A Survey.</em> <strong>IEEE Transactions on Pattern Analysis and Machine Intelligence</strong>, 44(1), 154–180. DOI: <a href="https://doi.org/10.1109/TPAMI.2020.3008413">10.1109/TPAMI.2020.3008413</a></li>
-<li><a id="ref-20"></a>Modha, D. S., et al.&nbsp;(2023). <em>Neural inference at the frontier of energy, space, and time.</em> <strong>Science</strong>, 382(6668), 329–335. DOI: <a href="https://doi.org/10.1126/science.adh1174">10.1126/science.adh1174</a></li>
-<li><a id="ref-21"></a>Mayr, C., Hoeppner, S. &amp; Furber, S. (2019). <em>SpiNNaker 2: A 10 Million Core Processor System for Brain Simulation and Machine Learning.</em> arXiv:<a href="https://arxiv.org/abs/1911.02385">1911.02385</a></li>
-<li><a id="ref-22"></a>Pehle, C., Billaudelle, S., Cramer, B., et al.&nbsp;(2022). <em>The BrainScaleS-2 Accelerated Neuromorphic System with Hybrid Plasticity.</em> <strong>Frontiers in Neuroscience</strong>, 16:795876. arXiv:<a href="https://arxiv.org/abs/2201.11063">2201.11063</a>, DOI: <a href="https://doi.org/10.3389/fnins.2022.795876">10.3389/fnins.2022.795876</a></li>
-<li><a id="ref-23"></a>Orchard, G., Jayawant, A., Cohen, G. K. &amp; Thakor, N. (2015). <em>Converting Static Image Datasets to Spiking Neuromorphic Datasets Using Saccades.</em> <strong>Frontiers in Neuroscience</strong>, 9:437. DOI: <a href="https://doi.org/10.3389/fnins.2015.00437">10.3389/fnins.2015.00437</a></li>
-<li><a id="ref-24"></a>Amir, A., et al.&nbsp;(2017). <em>A Low Power, Fully Event-Based Gesture Recognition System.</em> <strong>2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)</strong>, 7243–7252. DOI: <a href="https://doi.org/10.1109/CVPR.2017.781">10.1109/CVPR.2017.781</a></li>
-<li><a id="ref-25"></a>Li, H., Liu, H., Ji, X., Li, G. &amp; Shi, L. (2017). <em>CIFAR10-DVS: An Event-Stream Dataset for Object Classification.</em> <strong>Frontiers in Neuroscience</strong>, 11:309. DOI: <a href="https://doi.org/10.3389/fnins.2017.00309">10.3389/fnins.2017.00309</a></li>
-<li><a id="ref-26"></a>Zhou, Z., Zhu, Y., He, C., Wang, Y., Yan, S., Tian, Y. &amp; Yuan, L. (2023). <em>Spikformer: When Spiking Neural Network Meets Transformer.</em> <strong>International Conference on Learning Representations (ICLR)</strong>. arXiv:<a href="https://arxiv.org/abs/2209.15425">2209.15425</a></li>
-<li><a id="ref-27"></a>Zhou, Z., et al.&nbsp;(2024). <em>Spikformer V2: Join the High Accuracy Club on ImageNet with an SNN Ticket.</em> arXiv:<a href="https://arxiv.org/abs/2401.02020">2401.02020</a></li>
-<li><a id="ref-28"></a>Roy, K., Jaiswal, A. &amp; Panda, P. (2019). <em>Towards spike-based machine intelligence with neuromorphic computing.</em> <strong>Nature</strong>, 575, 607–617. DOI: <a href="https://doi.org/10.1038/s41586-019-1677-2">10.1038/s41586-019-1677-2</a></li>
-<li><a id="ref-29"></a>Eshraghian, J. K., et al.&nbsp;(2023). <em>Training Spiking Neural Networks Using Lessons From Deep Learning.</em> <strong>Proceedings of the IEEE</strong>, 111(9), 1016–1054. arXiv:<a href="https://arxiv.org/abs/2109.12894">2109.12894</a></li>
-<li><a id="ref-30"></a>Mead, C. (1990). <em>Neuromorphic electronic systems.</em> <strong>Proceedings of the IEEE</strong>, 78(10), 1629–1636. DOI: <a href="https://doi.org/10.1109/5.58356">10.1109/5.58356</a></li>
-<li><a id="ref-31"></a>Furber, S. B., Galluppi, F., Temple, S. &amp; Plana, L. A. (2014). <em>The SpiNNaker Project.</em> <strong>Proceedings of the IEEE</strong>, 102(5), 652–665.</li>
-<li><a id="ref-32"></a>Merolla, P. A., et al.&nbsp;(2014). <em>A million spiking-neuron integrated circuit with a scalable communication network and interface (TrueNorth).</em> <strong>Science</strong>, 345(6197), 668–673. DOI: <a href="https://doi.org/10.1126/science.1254642">10.1126/science.1254642</a></li>
-<li><a id="ref-33"></a>Davies, M., et al.&nbsp;(2018). <em>Loihi: A Neuromorphic Manycore Processor with On-Chip Learning.</em> <strong>IEEE Micro</strong>, 38(1), 82–99.</li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20220130-physical-neural-networks/">Physical Neural Networks</a>: the closest sibling — training non-digital substrates (optics, electronics, mechanics) by backpropagation, the same “compute outside the von Neumann box” instinct that motivates neuromorphic SNN hardware.</li>
-<li><a href="../../posts/20260523-yann-lecun-after-llms/">Yann LeCun on What Comes After LLMs</a>: a frontier-AI argument that the next architectures may look less like today’s dense transformers, adjacent to the brain-inspired, energy-first case for spiking models.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/</guid>
-  <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How Artificial Analysis Builds Its Intelligence Index</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260620-intelligence-benchmarking/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Independent analysis of AI. Image from <a href="https://artificialanalysis.ai/methodology/intelligence-benchmarking">Artificial Analysis</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://artificialanalysis.ai/">Artificial Analysis</a> is an independent benchmarking outfit that ranks language models, and it publishes the <a href="https://artificialanalysis.ai/methodology/intelligence-benchmarking">full methodology</a> behind its main metric, the <strong>Artificial Analysis Intelligence Index</strong>. The page documents every evaluation in the index, how each is weighted and scored, and the exact testing parameters, down to sampling temperature and retry handling.</p>
-<section id="how-the-index-works" class="level2">
-<h2 class="anchored" data-anchor-id="how-the-index-works">How the index works</h2>
-<p>The Intelligence Index (currently version 4.1) is a single 0–100 score built as a weighted average of nine evaluations across four categories. It is a text-only, English-language suite, and Artificial Analysis estimates a 95% confidence interval of under ±1% on the overall score. The nine weights sum to 100%, and the further benchmarks Artificial Analysis runs (multilingual, visual, mathematical, and several legacy evaluations) are reported separately and not counted in the index.</p>
-<ul>
-<li><p><strong>Four stated principles</strong>: every model is run under identical conditions (standardized); answer extraction is built to avoid penalizing valid output variations (unbiased); prompts give instructions without worked examples (zero-shot); and the full method, prompts, and limitations are published (transparent).</p></li>
-<li><p><strong>The nine evaluations and their weights</strong>, grouped by category:</p>
-<ul>
-<li><em>Agents (34%)</em>: <a href="https://arxiv.org/abs/2510.04374">GDPval-AA v2</a> (20%), agentic completion of economically valuable tasks across 44 US occupations, with file outputs ranked into an <a href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo</a>; and <a href="https://arxiv.org/abs/2406.12045">τ³-Banking</a> (14%), a fintech customer-support agent built on Sierra’s <a href="https://sierra.ai/blog/bench-advancing-agent-benchmarking-to-knowledge-and-voice">τ-Knowledge framework</a> that must combine knowledge retrieval with multi-step account changes.</li>
-<li><em>Coding (24%)</em>: <a href="https://github.com/laude-institute/terminal-bench">Terminal-Bench v2.1</a> (16%), 89 terminal tasks spanning software engineering, system administration, data processing, model training, and security, run through an agent in a sandbox; and <a href="https://arxiv.org/abs/2407.13168">SciCode</a> (8%), Python scientific-computing problems scored by unit tests.</li>
-<li><em>Scientific Reasoning (24%)</em>: <a href="https://arxiv.org/abs/2501.14249">Humanity’s Last Exam</a> (12%), 2,158 open-answer frontier academic questions; <a href="https://arxiv.org/abs/2311.12022">GPQA Diamond</a> (6%), 198 graduate-level Google-proof science questions; and <a href="https://critpt.com/">CritPt</a> (6%), 70 unpublished research-level physics problems.</li>
-<li><em>General (18%)</em>: <a href="https://huggingface.co/datasets/ArtificialAnalysis/AA-Omniscience-Public">AA-Omniscience</a> (12%), 6,000 questions over 42 topics scored by an index that rewards correct answers, penalizes hallucinations, and leaves abstentions neutral; and <a href="https://huggingface.co/datasets/ArtificialAnalysis/AA-LCR">AA-LCR</a> (6%), long-context reasoning over roughly 100,000-token document sets.</li>
-</ul></li>
-<li><p><strong>Testing parameters</strong>: temperature is 0 for non-reasoning models and 0.6 for reasoning models unless a lab recommends otherwise. Non-reasoning models get 16,384 output tokens, while reasoning models get their full disclosed budget. Failed API calls retry up to 30 times, and questions that never succeed are reviewed by hand and dropped.</p></li>
-<li><p><strong>Scoring and contamination handling</strong>: most evaluations use pass@1 averaged over one to five repeats, while GDPval-AA v2 uses an Elo from a three-judge panel, fit with a <a href="https://en.wikipedia.org/wiki/Bradley%E2%80%93Terry_model">Bradley-Terry</a> model and anchored to human experts at 1000. Artificial Analysis keeps internal copies of every dataset, and reports cost from provider-side token counts while standardizing performance on a client-side tokenizer.</p></li>
-</ul>
-</section>
-<section id="current-results" class="level2">
-<h2 class="anchored" data-anchor-id="current-results">Current results</h2>
-<p>As of June 2026, the Intelligence Index (v4.1) is led by Claude Fable 5, Claude Opus 4.8, and GPT-5.5, with a long tail of frontier models close behind.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-intelligence-index.webp" class="img-fluid figure-img" data-lightbox-src="results-intelligence-index-full.png"></p>
-<figcaption>The Artificial Analysis Intelligence Index (v4.1): the weighted 0–100 score across all nine evaluations. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
-</figure>
-</div>
-<p>The single score resolves into different profiles underneath, and Artificial Analysis also publishes category sub-indices. The Agentic Index averages the two agent benchmarks, GDPval-AA v2 and τ³-Banking:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-agentic-index.webp" class="img-fluid figure-img" data-lightbox-src="results-agentic-index-full.png"></p>
-<figcaption>The Artificial Analysis Agentic Index: the average of the GDPval-AA v2 and τ³-Banking agent benchmarks. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
-</figure>
-</div>
-<p>The Coding Index averages Terminal-Bench v2.1 and SciCode, and the ranking shifts from the overall order, with GPT-5.5 moving up to second behind Claude Fable 5:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-coding-index.webp" class="img-fluid figure-img" data-lightbox-src="results-coding-index-full.png"></p>
-<figcaption>The Artificial Analysis Coding Index: the weighted average of Terminal-Bench v2.1 and SciCode. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Closed models lead all three indices</strong>: Claude Fable 5, Claude Opus 4.8, and GPT-5.5, all proprietary, take the top three on the overall index and on the agentic and coding sub-indices alike. The strongest open-weight model, GLM-5.2 from Zhipu, reaches fourth on the overall Intelligence Index, about nine points behind the leader. The open weights fall a clearer step behind on the agentic and coding charts, so the gap that has nearly closed on the broad knowledge-and-reasoning mix is still wide on the longer-horizon agentic and coding work.</p>
-<p>All four are reasoning models. Beyond that, disclosure differs sharply:</p>
-<ul>
-<li><strong>Claude Fable 5</strong> (Anthropic): proprietary weights, no published parameter count or architecture.</li>
-<li><strong>Claude Opus 4.8</strong> (Anthropic): proprietary weights, no published parameter count or architecture.</li>
-<li><strong>GPT-5.5</strong> (OpenAI): proprietary weights, no published parameter count or architecture.</li>
-<li><strong>GLM-5.2</strong> (Zhipu): open weights, 753B total parameters, a sparse mixture of experts (256 routed experts plus one shared, 8 active per token, 78 layers).</li>
-</ul></li>
-<li><p><strong>The method has limitations</strong>:</p>
-<ul>
-<li><strong>The weighting is an editorial choice</strong>: the index is a weighted average, and the weights reflect a judgment about what matters rather than a measurement. Agents are weighted most heavily, with GDPval-AA v2 alone a fifth of the score, so anyone comparing models on the one number inherits that bet. <a href="../../posts/20201005-nlp-leaderboard-utility/">Ethayarajh and Jurafsky</a> argued years ago that a leaderboard should let each reader set their own weights instead of shipping one ranking for everyone.</li>
-<li><strong>Several components are public benchmarks</strong>: Humanity’s Last Exam, GPQA Diamond, SciCode, and Terminal-Bench are all openly available, so training-data contamination is a live risk. The defenses are internal copies of every dataset and the evaluations Artificial Analysis built itself, a weaker defense than the post-cutoff, unpublished questions the <a href="../../posts/20260606-benchmarks-in-leipzig/">Leipzig math benchmark</a> used to stay out of the training data.</li>
-<li><strong>An LLM panel grades the heaviest evaluation</strong>: GDPval-AA v2, the largest single component, scores agentic deliverables by an Elo from a panel of three frontier model judges, anchored to human experts at 1000. The panel reduces the bias any single judge would bring, but the score still measures what frontier models agree is good work, which can differ from what a human expert would rank first.</li>
-<li><strong>The compared models are black boxes</strong>: the closed leaders disclose neither parameter count nor architecture, so the index ranks delivered capability without controlling for model size, design, or training compute. Only the open-weight entrants publish those details, and cost per task, which Artificial Analysis reports separately, is the nearest proxy for what a score costs to reach.</li>
-</ul></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20201005-nlp-leaderboard-utility/">Utility Is in the Eye of the User</a>: the case that benchmark utility is user-specific and leaderboards should let readers set their own weights, a direct counterpoint to collapsing nine evaluations into one fixed-weight index.</li>
-<li><a href="../../posts/20260606-benchmarks-in-leipzig/">Benchmarks in Leipzig</a>: a benchmark built from fresh, post-cutoff, unpublished questions to resist contamination, the stronger defense the public components of this index lack.</li>
-<li><a href="../../posts/20221121-nlp-benchmark-saturation/">Mapping Global Dynamics of Benchmark Creation and Saturation in AI</a>: the create-then-saturate cycle that explains why an index has to keep swapping in harder evaluations to stay informative.</li>
-<li><a href="../../posts/20260423-anthropic-economic-index/">Anthropic Economic Index</a>: another attempt to measure model capability on economically valuable work, and a reminder that a metric designed not to saturate (time horizon) is a different bet than a fixed-question score.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260620-intelligence-benchmarking/</guid>
-  <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

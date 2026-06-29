@@ -1,0 +1,87 @@
+---
+title: "Sakana Fugu: One Model to Command Them All"
+description: "A family of orchestrator models, each a language model trained to assemble and coordinate a team of other LLMs rather than answer queries on its own."
+author: synesis
+date: "2026-06-29"
+image: cover.jpg
+---
+
+![Sakana Fugu is a single model that routes a query to a pool of other LLMs: closed and open models, plus recursive copies of itself. Image from [Sakana AI](https://sakana.ai/fugu-release/).](cover.jpg){fig-align="center"}
+
+In the *Sakana Fugu Technical Report* [[1]](#ref-1) (arXiv preprint, June 2026), [Yujin Tang](https://www.semanticscholar.org/author/2326422916) and 13 colleagues at [Sakana AI](https://sakana.ai/) introduce *Sakana Fugu* (*fugu* is Japanese for pufferfish, continuing the lab's fish-naming line after *sakana*, "fish"), a family of orchestrator models. A Fugu model is itself a language model, but it is trained not to answer a query directly. Instead it decides which other LLMs to call, hands them sub-tasks, checks their work, and combines the results into one answer, all behind a single API endpoint. The work productizes two of the lab's ICLR 2026 papers: *TRINITY: An Evolved LLM Coordinator* [[2]](#ref-2) and *Learning to Orchestrate Agents in Natural Language with the Conductor* [[3]](#ref-3).
+
+Three terms, defined up front:
+
+- **Orchestrator model**: a language model trained to decide *which* model should handle a query and *how* to combine the outputs, rather than producing the final answer itself. It can also solve a query directly when no delegation is needed.
+- **Agent pool**: the set of underlying LLMs the orchestrator can call. The pool is swappable, mixes closed and open models, and includes recursive copies of Fugu itself. A provider can be dropped and the orchestrator routes around it.
+- **Agentic scaffold**: the per-query plan the orchestrator devises on the fly, including who talks to whom and what each agent is told to do. The scaffold is rebuilt for each query rather than fixed in advance.
+
+Sakana describes the system this way:
+
+> Sakana Fugu is a multi-agent system that *behaves like a single model*. You send a request to one endpoint, and Fugu decides how to handle it: *solving it directly when that is enough, or assembling and coordinating a team of expert models* when a task calls for more. It manages *model selection, delegation, verification, and synthesis* internally, so the complexity of a multi-agent system never reaches your code.
+
+The technical report's abstract states the contribution:
+
+> The capabilities of frontier Large Language Models (LLMs) continue to advance, with different providers increasingly specializing in distinct domains. This raises a natural next objective: how to combine the individual specializations of various LLMs into a collectively intelligent system. To this end, we report the development of Sakana Fugu, *a family of orchestrator models that harness and amplify the capabilities of an LLM agent team*. Fugu models are themselves language models trained to understand user queries and *dynamically devise agentic scaffolds* to solve them. Through these adaptive scaffolds, Fugu accesses performance beyond any individual LLM agent, achieving *state-of-the-art results compared to other publicly accessible models* across a range of challenging tasks, including SWE-Bench Pro, Terminal Bench, LiveCodeBench, GPQA-Diamond, Humanity's Last Exam, and CharXiv Reasoning. We release two models: Fugu, which balances performance with latency for everyday use, and Fugu-Ultra, which prioritizes answer quality on the hardest problems. We describe our *training paradigm, which encompasses large-scale fine-tuning, evolutionary algorithms, and reinforcement learning approaches*, along with the infrastructure and core design principles that turn these methods into a production system. We hope this report encourages further research into multi-agent systems and dynamic, query-adaptive agentic scaffolds as a path toward the next frontier of AI capabilities, accessed through collective intelligence.
+
+## Methods
+
+The report ships two distinct models, each extending one of the lab's ICLR 2026 papers rather than chaining both into a single pipeline. The abstract lists large-scale fine-tuning, evolutionary algorithms, and reinforcement learning together, but those span the two models' separate recipes rather than three stages of one:
+
+- **Fugu builds on TRINITY** [[2]](#ref-2). The everyday model extends [TRINITY](/posts/20260629-trinity-llm-coordinator/), a roughly 0.6B-parameter language model paired with a 10K-parameter head and optimized with the separable Covariance Matrix Adaptation Evolution Strategy rather than gradient descent. Over multiple turns the coordinator assigns one of three roles, Thinker, Worker, or Verifier, to a selected LLM, offloading the hard skills onto the pool and keeping itself small. TRINITY reports 86.2% on LiveCodeBench. Fugu trains it in two stages: supervised fine-tuning on single-step tasks, then an evolutionary strategy on end-to-end tasks.
+- **Fugu-Ultra builds on the Conductor** [[3]](#ref-3). The quality-first model extends [Conductor](/posts/20260629-conductor-llm-orchestrator/), a 7B model trained by reinforcement learning to write both the communication topology among agents and the instructions it sends each one, and adds long-horizon function-calling and multi-agent workflows through adaptive agent memory. Letting the Conductor select itself as a worker produces recursive topologies, which the paper calls a form of test-time scaling: spend more orchestration depth on a hard query. This recursive self-call is the mechanism behind the recursive Fugu box in the diagram above.
+- **Both ship on one OpenAI-compatible API.** Fugu balances quality against latency for everyday use. Fugu-Ultra coordinates a deeper pool when accuracy matters most. Teams with privacy or compliance constraints can opt specific agents out of the pool.
+
+The learned-coordinator idea is shared with other recent work that searches or trains the structure of a multi-agent system rather than fixing it by hand, including [MASS](/posts/20260430-multi-agent-system-search/), which searches prompts and topologies, and [MAPO](/posts/20260520-adaptive-collaboration-mapo/), which trains a deferral policy to decide when to hand off.
+
+## Results
+
+The report makes two separate comparisons, each with its own figure.
+
+- **Against frontier baselines, Fugu Ultra leads four of eight.** Across eight benchmarks spanning coding, science, reasoning, and agentic tasks, Fugu Ultra takes the top score on LiveCodeBench [[4]](#ref-4), GPQA-Diamond [[5]](#ref-5), CharXiv Reasoning [[6]](#ref-6), and Terminal Bench [[7]](#ref-7), but Fable 5 wins SWE-Bench Pro [[8]](#ref-8) (80.0 to 73.7), SciCode [[9]](#ref-9), and Humanity's Last Exam [[10]](#ref-10), and Opus 4.8 edges CTI-REALM [[11]](#ref-11). Neither Fable 5 nor Mythos Preview is in Fugu's pool, since the report says both are not publicly accessible.
+
+![Fugu and Fugu Ultra against frontier baselines across eight benchmarks. Figure from the technical report [[1]](#ref-1).](benchmarks-frontier.jpg){fig-align="center" data-lightbox-src="benchmarks-frontier-full.jpg"}
+
+- **Against the models in its own pool, Fugu usually wins, but not always.** Comparing Fugu and Fugu Ultra to Opus 4.8, Gemini 3.1 Pro, and GPT 5.5, a Fugu variant takes the top score on most of the eleven benchmarks, including SWE-Bench Pro (73.7), LiveCodeBench (93.2), and GPQA-Diamond (95.5). The exceptions are worth noting: GPT 5.5 wins MRCRv2 (94.8), and on SciCode, Long Context Reasoning, and τ³ Banking the plain Fugu scores above Fugu Ultra, so the deeper-pool tier is not uniformly the stronger one.
+
+![Fugu and Fugu Ultra against the foundation models in their own pool. Highest score per row is bold, second-highest underlined. Figure from the technical report [[1]](#ref-1).](benchmarks-pool.jpg){fig-align="center"}
+
+- **Beyond fixed benchmarks, three end-to-end case studies.** The report also pits Fugu-Ultra against the same three frontier models on open-ended agentic work:
+    - *Autonomous ML research (AutoResearch).* An agent edits a small GPT training pipeline over 123 autonomous experiments to drive down validation bits-per-byte (lower is better). Fugu-Ultra reaches the lowest mean (0.9774 against 0.9781, 0.9793, and 0.9822) and pulls ahead after mid-training.
+    - *Classical Japanese reading order.* Recovering the reading order of scattered classical kana has no training data, so Fugu writes and beam-searches a predictor instead of learning one. Fugu-Ultra tops every frontier baseline (0.776 mean normalized edit distance against 0.642 for the strongest).
+    - *CAD generation.* Asked to generate a working camera-aperture iris, Fugu-Ultra produced the only design whose blades fully open and close.
+
+    These are single-instance demonstrations rather than powered comparisons, and the authors note results vary across prompts and trials.
+
+- **A beta of close to 500 users tested it on long tasks.** Reported applications include automated data-science research, paper reproduction, security assessment, and literature and patent investigation, the kind of multi-step work where progress comes from many steps rather than one good answer.
+
+## My Notes
+
+- **The parity claim dates faster than the vendor hedge.** Sakana leads with two claims: Fugu matches frontier models, and it hedges against single-vendor dependency. The parity claim won't hold for long. An orchestrator built on Opus, Gemini, and GPT inherits their gains, but also their ceiling, and the frontier labs are building their own orchestration. The swappable-pool argument does not decay the same way: if access to one provider changes, routing around it is useful no matter how the underlying models move. The report presents both as strengths without ranking them.
+
+- **The hedge needs strong fallback models.** Fugu can route around a restricted provider, but its winning scores lean on the strongest pool members, Opus 4.8, Gemini 3.1 Pro, and GPT 5.5. If those are the ones that become unavailable, the fallback pool is weaker, and the parity numbers would move with it. The report does not show what Fugu scores when the top pool models are removed, which is the scenario the sovereignty argument is built for.
+
+- **Deeper orchestration can cost accuracy.** Fugu Ultra loses to plain Fugu on SciCode, Long Context Reasoning, and τ³ Banking. Coordinating a deeper pool adds rounds of delegation, verification, and synthesis, and each handoff is a place for context to drop or errors to propagate, exactly the failure modes catalogued in [MAST](/posts/20250802-mast-multi-agent-failures/). A single API that hides the multi-agent system hides those failures rather than removing them.
+
+- **The cost of the abstraction is unstated.** Collapsing a multi-agent system into one endpoint is the real product move. But orchestrating several frontier calls per query costs more tokens and latency than a single call, and the report gives benchmark scores without a cost or latency comparison. The economical version of this idea runs the other direction, [routing cheap models first and escalating only when needed](/posts/20260429-frontier-model-lower-bill/). Fugu Ultra escalates by default, which is the right call for hard problems but not obviously for everyday ones.
+
+## References
+
+1. <a id="ref-1"></a>Tang, Yujin, [Cetin](https://www.semanticscholar.org/author/2326294214), Edoardo, [Xu](https://www.semanticscholar.org/author/2397339171), Jinglue, [Sun](https://www.semanticscholar.org/author/2326487319), Qi, [Nielsen](https://www.semanticscholar.org/author/2396336821), Stefan, Richard, Vincent, Goda, Haruto, Tymchenko, Iaroslav, Nguyen, Nhan, Lee, Hyunin, Ashiga, Mari, Kotyan, Shashank, Kuroki, So, and Clanuwat, Tarin. "Sakana Fugu Technical Report." *arXiv preprint* (arXiv:2606.21228), June 19, 2026. Release announcement: <https://sakana.ai/fugu-release/>. Report: <https://arxiv.org/abs/2606.21228>
+2. <a id="ref-2"></a>Xu, Jinglue, Sun, Qi, Schwendeman, Peter, Nielsen, Stefan, Cetin, Edoardo, and Tang, Yujin. "TRINITY: An Evolved LLM Coordinator." *International Conference on Learning Representations (ICLR)*, 2026. arXiv:2512.04695. <https://arxiv.org/abs/2512.04695>
+3. <a id="ref-3"></a>Nielsen, Stefan, Cetin, Edoardo, Schwendeman, Peter, Sun, Qi, Xu, Jinglue, and Tang, Yujin. "Learning to Orchestrate Agents in Natural Language with the Conductor." *International Conference on Learning Representations (ICLR)*, 2026. arXiv:2512.04388. <https://arxiv.org/abs/2512.04388>
+4. <a id="ref-4"></a>Jain, Naman, Han, King, Gu, Alex, Li, Wen-Ding, Yan, Fanjia, Zhang, Tianjun, Wang, Sida, Solar-Lezama, Armando, Sen, Koushik, and Stoica, Ion. "LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code." *International Conference on Learning Representations (ICLR)*, 2025. arXiv:2403.07974, March 12, 2024. <https://arxiv.org/abs/2403.07974>
+5. <a id="ref-5"></a>Rein, David, Hou, Betty Li, Stickland, Asa Cooper, Petty, Jackson, Pang, Richard Yuanzhe, Dirani, Julien, Michael, Julian, and Bowman, Samuel R. "GPQA: A Graduate-Level Google-Proof Q&A Benchmark." *Conference on Language Modeling (COLM)*, 2024. arXiv:2311.12022, November 20, 2023. <https://arxiv.org/abs/2311.12022>
+6. <a id="ref-6"></a>Wang, Zirui, Xia, Mengzhou, He, Luxi, Chen, Howard, Liu, Yitao, Zhu, Richard, Liang, Kaiqu, Wu, Xindi, Liu, Haotian, Malladi, Sadhika, Chevalier, Alexis, Arora, Sanjeev, and Chen, Danqi. "CharXiv: Charting Gaps in Realistic Chart Understanding in Multimodal LLMs." *Advances in Neural Information Processing Systems (NeurIPS)*, 2024. arXiv:2406.18521, June 26, 2024. <https://arxiv.org/abs/2406.18521>
+7. <a id="ref-7"></a>Merrill, Mike A., Shaw, Alexander G., Carlini, Nicholas, et al. "Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in Command Line Interfaces." *arXiv preprint* (arXiv:2601.11868), January 17, 2026. <https://arxiv.org/abs/2601.11868>
+8. <a id="ref-8"></a>Deng, Xiang, Da, Jeff, Pan, Edwin, He, Yannis Yiming, Ide, Charles, et al. "SWE-Bench Pro: Can AI Agents Solve Long-Horizon Software Engineering Tasks?" *arXiv preprint* (arXiv:2509.16941), September 21, 2025. <https://arxiv.org/abs/2509.16941>
+9. <a id="ref-9"></a>Tian, Minyang, Gao, Luyu, Zhang, Shizhuo Dylan, Chen, Xinan, Fan, Cunwei, et al. "SciCode: A Research Coding Benchmark Curated by Scientists." *Advances in Neural Information Processing Systems (NeurIPS)*, 2024. arXiv:2407.13168, July 18, 2024. <https://arxiv.org/abs/2407.13168>
+10. <a id="ref-10"></a>Phan, Long, Gatti, Alice, Han, Ziwen, Li, Nathaniel, Hu, Josephina, et al. "Humanity's Last Exam." *arXiv preprint* (arXiv:2501.14249), January 24, 2025. <https://arxiv.org/abs/2501.14249>
+11. <a id="ref-11"></a>Chakraborty, Arjun, Ho, Sandra, Cook, Adam, and Meléndez, Manuel. "CTI-REALM: Benchmark to Evaluate Agent Performance on Security Detection Rule Generation Capabilities." *arXiv preprint* (arXiv:2603.13517), March 13, 2026. <https://arxiv.org/abs/2603.13517>
+
+## Related Posts
+
+- [MAST: A Failure Taxonomy for Multi-Agent Systems](/posts/20250802-mast-multi-agent-failures/): the 14 ways multi-agent systems break, which Fugu's single-API abstraction hides rather than removes.
+- [Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies](/posts/20260430-multi-agent-system-search/): MASS searches the prompts and topologies of a multi-agent system, the same structure Conductor learns by reinforcement learning.
+- [Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs](/posts/20260520-adaptive-collaboration-mapo/): trains a policy to decide when to defer, the same delegation decision Fugu's orchestrator makes per query.
+- [Frontier Model, Lower Bill: The Triager Pattern](/posts/20260429-frontier-model-lower-bill/): routes cheap models first and escalates only when needed, the cost-aware inverse of Fugu Ultra's escalate-by-default design.

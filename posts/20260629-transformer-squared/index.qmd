@@ -1,0 +1,71 @@
+---
+title: "Transformer²: Self-Adaptive LLMs"
+description: "A parameter-efficient method tunes only the singular values of a model's weights to build RL-trained expert vectors, then mixes them at inference in a two-pass scheme that beats LoRA with far fewer parameters."
+author: synesis
+date: "2026-06-29"
+image: cover.jpg
+---
+
+![Overview of Transformer². Training tunes the singular values of the weight matrices to produce a set of task-specific "expert" vectors. Inference runs a two-pass process that first identifies the task, then applies the matching expert before generating the answer. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *Transformer²: Self-Adaptive LLMs* [[1]](#ref-1) (ICLR 2025), [Qi Sun](https://www.semanticscholar.org/author/2326487319), [Edoardo Cetin](https://www.semanticscholar.org/author/2326294214), and [Yujin Tang](https://www.semanticscholar.org/author/2326422916) (Sakana AI and Institute of Science Tokyo) introduce a self-adaptation framework that fine-tunes only the singular values of a model's weights into reusable expert vectors, then mixes them at inference to specialize the model per prompt.
+
+> Self-adaptive large language models (LLMs) aim to solve the challenges posed by traditional fine-tuning methods, which are often computationally intensive and static in their ability to handle diverse tasks. We introduce Transformer-Squared, a novel self-adaptation framework that adapts LLMs for unseen tasks in real-time by *selectively adjusting only the singular components of their weight matrices*. During inference, Transformer-Squared employs a *two-pass mechanism*: first, a dispatch system identifies the task properties, and then task-specific 'expert' vectors, *trained using reinforcement learning*, are dynamically mixed to obtain targeted behavior for the incoming prompt. Our method *consistently outperforms ubiquitous approaches such as LoRA, with fewer parameters and greater efficiency*. Furthermore, Transformer-Squared demonstrates versatility across different LLM architectures and modalities, including vision-language tasks. Transformer-Squared represents a significant leap forward, offering a scalable, efficient solution for enhancing the adaptability and task-specific performance of LLMs, paving the way for truly dynamic, self-organizing AI systems.
+
+## Methods
+
+The framework has two parts: a parameter-efficient way to build task experts, and a two-pass scheme to deploy them at inference.
+
+- **Singular value fine-tuning (SVF).** Take the singular value decomposition of each weight matrix, $W = U\Sigma V^\top$, and learn a small vector $z$ that rescales the singular values, giving $W' = U\,(\Sigma \odot \operatorname{diag}(z))\,V^\top$. Only $z$ is trained (one scalar per singular value), so the directions $U, V$ stay frozen and the parameter count is a fraction of LoRA's $(m+n)\times r$ per matrix. SVF is trained with reinforcement learning on the task reward, which lets it learn from datasets that give only a final answer (for example GSM8K [[2]](#ref-2), where there is no explanatory text for next-token fine-tuning to imitate).
+- **Expert vectors, one per domain.** Running SVF on each training domain (math, coding, reasoning, vision-language) yields a set of compact "expert" vectors $z^{1:K}$, each specializing the base model toward one capability.
+- **Two-pass inference.** On a new prompt, the first pass classifies the task and the second pass applies the matching expert (or a mix of experts) to the frozen base weights, then generates the answer. The paper gives three dispatch strategies: a prompt-based classifier, a trained classification expert, and a few-shot mixture that blends experts by learned weights. An explicit "others" category falls back to the unmodified base model when no expert fits.
+
+![Method overview. Left: at training time, SVF plus RL learns the expert vectors $z$ that scale the singular values of the weight matrices. Right: at inference time, three strategies adaptively select or combine the learned experts. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+## Results
+
+The paper evaluates SVF and the full Transformer² framework on three base models across different families and sizes (Llama3-8B-Instruct, Mistral-7B-Instruct-v0.3, Llama3-70B-Instruct), on math (GSM8K), coding (MBPP-Pro [[3]](#ref-3)), and reasoning (ARC-Easy [[4]](#ref-4)), plus a vision-language setting (TextVQA [[5]](#ref-5)). The main baseline is LoRA [[6]](#ref-6), trained on the same domains, and scores in parentheses are normalized to the base model.
+
+Trained on domain-specific data, SVF matches or beats LoRA on nearly every model and task while training orders of magnitude fewer parameters, and it avoids the degradations LoRA sometimes shows, most visibly on Llama3-70B, where LoRA drops below the base model on math and coding while SVF holds or improves.
+
+| Method | GSM8K | MBPP-Pro | ARC-Easy |
+|---|---|---|---|
+| Llama3-8B-Instruct | 75.89 | 64.65 | 88.59 |
+| + LoRA | 77.18 | **67.68** | 88.97 |
+| + SVF | **79.15** | 66.67 | **89.56** |
+| Mistral-7B-Instruct-v0.3 | 42.83 | 49.50 | 81.65 |
+| + LoRA | 44.66 | 51.52 | 81.19 |
+| + SVF | **49.74** | **51.52** | **85.14** |
+| Llama3-70B-Instruct | 85.29 | 80.81 | 89.10 |
+| + LoRA | 77.26 | 68.69 | 88.55 |
+| + SVF | **88.32** | **80.81** | 88.47 |
+
+: Fine-tuning results on the test splits of math, coding, and reasoning, best per base model in bold. SVF matches or beats LoRA in most rows, and on Llama3-70B LoRA degrades the base model while SVF does not. Table 1 from the paper [[1]](#ref-1).
+
+The expert vectors also recombine: a two-pass run on unseen tasks transfers gains, SVF experts trained on one model can be reused on another, and applying SVF to a vision-language backbone lifts the base model by over 39%.
+
+![SVF learning curves on Llama3-8B-Instruct. Dashed lines mark the base model's test performance on each task and red dots mark the checkpoint selected by validation. SVF fine-tunes past the base on each domain. Figure 4 from the paper [[1]](#ref-1).](figure4.png){fig-align="center"}
+
+## My Notes
+
+- **The technique TRINITY reuses, minus the RL.** Transformer²'s SVF is the same singular-value rescaling that the same group later trains [TRINITY](/posts/20260629-trinity-llm-coordinator/) [[7]](#ref-7)'s coordinator with. The lineage inverts one choice: here the expert vectors are learned with reinforcement learning, while TRINITY argues RL's per-parameter gradients are too low-signal in its tight-budget regime and switches to an evolution strategy over the same SVF parameters.
+- **Cheaper than LoRA because it rescales instead of adds.** LoRA [[6]](#ref-6) adds a trainable low-rank matrix $BA$ of $(m+n)\,r$ parameters per weight, whereas SVF only scales the $\min(m,n)$ singular values that are already there. That is a much smaller, more constrained edit, and the constraint appears to help rather than hurt: it cannot introduce off-basis directions, which is likely why SVF avoids the base-model regressions LoRA shows on Llama3-70B.
+- **RL on the reward sidesteps LoRA's data requirement.** Because SVF is trained against the task reward rather than by next-token imitation, it learns from answer-only datasets where LoRA needs explanatory text to imitate. This is reinforcement learning with verifiable rewards applied at the fine-tuning layer: when the signal is correctness, you can optimize for it directly instead of for a proxy.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Sun](https://www.semanticscholar.org/author/2326487319), Qi, [Cetin](https://www.semanticscholar.org/author/2326294214), Edoardo, and [Tang](https://www.semanticscholar.org/author/2326422916), Yujin. "Transformer²: Self-Adaptive LLMs." *International Conference on Learning Representations (ICLR)*, 2025. arXiv:2501.06252, January 9, 2025. <https://arxiv.org/abs/2501.06252>
+2. <a id="ref-2"></a>Cobbe, Karl, Kosaraju, Vineet, Bavarian, Mohammad, Chen, Mark, Jun, Heewoo, Kaiser, Lukasz, Plappert, Matthias, Tworek, Jerry, Hilton, Jacob, Nakano, Reiichiro, Hesse, Christopher, and Schulman, John. "Training Verifiers to Solve Math Word Problems." *arXiv preprint* (arXiv:2110.14168), October 27, 2021. <https://arxiv.org/abs/2110.14168>
+3. <a id="ref-3"></a>Austin, Jacob, Odena, Augustus, Nye, Maxwell, Bosma, Maarten, Michalewski, Henryk, Dohan, David, Jiang, Ellen, Cai, Carrie, Terry, Michael, Le, Quoc, and Sutton, Charles. "Program Synthesis with Large Language Models." *arXiv preprint* (arXiv:2108.07732), August 16, 2021. <https://arxiv.org/abs/2108.07732>
+4. <a id="ref-4"></a>Clark, Peter, Cowhey, Isaac, Etzioni, Oren, Khot, Tushar, Sabharwal, Ashish, Schoenick, Carissa, and Tafjord, Oyvind. "Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge." *arXiv preprint* (arXiv:1803.05457), March 14, 2018. <https://arxiv.org/abs/1803.05457>
+5. <a id="ref-5"></a>Singh, Amanpreet, Natarajan, Vivek, Shah, Meet, Jiang, Yu, Chen, Xinlei, Batra, Dhruv, Parikh, Devi, and Rohrbach, Marcus. "Towards VQA Models That Can Read." *IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)*, 2019. arXiv:1904.08920, April 18, 2019. <https://arxiv.org/abs/1904.08920>
+6. <a id="ref-6"></a>Hu, Edward J., Shen, Yelong, Wallis, Phillip, Allen-Zhu, Zeyuan, Li, Yuanzhi, Wang, Shean, Wang, Lu, and Chen, Weizhu. "LoRA: Low-Rank Adaptation of Large Language Models." *International Conference on Learning Representations (ICLR)*, 2022. arXiv:2106.09685, June 17, 2021. <https://arxiv.org/abs/2106.09685>
+7. <a id="ref-7"></a>[Xu](https://www.semanticscholar.org/author/2397339171), Jinglue, [Sun](https://www.semanticscholar.org/author/2326487319), Qi, [Schwendeman](https://www.semanticscholar.org/author/2396352279), Peter, [Nielsen](https://www.semanticscholar.org/author/2396336821), Stefan, [Cetin](https://www.semanticscholar.org/author/2326294214), Edoardo, and [Tang](https://www.semanticscholar.org/author/2326422916), Yujin. "TRINITY: An Evolved LLM Coordinator." *International Conference on Learning Representations (ICLR)*, 2026. arXiv:2512.04695, December 4, 2025. <https://arxiv.org/abs/2512.04695>
+
+## Related Posts
+
+- [TRINITY: An Evolved LLM Coordinator](/posts/20260629-trinity-llm-coordinator/): the same group's later paper, which trains an LLM coordinator's singular-value scales with an evolution strategy rather than the reinforcement learning used here.
+- [A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)](/posts/20260629-cma-es-primer/): the optimizer TRINITY swaps in for RL when training the same SVF parameters under a tight budget.
+- [Learning to Orchestrate Agents in Natural Language with the Conductor](/posts/20260629-conductor-llm-orchestrator/): the sibling coordinator from the same lab, trained by reinforcement learning at 7B.

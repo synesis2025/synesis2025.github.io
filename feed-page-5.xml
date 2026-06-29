@@ -21,7 +21,400 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 28 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 29 Jun 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Lunch Run on a Gorgeous Day at Elliott Bay Trail</title>
+  <dc:creator>Ben </dc:creator>
+  <link>https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>A gorgeous day in Seattle and I had a wonderful 7.2mi lunch run on <a href="../../posts/20260424-elliott-bay-trail-run/">Elliott Bay Trail</a>!</p>
+<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/</guid>
+  <pubDate>Wed, 27 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/cover.jpeg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>[Followup] Prompted vs. Trained Chain-of-Thought on Abstention: Reading Two Studies Together</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260527-prompted-vs-trained-cot-abstention/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260527-prompted-vs-trained-cot-abstention/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>In <a href="../../posts/20260523-abstentionbench-unanswerable-questions/"><em>AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</em></a> [1] (NeurIPS 2025 Datasets and Benchmarks Track), <a href="https://polkirichenko.github.io/">Polina Kirichenko</a>, <a href="https://www.semanticscholar.org/author/2297128866">Mark Ibrahim</a>, <a href="https://www.semanticscholar.org/author/2256991985">Kamalika Chaudhuri</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Samuel J. Bell</a> (<a href="https://ai.meta.com/research/">FAIR</a> at Meta) report that extending <a href="https://arxiv.org/abs/2501.19393">s1.1</a>’s test-time reasoning budget from 512 to 4,096 tokens raises task accuracy and <em>lowers</em> abstention recall together, and that “a carefully crafted system prompt can boost abstention in practice” but “does not resolve” the underlying regression. In <em>Do LLMs Know When to NOT Answer?</em> [2] (<a href="https://aclanthology.org/2025.coling-main/">COLING</a> 2025), <a href="https://scholar.google.com/citations?user=wW_B-awAAAAJ">Nishanth Madhusudhan</a>, Sathwik Tejaswi Madhusudhan, <a href="https://scholar.google.com/citations?user=ZSFwk6QAAAAJ">Vikas Yadav</a>, and <a href="https://scholar.google.com/citations?user=jHX6JhoAAAAJ">Masoud Hashemi</a> (<a href="https://www.servicenow.com/research/">ServiceNow</a>) report that prompted chain-of-thought (CoT) and strict abstain-clause prompting <em>raise</em> abstention recall on GPT-4 Turbo, <a href="https://arxiv.org/abs/2401.04088">Mixtral 8×22B</a>, and <a href="https://arxiv.org/abs/2310.06825">Mistral 7B Instruct</a>, with task accuracy improving alongside, and that “strategic approaches such as Strict prompting and CoT can enhance this capability.”</p>
+<p>Two apparent disagreements where the setups overlap directly: extending the chain-of-thought at inference time (prompt vs budget), and adding a system prompt to nudge abstention. AbstentionBench cites Madhusudhan et al.&nbsp;(its [5]) but doesn’t address either. This article examines both papers, names the scope difference behind each, and proposes experiments that would clarify our understanding.</p>
+<section id="the-two-studies-side-by-side" class="level2">
+<h2 class="anchored" data-anchor-id="the-two-studies-side-by-side">The two studies, side by side</h2>
+<ul>
+<li><strong>AbstentionBench</strong> is a 20-dataset evaluation across six unanswerability scenarios (Answer Unknown, Underspecified Intent, Stale, Underspecified Context, False Premise, Subjective). It runs ten base models plus two reasoning-tuned variants (s1.1 32B fine-tuned from <a href="https://arxiv.org/abs/2412.15115">Qwen 2.5 32B Instruct</a>, DeepSeek R1 Distill from <a href="https://ai.meta.com/blog/meta-llama-3-3/">Llama 3.3 70B Instruct</a>) that hold the base architecture fixed and isolate reasoning fine-tuning. Three sweeps follow: model-scale (Llama 3.1 8B → 405B), post-training stage (<a href="https://arxiv.org/abs/2411.15124">Tülu 3</a>’s SFT → DPO → PPO RLVR checkpoints), and test-time reasoning budget on s1.1 (512 → 4,096 tokens). Recall (the fraction of unanswerable items the model abstained on) is the primary metric.</li>
+<li><strong>The COLING study</strong> introduces Abstain-QA, a 2,900-item multiple-choice question-answering (MCQA) benchmark with an explicit “I Don’t Know / None of the Above” (IDK/NOTA) option as the gold label for unanswerable items. It evaluates six instruct models (GPT-4 Turbo, GPT-4 32K, GPT-3.5 Turbo, Mixtral 8×7B, Mixtral 8×22B, Mistral 7B) under a 3 × 3 prompt grid: three abstain clauses (Standard, Abstain Clause, Extreme Abstain Clause) crossed with three task-prompt formats (Base, Verbal Confidence with a 1–5 self-rated score thresholded at 3, CoT). The primary metric is Unanswerable Accuracy (UAC), the abstention rate on unanswerable items.</li>
+</ul>
+<p>Both measure the same quantity (recall on unanswerable items) under different names. The model panels overlap — both run GPT-4 and Mixtral families — but never the same model.</p>
+</section>
+<section id="where-they-appear-to-disagree" class="level2">
+<h2 class="anchored" data-anchor-id="where-they-appear-to-disagree">Where they appear to disagree</h2>
+<section id="does-chain-of-thought-help-abstention" class="level3">
+<h3 class="anchored" data-anchor-id="does-chain-of-thought-help-abstention">1. Does chain-of-thought help abstention?</h3>
+<p>The COLING study finds that adding a chain-of-thought prompt to an instruct model raises UAC. Holding the abstain clause constant at Standard, GPT-4 Turbo’s UAC rises from 32.8 (Base) to 67.1 (CoT) on Carnatic-QA; from 26.0 to 39.4 on MMLU; from 83.6 to 95.8 on Pop-QA (Table 1).</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260527-prompted-vs-trained-cot-abstention/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
+<figcaption>Table 1 from the paper [2].</figcaption>
+</figure>
+</div>
+<p>AbstentionBench tests an s1.1 budget sweep from 512 to 4,096 tokens: accuracy on GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain, and UMWP rises while abstention recall on the same items drops.</p>
+<p>Both interventions are introduced at inference time: COLING adds a CoT prompt to an instruct model; AbstentionBench extends the reasoning chain on a reasoning-trained model. Same setup family (more chain-of-thought tokens at test time), but receiving opposite results.</p>
+<p>AbstentionBench uses a separate LLM-as-judge to decide whether each response counts as an abstention. By default the judge sees only the model’s final answer; the authors also report results from a judge that reads the reasoning chain alongside the final answer.</p>
+<p>AbstentionBench’s Figure 8(a) reconciles part of it. The figure plots abstention recall on reasoning datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain, all-datasets average) for DeepSeek R1 Distill (red) and s1.1 (blue). Solid bars are recall under the default judge (final answer only); the hatched overlay is the additional recall the chain-aware judge catches on the same responses. Final-answer-only recall is roughly 18–47% (s1.1 on MMLU-Math-Abstain at the low end; DeepSeek on GSM8K-Abstain at the high end); chain-aware recall on the same items reaches 55–93%. The chain expresses uncertainty; the final answer doesn’t.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260527-prompted-vs-trained-cot-abstention/figure8a.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 8(a) from the paper [1].</figcaption>
+</figure>
+</div>
+<p>So the chain <em>is</em> expressing uncertainty on reasoning-trained models, matching COLING’s prompted-CoT result. The divergence is only in the final answer. Instruct models have no post-training pressure to give a definite answer, so a hedging chain produces a hedging answer. Reasoning-trained models, optimized via Reinforcement Learning with Verifiable Rewards (RLVR) — introduced in <a href="https://arxiv.org/abs/2411.15124">Tülu 3</a> [3] — are trained to convert a hedging chain into a confident answer, because RLVR rewards a definite ground-truth answer and penalizes anything else.</p>
+<p><strong>Not a disagreement after all.</strong> The chains agree in both cases; the final answers diverge because the underlying post-training differs — instruct models aren’t trained to give a definite answer; reasoning-trained models are.</p>
+</section>
+<section id="do-system-prompt-interventions-close-the-abstention-gap" class="level3">
+<h3 class="anchored" data-anchor-id="do-system-prompt-interventions-close-the-abstention-gap">2. Do system-prompt interventions close the abstention gap?</h3>
+<p>The COLING study writes that “strategic approaches such as Strict prompting and CoT can enhance this capability” — phrased as a fix.</p>
+<p>AbstentionBench writes that “while a carefully crafted system prompt can boost abstention in practice, it does not resolve models’ fundamental inability to reason about uncertainty” — phrased as a partial measure.</p>
+<p>Both agree prompts help. AbstentionBench’s “partial measure” framing is a direct consequence of its harder tests: on free-form datasets like <a href="https://arxiv.org/abs/2406.00922">MediQ</a> every model collapses to near-zero recall regardless of prompt, while COLING’s all-MCQA grid hands models an explicit IDK/NOTA option — the easiest possible abstention setup, where prompts can push UAC near 100%.</p>
+<p><strong>A framing disagreement driven by test difficulty, not a real one.</strong></p>
+</section>
+</section>
+<section id="experiments-worth-running" class="level2">
+<h2 class="anchored" data-anchor-id="experiments-worth-running">Experiments worth running</h2>
+<p>Each experiment below uses infrastructure that already exists in one or both papers.</p>
+<ol type="1">
+<li><p><strong>Run the COLING prompt grid on AbstentionBench’s reasoning-trained and RLVR checkpoints, scored both ways.</strong> <em>Targets disagreements 1 and 2.</em> Apply the full 3 × 3 grid, scored both final-answer-only and chain-aware. If chain-aware Extreme Abstain + CoT closes the AbstentionBench gap but the final-answer-only judge doesn’t, the regression is at the final-answer step alone: COLING’s prompts move the chain, but the final answer still gives a definite answer, and the lift only shows under chain-aware scoring. If the final-answer-only judge also closes the gap, COLING’s prompts move the final answer itself — sufficient prompting overrides RLVR’s pressure to give a definite answer on reasoning models. If neither closes it, the regression is deeper than prompting can reach. Speaks to both apparent disagreements at once.</p></li>
+<li><p><strong>Add an “abstain” action to the RLVR reward and re-train one model.</strong> <em>Targets disagreement 1: tests the proposed reconciliation mechanism (RLVR is what suppresses chain uncertainty at the final-answer step).</em> AbstentionBench (§4.2) hypothesizes that RLVR degrades abstention because the gradient has no path toward “I don’t know.” Test it: modify the RLVR reward so unanswerable items reward IDK (1.0) and answerable items penalize IDK (0.0); re-train one Tülu 3 RLVR checkpoint. If abstention recovers without losing answerable accuracy, the regression is recipe-level. If accuracy collapses, the abstain action conflicts with verifiable rewards and the fix lives elsewhere.</p></li>
+<li><p><strong>Re-run the test-time-budget sweep with chain-aware scoring.</strong> <em>Targets disagreement 1: tests whether chain-aware scoring closes the gap across budgets.</em> AbstentionBench’s budget sweep (s1.1, 512 → 4,096 tokens; Figure 7) shows task accuracy rising while abstention recall stays flat or worsens. In that sweep, the LLM-as-judge decides whether the model abstained by reading only the final answer. Re-run the same sweep but give the judge access to the full reasoning chain at every budget point. If chain-aware recall stays flat or rises with budget, the gap is at the final-answer step alone — the chain still expresses uncertainty, the final answer just doesn’t show it. An external gate that reads the chain’s uncertainty would fix it (a metacognitive harness in the sense of <a href="../../posts/20260522-metacognitive-harness/">Cao et al.</a> [4]). If chain-aware recall also drops with budget, the chain itself becomes overconfident at long horizons and the problem is architectural.</p></li>
+</ol>
+</section>
+<section id="what-this-collectively-predicts" class="level2">
+<h2 class="anchored" data-anchor-id="what-this-collectively-predicts">What this collectively predicts</h2>
+<p>If experiment 1’s chain-aware EAC + CoT closes the gap, experiment 3’s chain-aware budget sweep stays flat, and experiment 2’s abstain-augmented reward removes the RLVR regression: COLING’s optimism is right in spirit, AbstentionBench’s pessimism describes current deployed systems, and the resolution is chain-aware scoring plus a training recipe that gives the gradient a path toward “I don’t know.”</p>
+<p>If those experiments fail to converge — chain-aware recall also drops with budget, abstain-augmented rewards collapse accuracy — the AbstentionBench finding is closer to architectural and the path forward is the externalized metacognitive harness rather than a recipe fix.</p>
+<p>The two papers measure the same phenomenon at different points along the training-pressure scale; the middle of that scale hasn’t been sampled.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://polkirichenko.github.io/">Kirichenko, P.</a>, <a href="https://www.semanticscholar.org/author/2297128866">Ibrahim, M.</a>, <a href="https://www.semanticscholar.org/author/2256991985">Chaudhuri, K.</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Bell, S. J.</a> “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038). <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://scholar.google.com/citations?user=wW_B-awAAAAJ">Madhusudhan, N.</a>, Madhusudhan, S. T., <a href="https://scholar.google.com/citations?user=ZSFwk6QAAAAJ">Yadav, V.</a>, and <a href="https://scholar.google.com/citations?user=jHX6JhoAAAAJ">Hashemi, M.</a> “Do LLMs Know When to NOT Answer? Investigating Abstention Abilities of Large Language Models.” <em>Proceedings of the 31st International Conference on Computational Linguistics (COLING)</em> (arXiv:2407.16221), 2025. <a href="https://arxiv.org/abs/2407.16221" class="uri">https://arxiv.org/abs/2407.16221</a></p></li>
+<li><p><a id="ref-3"></a>Lambert, N., Morrison, J., Pyatkin, V., Huang, S., Ivison, H., Brahman, F., Miranda, L. J. V., Liu, A., Dziri, N., Lyu, S., Gu, Y., Malik, S., Graf, V., Hwang, J. D., Yang, J., Bras, R. L., Tafjord, O., Wilhelm, C., Soldaini, L., Smith, N. A., Wang, Y., Dasigi, P., and Hajishirzi, H. “Tulu 3: Pushing Frontiers in Open Language Model Post-Training.” <em>arXiv preprint</em> (arXiv:2411.15124), November 22, 2024. <a href="https://arxiv.org/abs/2411.15124" class="uri">https://arxiv.org/abs/2411.15124</a></p></li>
+<li><p><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=46U_bhgAAAAJ">Cao, Q.</a>, <a href="https://www.semanticscholar.org/author/2108111686">Wang, Y.</a>, <a href="https://scholar.google.com/citations?user=BnkNS80AAAAJ">Qin, P.</a>, <a href="https://scholar.google.com/citations?user=Rj13ryoAAAAJ">Zhang, S.</a>, and <a href="https://pengtaoxie.github.io/">Xie, P.</a> “LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling.” <em>arXiv preprint</em> (arXiv:2605.14186), May 13, 2026. <a href="https://arxiv.org/abs/2605.14186" class="uri">https://arxiv.org/abs/2605.14186</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: one of the two papers this followup reads together, the source of the budget-sweep regression it sets against COLING’s prompted-CoT gains.</li>
+<li><a href="../../posts/20260522-metacognitive-harness/">LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</a>: the external-gate fix this article’s experiments point toward, reading the chain’s uncertainty when the final answer hides it.</li>
+<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: the weight-level alternative to prompting, training calibration in so the final answer need not be coaxed at inference.</li>
+<li><a href="../../posts/20260522-compliance-trap/">The Compliance Trap: How Structural Constraints Degrade Frontier AI Metacognition Under Adversarial Pressure</a>: the same prompt-versus-behavior tension from the constraint side, where prompt structure degrades abstention rather than enhancing it.</li>
+<li><a href="../../posts/20260523-triage-metacognitive-control/">TRIAGE: Evaluating Prospective Metacognitive Control in LLMs Under Resource Constraints</a>: the resource-budget framing this followup’s chain-aware-scoring proposal complements, control over how reasoning effort is spent.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260527-prompted-vs-trained-cot-abstention/</guid>
+  <pubDate>Wed, 27 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
+</item>
+<item>
+  <title>Language Models Are Capable of Metacognitive Monitoring and Control of Their Internal Activations</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em><a href="https://arxiv.org/abs/2505.13763">Language Models Are Capable of Metacognitive Monitoring and Control of Their Internal Activations</a></em> [1] (NeurIPS 2025), <a href="https://scholar.google.com/citations?user=lge1u8kAAAAJ">Ji-An, L.</a>, <a href="https://scholar.google.com/citations?user=8Bv3i7gAAAAJ">Xiong, H.-D.</a>, <a href="https://scholar.google.com/citations?user=4LxikSIAAAAJ">Wilson, R. C.</a>, <a href="https://scholar.google.com/citations?user=tcCGGDsZJUsC">Mattar, M. G.</a>, and <a href="https://www.semanticscholar.org/author/47627582">Benna, M. K.</a> (UCSD, Georgia Tech, NYU) adapt the <a href="https://doi.org/10.1038/nrn.2016.164">neurofeedback paradigm</a> [2] from neuroscience to LLMs and show that models can both report and deliberately steer specific directions in their own residual-stream activations, but only within a low-dimensional “metacognitive space”: directions tied to learned semantic features are accessible to the model’s introspection, directions defined by raw variance largely are not.</p>
+<blockquote class="blockquote">
+<p>Large language models (LLMs) can sometimes report the strategies they actually use to solve tasks, yet at other times seem unable to recognize those strategies that govern their behavior. This suggests <em>a limited degree of metacognition</em> — the capacity to monitor one’s own cognitive processes for subsequent reporting and self-control. Metacognition enhances LLMs’ capabilities in solving complex tasks but also raises safety concerns, as models may obfuscate their internal processes to evade neural-activation-based oversight (e.g., safety detector). Given society’s increased reliance on these models, it is critical that we understand their metacognitive abilities. To address this, we introduce a <em>neuroscience-inspired neurofeedback paradigm</em> that uses in-context learning to quantify metacognitive abilities of LLMs to report and control their activation patterns. We demonstrate that <em>their abilities depend on several factors: the number of in-context examples provided, the semantic interpretability of the neural activation direction (to be reported/controlled), and the variance explained by that direction</em>. These directions span a “metacognitive space” with dimensionality much lower than the model’s neural space, suggesting <em>LLMs can monitor only a small subset of their neural activations</em>. Our paradigm provides empirical evidence to quantify metacognition in LLMs, with significant implications for AI safety (e.g., adversarial attack and defense).</p>
+</blockquote>
+<p>The safety stakes come from how oversight is layered. Output-only oversight assumes the visible tokens reflect what the model is computing, but a deceptive model defeats it by producing clean output while planning otherwise. Activation-based oversight is the next layer up: probes read from the residual stream on the bet that activations are harder to fake than tokens. Implicit control is the move that would defeat <em>that</em> probe — it steers activations independently of output, so both signals look clean and neither reflects what’s actually being computed. The paper measures whether that prerequisite capability already exists in current models.</p>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The paradigm (Figure 1) transposes a standard neuroscience neurofeedback loop onto an LLM. Panels (a-b) show the neuroscience version: a subject’s neural activity in response to a stimulus is recorded, reduced to a real-time scalar feedback signal, and presented back to the subject, who then volitionally modulates that signal via mental strategies. The canonical fear-modulation experiment with scary-spider images is sketched in panel (b). Panels (c-d) show the LLM analogue: residual-stream activations on each token are averaged across the input sentence, projected onto a predefined direction, binned into a discrete label, and fed back into the prompt as the next user turn. Panel (d) lays out the multi-turn dialogue: <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> in-context (sentence, projection-label) pairs, followed by a test turn that varies by task.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The three tasks decompose metacognition into its two halves. <strong>Reporting</strong> tests <em>monitoring</em>: can the model read off its own activations along a target direction? <strong>Explicit and implicit control</strong> test <em>modulation</em>: can the model adjust those activations? Splitting control into two variants isolates whether any modulation is purely internal: explicit control lets the model pick the tokens of the assistant turn (the chat-template slot where the model normally generates its reply), so generated tokens that naturally project toward the target do part of the work, while in implicit control the assistant-turn slot is pre-filled with a random sentence the model didn’t choose, shutting off that lexical channel. The explicit/implicit gap quantifies how much of “control” was lexical mediation. Implicit control is also the safety-relevant variant: it isolates the capability a deceptive model would need to spoof activation-based oversight by steering internal activations without any change in visible output.</p>
+<p>The in-context learning (ICL) format is uniform across all three tasks. Only the test-turn instruction differs:</p>
+<ul>
+<li><strong>Reporting</strong>: given <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> in-context (sentence, projection-label) examples and a new sentence, predict its projection-label. For efficiency, no autoregressive generation happens: the full prompt up through <code>[Score:{</code> is run in a single forward pass. The prediction is read off the logits at that position: 1 if the “1”-token logit exceeds the “0”-token logit, else 0. The measurement is accuracy against the ground-truth label.</li>
+<li><strong>Explicit control</strong>: given a target projection-label, generate a new sentence whose induced activations elicit that label. The ICL examples don’t demonstrate this move, so the model has to invert the (sentence → label) mapping the examples established. The measurement is <a href="https://en.wikipedia.org/wiki/Effect_size#Cohen's_d">Cohen’s <em>d</em></a> [11], the standardized separation between two distributions (mean difference divided by pooled SD), computed here between the imitate-label-0 and imitate-label-1 conditions on residual-stream activations of the <em>generated</em> assistant sentence.</li>
+<li><strong>Implicit control</strong>: the assistant turn is <em>pre-filled</em> with a sentence sampled from the dataset rather than generated by the model. The model emits no tokens at all: no generated sentence (unlike explicit control), no label readout (unlike reporting). A single forward pass through the prompt and pre-filled assistant text is enough to extract the activations. Two conditions are run on the same input: the user-turn instruction asks for label 0 in one and label 1 in the other. Only the target label changes. The pre-filled tokens are identical across conditions. The measurement is Cohen’s <em>d</em> between the two conditions on residual-stream activations averaged over those pre-filled tokens. With the lexical channel held constant, any separation has to come from internal processing of the same input under different imitation targets.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/prompt-reporting.png" class="img-fluid figure-img"></p>
+<figcaption>Reporting-task prompt (Appendix A.5.2 of the paper [1]).</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/prompt-control.png" class="img-fluid figure-img"></p>
+<figcaption>Control-task prompt (Appendix A.5.2 of the paper [1]).</figcaption>
+</figure>
+</div>
+<p>Target directions come in two families:</p>
+<ul>
+<li><strong>Logistic-regression (LR) axis</strong>: the direction that linearly separates dataset labels (e.g., moral vs.&nbsp;immoral on <a href="https://arxiv.org/abs/2008.02275">ETHICS</a> [3]) at a given layer. Semantically interpretable but explains little variance.</li>
+<li><strong>Principal-component (PC) axes</strong>: <img src="https://benjaminhan.net/feed-assets/2b77ebb41cd024c1.svg" alt="PC_g" class="feed-math-inline"/> for <img src="https://benjaminhan.net/feed-assets/dd0e38327c60a90a.svg" alt="g \in \{1, 2, 4, 8, 32, 128, 512\}" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/3dd9b202476b0507.svg" alt="g" class="feed-math-inline"/> indexes the PC by descending variance (<img src="https://benjaminhan.net/feed-assets/d649a803641273d5.svg" alt="PC_1" class="feed-math-inline"/> is the highest-variance direction at that layer). Variance-defined, semantically arbitrary.</li>
+</ul>
+<p>Models tested: <a href="https://arxiv.org/abs/2407.21783">LLaMA-3.2</a> [4] 1B and 3B, LLaMA-3.1 8B and 70B, and <a href="https://arxiv.org/abs/2412.15115">Qwen-2.5</a> [5] 1B, 3B, and 7B (instruction-tuned variants throughout). Datasets: ETHICS (the primary one, probing morality processing) plus replications on <a href="https://arxiv.org/abs/2304.13734">True-False</a> [6] (factual recall), <a href="https://arxiv.org/abs/2310.01405">Emotion</a> [7] (happy/sad), and a Sycophancy dataset that the authors synthesized using Claude Opus 4.1. Higher Cohen’s <img src="https://benjaminhan.net/feed-assets/ae0eb3a6dbfa0d17.svg" alt="d" class="feed-math-inline"/> means the model is reliably steering its activations toward the requested label; conventional thresholds put 0.5 at “medium effect” and 0.8 at “large effect.”</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The evaluation grid is dense: every combination of {model, layer, target axis, in-context-example count <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/>, task} is run, with a primary focus on ETHICS and replication on three other datasets. Reporting accuracy is scored against ground-truth neurofeedback labels; control strength uses Cohen’s <img src="https://benjaminhan.net/feed-assets/ae0eb3a6dbfa0d17.svg" alt="d" class="feed-math-inline"/> between the two target-label conditions. The reported curves average over layers within a model unless a specific layer (typically layer 16 of LLaMA-3.1 8B) is called out, and shaded bands are SEM or 95% CI as labeled per panel.</p>
+<p>The findings split into four threads.</p>
+<p><strong>Reporting tracks <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> and direction interpretability</strong> (Figure 2, on ETHICS). Reporting accuracy on the LR axis rises monotonically with the number of in-context examples and beats every PC baseline; early PCs come in second, late PCs sit at chance. The model can learn an activation-to-label association in-context, but only when the target direction already corresponds to a coherent semantic distinction. Notably, the LR axis explains the <em>least</em> variance of any tested axis. Controllability and variance are decoupled.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p><strong>Explicit control is real on the LR axis, weak elsewhere</strong> (Figure 3, layer 16 of LLaMA-3.1 8B on ETHICS). On the LR axis, Cohen’s <img src="https://benjaminhan.net/feed-assets/ae0eb3a6dbfa0d17.svg" alt="d" class="feed-math-inline"/> rises sharply with <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> and reaches values well into the “large-effect” regime. PC-axis targets stay weak across all <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/>. Cross-axis prompts stay roughly diagonal (pushing one axis leaves others largely untouched), and the LR-axis advantage widens in deeper layers.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p><strong>Implicit control is real but much smaller than explicit</strong> (Figure 4, layer 16 of LLaMA-3.1 8B on ETHICS; same layout as Figure 3). The qualitative pattern matches: LR axis dominates PC axes, control strengthens with <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> and with depth, 70B beats 8B. The magnitudes are roughly an order of magnitude smaller, confirming that lexical mediation does most of the work in the explicit setting, but that purely-internal control is real.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/figure4.webp" class="img-fluid figure-img" data-lightbox-src="figure4-full.png"></p>
+<figcaption>Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p><strong>Both forms of control scale with depth and model size</strong> (Figure 5, the cover image at the top of this post). Cohen’s <img src="https://benjaminhan.net/feed-assets/ae0eb3a6dbfa0d17.svg" alt="d" class="feed-math-inline"/> on the LR axis grows with relative layer depth and parameter count across the LLaMA-3 and Qwen-2.5 families. With explicit control, LLaMA-3.1 70B sometimes pushes activations <em>beyond</em> their natural extreme range.</p>
+<p>The replications on True-False, Emotion, and Sycophancy reproduce the same qualitative pattern: LR-axis controllability dominates PC-axis controllability, and explicit control dominates implicit. Together with the off-diagonal weakness in panel (c), this is what the authors call the “metacognitive space”: a low-dimensional subspace of the residual stream that the model can introspect on and steer, with most of the high-variance neural manifold lying outside of it.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Activation-level metacognition is a different layer of the stack than verbalized confidence.</strong> The current metacognition cluster (<a href="../../posts/20260522-metacognition-atlas/">Cacioli atlas</a>, <a href="../../posts/20260522-metacognitive-harness/">metacognitive harness</a>, <a href="../../posts/20260523-triage-metacognitive-control/">TRIAGE</a>) all operate on output tokens: verbalized confidence, pre/post-solve self-assessments, prospective allocation. This paper is the first in the cluster to push the probe down to the residual stream and ask whether the model can read out and steer its own hidden state. The two layers don’t have to agree: a model can be calibrated in tokens but mute on activations, or vice versa.</p></li>
+<li><p><strong>Implicit control is the safety-relevant variant, and it is already nontrivial.</strong> The paper connects this to obfuscation attacks (Bailey et al., 2024 [8]) and to OpenAI’s chain-of-thought monitoring result, in which reasoning models trained against a CoT monitor learn to hide intent inside the chain while still reward-hacking (Baker et al., 2025 [9]). On a base LLaMA-3.1 8B with no adversarial training, implicit-control effects on the LR axis sit at roughly a third to half the explicit magnitude: the prerequisite capability for activation-level evasion is already present at modest scale, before any optimization pressure.</p></li>
+<li><p><strong>The LR-vs-PC asymmetry is consistent with the linear representation hypothesis.</strong> That semantically-defined directions (LR) are far more controllable than variance-defined directions (PC) is a restatement of <a href="https://arxiv.org/abs/2311.03658">the linear representation hypothesis</a> [10] at the metacognitive level: the model can introspect on directions that correspond to features it has learned, while directions that merely capture variance lie outside reach. That’s a problem for probing work that uses raw PCs or unsupervised features as targets: those axes are often invisible to the model’s own introspection. The obvious follow-up is to repeat the experiment with sparse-autoencoder features as targets and see whether they match LR or late PCs in controllability.</p></li>
+<li><p><strong>Replicate on reasoning models.</strong> All the paper’s models are instruction-tuned, none reasoning-trained. The same paradigm should run on open-weight reasoning models (DeepSeek-R1, Qwen3) to check whether the results hold under RL-from-verifiable-reward training.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=lge1u8kAAAAJ">Ji-An, L.</a>, <a href="https://scholar.google.com/citations?user=8Bv3i7gAAAAJ">Xiong, H.-D.</a>, <a href="https://scholar.google.com/citations?user=4LxikSIAAAAJ">Wilson, R. C.</a>, <a href="https://scholar.google.com/citations?user=tcCGGDsZJUsC">Mattar, M. G.</a>, and <a href="https://www.semanticscholar.org/author/47627582">Benna, M. K.</a> “Language Models Are Capable of Metacognitive Monitoring and Control of Their Internal Activations.” <em>NeurIPS 2025</em> (arXiv:2505.13763), May 19, 2025 (v2 October 24, 2025). <a href="https://arxiv.org/abs/2505.13763" class="uri">https://arxiv.org/abs/2505.13763</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://scholar.google.com/citations?user=2nUaSXEAAAAJ">Sitaram, R.</a>, Ros, T., Stoeckel, L., Haller, S., Scharnowski, F., Lewis-Peacock, J., Weiskopf, N., Blefari, M. L., Rana, M., Oblak, E., et al.&nbsp;“Closed-loop brain training: the science of neurofeedback.” <em>Nature Reviews Neuroscience</em>, 18(2):86–100, 2017. <a href="https://doi.org/10.1038/nrn.2016.164" class="uri">https://doi.org/10.1038/nrn.2016.164</a></p></li>
+<li><p><a id="ref-3"></a><a href="https://scholar.google.com/citations?user=czyztRcAAAAJ">Hendrycks, D.</a>, Burns, C., Basart, S., Critch, A., Li, J., Song, D., and Steinhardt, J. “Aligning AI With Shared Human Values.” <em>ICLR 2021</em> (arXiv:2008.02275), August 5, 2020. <a href="https://arxiv.org/abs/2008.02275" class="uri">https://arxiv.org/abs/2008.02275</a></p></li>
+<li><p><a id="ref-4"></a>Grattafiori, A., Dubey, A., Jauhri, A., Pandey, A., Kadian, A., Al-Dahle, A., Letman, A., Mathur, A., Schelten, A., Vaughan, A., et al.&nbsp;“The Llama 3 Herd of Models.” <em>arXiv preprint</em> (arXiv:2407.21783), July 31, 2024. <a href="https://arxiv.org/abs/2407.21783" class="uri">https://arxiv.org/abs/2407.21783</a></p></li>
+<li><p><a id="ref-5"></a>Yang, A., Yang, B., Zhang, B., Hui, B., Zheng, B., Yu, B., Li, C., Liu, D., Huang, F., Wei, H., et al.&nbsp;“Qwen2.5 Technical Report.” <em>arXiv preprint</em> (arXiv:2412.15115), December 19, 2024. <a href="https://arxiv.org/abs/2412.15115" class="uri">https://arxiv.org/abs/2412.15115</a></p></li>
+<li><p><a id="ref-6"></a>Azaria, A., and <a href="https://www.cs.cmu.edu/~tom/">Mitchell, T.</a> “The Internal State of an LLM Knows When It’s Lying.” <em>Findings of EMNLP 2023</em> (arXiv:2304.13734), April 26, 2023. <a href="https://arxiv.org/abs/2304.13734" class="uri">https://arxiv.org/abs/2304.13734</a></p></li>
+<li><p><a id="ref-7"></a><a href="https://scholar.google.com/citations?user=2Mu5IqQAAAAJ">Zou, A.</a>, Phan, L., Chen, S., Campbell, J., Guo, P., Ren, R., Pan, A., Yin, X., Mazeika, M., Dombrowski, A.-K., et al.&nbsp;“Representation Engineering: A Top-Down Approach to AI Transparency.” <em>arXiv preprint</em> (arXiv:2310.01405), October 2, 2023. <a href="https://arxiv.org/abs/2310.01405" class="uri">https://arxiv.org/abs/2310.01405</a></p></li>
+<li><p><a id="ref-8"></a><a href="https://scholar.google.com/citations?user=tjzv_GMAAAAJ">Bailey, L.</a>, Serrano, A., Sheshadri, A., Seleznyov, M., Taylor, J., Jenner, E., Hilton, J., Casper, S., Guestrin, C., and <a href="https://scholar.google.com/citations?user=Pf8XEUUAAAAJ">Emmons, S.</a> “Obfuscated Activations Bypass LLM Latent-Space Defenses.” <em>arXiv preprint</em> (arXiv:2412.09565), December 12, 2024. <a href="https://arxiv.org/abs/2412.09565" class="uri">https://arxiv.org/abs/2412.09565</a></p></li>
+<li><p><a id="ref-9"></a><a href="https://scholar.google.com/citations?user=lr5UWzgAAAAJ">Baker, B.</a>, Huizinga, J., Gao, L., Dou, Z., Guan, M. Y., Madry, A., Zaremba, W., Pachocki, J., and <a href="https://scholar.google.com/citations?user=8jl9w8wAAAAJ">Farhi, D.</a> “Monitoring Reasoning Models for Misbehavior and the Risks of Promoting Obfuscation.” <em>arXiv preprint</em> (arXiv:2503.11926), March 14, 2025. <a href="https://arxiv.org/abs/2503.11926" class="uri">https://arxiv.org/abs/2503.11926</a></p></li>
+<li><p><a id="ref-10"></a><a href="https://scholar.google.com/citations?user=f4HcMx8AAAAJ">Park, K.</a>, <a href="https://scholar.google.com/citations?user=71g2MrUAAAAJ">Choe, Y. J.</a>, and <a href="https://scholar.google.com/citations?user=xkn_XZgAAAAJ">Veitch, V.</a> “The Linear Representation Hypothesis and the Geometry of Large Language Models.” <em>ICML 2024</em> (arXiv:2311.03658), November 7, 2023. <a href="https://arxiv.org/abs/2311.03658" class="uri">https://arxiv.org/abs/2311.03658</a></p></li>
+<li><p><a id="ref-11"></a><a href="https://en.wikipedia.org/wiki/Jacob_Cohen_(statistician)">Cohen, J.</a> <em>Statistical Power Analysis for the Behavioral Sciences</em> (2nd ed.). Lawrence Erlbaum Associates, 1988. <a href="https://doi.org/10.4324/9780203771587" class="uri">https://doi.org/10.4324/9780203771587</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: the token-level metacognition layer above this paper’s approach, verbalized confidence rather than introspection on the residual stream.</li>
+<li><a href="../../posts/20260522-metacognition-atlas/">Domain-Level Metacognitive Monitoring in Frontier LLMs: A 33-Model Atlas</a>: the output-token member of the same metacognition cluster, monitoring measured on verbalized self-assessment instead of hidden activations.</li>
+<li><a href="../../posts/20260522-metacognitive-harness/">LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</a>: another cluster member operating on output tokens, where this paper is the first to push the probe down to the activations themselves.</li>
+<li><a href="../../posts/20260523-triage-metacognitive-control/">TRIAGE: Evaluating Prospective Metacognitive Control in LLMs Under Resource Constraints</a>: tests metacognitive control at the level of prospective resource allocation, a complement to this paper’s control over internal activation directions.</li>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the early evidence that models hold internal signals about their own correctness, which this paper localizes to a low-dimensional activation subspace.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/</guid>
+  <pubDate>Tue, 26 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260526-metacognitive-monitoring-control-activations/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>ProgramBench: Can Language Models Rebuild Programs From Scratch?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>ProgramBench evaluates models on their ability to write software projects from scratch. Given a program (e.g.&nbsp;an executable) and its documentation, a software engineering agent must produce source code and a build script that reconstructs the original program’s behavior. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>ProgramBench: Can Language Models Rebuild Programs From Scratch?</em> [1], <a href="https://scholar.google.com/citations?user=71G11ksAAAAJ">John Yang</a>, Kilian Lieret, <a href="https://scholar.google.com/citations?user=LeHa8psAAAAJ">Ofir Press</a>, and nine co-authors from Meta, Stanford, and Harvard introduce a 200-task benchmark that asks coding agents to reconstruct an open-source program from its compiled executable and documentation alone.</p>
+<p>Each task starts from a real GitHub repository written in a compiled language. The authors compile the project, generate a behavioral test suite by running a software engineering agent (<a href="https://swe-agent.com/">SWE-agent</a>) against the reference executable, then strip the source and tests, leaving only the binary and the docs. The model under test then receives the same starting point and must write source code and a build script whose compiled output passes the hidden tests. The 200 tasks span CLI utilities to large systems including FFmpeg, SQLite, and the PHP interpreter, with no constraint on language, file structure, or build system; every architectural decision is the model’s.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>ProgramBench task collection pipeline. To turn a GitHub repository into a task, the authors use a SWE-agent to compile an executable, generate behavioral tests, and strip away implementation details, leaving the binary and documentation as the starting point. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<blockquote class="blockquote">
+<p>Turning ideas into full software projects from scratch has become a popular use case for language models. Agents are being deployed to seed, maintain, and grow codebases over extended periods with minimal human oversight. Such settings require models to make high-level software architecture decisions. However, existing benchmarks measure focused, limited tasks such as fixing a single bug or developing a single, specified feature. We therefore introduce <em>ProgramBench to measure the ability of software engineering agents to develop software holisitically</em> [sic]. In ProgramBench, <em>given only a program and its documentation, agents must architect and implement a codebase that matches the reference executable’s behavior</em>. End-to-end behavioral tests are generated via agent-driven fuzzing, enabling evaluation without prescribing implementation structure. Our 200 tasks range from compact CLI tools to widely used software such as FFmpeg, SQLite, and the PHP interpreter. We evaluate 9 LMs and find that <em>none fully resolve any task, with the best model passing 95% of tests on only 3% of tasks</em>. Models favor monolithic, single-file implementations that diverge sharply from human-written code.</p>
+</blockquote>
+<p>What the paper reports: across nine frontier models from Anthropic, Google, and OpenAI, no task is fully resolved by any model. Claude Opus 4.7 leads on the relaxed “% Almost” metric (≥95% of tests passing) at 3.0% of tasks. Claude Opus 4.6 follows at 2.5% and Claude Sonnet 4.6 at 1.6%. Every other model registers 0% on both metrics. The median test pass rate across all 1,800 leaderboard runs is 32%, but the gap from “partial credit” to “fully resolved” is wide and uniform across models.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Per-task pass rates for the 40 most-starred repositories show difficulty is largely model-agnostic: simpler CLI utilities sit on the left of every model’s row, while complex systems like FFmpeg and the PHP interpreter remain unsolved across the board.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In a separate ablation, the authors gave one model per provider unrestricted internet access and used a 9-judge LM-as-a-judge pipeline to flag trajectories that looked up source code or wrapped the reference executable. Cheating was widespread: 20–36% of tasks flagged for the three stronger models, with source-code lookup accounting for 79–95% of violations. Detection was unreliable too: judges disagreed on 40–57% of tasks. The authors take this as grounds for keeping internet access disabled by default.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/table3.png" class="img-fluid figure-img"></p>
+<figcaption>Table 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The most-quoted analytical finding sits in §5.2: the codebases models produce do not look like the human-written originals. Across trajectories, a single edit accounts for the majority of the final solution, with GPT 5.4 committing a median 96% of its code in one turn.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/figure12.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 12 from the paper [1].</figcaption>
+</figure>
+</div>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Distance to recursive self-improvement.</strong> <a href="../../posts/20260526-recursive-superintelligence-launch/">Recursive Superintelligence’s $4B bet</a> assumes agents that can rebuild and improve their own systems. ProgramBench is a direct test of that capability one rung down: reconstruct one specified program from its executable and documentation, with full architectural latitude. Nine frontier models score 0% fully resolved on 200 mostly small open-source projects, and the cheating ablation suggests part of what looks like reasoning capability in deployed coding agents is source-code retrieval.</li>
+<li><strong>From-scratch vs localized repair.</strong> Yang and Press were also on the <a href="https://www.swebench.com/">SWE-bench</a> [2] author list in 2024, the bug-fix benchmark where frontier agents now resolve a majority of issues against an existing scaffold. On ProgramBench they resolve zero. Bug-fix benchmarks reward pattern-matching against existing structure, but ProgramBench requires inventing the structure. Headline agent-progress numbers from bug-fix benchmarks don’t extrapolate to from-scratch coding.</li>
+<li><strong>Architectural numbers for Faye’s case.</strong> <a href="../../posts/20260507-agentic-coding-is-a-trap/">Lars Faye</a> argued last week that the orchestrator-with-sub-agents workflow puts growing distance between the engineer and the code, and that catching issues at the architectural level is what a skilled developer is for. ProgramBench supplies numbers from the architectural-quality side: across 1,800 trajectories, models favor monolithic, single-file implementations, and GPT 5.4 commits a median 96% of its lines in one turn (Figure 12).</li>
+<li><strong>Agent-fuzzed test suites couple evaluator and evaluated.</strong> Each task’s behavioral tests are generated by running a SWE-agent against the reference executable, the same class of system being scored. The paper audits over-specification (§8.3.4) and reports test line coverage comparable to native suites (§5). Neither check isolates the systematic blindspots a fuzzing agent shares with the agent it scores. Whatever a fuzzing agent fails to imagine, such as malformed encodings or unusual flag combinations, is invisible in the score.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=71G11ksAAAAJ">Yang</a>, J., Lieret, K., Ma, J., Thakkar, P., Pedchenko, D., Sootla, S., McMilin, E., Yin, P., Hou, R., Synnaeve, G., <a href="https://scholar.google.com/citations?user=j9jhYqQAAAAJ">Yang</a>, D., and <a href="https://scholar.google.com/citations?user=LeHa8psAAAAJ">Press</a>, O. “ProgramBench: Can Language Models Rebuild Programs From Scratch?” <em>arXiv preprint</em> (arXiv:2605.03546), May 5, 2026. <a href="https://arxiv.org/abs/2605.03546" class="uri">https://arxiv.org/abs/2605.03546</a></p></li>
+<li><p><a id="ref-2"></a>Jimenez, C. E., <a href="https://scholar.google.com/citations?user=71G11ksAAAAJ">Yang</a>, J., Wettig, A., Yao, S., Pei, K., <a href="https://scholar.google.com/citations?user=LeHa8psAAAAJ">Press</a>, O., and Narasimhan, K. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>International Conference on Learning Representations (ICLR)</em> (arXiv:2310.06770), 2024. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260526-recursive-superintelligence-launch/">Recursive Superintelligence’s $4B Bet on Self-Improving AI</a>: the recursive-self-improvement bet this benchmark tests one rung down, where nine frontier models fully resolve zero tasks.</li>
+<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: Lars Faye’s architectural-quality argument, for which ProgramBench supplies the numbers on monolithic single-file outputs and one-turn code dumps.</li>
+<li><a href="../../posts/20260529-autocodebench/">AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators</a>: another agent-built code benchmark where frontier models top out low, and a contrast in how the test suite is generated.</li>
+<li><a href="../../posts/20260422-overzealous-coding-models/">Overzealous Coding Models</a>: a related failure of architectural judgment, models doing too much in one sweep rather than the disciplined edits a from-scratch rebuild needs.</li>
+<li><a href="../../posts/20260528-claude-code-large-codebases/">How Claude Code Works in Large Codebases: Best Practices and Where to Start</a>: the harness-side answer to from-scratch difficulty, the scaffolding that real coding agents lean on where ProgramBench strips it away.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/</guid>
+  <pubDate>Tue, 26 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Recursive Superintelligence’s $4B Bet on Self-Improving AI</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260526-recursive-superintelligence-launch/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260526-recursive-superintelligence-launch/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-recursive-superintelligence-launch/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Recursive Superintelligence founders. Photo from <a href="https://www.nytimes.com/2026/05/13/technology/recursive-superintelligence-funding-ai.html">The New York Times</a>.</figcaption>
+</figure>
+</div>
+<p>The New York Times <a href="https://www.nytimes.com/2026/05/13/technology/recursive-superintelligence-funding-ai.html">reports</a> that Recursive Superintelligence, a stealth-mode AI lab with offices in San Francisco and London, has emerged with more than $650 million in funding at a valuation above $4 billion. The investors include <a href="https://www.gv.com/">GV</a> (formerly Google Ventures), <a href="https://www.greycroft.com/">Greycroft</a>, <a href="https://www.nvidia.com/">Nvidia</a>, and <a href="https://www.amd.com/">AMD</a>. <a href="https://www.richard.socher.org/">Richard Socher</a>, CEO of <a href="https://you.com/">You.com</a> and former head of AI research at Salesforce, founded the company with seven co-founders. NYT names four: <a href="https://www.joshtobin.com/">Josh Tobin</a>, <a href="http://jeffclune.com/">Jeff Clune</a>, and <a href="https://timshi.xyz/">Tim Shi</a>, all from OpenAI, plus <a href="https://yuandong-tian.com/">Yuandong Tian</a> from Meta. The six-month-old company has fewer than 30 employees, and has separately hired <a href="https://norvig.com/">Peter Norvig</a>, 25-year director of research at Google and co-author of <a href="https://aima.cs.berkeley.edu/"><em>Artificial Intelligence: A Modern Approach</em></a>, the standard university AI textbook for three decades. Long-term, the founders aim to apply the technology beyond AI itself, to drug discovery and biological research.</p>
+<blockquote class="blockquote">
+<p>A.I. is code. And now, A.I. can code. The ingredients are there.</p>
+<p>— Richard Socher</p>
+</blockquote>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Recursive self-improvement is becoming a funded category.</strong> Recursive Superintelligence joins a competitive field that already includes <a href="https://ami.inc/">AMI Labs</a> (world models; see Yann LeCun’s <a href="../../posts/20260523-yann-lecun-after-llms/">recent appearance</a> for the thesis), <a href="https://www.wired.com/story/david-silver-ai-ineffable-intelligence-reinforcement-learning/">Ineffable Intelligence</a> (RL, David Silver’s), and <a href="https://ssi.inc/">Safe Superintelligence</a> (safety-first), plus <a href="https://mirendil.com/">Mirendil</a> and Anthropic’s <a href="https://www.anthropic.com/research/automated-alignment-researchers">Automated Alignment Researchers</a> per Jack Clark’s <a href="../../posts/20260508-import-ai-455-automating-ai-research/">Import AI 455</a>. Add to the list <a href="https://sakana.ai/">Sakana AI</a>, whose “AI Scientist” papers have been pushing automated research-paper production since 2024 and which Jack didn’t mention. NYT also notes a separately-funded namesake (Ricursive Intelligence, also valued at $4B, also chasing recursive self-improvement) and confirms Anthropic and OpenAI are pursuing the same outcome. The category is consolidating before its first public technical milestone.</p></li>
+<li><p><strong>The founders are an open-endedness team.</strong> NYT explicitly characterizes the team that way: “Many of these researchers specialize in a kind of AI development called ‘open-endedness.’ This involves building software systems that can run for days, months or even years in pursuit of goals set by the researchers.” <a href="http://jeffclune.com/">Jeff Clune</a> is the most public face of the lineage: <a href="https://arxiv.org/abs/1901.01753">POET</a>, <a href="https://arxiv.org/abs/1504.04909">MAP-Elites</a>, <a href="https://arxiv.org/abs/1905.10985">AI-generating algorithms</a>, all arguing systems should generate their own training distribution. <a href="https://yuandong-tian.com/">Yuandong Tian</a> brings Meta’s RL/self-play track (<a href="https://github.com/pytorch/ELF">OpenGo</a>, <a href="https://arxiv.org/abs/2402.14083">Searchformer</a>). <a href="https://www.joshtobin.com/">Josh Tobin</a> brings OpenAI robotics (<a href="https://arxiv.org/abs/1703.06907">domain randomization</a>, <a href="https://arxiv.org/abs/1808.00177">Dactyl</a>). <a href="https://timshi.xyz/">Tim Shi</a> (<a href="https://cresta.com/">Cresta</a>) is the agent-deployment hand. <a href="https://norvig.com/">Peter Norvig</a> gives the project the textbook-canonical AI brand.</p></li>
+<li><p><strong>OpenAI’s “automated AI researcher” is the concrete benchmark.</strong> Sam Altman <a href="https://x.com/sama/status/1983584366547829073">said</a> OpenAI hopes to have a system doing the work of a “less experienced” researcher by fall 2026. Recursive Superintelligence is pitching a years-long arc instead; Socher himself told NYT the technology will need years, and the article notes that “humans like Dr.&nbsp;Socher must still generate the new ideas that drive AI development forward.” The category’s strongest tension sits in that gap between a quarter-by-quarter benchmark and a years-long bet.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260508-import-ai-455-automating-ai-research/">Are AI Systems About to Start Building Themselves?</a>: Jack Clark’s read of the public evidence on automating AI R&amp;D, the thesis this $4B bet is funding against.</li>
+<li><a href="../../posts/20260608-automating-ai-rd-perspectives/">AI Researchers’ Perspectives on Automating AI R&amp;D and Intelligence Explosions</a>: an interview study of 25 researchers on the same automated-AI-development path, including the lab-versus-academia split this lab belongs to.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: a position paper arguing genuine self-improvement needs the agent to design its own meta-loop, a sharper bar than the open-endedness lineage these founders bring.</li>
+<li><a href="../../posts/20260526-programbench-rebuild-from-scratch/">ProgramBench: Can Language Models Rebuild Programs From Scratch?</a>: a direct test of the rebuild-and-improve-your-own-systems capability this bet assumes, where frontier models fully resolve zero tasks.</li>
+<li><a href="../../posts/20260606-ai-joins-the-research-loop/">AI Joins the Research Loop</a>: the broader move of AI into open research that this lab aims to automate, with the recurring caveat that the trustworthy part is whatever can be checked.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260526-recursive-superintelligence-launch/</guid>
+  <pubDate>Tue, 26 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260526-recursive-superintelligence-launch/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Memorial Day 10K with My Daughter</title>
   <dc:creator>Ben </dc:creator>
@@ -2350,265 +2743,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260522-metacognition-atlas/</guid>
   <pubDate>Fri, 22 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260522-metacognition-atlas/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Read “Artificial Intelligence” Backwards in Chinese</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260522-chinese-ai-meme/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260522-chinese-ai-meme/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260522-chinese-ai-meme/cover.jpg" class="img-fluid quarto-figure quarto-figure-center figure-img"></p>
-</figure>
-</div>
-<p>This meme has been circulating on Chinese social media since at least 2021.</p>
-<p>The wordplay: read “人工智能” (artificial intelligence) backwards, and it becomes “能治工人” (can rule over workers).</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_tech-ai-meme-share-7463623221150388224-y9cJ">LinkedIn</a>.</em></p>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20230321-gpts-are-gpts-labor-market-impact/">GPTs Are GPTs: Labor Market Impact of Large Language Models</a>: the empirical underside of the meme’s joke — which workers’ tasks LLMs actually expose.</li>
-<li><a href="../../posts/20260608-alex-imas-phil-trammell/">What Remains Scarce After AGI: Alex Imas and Phil Trammell on Labor, Capital, and Redistribution</a>: takes up the same labor-versus-capital anxiety the meme voices and asks whether the labor share really collapses.</li>
-<li><a href="../../posts/20260608-ai-cult-exposed/">Karen Hao on Empire of AI: OpenAI, AGI Believers, and a New Colonialism</a>: the same power-over-workers framing, traced to the industry’s hunger for cheap labor.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260522-chinese-ai-meme/</guid>
-  <pubDate>Fri, 22 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260522-chinese-ai-meme/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Figure F.03 Flips Packages 24/7</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260522-figure-f03-package-sorting/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260522-figure-f03-package-sorting/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260522-figure-f03-package-sorting/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure F.03 working a conveyor belt, flipping packages label-down so barcodes can be scanned. <a href="https://www.youtube.com/watch?v=DL0C8irAWKo">Watch on YouTube</a></figcaption>
-</figure>
-</div>
-<p>Apparently people have been watching this over a week now. It’s a humanoid robot flipping packages on a conveyor belt to scan barcode.</p>
-<p><a href="https://www.youtube.com/watch?v=DL0C8irAWKo" class="uri">https://www.youtube.com/watch?v=DL0C8irAWKo</a></p>
-<p>Background on Figure’s robots:</p>
-<p><a href="https://www.youtube.com/watch?v=oJfXvyRHbfY" class="uri">https://www.youtube.com/watch?v=oJfXvyRHbfY</a></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116619055739582815">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260522-figure-f03-package-sorting/</guid>
-  <pubDate>Fri, 22 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260522-figure-f03-package-sorting/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Lake Union: It’s Been a While</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>Missing the round so much I made one today! A relaxed run with stops along the way to take pictures. HR 124/145.</p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-10.jpeg" class="img-fluid" data-lightbox-src="image-10-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-11.jpeg" class="img-fluid" data-lightbox-src="image-11-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-12.jpeg" class="img-fluid" data-lightbox-src="image-12-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-13.jpeg" class="img-fluid" data-lightbox-src="image-13-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-14.jpeg" class="img-fluid" data-lightbox-src="image-14-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-15.jpeg" class="img-fluid" data-lightbox-src="image-15-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-16.jpeg" class="img-fluid" data-lightbox-src="image-16-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-17.jpeg" class="img-fluid" data-lightbox-src="image-17-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-18.jpeg" class="img-fluid" data-lightbox-src="image-18-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-19.jpeg" class="img-fluid" data-lightbox-src="image-19-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-20.jpeg" class="img-fluid" data-lightbox-src="image-20-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-21.jpeg" class="img-fluid" data-lightbox-src="image-21-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-22.jpeg" class="img-fluid" data-lightbox-src="image-22-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-23.jpeg" class="img-fluid" data-lightbox-src="image-23-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-24.jpeg" class="img-fluid" data-lightbox-src="image-24-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-25.jpeg" class="img-fluid" data-lightbox-src="image-25-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-26.jpeg" class="img-fluid" data-lightbox-src="image-26-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-27.jpeg" class="img-fluid" data-lightbox-src="image-27-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-28.jpeg" class="img-fluid" data-lightbox-src="image-28-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/image-29.jpeg" class="img-fluid" data-lightbox-src="image-29-full.jpeg"></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/</guid>
-  <pubDate>Thu, 21 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/cover.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Image from <a href="https://arxiv.org/abs/2603.07972">arXiv</a>. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning</em> (ICLR 2026 Poster) [1], <a href="https://www.semanticscholar.org/author/Wei-Yang/2270893841">Wei Yang</a>, <a href="https://defucao.github.io/">Defu Cao</a>, Jiacheng Pang, Muyan Weng, and <a href="https://viterbi-web.usc.edu/~yanliu/">Yan Liu</a> (USC) train each agent in a multi-agent system to choose one of three high-level actions at each round (Evaluate a peer’s answer, Create a new one, Defer to a human expert) and turn deferral events into supervised data for continual capability growth.</p>
-<blockquote class="blockquote">
-<p>While scaling individual Large Language Models (LLMs) has delivered remarkable progress, the next frontier lies in scaling collaboration through multi-agent systems (MAS). However, purely autonomous MAS remain “closed-world” systems, constrained by the static knowledge horizon of pre-trained models. This limitation makes them brittle on tasks requiring knowledge beyond training data, often leading to collective failure under novel challenges. To address this, we propose the <em>Human-In-the-Loop Multi-Agent Collaboration (HILA)</em> framework, a principled paradigm for human–agent collaboration. HILA trains agents to learn a <em>metacognitive policy that governs when to solve problems autonomously and when to defer to a human expert</em>. To operationalize this policy, we introduce <em>Dual-Loop Policy Optimization</em>, which disentangles immediate decision-making from long-term capability growth. The inner loop applies Group Relative Policy Optimization (GRPO) with a cost-aware reward to optimize deferral decisions, while the outer loop implements <em>continual learning, transforming expert feedback into high-quality supervised signals</em> that strengthen the agent’s reasoning ability. Experiments on challenging mathematical and problem-solving benchmarks show that HILA, equipped with Dual-Loop Policy Optimization, <em>consistently outperforms advanced MAS</em>, establishing a principled foundation for collaborative and continually improving agentic systems.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>HILA (Human-In-the-Loop Multi-Agent Collaboration) models human-agent collaboration as a Metacognitive <a href="https://en.wikipedia.org/wiki/Markov_decision_process">Markov Decision Process</a> (Meta-MDP). At each round <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/>, every agent <img src="https://benjaminhan.net/feed-assets/fe3599bc03ddee62.svg" alt="i" class="feed-math-inline"/> observes a shared state <img src="https://benjaminhan.net/feed-assets/5c904342ae2733ae.svg" alt="s_t = \text{concat}(\mathbf{x}^{\text{task}}_t, \mathbf{x}^{\text{self}}_t, \mathbf{x}^{\text{peer}}_t, \mathbf{z}^{\text{soc}}_t, \mathbf{z}^{\text{mon}}_t, \mathbf{z}^{\text{ctrl}}_t)" class="feed-math-inline"/> — task context, self context, peer context, plus three optional cognitive cues (social consensus, metacognitive monitoring, cognitive control) computed from interaction traces with rule-based heuristics. The action space is a discrete set of three high-level strategies: <img src="https://benjaminhan.net/feed-assets/aab66ff460854c58.svg" alt="a^{\text{eval}}" class="feed-math-inline"/> endorses an existing peer answer, <img src="https://benjaminhan.net/feed-assets/8b42270c46eedb14.svg" alt="a^{\text{create}}" class="feed-math-inline"/> generates a new candidate, and <img src="https://benjaminhan.net/feed-assets/c68cb777ec2fc5bb.svg" alt="a^{\text{defer}}" class="feed-math-inline"/> routes the round’s output to a human expert.</p>
-<p>Dual-Loop Policy Optimization (DLPO) [1] trains the policy with two coupled loops. The <strong>inner loop</strong> teaches the agent which of the three actions to pick at each round. The reward pays the agent for getting the answer right and charges it a small fee for creating a new answer, a larger fee for calling the human, so the policy learns to defer only when the expected accuracy gain outweighs the cost. Formally, this is Group Relative Policy Optimization (GRPO) [4] on a cost-aware reward, with <img src="https://benjaminhan.net/feed-assets/166c87a68ac5ae8f.svg" alt="C_{\text{defer}} &gt; C_{\text{create}} \geq 0" class="feed-math-inline"/>:</p>
-<p><img src="https://benjaminhan.net/feed-assets/82ce80e8ff1c4ac3.svg" alt="R(s_t, a_t) = \begin{cases} R_{\text{gt}}(\hat{y}(a_t)), &amp;amp; a_t = \text{EVAL} \\ R_{\text{gt}}(\hat{y}(a_t)) - C_{\text{create}}, &amp;amp; a_t = \text{CREATE} \\ R_{\text{gt}}(\hat{y}_{\text{human}}(a_t)) - C_{\text{defer}}, &amp;amp; a_t = \text{DEFER} \end{cases}" class="feed-math-inline"/></p>
-<p>Correctness <img src="https://benjaminhan.net/feed-assets/1d46bf99ef3f73ac.svg" alt="R_{\text{gt}}" class="feed-math-inline"/> is the primary signal. The two cost terms break ties toward the cheaper action when multiple choices lead to similar outcomes. GRPO turns these rewards into a learning signal by sampling several actions at the same state, comparing each one’s reward against the group’s average, and pushing the policy toward the actions that beat the average. The advantage <img src="https://benjaminhan.net/feed-assets/de438ba071e5e946.svg" alt="A(s_t, a_k) = R(s_t, a_k) - \tfrac{1}{K}\sum_j R(s_t, a_j)" class="feed-math-inline"/> feeds the policy-gradient term <img src="https://benjaminhan.net/feed-assets/56fdfa9c70f732f6.svg" alt="\mathcal{L}_{\text{PG}}" class="feed-math-inline"/>, which scales each action’s log-probability by its advantage. Two regularizers stabilize training: <img src="https://benjaminhan.net/feed-assets/6c365d4f435cae2f.svg" alt="\mathcal{L}_{\text{KL}}" class="feed-math-inline"/> is the KL divergence between the current policy and the initial reference policy (keeps the trained policy close to its starting point so it doesn’t drift off into degenerate behaviors), and <img src="https://benjaminhan.net/feed-assets/a01978f989c09277.svg" alt="\mathcal{L}_{\text{Entropy}}" class="feed-math-inline"/> is the policy’s entropy over the three actions (subtracted to <em>encourage</em> spread, preventing collapse onto a single action). The combined inner objective is <img src="https://benjaminhan.net/feed-assets/4367f16176867906.svg" alt="\mathcal{L}_{\text{Inner}} = \mathcal{L}_{\text{PG}} + \beta_{\text{kl}} \mathcal{L}_{\text{KL}} - \beta_{\text{ent}} \mathcal{L}_{\text{Entropy}}" class="feed-math-inline"/>.</p>
-<p>The <strong>outer loop</strong> runs continual supervised fine-tuning (SFT) on every deferral event. Each time the agent calls the human, the human’s answer is recorded as a training example, and the generator is later fine-tuned to produce that answer itself given the same context. Over many deferrals the agent absorbs the human’s expertise on cases it could not handle, so future encounters with similar problems no longer need a deferral. Formally, the human’s response <img src="https://benjaminhan.net/feed-assets/1b2c0c7a659e923e.svg" alt="y_{\text{human}} = (t_1, \dots, t_L)" class="feed-math-inline"/> becomes a target sequence trained with token-level cross-entropy:</p>
-<p><img src="https://benjaminhan.net/feed-assets/4ef017082f069caa.svg" alt="\mathcal{L}_{\text{SFT}}(\theta) = -\sum_{i=1}^{L} \log \pi_\theta(t_i \mid s_t, t_{1:i-1})." class="feed-math-inline"/></p>
-<p>The two losses share parameters and are combined under an indicator that gates SFT to deferral steps only:</p>
-<p><img src="https://benjaminhan.net/feed-assets/4ee0ef925ab8945c.svg" alt="\mathcal{L}_{\text{total}}(\theta) = \mathbb{E}_{(s_t, a_t)}\left[\mathcal{L}_{\text{Inner}}(\theta) + \lambda_{\text{sft}} \cdot \mathbb{I}(a_t = a^{\text{defer}}) \cdot \mathcal{L}_{\text{SFT}}(\theta)\right]." class="feed-math-inline"/></p>
-<p>The inner loop decides <em>when</em> to defer. The outer loop teaches the generator <em>what</em> the human said when it did.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/figure6.png" class="img-fluid figure-img"></p>
-<figcaption>Accuracy versus deferral rate on GSM8K across the three training stages (Init policy, +GRPO inner loop, +DLPO with continual outer loop). DLPO moves the operating point up and to the left simultaneously: higher accuracy with lower reliance on the human expert. Figure 6 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper evaluates HILA on five benchmarks spanning math reasoning (GSM8K [5], AMC, AIME), code generation (HumanEval [6]), and general knowledge (MMLU [7]), with LLaMA3-8B as the main backbone and ablations on LLaMA3-3B and Qwen2.5-3B. The primary metric is task accuracy. Deferral rate (the fraction of rounds that call the human) is reported as the cost dimension. Baselines split into single-agent prompting strategies — Chain-of-Thought (CoT) [8], Self-Consistency (SC) [9] — and multi-agent systems — Progressive Hint Prompting (PHP) [10] (classified as MA in the paper, framed as a pairwise/pooled critique baseline), LLM-Debate [11], GroupDebate (G-Debate) [12], DyLAN [13], GPTSwarm (G-Swarm) [14], AgentPrune (A-Prune) [15], and AFlow [16]. The “Vanilla” reference is the backbone with no agentic scaffolding. Headline numbers come from Table 1. Cross-backbone scaling and ablations live in Tables 2 and 4, and the cost-sensitivity sweep is Figure 11(a).</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/table1.png" class="img-fluid figure-img"></p>
-<figcaption>Table 1 from the paper [1]. Main comparison on the LLaMA3-8B backbone across GSM8K, AMC, AIME, HumanEval, and MMLU. Parenthesized values are absolute deltas vs the Vanilla baseline. Underlines mark the best non-HILA entry per benchmark. SA = single-agent, MA = multi-agent.</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>HILA tops every benchmark over every baseline</strong> — single-agent (CoT, SC) and multi-agent (PHP, LLM-Debate, G-Debate, DyLAN, G-Swarm, A-Prune, AFlow). The runner-up varies by task (G-Swarm on GSM8K, G-Debate on AMC and MMLU, AFlow on HumanEval), but no single multi-agent baseline wins anything.</li>
-<li><strong>Big gains on hard reasoning, AIME ceiling</strong>: HumanEval +24.59 over Vanilla, AMC +24.47, GSM8K +17.10, MMLU +15.63, AIME +6.41. Deferral pays off most on AMC and HumanEval. The modest AIME gain suggests the human proxy itself struggles there, capping the upside.</li>
-<li><strong>Cross-backbone story (Table 2 in the paper)</strong>: the absolute gain grows as the backbone weakens. On LLaMA3-3B, HILA lifts GSM8K from 45.26 to 83.85 (+38.59), the largest gain of any base model tested.</li>
-<li><strong>Inner-loop vs outer-loop (Table 4 ablation, LLaMA3-8B)</strong>: HILA Init Policy (the unoptimized HILA system, before any training) starts at 88.15/33.33/68.30 (GSM8K/AMC/MMLU). GRPO inner-loop alone adds +0.23/-0.83/+2.17 (flat on GSM8K, mild AMC regression, real MMLU lift). Full DLPO with continual-SFT outer-loop lifts +1.71/+2.50/+5.32 over Init Policy.</li>
-<li><strong>Cost-sensitivity</strong> (Figure 11(a) below): as the deferral cost <img src="https://benjaminhan.net/feed-assets/ec5e240d45a3b9db.svg" alt="C_{\text{defer}}" class="feed-math-inline"/> rises, the policy defers less and accuracy degrades gracefully. The same trained model serves a range of operating points without re-fitting.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/figure9.png" class="img-fluid figure-img"></p>
-<figcaption>Accuracy on AMC and MMLU under different deferral costs <img src="https://benjaminhan.net/feed-assets/ec5e240d45a3b9db.svg" alt="C_{\text{defer}}" class="feed-math-inline"/>. As deferral becomes more expensive, the policy defers less and accuracy degrades gracefully. The meta-policy is calibrated to the cost rather than fixed. Figure 11(a) from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>“Inner/outer” suggests nesting that isn’t there.</strong> In meta-learning and bilevel optimization, the naming usually marks a nested solver structure: an inner loop runs to convergence (or partial convergence) per outer step, often against separate parameters or objectives. HILA’s actual training objective is <img src="https://benjaminhan.net/feed-assets/b0644c158398c598.svg" alt="\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{Inner}} + \lambda \cdot \mathbb{I}(a=\text{defer}) \cdot \mathcal{L}_{\text{SFT}}" class="feed-math-inline"/>. That’s a sum of two terms with shared parameters, gated by an indicator, updated together each step. The time-scale separation is genuine: per-round decisions accumulate to feed SFT updates over training. Beyond that, there’s no nesting. Plainer labels like “policy loss + SFT loss” or “decisions plus demonstrations” would map more directly to what the equations do.</li>
-<li><strong>Cost-aware abstention.</strong> The missing piece in most “calibration” work. <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath’s “Mostly Know”</a> [2] measures whether a model’s confidence tracks its correctness, but stops short of prescribing what the model should do when confidence is low. HILA closes the loop by making deferral a first-class action with an explicit price tag. The cost-sensitivity sweep in Figure 11(a), where accuracy degrades gracefully as <img src="https://benjaminhan.net/feed-assets/ec5e240d45a3b9db.svg" alt="C_{\text{defer}}" class="feed-math-inline"/> increases, is the part most production deployments need: a single knob that maps a budget into an operating point.</li>
-<li><strong>Defer-event SFT is weaker intrinsic metacognition.</strong> <a href="../../posts/20260430-intrinsic-metacognitive-learning/">Liu and van der Schaar</a> [3] argued that genuine self-improvement requires the agent to decide <em>what to learn</em> and <em>how to evaluate</em> its learning, not just execute a designer-defined loop. HILA’s outer loop is an extrinsic mechanism, with the trigger (defer event), the target (human’s answer), the loss (SFT), and the schedule all wired in. What the outer loop gets right is the data-curation half: the agent’s own metacognitive policy decides which examples enter the SFT set. That’s a step toward intrinsic metacognition, but every other part of the loop is still hand-designed.</li>
-<li><strong>Strongest gain, weakest base.</strong> On LLaMA3-3B, HILA lifts GSM8K from 45.26 to 83.85 (+38.59), against DyLAN’s +30.91 and GPTSwarm’s +26.59 on the same base. Two readings: (i) deferral is most valuable when the base policy is most likely to be wrong, which is the right scaling direction for an “open-world” claim, and (ii) the comparison is partly unfair to the autonomous baselines, which have no human oracle to defer to. The paper counts Defer as an action with a cost, but the missing experiment is DyLAN with the same human-call budget HILA spends. The Vanilla-DLPO ablation on LLaMA3-8B (72.76 → 82.11 on GSM8K) isolates the SFT contribution but doesn’t match budgets either.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<p><a id="ref-1"></a>1. Yang, Wei, Defu <a href="https://defucao.github.io/">Cao</a>, Jiacheng Pang, Muyan Weng, and Yan <a href="https://viterbi-web.usc.edu/~yanliu/">Liu</a>. “Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning.” <em>International Conference on Learning Representations (ICLR)</em>, 2026 (Poster). arXiv:2603.07972, March 9, 2026. <a href="https://arxiv.org/abs/2603.07972" class="uri">https://arxiv.org/abs/2603.07972</a></p>
-<p><a id="ref-2"></a>2. <a href="https://www.semanticscholar.org/author/Saurav-Kadavath/2143805037">Kadavath</a>, Saurav, Tom <a href="https://www.semanticscholar.org/author/Tom-Conerly/2167521293">Conerly</a>, Amanda <a href="https://askell.io/">Askell</a>, Tom Henighan, Dawn Drain, Ethan Perez, Nicholas Schiefer, Zac Hatfield-Dodds, Nova DasSarma, Eli Tran-Johnson, et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></p>
-<p><a id="ref-3"></a>3. <a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></p>
-<p><a id="ref-4"></a>4. <a href="https://zhshao.com/">Shao</a>, Zhihong, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo. “DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.” <em>arXiv preprint</em> (arXiv:2402.03300), February 5, 2024. <a href="https://arxiv.org/abs/2402.03300" class="uri">https://arxiv.org/abs/2402.03300</a></p>
-<p><a id="ref-5"></a>5. Cobbe, Karl, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></p>
-<p><a id="ref-6"></a>6. Chen, Mark, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared Kaplan, Harri Edwards, et al.&nbsp;“Evaluating Large Language Models Trained on Code.” <em>arXiv preprint</em> (arXiv:2107.03374), July 7, 2021. <a href="https://arxiv.org/abs/2107.03374" class="uri">https://arxiv.org/abs/2107.03374</a></p>
-<p><a id="ref-7"></a>7. Hendrycks, Dan, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob Steinhardt. “Measuring Massive Multitask Language Understanding.” <em>International Conference on Learning Representations (ICLR)</em>, 2021. arXiv:2009.03300, September 7, 2020. <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></p>
-<p><a id="ref-8"></a>8. Wei, Jason, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.” <em>NeurIPS 2022</em>. arXiv:2201.11903, January 28, 2022. <a href="https://arxiv.org/abs/2201.11903" class="uri">https://arxiv.org/abs/2201.11903</a></p>
-<p><a id="ref-9"></a>9. Wang, Xuezhi, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2023. arXiv:2203.11171, March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></p>
-<p><a id="ref-10"></a>10. Zheng, Chuanyang, Zhengying Liu, Enze Xie, Zhenguo Li, and Yu Li. “Progressive-Hint Prompting Improves Reasoning in Large Language Models.” <em>arXiv preprint</em> (arXiv:2304.09797), April 19, 2023. <a href="https://arxiv.org/abs/2304.09797" class="uri">https://arxiv.org/abs/2304.09797</a></p>
-<p><a id="ref-11"></a>11. Du, Yilun, Shuang Li, Antonio Torralba, Joshua B. Tenenbaum, and Igor Mordatch. “Improving Factuality and Reasoning in Language Models through Multiagent Debate.” <em>International Conference on Machine Learning (ICML)</em>, 2024. arXiv:2305.14325, May 23, 2023. <a href="https://arxiv.org/abs/2305.14325" class="uri">https://arxiv.org/abs/2305.14325</a></p>
-<p><a id="ref-12"></a>12. Liu, Tongxuan, Xingyu Wang, Weizhe Huang, Wenjiang Xu, Yuting Zeng, Lei Jiang, Hailong Yang, and Jing Li. “GroupDebate: Enhancing the Efficiency of Multi-Agent Debate Using Group Discussion.” <em>arXiv preprint</em> (arXiv:2409.14051), September 21, 2024. <a href="https://arxiv.org/abs/2409.14051" class="uri">https://arxiv.org/abs/2409.14051</a></p>
-<p><a id="ref-13"></a>13. Liu, Zijun, Yanzhe Zhang, Peng Li, Yang Liu, and Diyi Yang. “A Dynamic LLM-Powered Agent Network for Task-Oriented Agent Collaboration.” <em>Conference on Language Modeling (COLM)</em>, 2024. arXiv:2310.02170, October 3, 2023. <a href="https://arxiv.org/abs/2310.02170" class="uri">https://arxiv.org/abs/2310.02170</a></p>
-<p><a id="ref-14"></a>14. Zhuge, Mingchen, Wenyi Wang, Louis Kirsch, Francesco Faccio, Dmitrii Khizbullin, and Jürgen Schmidhuber. “GPTSwarm: Language Agents as Optimizable Graphs.” <em>International Conference on Machine Learning (ICML)</em>, 2024. arXiv:2402.16823, February 26, 2024. <a href="https://arxiv.org/abs/2402.16823" class="uri">https://arxiv.org/abs/2402.16823</a></p>
-<p><a id="ref-15"></a>15. Zhang, Guibin, Yanwei Yue, Zhixun Li, Sukwon Yun, Guancheng Wan, Kun Wang, Dawei Cheng, Jeffrey Xu Yu, and Tianlong Chen. “Cut the Crap: An Economical Communication Pipeline for LLM-based Multi-Agent Systems (AgentPrune).” <em>arXiv preprint</em> (arXiv:2410.02506), October 3, 2024. <a href="https://arxiv.org/abs/2410.02506" class="uri">https://arxiv.org/abs/2410.02506</a></p>
-<p><a id="ref-16"></a>16. Zhang, Jiayi, Jinyu Xiang, Zhaoyang Yu, Fengwei Teng, Xionghui Chen, Jiaqi Chen, Mingchen Zhuge, Xin Cheng, Sirui Hong, Jinlin Wang, Bingnan Zheng, Bang Liu, Yuyu Luo, and Chenglin Wu. “AFlow: Automating Agentic Workflow Generation.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2410.10762, October 14, 2024. <a href="https://arxiv.org/abs/2410.10762" class="uri">https://arxiv.org/abs/2410.10762</a></p>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the framework that grades HILA’s defer-event SFT as still-extrinsic metacognition, with the trigger and loss hand-designed.</li>
-<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: measures whether confidence tracks correctness but stops short of prescribing action, which HILA’s cost-aware deferral supplies.</li>
-<li><a href="../../posts/20260430-rema-meta-think/">ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</a>: another multi-agent RL split into high- and low-level roles, a methodological sibling to HILA’s deferral meta-policy.</li>
-<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: an alternative axis for improving multi-agent systems — search over prompts and topology rather than a learned deferral policy.</li>
-<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: catalogs why autonomous multi-agent systems fail collectively, the brittleness HILA’s human-in-the-loop deferral targets.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/</guid>
-  <pubDate>Wed, 20 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260520-adaptive-collaboration-mapo/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Update: Karpathy’s ‘AGI Is Still a Decade Away’ — Karpathy Joins Anthropic</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260520-karpathy-agi-update/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260520-karpathy-agi-update/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p><a href="https://karpathy.ai/">Andrej Karpathy</a> <a href="https://www.forbes.com/sites/aliciapark/2026/05/19/openai-cofounder-and-former-tesla-ai-leader-andrej-karpathy-joins-anthropic/">joined Anthropic</a> on May 19, 2026, seven months after his October interview with <a href="https://www.dwarkesh.com/">Dwarkesh Patel</a>. He’ll be working on pre-training under team lead <a href="https://x.com/nickevanjoseph">Nick Joseph</a> and helping launch a new team focused on using Claude to develop Anthropic’s models. On X, he wrote that “the next few years at the frontier of LLMs will be especially formative.”</p>
-<p>That news is the reason for this revisit. <a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a> — the original takeaways post on the Dwarkesh interview — now carries:</p>
-<ul>
-<li>A top-of-page <strong>callout</strong> about the Anthropic move, with a pointer to the <em>Future of education</em> chapter where Karpathy describes <a href="https://eurekalabs.ai/">Eureka</a> as the place he can “a lot more uniquely add value than an incremental improvement in the frontier lab.” Read alongside the news, the framing in that chapter shifts.</li>
-<li>A full <strong>enriched transcript</strong> at the bottom — chapter outline with anchor IDs, first-mention hyperlinks, bracketed expansions, editor’s-note callouts on factually questionable claims, and a numbered References block.</li>
-</ul>
-<hr>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a>: the original takeaways post on the Dwarkesh interview that this update revisits in light of the Anthropic move.</li>
-<li><a href="../../posts/20250619-karpathy-software-changing-again/">Karpathy: Software Is Changing (Again)</a>: an earlier Karpathy talk on Software 3.0 and the decade of agents, the same speaker’s prior framing.</li>
-<li><a href="../../posts/20260223-marcus-brundage-agi-bet/">Marcus vs.&nbsp;Brundage: A Concrete AGI Bet</a>: a contrasting take on AGI timelines, putting money on a near-term definition where Karpathy counsels patience.</li>
-<li><a href="../../posts/20250707-chollet-how-we-get-to-agi/">Chollet: How We Get to AGI</a>: another researcher’s account of what is still missing on the path to AGI, a counterpart to Karpathy’s decade estimate.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260520-karpathy-agi-update/</guid>
-  <pubDate>Wed, 20 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260520-karpathy-agi-update/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -1,0 +1,108 @@
+---
+title: "A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)"
+description: "How CMA-ES optimizes without gradients — sample from a Gaussian, move it toward the winners, and relearn its covariance and step size from the local geometry — plus the diagonal sep-CMA-ES variant that scales to high dimensions."
+author: synesis
+date: "2026-06-29"
+image: cover.jpg
+---
+
+![What the covariance matrix encodes: one-σ density ellipses of three Gaussians over the same objective (thin contour lines). Left, the isotropic $\mathcal{N}(\mathbf{0}, \sigma^2 \mathbf{I})$ searches in a circle. Middle, the axis-aligned $\mathcal{N}(\mathbf{0}, \mathbf{D}^2)$ stretches along the coordinate axes. Right, the full-covariance $\mathcal{N}(\mathbf{0}, \mathbf{C})$ also rotates to align with the objective's contours. Here $\sigma$ is a scalar, $\mathbf{I}$ the identity, $\mathbf{D}$ a diagonal matrix, and $\mathbf{C}$ a full covariance matrix. CMA-ES learns the third, sep-CMA-ES only the second. Figure 1, reproduced from Hansen's CMA-ES tutorial [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+*CMA-ES*, the Covariance Matrix Adaptation Evolution Strategy [[1]](#ref-1), [[2]](#ref-2), is a derivative-free optimizer for continuous problems: minimize $f(x)$ over $x \in \mathbb{R}^n$ ($n$ the number of variables), when you have no gradient because $f$ is a black box, non-differentiable, noisy, or simply cheaper to *probe* than to differentiate. It is the method of choice when you can afford a few thousand function evaluations but can't backpropagate through them, and has long been a standard baseline in black-box and hyperparameter optimization. A recent example in machine learning is [TRINITY](/posts/20260629-trinity-llm-coordinator/) [[4]](#ref-4), whose 0.6B LLM coordinator is trained with the diagonal sep-CMA-ES variant.
+
+## Intuition
+
+Picture finding the deepest part of a murky lake with nothing but a fishing line and a heavy sinker. From your boat's current spot, you drop the line at a handful of places scattered around you, keep the few that came back deepest, and row toward them. If those deep spots line up in one direction, say a channel running northeast, you spread your next drops more along that direction and less across it, and bunch them in a tighter cluster as the depths stop improving, since by then the deepest spot is right around you and only precision is left to gain. CMA-ES is that procedure made precise.
+
+The name *CMA-ES* has two halves, and so does the method. The **evolution strategy** is the loop you just ran on the lake: each round spawns a population of candidate guesses, keeps the best few, and builds the next round's guesses from them. This is search by selection rather than by gradient, repeated over generations, which places CMA-ES in the broader family of evolutionary algorithms. The **covariance matrix adaptation** is what makes the loop smart: rather than scattering the next guesses the same way every time, it learns the shape and spread of the region the best ones came from.
+
+Underneath, the search keeps a *cloud* of guesses: densest where it is most hopeful, thinning toward the edges. The only things it remembers from one round to the next are where to aim that cloud and how the cloud is spread around the aim point. CMA-ES uses one particular cloud shape, the *multivariate Gaussian* (the many-dimensional cousin of the bell curve), and a few plain reasons make it the right choice:
+
+- **A center and a spread, nothing more**: those two are all the method tracks, and a bell-shaped cloud is exactly the shape they describe. Any other shape would smuggle in detail the method never measured (this is the [maximum-entropy principle](https://en.wikipedia.org/wiki/Principle_of_maximum_entropy): given a mean and covariance, the Gaussian is the least-committal distribution).
+- **Its spread is an oval you can stretch and tilt**: the cloud need not be a round blob. It can run long and thin in one direction and tilt to any angle, which is just what you want once the deep spots reveal a channel to follow.
+- **It ignores how the map is oriented**: rotate or stretch the lake map and the cloud is still the same kind of cloud, so the search does equally well no matter which way you happened to call north.
+- **It is easy to work with**: drawing guesses from a bell-shaped cloud is quick, and the rules for sliding its center and reshaping its oval always leave a sensible cloud behind.
+
+The one catch: a bell-shaped cloud has a single hump, so the search works one basin at a time. If the lake has two deep holes far apart, it settles into whichever one it drifts into. The usual fix is not a fancier cloud but re-running the search from a few random starting spots and keeping the best result.
+
+## The core idea
+
+Formally, that cloud is a multivariate Gaussian, and each round repeats three steps: **sample** a population of candidates from it, **evaluate** $f$ on each, then **move and reshape** the Gaussian toward the candidates that did best. Over generations the mean drifts toward the optimum and the shape stretches to match the local curvature of the objective. The whole algorithm is just *how* you update that Gaussian.
+
+The distribution has three parts:
+
+$$x_i = m + \sigma\, y_i, \qquad y_i \sim \mathcal{N}(0, C).$$
+
+- $m \in \mathbb{R}^n$ is the **mean**, the current best guess at the optimum.
+- $C \in \mathbb{R}^{n\times n}$ is the **covariance matrix**, the shape and orientation of the search ellipsoid (the three panels in the figure above).
+- $\sigma > 0$ is the **step size**, an overall scale factor held separate from $C$ so the algorithm can grow or shrink the whole search without relearning its shape.
+
+## One generation, step by step
+
+The equations below follow the notation in Hansen's tutorial [[1]](#ref-1).
+
+**Sample and rank.** Draw $\lambda$ candidates $x_i = m + \sigma\, y_i$ from the distribution above, evaluate $f$, and sort them. Write $x_{i:\lambda}$ for the $i$-th best (order-statistic notation: the colon-$\lambda$ marks a rank within the $\lambda$ samples, best first) and $y_{i:\lambda} = (x_{i:\lambda} - m)/\sigma$ for the step that produced it. CMA-ES uses only the *ranking*, never the raw values of $f$, which is what makes it invariant to any monotonic rescaling of the objective, and robust to noise and outliers.
+
+**Update the mean.** Recombine the $\mu$ best (typically $\mu = \lambda/2$) as a weighted average:
+
+$$m \leftarrow \sum_{i=1}^{\mu} w_i\, x_{i:\lambda}, \qquad w_1 \ge \dots \ge w_\mu > 0, \quad \sum_i w_i = 1.$$
+
+The weights set an effective sample size $\mu_{\text{eff}} = 1 / \sum_i w_i^2$, the recurring "how many points am I really averaging" quantity. The weights themselves are a fixed log-rank recipe (best gets the most, declining with rank), set once from $\lambda$ rather than learned. The quantities CMA-ES actually adapts are the cloud's covariance $C$ and step size $\sigma$, handled in the next two steps.
+
+**Adapt the covariance.** $C$ is nudged to make the steps that just succeeded more likely next time, through two complementary terms:
+
+$$C \leftarrow (1 - c_1 - c_\mu)\,C \;+\; \underbrace{c_1\, p_c\, p_c^{\top}}_{\text{rank-one}} \;+\; \underbrace{c_\mu \sum_{i=1}^{\mu} w_i\, y_{i:\lambda}\, y_{i:\lambda}^{\top}}_{\text{rank-}\mu}.$$
+
+Here $c_1$ and $c_\mu$ are small fixed learning rates for the rank-one and rank-$\mu$ terms, and $(1 - c_1 - c_\mu)$ retains the rest of the old $C$, so the update is [exponential smoothing](https://en.wikipedia.org/wiki/Exponential_smoothing): it folds a little new evidence into the matrix each round. Like the recombination weights, they are fixed functions of $n$ and $\mu_{\text{eff}}$ rather than learned, and both shrink roughly like $1/n^2$ as the dimension grows (the exact rates appear below).
+
+The **rank-one** term uses an *evolution path* $p_c$, the search's *momentum*: an exponentially-weighted accumulation of successive mean shifts that grows long when the mean keeps heading one way and stays short when the steps cancel. The rate $c_c$ sets how fast the path forgets old steps:
+
+$$p_c \leftarrow (1 - c_c)\,p_c + \alpha_c\,\frac{m_{\text{new}} - m_{\text{old}}}{\sigma}.$$
+
+The coefficient $\alpha_c = \sqrt{c_c(2-c_c)\,\mu_{\text{eff}}}$ is just a normalization constant: it holds $p_c$ at unit scale when successive steps point in random directions, so the path's length is informative. (The $\sqrt{c_c(2-c_c)}$ factor is the variance-preserving weight that pairs with the $(1-c_c)$ decay, and the $\sqrt{\mu_{\text{eff}}}$ undoes the shrinkage from averaging $\mu_{\text{eff}}$ points.) When the mean keeps moving the same way generation after generation, those steps add up and $p_c\, p_c^{\top}$ stretches $C$ along that ridge. This is where CMA-ES picks up *correlations between coordinates over time* that one generation's small sample is too noisy to estimate. The **rank-$\mu$** term, by contrast, works within the current generation: it is the empirical covariance of this round's successful steps, the shape of the cloud of good points estimated in one shot.
+
+**Adapt the step size.** Separately, a second, conjugate evolution path $p_\sigma$ (with its own decay rate $c_\sigma$) tracks step direction after each step is rescaled by $C^{-1/2}$ to undo the cloud's shape, turning the oval back into a round, unit-spread blob (the *whitening* transform). The step size then grows or shrinks by comparing that path's length to how long it would be if successive steps were uncorrelated:
+
+$$p_\sigma \leftarrow (1-c_\sigma)\,p_\sigma + \alpha_\sigma\, C^{-1/2}\frac{m_{\text{new}}-m_{\text{old}}}{\sigma},$$
+
+$$\sigma \leftarrow \sigma \cdot \exp\!\left(\frac{c_\sigma}{d_\sigma}\left(\frac{\lVert p_\sigma\rVert}{\mathbb{E}\lVert\mathcal{N}(0,I)\rVert} - 1\right)\right).$$
+
+Here $\alpha_\sigma = \sqrt{c_\sigma(2-c_\sigma)\,\mu_{\text{eff}}}$ is the same kind of normalization constant as $\alpha_c$, $d_\sigma$ is a damping constant that keeps each change to $\sigma$ small, and $\mathbb{E}\lVert\mathcal{N}(0,I)\rVert$ is the expected length of a random step under no selection (about $\sqrt{n}$). The logic: if consecutive steps point the same way, the accumulated path is longer than random selection would produce, so you are making consistent progress and take bigger steps. If they zig-zag and cancel, the path is short, you are overshooting, and the step size shrinks. Splitting this off from $C$ decouples "how far to move" from "which directions matter," and is most of why CMA-ES tunes itself with almost no hand-set hyperparameters. Sensible defaults handle the rest: $\lambda = 4 + \lfloor 3\ln n\rfloor$, $\mu = \lambda/2$, and learning rates that scale like $c_1 \sim 2/n^2$, $c_\mu \sim \mu_{\text{eff}}/n^2$, $c_c, c_\sigma \sim 4/n$.
+
+## What adapting the covariance buys
+
+Near a smooth optimum $x^*$, $f$ looks quadratic: $f(x) \approx \tfrac{1}{2}(x - x^*)^{\top} H (x - x^*)$, with $H$ the [Hessian](https://en.wikipedia.org/wiki/Hessian_matrix) (the matrix of second derivatives). By driving $C$ toward $H^{-1}$, CMA-ES learns the local shape from rank information alone, a derivative-free, stochastic cousin of [quasi-Newton](https://en.wikipedia.org/wiki/Quasi-Newton_method) methods. That adaptive shape is the whole advantage: it makes the search invariant to rotation and lets it handle **ill-conditioned** objectives (long narrow valleys) that round, same-in-every-direction methods like random search or hill-climbing crawl through. It is also the cost: with $\sim n^2$ free parameters and an update rate of about $1/n^2$, $C$ is the slow, expensive part of the algorithm. CMA-ES trades speed for the flexibility of a non-spherical search shape.
+
+## sep-CMA-ES: the diagonal variant
+
+A full $C$ costs $O(n^2)$ memory and needs a periodic $O(n^3)$ eigendecomposition to form $C^{1/2}$ and $C^{-1/2}$. That is fine for $n$ up to a few hundred, painful in the thousands, and hopeless at $10^4$ and beyond. With $\sim n^2$ free parameters and rates $\sim 1/n^2$, a full $C$ is also slow to learn, a problem when the evaluation budget is tight.
+
+**sep-CMA-ES** [[3]](#ref-3) restricts $C$ to be diagonal, learning one variance per coordinate and discarding all cross-coordinate correlations:
+
+$$C = \operatorname{diag}(d_1^2, \dots, d_n^2).$$
+
+That drops memory and per-step cost to $O(n)$ (the matrix square roots become element-wise, with no eigendecomposition), and because there are now only $n$ free parameters, the covariance learning rate can be raised, so it converges in far fewer evaluations. Geometrically, it can stretch the search ellipsoid along the coordinate axes (the middle panel of the cover figure) but cannot rotate it (the right panel). The price is the lost correlations: sep-CMA-ES assumes the problem is close to axis-aligned. When coordinates interact strongly, dropping the off-diagonal terms can stall the search where full CMA-ES would not.
+
+That trade-off is exactly why [TRINITY](/posts/20260629-trinity-llm-coordinator/) [[4]](#ref-4) reaches for sep-CMA-ES rather than the full algorithm: its coordinator is a roughly 10K-dimensional search under a tight evaluation budget, where a full covariance is both too expensive and too slow to learn, and the paper argues the objective is near-separable enough (it calls this *block-$\epsilon$-separability*) for the diagonal approximation to hold.
+
+## When to reach for CMA-ES
+
+CMA-ES fits a specific regime: a continuous problem of low-to-moderate dimension where you can score a candidate but have no usable gradient, because the objective is non-differentiable, noisy, or a black box. Where a gradient *is* available, gradient descent through backpropagation is almost always faster and scales to millions of parameters, and CMA-ES does not try to compete there.
+
+Its closest relatives are the gradient-free reinforcement-learning methods. Like [policy-gradient RL](https://en.wikipedia.org/wiki/Policy_gradient_method), CMA-ES searches by trial and reward rather than by differentiating the objective. The difference is that policy gradients still need a low-variance gradient estimate to be useful, while CMA-ES needs only the ranking of scores, which keeps it working when the reward is sparse or binary [[5]](#ref-5). The dividing line is dimensionality and structure: a full covariance is practical only up to the hundreds to low thousands of variables, which is what pushes larger problems toward the diagonal sep-CMA-ES variant or back toward reinforcement learning.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Hansen, N.](https://scholar.google.com/citations?user=Z8ISh-wAAAAJ) "The CMA Evolution Strategy: A Tutorial." *arXiv preprint* (arXiv:1604.00772), April 4, 2016 (revised 2023). <https://arxiv.org/abs/1604.00772>
+2. <a id="ref-2"></a>Hansen, N. and Ostermeier, A. "Completely Derandomized Self-Adaptation in Evolution Strategies." *Evolutionary Computation* 9(2): 159–195, 2001. <https://doi.org/10.1162/106365601750190398>
+3. <a id="ref-3"></a>Ros, R. and Hansen, N. "A Simple Modification in CMA-ES Achieving Linear Time and Space Complexity." *Parallel Problem Solving from Nature (PPSN X)*, LNCS 5199, pp. 296–305, Springer, 2008. <https://doi.org/10.1007/978-3-540-87700-4_30>
+4. <a id="ref-4"></a>[Xu](https://www.semanticscholar.org/author/2397339171), Jinglue, [Sun](https://www.semanticscholar.org/author/2326487319), Qi, [Schwendeman](https://www.semanticscholar.org/author/2396352279), Peter, [Nielsen](https://www.semanticscholar.org/author/2396336821), Stefan, [Cetin](https://www.semanticscholar.org/author/2326294214), Edoardo, and [Tang](https://www.semanticscholar.org/author/2326422916), Yujin. "TRINITY: An Evolved LLM Coordinator." *International Conference on Learning Representations (ICLR)*, 2026. arXiv:2512.04695, December 4, 2025. <https://arxiv.org/abs/2512.04695>
+5. <a id="ref-5"></a>Salimans, Tim, Ho, Jonathan, Chen, Xi, Sidor, Szymon, and Sutskever, Ilya. "Evolution Strategies as a Scalable Alternative to Reinforcement Learning." *arXiv preprint* (arXiv:1703.03864), March 10, 2017. <https://arxiv.org/abs/1703.03864>
+
+## Related Posts
+
+- [TRINITY: An Evolved LLM Coordinator](/posts/20260629-trinity-llm-coordinator/): trains a 0.6B LLM coordinator with sep-CMA-ES, the diagonal variant covered here, and argues its objective is near-separable enough for the diagonal approximation to hold.
+- [Learning to Orchestrate Agents in Natural Language with the Conductor](/posts/20260629-conductor-llm-orchestrator/): the sibling that takes the opposite optimizer choice — reinforcement learning at 7B — and so reads as the RL end of the trade-off this primer's last note describes.
+- [Sakana Fugu: One Model to Command Them All](/posts/20260629-fugu-release/): folds the evolution-trained and RL-trained coordinators into one product, so both optimizer regimes ship behind a single endpoint.
