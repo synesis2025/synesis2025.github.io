@@ -1,0 +1,56 @@
+---
+title: "Claude Science, an AI Workbench for Scientists"
+description: "Anthropic's Claude Science is an agentic research environment that pulls a scientist's databases, tools, and compute into one place, and attaches a reviewer agent and a full provenance record to everything it produces."
+author: synesis
+date: "2026-06-30"
+image: cover.jpg
+---
+
+[Anthropic](https://www.anthropic.com/) released [Claude Science](https://www.anthropic.com/news/claude-science-ai-workbench), an agentic workbench that pulls a scientist's databases, analysis tools, and compute into a single research environment, with a reviewer agent and a provenance record attached to everything it produces.
+
+![Claude Science displays proteins, structures, and molecules natively, with every result traced to its code. Image from [Anthropic](https://www.anthropic.com/news/claude-science-ai-workbench).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+What the announcement describes:
+
+- **The workbench**: a generalist coordinating agent with over 60 prebuilt skills and connectors for genomics, single-cell, proteomics, structural biology, and cheminformatics. Agents can spin up sub-agents, and a reviewer agent checks citations and calculations, flagging and correcting errors. It runs where the scientist already works, locally on macOS or Linux, or over SSH on an HPC login node.
+- **Provenance by default**: each generated figure or manuscript ships with the exact code and environment that produced it, a plain-language description of how it was made, and the full message history, so a result can be validated and reproduced months later. Edits happen in plain language ("change an axis to log scale"), and the agent rewrites its own code.
+- **Compute on your own infrastructure**: it drafts a plan, asks before reaching new resources, and submits jobs to the lab's HPC cluster over SSH or a Modal account, scaling from one GPU to hundreds. Datasets never leave the lab's own systems, and only the context needed for each step is sent to Claude.
+- **Domain data and models**: connectors to more than 60 scientific databases ([UniProt](https://www.uniprot.org/), [PDB](https://www.rcsb.org/), [Ensembl](https://www.ensembl.org/), [ChEMBL](https://www.ebi.ac.uk/chembl/), and others), plus NVIDIA's [BioNeMo Agent Toolkit](https://developer.nvidia.com/bionemo) for models like [Evo 2](https://arcinstitute.org/tools/evo), [Boltz-2](https://github.com/jwohlwend/boltz), and [OpenFold3](https://openfold.io/).
+- **Early users**: [Manifold Bio](https://www.manifold.bio/) used it to nominate targets for tissue-targeting medicines; a neuroscientist at the [Allen Institute](https://alleninstitute.org/) built a 20-skill template whose sub-agents draft 100-page literature reviews using actor-critic pairs, work that could previously take up to two years; a [UCSF](https://www.ucsf.edu/) epidemiologist ran glioma germline analyses in roughly a tenth of the previous time and independently validated the results. It is in beta for Pro, Max, Team, and Enterprise plans.
+
+## My Notes
+
+- **A horizontal research environment**: the recent multi-agent science systems, [Co-Scientist](/posts/20260606-co-scientist-scientific-discovery/) and [Robin](/posts/20260606-robin-multi-agent-scientific-discovery/), automated a specific discovery loop end to end, down to proposing drug candidates later confirmed in the lab. Claude Science aims elsewhere. It automates the tooling drudgery (database schemas, file formats, cluster jobs, viewers) and leaves the hypothesis-and-test loop to the scientist. Its value is in removing the friction between a question and a runnable analysis.
+
+- **Scientists already stitch this together from separate tools**: Claude Science tries to fold literature reading, analysis, and manuscript writing into one place, but each stage has its own products today.
+  - *Reading and search*: [Elicit](https://elicit.com/), [Consensus](https://consensus.app/), [SciSpace](https://scispace.com/), [Semantic Scholar](https://www.semanticscholar.org/), [Scite](https://scite.ai/), [Connected Papers](https://www.connectedpapers.com/), and [ResearchRabbit](https://www.researchrabbit.ai/), plus general agents like [NotebookLM](https://notebooklm.google.com/), [Perplexity](https://www.perplexity.ai/), and the deep-research modes in ChatGPT and Gemini.
+  - *Hypothesis generation and autonomous discovery*: Google's [Co-Scientist](/posts/20260606-co-scientist-scientific-discovery/), FutureHouse's [Robin](/posts/20260606-robin-multi-agent-scientific-discovery/), [Sakana's AI Scientist](https://sakana.ai/ai-scientist/), and [AutoScientist](/posts/20260606-autoscientist/), most of which are research systems rather than self-serve apps.
+  - *Analysis and compute*: Claude Science, [Microsoft Discovery](https://azure.microsoft.com/en-us/blog/transforming-rd-with-agentic-ai-introducing-microsoft-discovery/) (Azure, enterprise), and code-interpreter tools like ChatGPT's data analysis and [Julius](https://julius.ai/).
+  - *Writing and manuscripts*: [Overleaf](https://www.overleaf.com/) with its [Writefull](https://www.writefull.com/) AI, [Paperpal](https://paperpal.com/), and [Jenni](https://jenni.ai/), which stay separate from the agentic workbenches. Research prototypes are moving into this half too, like [PaperMentor](https://arxiv.org/abs/2606.08857) [[1]](#ref-1)<!-- crosslink-todo: /posts/20260630-papermentor/ -->, a multi-agent writing tutor built on Overleaf.
+
+  Claude Science and Microsoft Discovery are the ones reaching across the analysis stage. The reading and writing ends still belong to focused tools.
+
+- **The reviewer agent is not independent verification.** [Terence Tao splits research into generation, verification, and digestion](/posts/20260422-proof-generation-vs-digestion/), and argues AI is speeding through the first two while digestion lags. Claude Science answers with a reviewer agent that checks citations and calculations, plus a provenance record for the human to digest. Two things make that check weaker than it looks:
+  - **Self-checking by the same model family is weak.** A 2026 position paper on AI-scientist systems finds agents reach [right answers through wrong reasoning and do not reliably self-apply the mechanism checks that would catch it](https://arxiv.org/abs/2606.23175) [[2]](#ref-2)<!-- crosslink-todo: /posts/20260630-correct-answer-wrong-mechanism/ -->, and in multi-turn tests deep-research agents barely improve under [self-reflection, gaining mainly from external process-level feedback](https://arxiv.org/abs/2606.09748) [[3]](#ref-3)<!-- crosslink-todo: /posts/20260630-deep-research-process-feedback/ -->.
+  - **Even as a judge rather than a self-critic, an LLM is an unreliable verifier.** Report-logic evaluation finds [LLM judges are swayed by verbosity and miss broken support](https://arxiv.org/abs/2602.18446) [[4]](#ref-4)<!-- crosslink-todo: /posts/20260630-reportlogic/ -->, and reliable scientific claim-checking [needs evidence grounded in the actual tables and figures rather than a direct yes/no judgment](https://arxiv.org/abs/2606.20873) [[5]](#ref-5)<!-- crosslink-todo: /posts/20260630-scilens/ -->.
+  - **The provenance record is the part a human can actually check.** An agent catching "untraceable numbers" is closer to a second generation pass than to independent verification, so the stored code, environment, and message history is what lets a person re-run and confirm a result.
+
+- **Data and compute stay on lab hardware**: datasets never leave the lab's own systems, and only the per-step context is sent to Claude. That design lets the app work in genomics and clinical settings where the data legally or practically cannot move, a bar the research discovery systems never had to clear.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>Liu, Jiarui, Zhang, Terry Jingchen, et al. "PaperMentor: A Human-Centered Multi-Agent Writing Tutor for AI Research Papers on Overleaf." ACL 2026 (System Demonstrations), arXiv:2606.08857. <https://arxiv.org/abs/2606.08857>
+2. <a id="ref-2"></a>Eulig, Steven Young. "Position: Correct Answer, Wrong Mechanism — When AI Scientists Defend General Claims Their Own Data Contradicts." ICML 2026 (position paper), arXiv:2606.23175. <https://arxiv.org/abs/2606.23175>
+3. <a id="ref-3"></a>Sabharwal, Rishabh, Wang, Hongru, Storkey, Amos, Pan, Jeff Z. "Multi-Turn Evaluation of Deep Research Agents Under Process-Level Feedback." SCALE Workshop @ ICML 2026 (Oral), arXiv:2606.09748. <https://arxiv.org/abs/2606.09748>
+4. <a id="ref-4"></a>Zhao, Jujia, Huan, Zhaoxin, Wang, Zihan, Zhang, Xiaolu, Zhou, Jun, Verberne, Suzan, Ren, Zhaochun. "ReportLogic: Evaluating Logical Quality in Deep Research Reports." ACL 2026 (Main), arXiv:2602.18446. <https://arxiv.org/abs/2602.18446>
+5. <a id="ref-5"></a>Wang, Yueming, Zheng, Tianshi, Bai, Jiaxin, Song, Yangqiu, Wong, Ginny, See, Simon. "SciLens: Multi-modal Scientific Claim Verification with Agentic Entailment and Grounding." KDD 2026 (SciSoc Agents & LLMs Workshop, Oral), arXiv:2606.20873. <https://arxiv.org/abs/2606.20873>
+
+## Related Posts
+
+- [Co-Scientist: Gemini Agents That Generate and Rank Hypotheses](/posts/20260606-co-scientist-scientific-discovery/): a vertical multi-agent system that generates and ranks hypotheses, where Claude Science instead ships a horizontal environment and leaves hypothesis generation to the user.
+- [Robin: A Multi-Agent System That Ran the Whole Discovery Loop](/posts/20260606-robin-multi-agent-scientific-discovery/): ran the full discovery loop to two confirmed drug candidates, the counterpoint to Claude Science's tooling-first scope.
+- [Proof Generation vs Digestion](/posts/20260422-proof-generation-vs-digestion/): Tao's generation, verification, and digestion frame that the reviewer agent and provenance record are trying to answer.
+- [Unlocking Scientific Intuition and Reasoning at Digital Speed](/posts/20260606-scientific-intuition-digital-speed/): Kohli's vision of AI as a scientific instrument, which this product operationalizes for working labs.
+- [AutoScientist: Automating the Science of Model Training](/posts/20260606-autoscientist/): another automation-of-research-work system, automating fine-tuning recipe search rather than the lab bench.
