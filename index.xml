@@ -20,7 +20,132 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Tue, 30 Jun 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Thu, 02 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>When AI Builds Itself</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260702-recursive-self-improvement/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260702-recursive-self-improvement/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260702-recursive-self-improvement/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Code contributed per person, by quarter. Each bar is the average lines of code merged per active contributor, shown as a multiple of the pre-2025 average. By the second quarter of 2026 the typical Anthropic engineer was merging 8× as much as in 2024. Image from <a href="https://www.anthropic.com/institute/recursive-self-improvement">The Anthropic Institute</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://www.anthropic.com/institute">The Anthropic Institute</a> argues that AI is already speeding up the development of AI itself, and lays out what it would mean for systems to reach full recursive self-improvement: designing and training their own successors [1]. The piece, published in June 2026 by <a href="https://www.linkedin.com/in/marina-favaro">Marina Favaro</a> and <a href="https://www.linkedin.com/in/jack-clark-64823b/">Jack Clark</a>, draws on public benchmarks and previously unreported data from inside Anthropic.</p>
+<blockquote class="blockquote">
+<p>Taken far enough, and given enough compute, that trend points to an AI system capable of fully autonomously designing and developing its own successor. This is called recursive self-improvement. We are not there yet, and recursive self-improvement is not inevitable. But it could come sooner than most institutions are prepared for.</p>
+</blockquote>
+<p>The piece splits building a frontier model into two kinds of work, spanning both engineering and research: <strong>execution</strong> (writing code, running experiments, overseeing training) and <strong>judgment</strong> (choosing what to build, which results to trust, and when to abandon an approach). Its case, drawn from public benchmarks and internal Anthropic data, is that execution is nearly automated while judgment is still human, and that the human role narrows at each step.</p>
+<section id="the-public-benchmarks" class="level3">
+<h3 class="anchored" data-anchor-id="the-public-benchmarks">The public benchmarks</h3>
+<ul>
+<li><strong>Task length is doubling every four months</strong>, up from an earlier trend of every seven. This tracks the length of task a model can reliably complete on its own, measured by <a href="https://metr.org/">METR</a> (Model Evaluation and Threat Research) [2]:
+<ul>
+<li>Claude Opus 3 (March 2024): about four-minute tasks.</li>
+<li>Claude Sonnet 3.7 (a year later): roughly 90-minute tasks.</li>
+<li>Claude Opus 4.6 (a year after that): 12-hour tasks. METR clocked Claude Mythos Preview working “at least” 16 hours, the upper end of what it can currently measure.</li>
+<li>Extrapolated: day-long tasks come into range this year, week-long tasks in 2027.</li>
+</ul></li>
+<li><strong>Coding and research benchmarks are saturating:</strong>
+<ul>
+<li>SWE-bench [3], which hands a model a real codebase and bug report and asks for a passing fix, went from low single digits to near-100% in two years.</li>
+<li>CORE-Bench [4], which asks a model to reproduce a published paper’s results from its code and data, went from roughly 20% in 2024 to saturated fifteen months later.</li>
+</ul></li>
+</ul>
+</section>
+<section id="execution-writing-code-and-running-experiments" class="level3">
+<h3 class="anchored" data-anchor-id="execution-writing-code-and-running-experiments">Execution: writing code and running experiments</h3>
+<ul>
+<li><strong>Claude authored more than 80% of the code</strong> merged into Anthropic’s codebase as of May 2026, up from low single digits before Claude Code launched in research preview in February 2025. By the second quarter of 2026 the typical engineer was merging <strong>8× as much code per day</strong> as in 2024 (the cover chart), a lines-of-code measure the piece itself flags as quantity over quality that “almost certainly” overstates the true gain. Output per engineer was flat across 2021–2024, then inflected twice: in 2025, once Claude began running code rather than just suggesting it, and again in 2026, once models started working autonomously over longer horizons.</li>
+<li><strong>The code increasingly works, and is getting readable.</strong>
+<ul>
+<li>It works: the rate at which staff correct, redirect, or take over mid-task has fallen steadily for a year, and on the hardest, most open-ended tasks Claude’s success rate hit 76% in May 2026, up about 50 points in six months.</li>
+<li>It’s readable: asked whether another engineer can build on it, many staff put Claude below human-written code in late 2025 and roughly at parity now.</li>
+<li>It gets reviewed: Anthropic now runs an automated Claude reviewer on every change, and a retrospective found it would have caught about a third of the bugs behind past claude.ai incidents before they shipped.</li>
+<li>It takes on work humans would skip: in April 2026 Claude shipped more than 800 fixes that cut a class of API errors a thousandfold, work the overseeing engineer estimated would have taken a person four years.</li>
+</ul></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260702-recursive-self-improvement/fig-success-rate.webp" class="img-fluid figure-img" data-lightbox-src="fig-success-rate-full.png"></p>
+<figcaption>Claude’s success rate on internal Claude Code sessions, split by task difficulty (weekly, four-week trailing mean, LLM-judged). On the most open-ended problems it reached 76% in May 2026, up roughly 50 points in six months. Image from <a href="https://www.anthropic.com/institute/recursive-self-improvement">The Anthropic Institute</a>.</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>On well-specified experiments Claude is now superhuman, and only catching up on open-ended ones.</strong>
+<ul>
+<li>Kernel optimization, a fixed task rerun every release (make training code run as fast as possible while still passing the same checks): Claude Opus 4 averaged a ~3× speedup in May 2025, and Claude Mythos Preview reached ~52× by April 2026, against ~4× for a skilled human given four to eight hours.</li>
+<li>Weak-to-strong supervision, an open-ended AI-safety problem (can a weaker model reliably supervise a stronger one? [5]): agents recovered 97% of the gap between floor and ceiling over 800 cumulative hours and about $18,000 of compute, against 23% for two human researchers in a week. Caveats: the result didn’t transfer cleanly to production-scale models, and humans still chose the problem and wrote the scoring rubric.</li>
+</ul></li>
+</ul>
+</section>
+<section id="judgment-choosing-what-to-do-next" class="level3">
+<h3 class="anchored" data-anchor-id="judgment-choosing-what-to-do-next">Judgment: choosing what to do next</h3>
+<ul>
+<li><strong>The one direct probe of judgment shows movement, on a stacked test.</strong> Anthropic took 129 real research sessions, each cut at a moment where the human’s next step had room to improve, showed a model only the work up to that point, and had a separate model (one that could see how the session eventually turned out) judge whether the human or the model proposed the better next step. Because the moments were selected where the human erred, this is explicitly <em>not</em> a like-for-like comparison. The share where the model’s suggestion beat the human’s:
+<ul>
+<li>Claude Haiku 3 (March 2024): 22%</li>
+<li>Claude Opus 4.5 (November 2025): 51%</li>
+<li>Claude Mythos Preview (April 2026): 64%, against a 90% “practical ceiling.”</li>
+</ul></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260702-recursive-self-improvement/fig-research-judgment.webp" class="img-fluid figure-img" data-lightbox-src="fig-research-judgment-full.png"></p>
+<figcaption>On 129 research sessions cut where the human’s next step had room to improve, how often a Claude model’s proposed step beat the human’s, judged by a model that saw how the session turned out. The win rate rose from 22% (Haiku 3) to 64% (Mythos Preview), short of a 90% practical ceiling. The moments were chosen where the human erred, so this is not a like-for-like comparison. Image from <a href="https://www.anthropic.com/institute/recursive-self-improvement">The Anthropic Institute</a>.</figcaption>
+</figure>
+</div>
+<p>The piece anticipates the obvious objection, that judgment is the part that matters most. Its answer runs two ways. Even if AI never develops research taste, humans concentrating on the small fraction of work that is direction-setting would still let each person steer far more work than before. And taste itself, the authors suggest, may just be another capability that models fail at for a while and then master.</p>
+</section>
+<section id="three-possible-futures" class="level3">
+<h3 class="anchored" data-anchor-id="three-possible-futures">Three possible futures</h3>
+<p>The piece sketches three scenarios for what happens if the trend continues, and says where it thinks we are headed:</p>
+<ul>
+<li><strong>The trend stalls.</strong> The exponentials turn out to be S-curves: judgment may be a capability that scaling can’t buy, or the binding constraint moves to the supply chain (energy, chips, grid, interconnect), or an exogenous shock cuts the supply of compute or power. Even with capabilities frozen, diffusion alone changes a lot. Project Glasswing found more than ten thousand high- and critical-severity vulnerabilities in its first weeks, shifting the cyber-defense bottleneck from finding flaws to patching them fast enough. The authors call this the least likely of the three, since no measured capability curve has bent yet, though the one that would leave the most time to adapt.</li>
+<li><strong>Automated execution, humans still steering.</strong> AI development becomes substantially automated while humans keep setting directions and judging results, and 100-person companies do the work of 10,000 or 100,000. That would reshape knowledge work and government services, but could also power authoritarian surveillance and individually tailored influence operations. The authors think the evidence points here, but note that by Amdahl’s law speeding up one part just shifts the bottleneck, and Anthropic says human code review has already become the new one.</li>
+<li><strong>Full recursive self-improvement.</strong> AI systems become able to design and train their own successors, pace set by compute and algorithmic efficiency, humans reduced to oversight and verification of an expanding “virtual lab” whose skills spill into the rest of science. Alignment is what the authors are least certain about: models could be aligned and capable enough to find solutions humans haven’t, or rare misalignments could accumulate as models build their successors until control is lost.</li>
+</ul>
+</section>
+<section id="what-the-piece-proposes" class="level3">
+<h3 class="anchored" data-anchor-id="what-the-piece-proposes">What the piece proposes</h3>
+<p>Its one prescriptive ask: build the infrastructure for a <strong>credible, verifiable slowdown</strong> that multiple frontier labs across countries could trigger together and confirm, with Anthropic saying it would slow or pause if others verifiably did the same. The piece is candid that this is unsolved and harder than past arms control: training runs are easier to hide than missile silos, the inputs are general-purpose, and whoever keeps going while others pause inherits the lead. A unilateral pause by one lab is available immediately but achieves little: it changes who leads without building the missing deliberative process.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Favaro, M. and Clark, J. “When AI Builds Itself.” The Anthropic Institute, June 2026. <a href="https://www.anthropic.com/institute/recursive-self-improvement" class="uri">https://www.anthropic.com/institute/recursive-self-improvement</a></li>
+<li><a id="ref-2"></a>METR. “Time Horizons of AI Agents.” <a href="https://metr.org/time-horizons/" class="uri">https://metr.org/time-horizons/</a></li>
+<li><a id="ref-3"></a>Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., and Narasimhan, K. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2310.06770. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></li>
+<li><a id="ref-4"></a>Siegel, Z. S., Kapoor, S., Nadgir, N., Stroebl, B., and Narayanan, A. “CORE-Bench: Fostering the Credibility of Published Research Through a Computational Reproducibility Agent Benchmark.” <em>arXiv preprint</em> (arXiv:2409.11363), September 2024. <a href="https://arxiv.org/abs/2409.11363" class="uri">https://arxiv.org/abs/2409.11363</a></li>
+<li><a id="ref-5"></a>Anthropic. “Automated Weak-to-Strong Researcher.” Alignment Science blog, April 2026. <a href="https://alignment.anthropic.com/2026/automated-w2s-researcher/" class="uri">https://alignment.anthropic.com/2026/automated-w2s-researcher/</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260508-import-ai-455-automating-ai-research/">Are AI Systems About to Start Building Themselves?</a>: Jack Clark’s Import AI made the same case from the outside a month earlier. This piece supplies the internal data behind it.</li>
+<li><a href="../../posts/20260516-anthropic-institute-agenda/">The Anthropic Institute’s Research Agenda</a>: the agenda this piece executes, turning the Institute’s stated priorities into a concrete claim about recursive self-improvement.</li>
+<li><a href="../../posts/20260526-recursive-superintelligence-launch/">Recursive Superintelligence’s $4B Bet on Self-Improving AI</a>: a lab built entirely around the bet this piece treats as a possible future rather than a present capability.</li>
+<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: the same acceleration trend pushed to a near-term forecast, and the case against taking the exponentials at face value.</li>
+<li><a href="../../posts/20260603-superintelligence/">Superintelligence: The Idea That Eats Smart People</a>: the skeptic’s view that runaway self-improvement is one of several premises that do not hold up, a counterweight to the inevitability framing.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260702-recursive-self-improvement/</guid>
+  <pubDate>Thu, 02 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260702-recursive-self-improvement/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Claude Science, an AI Workbench for Scientists</title>
   <dc:creator>synesis </dc:creator>
@@ -1852,207 +1977,6 @@
   <guid>https://benjaminhan.net/posts/20260624-conformal-thinking/</guid>
   <pubDate>Wed, 24 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260624-conformal-thinking/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Dive into Claude Code: The Design Space of Today’s and Future AI Agent Systems</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260623-claude-code-design-space/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260623-claude-code-design-space/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-claude-code-design-space/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>High-level structure of Claude Code: a user prompt enters through the interfaces, the agent loop calls the model and proposes actions, the permission system allows, asks, or denies each one, tools run against the execution environment (files, shell, web, MCP), and state is loaded and persisted around the loop. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Dive into Claude Code: The Design Space of Today’s and Future AI Agent Systems</em> [1] (arXiv preprint, April 2026), <a href="https://dblp.org/pid/349/5248.html">Jiacheng Liu</a>, <a href="https://dblp.org/pid/75/781.html">Xiaohan Zhao</a>, <a href="https://dblp.org/pid/300/0145.html">Xinyi Shang</a>, and <a href="https://dblp.org/pid/149/5273.html">Zhiqiang Shen</a> (MBZUAI + UCL) reverse-engineer the published TypeScript of <a href="https://claude.com/claude-code">Claude Code</a> and trace its architecture from five stated values down to specific source files.</p>
-<blockquote class="blockquote">
-<p>Claude Code is an agentic coding tool that can run shell commands, edit files, and call external services on behalf of the user. This study describes its comprehensive architecture by analyzing the publicly available TypeScript source code and further comparing it with OpenClaw, an independent open-source AI agent system that answers many of the same design questions from a different deployment context. Our analysis identifies five human values, philosophies, and needs that motivate the architecture (human decision authority, safety and security, reliable execution, capability amplification, and contextual adaptability) and traces them through thirteen design principles to specific implementation choices. The core of the system is <em>a simple while-loop that calls the model, runs tools, and repeats</em>. Most of the code, however, lives in the systems around this loop: <em>a permission system with seven modes and an ML-based classifier</em>, <em>a five-layer compaction pipeline for context management</em>, <em>four extensibility mechanisms</em> (MCP, plugins, skills, and hooks), <em>a subagent delegation mechanism with worktree isolation</em>, and <em>append-oriented session storage</em>. A comparison with OpenClaw, a multi-channel personal assistant gateway, shows that the same recurring design questions produce different architectural answers when the deployment context changes: from per-action safety classification to perimeter-level access control, from a single CLI loop to an embedded runtime within a gateway control plane, and from context-window extensions to gateway-wide capability registration. We finally identify <em>six open design directions for future agent systems</em>, grounded in recent empirical, architectural, and policy literature.</p>
-</blockquote>
-<section id="how-the-paper-reads-the-code" class="level2">
-<h2 class="anchored" data-anchor-id="how-the-paper-reads-the-code">How the paper reads the code</h2>
-<p>The paper is a source-level reverse-engineering, not an empirical study. The authors extract the TypeScript of Claude Code v2.1.88 from its published npm package, read it directly, and compare it against OpenClaw, an open-source multi-channel assistant that answers the same design questions in a different deployment context. To keep an analysis of closed, minified code honest, every claim is tagged with one of three evidence tiers:</p>
-<ul>
-<li><strong>Tier A (product-documented)</strong>: drawn from Anthropic’s official documentation and engineering posts.</li>
-<li><strong>Tier B (code-verified)</strong>: tied to specific files and functions in the extracted v2.1.88 source. The paper treats this as its strongest tier.</li>
-<li><strong>Tier C (reconstructed)</strong>: inferred from code patterns, community analysis, or the OpenClaw comparison, and explicitly marked as inference.</li>
-</ul>
-<p>The analysis is built around a few recurring design questions put to any agent system: where reasoning lives, how many execution engines run, what the default safety posture is, and what the binding resource constraint is. Claude Code’s answers are traced through source files, then organized into a chain from values to principles to implementation.</p>
-</section>
-<section id="five-values-thirteen-principles" class="level2">
-<h2 class="anchored" data-anchor-id="five-values-thirteen-principles">Five values, thirteen principles</h2>
-<p>The paper reads five human values as motivating the architecture: human decision authority, safety and security, reliable execution, capability amplification, and contextual adaptability. Those values are traced through thirteen design principles to concrete code. Table 1 lists the thirteen, the values each serves, and the design-space question each answers.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-claude-code-design-space/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
-<figcaption>Design principles, the values they serve, and the design-space question each answers. Table 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>A sixth concern is kept separate from the five, used as an evaluative lens rather than a design driver: whether the architecture preserves long-term human capability. The authors note this is not prominent in Anthropic’s stated values, but flag it because the evidence is real. They cite a “paradox of supervision,” where over-reliance on the agent erodes the skills needed to supervise it, and a study finding developers in AI-assisted conditions score 17% lower on comprehension tests.</p>
-</section>
-<section id="seven-components-five-layers" class="level2">
-<h2 class="anchored" data-anchor-id="seven-components-five-layers">Seven components, five layers</h2>
-<p>The architecture is deliberately lopsided. Figure 1 (the cover) gives the high-level shape: seven functional components (the user, the interfaces, the agent loop, the permission system, the tools, state and persistence, and the execution environment), with every entry point feeding into one agent loop at the center. The reasoning lives entirely in the model, reached through that single loop, so the loop itself is close to trivial: call the model, run any tools it requests, feed the results back, repeat until it stops asking for tools. Almost all of the code is in the systems wrapped around the loop, which the paper sorts into five layers:</p>
-<ul>
-<li><strong>Surface layer</strong>: entry points (the interactive and headless CLIs, the Agent SDK, IDE and browser front-ends) and rendering.</li>
-<li><strong>Core layer</strong>: the agent loop and the compaction pipeline.</li>
-<li><strong>Safety/action layer</strong>: the permission system and its auto-mode classifier, the hook pipeline, extensibility, built-in and MCP tools, the shell sandbox, and subagent spawning.</li>
-<li><strong>State layer</strong>: context assembly, runtime state, session persistence, the CLAUDE.md and memory hierarchy, and sidechain transcripts.</li>
-<li><strong>Backend layer</strong>: execution backends and external resources.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-claude-code-design-space/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
-<figcaption>The five-layer decomposition of Claude Code’s architecture. Figure 3 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="one-turn-through-the-loop" class="level2">
-<h2 class="anchored" data-anchor-id="one-turn-through-the-loop">One turn through the loop</h2>
-<p>A single turn is a fixed pipeline in <code>query.ts</code>, written as an async generator so output streams to the interface while control flow stays single-threaded. The prompt enters through context assembly, the model is called, each tool request passes the permission gate (allow, ask, or deny, with deny feedback looped back to the model), results return, and the loop repeats until a turn produces no tool use and the assistant replies. The paper fills in the mechanics:</p>
-<ul>
-<li><strong>Tool dispatch</strong> is concurrent-read, serial-write: read-only calls run in parallel as they stream in, state-modifying calls like shell commands are serialized, and results are buffered and returned in the order the model requested them. If one Bash call errors, a sibling abort controller kills the other in-flight subprocesses.</li>
-<li><strong>Five context shapers</strong> run in sequence before every model call, cheapest first: budget reduction (caps oversized tool results), snip (trims old history), microcompact (fine-grained, cache-aware compression), context collapse (a read-time projection that hides summarized history without deleting it), and auto-compact (a full model-generated summary, fired only if the context still exceeds the pressure threshold after the other four).</li>
-<li><strong>Recovery</strong> is layered too: escalate the output-token cap up to three times a turn, reactive compaction near capacity, prompt-too-long handling that tries overflow recovery before giving up, a streaming fallback, and a fallback model.</li>
-<li><strong>Stop conditions</strong>: a turn ends on text with no tool use (the normal case), a max-turns limit, context overflow, a PostToolUse hook halting continuation, or an explicit abort.</li>
-</ul>
-<p>The loop is reactive, in the ReAct style: each turn runs one action sequence with no backtracking, trading search completeness for simplicity and latency.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-claude-code-design-space/figure2.png" class="img-fluid figure-img"></p>
-<figcaption>One agentic turn end to end, from user prompt through context assembly, the model call, the permission gate, and compaction, to the assistant response. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="permission-and-safety" class="level2">
-<h2 class="anchored" data-anchor-id="permission-and-safety">Permission and safety</h2>
-<p>Every tool call passes a permission gate before it runs. The default posture is deny-first with human escalation: deny rules override ask rules override allow rules, and an unrecognized action is escalated to the user rather than run silently. Seven permission modes span a graduated autonomy spectrum from <code>plan</code> (approve every plan first) through <code>default</code> and <code>acceptEdits</code> to <code>bypassPermissions</code>. The authorization pipeline runs pre-filtering, a PreToolUse hook, rule evaluation, then the permission handler, and an auto-mode machine-learning classifier adds a two-stage fast filter plus a chain-of-thought safety judgment on each call. Shell commands run in a sandbox. Because reasoning and enforcement sit on separate code paths, a compromised or adversarially manipulated model cannot override the sandbox, the permission checks, or the deny-first rules in the harness.</p>
-</section>
-<section id="four-ways-to-extend-the-loop" class="level2">
-<h2 class="anchored" data-anchor-id="four-ways-to-extend-the-loop">Four ways to extend the loop</h2>
-<p>The four extension mechanisms attach at different points of the loop and cost different amounts of context:</p>
-<ul>
-<li><strong>Hooks</strong>: intercept the tool lifecycle (zero context cost).</li>
-<li><strong>Skills</strong>: inject domain instructions (low cost).</li>
-<li><strong>Plugins</strong>: bundle components for distribution (medium cost).</li>
-<li><strong>MCP</strong> (<a href="https://modelcontextprotocol.io">Model Context Protocol</a>): connect external tool servers (high cost).</li>
-</ul>
-<p>The paper’s reading is that no single mechanism can span the range from a zero-context lifecycle hook to a schema-heavy tool server without forcing trade-offs on extension authors. The graduated cost ordering lets cheap extensions scale widely while the expensive ones are reserved for cases that genuinely need new tools.</p>
-</section>
-<section id="context-and-memory" class="level2">
-<h2 class="anchored" data-anchor-id="context-and-memory">Context and memory</h2>
-<p>The context window (200K tokens on older models, 1M on the Claude 4.6 series) is named as the binding constraint, and the memory design is built around it. Figure 6 lays out the sources that converge on the window, grouped into six layers and ordered by how mutable each is and when it loads.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-claude-code-design-space/figure6.webp" class="img-fluid figure-img" data-lightbox-src="figure6-full.png"></p>
-<figcaption>Context construction and the memory hierarchy: sources converging on the context window, by mutability and load time. Figure 6 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>The layers run from a read-only system layer (system prompt, environment info, output styles, MCP tool names) loaded at startup, through hot-reloading project config (the five-level CLAUDE.md hierarchy and path-scoped rules), a memory layer (auto memory and the compact summary that replaces long history), the conversation itself (history and subagent summaries), runtime state appended during the turn (file reads, command outputs, tool results), and a lazy on-demand layer (deferred tool definitions pulled in via ToolSearch only when needed). The window is therefore not fixed at assembly time but grows as the turn runs.</p>
-<p>The compaction pipeline has five layers because no single strategy covers every kind of context pressure. Budget reduction targets individual oversized tool outputs, snip handles temporal depth, microcompact reacts to cache overhead, context collapse manages very long histories, and auto-compact does semantic compression as a last resort. Each layer operates at a different cost-benefit point, and the cheaper ones run first.</p>
-</section>
-<section id="subagents-and-session-storage" class="level2">
-<h2 class="anchored" data-anchor-id="subagents-and-session-storage">Subagents and session storage</h2>
-<p>A subagent is spawned through the same tool factory as everything else, re-entering the query loop with its own isolated context window and permission scope, optionally inside a git worktree. Only its final response text returns to the parent. The full subagent history never enters the parent’s window, which keeps the parent’s context cheap.</p>
-<p>Session storage is append-only (history, sidechains, checkpoints), favoring auditability over query power. Resume and fork restore messages but deliberately not session-scoped permissions, so a resumed session does not silently inherit trust the user granted earlier.</p>
-</section>
-<section id="claude-code-versus-openclaw" class="level2">
-<h2 class="anchored" data-anchor-id="claude-code-versus-openclaw">Claude Code versus OpenClaw</h2>
-<p>The OpenClaw contrast is the part that generalizes. OpenClaw is a local-first WebSocket gateway daemon that connects roughly two dozen messaging channels (WhatsApp, Telegram, Slack, Discord, Signal, and others) to an embedded agent runtime. Where Claude Code is an ephemeral per-session CLI coding harness bound to one repository, OpenClaw is a persistent control plane for multi-channel personal assistance. Posed the same six design questions, it answers them differently because its deployment context differs. Table 3 lines them up:</p>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Dimension</th>
-<th>Claude Code</th>
-<th>OpenClaw</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>System scope</td>
-<td>CLI/IDE coding harness; ephemeral per-session process</td>
-<td>Persistent WebSocket gateway daemon; multi-channel control plane</td>
-</tr>
-<tr class="even">
-<td>Trust model</td>
-<td>Deny-first per-action rule evaluation with hooks and an optional ML classifier; seven permission modes; graduated trust spectrum</td>
-<td>Single trusted operator per gateway; DM pairing and allowlists for inbound channels; opt-in sandboxing with configurable scope and multiple backends</td>
-</tr>
-<tr class="odd">
-<td>Agent runtime</td>
-<td>Iterative async generator (<code>queryLoop()</code>) as the system center</td>
-<td>Agent runner embedded inside the gateway’s RPC dispatch; per-session queue serialization</td>
-</tr>
-<tr class="even">
-<td>Extension architecture</td>
-<td>Four mechanisms at graduated context costs: MCP, plugins, skills, hooks</td>
-<td>Manifest-first plugin system with twelve capability types and a central registry; separate skills layer; built-in MCP</td>
-</tr>
-<tr class="odd">
-<td>Memory and context</td>
-<td>CLAUDE.md four-level hierarchy; five-layer compaction pipeline; LLM-based memory scan</td>
-<td>Workspace bootstrap files; a separate memory system (daily notes, optional “dreaming” for long-term promotion); auto-compaction with pluggable providers; optional hybrid vector + keyword search</td>
-</tr>
-<tr class="even">
-<td>Multi-agent and routing</td>
-<td>Task-delegating subagents (Explore, Plan, general-purpose); worktree isolation; only the final response returns to the parent</td>
-<td>Multi-agent routing with isolated agents and channel dispatch, plus sub-agent delegation with configurable nesting depth</td>
-</tr>
-</tbody>
-</table>
-<p>The trust boundary is in different places. Claude Code puts it between the model and the execution environment, while OpenClaw puts it at the gateway perimeter, assuming a single trusted operator and explicitly not supporting hostile multi-tenant isolation. Claude Code’s extensions change what one agent can do, while OpenClaw’s plugins add capabilities across every agent on the gateway. The two are not purely alternatives: OpenClaw can host Claude Code (and OpenAI Codex, and Gemini CLI) as an external coding harness through its Agent Client Protocol integration, so they stack.</p>
-</section>
-<section id="what-the-analysis-concludes" class="level2">
-<h2 class="anchored" data-anchor-id="what-the-analysis-concludes">What the analysis concludes</h2>
-<p>The discussion reads the architecture as a set of consistent choices rather than a grab-bag:</p>
-<ul>
-<li><strong>Minimal scaffolding, rich harness</strong>: the system invests in deterministic infrastructure (context management, tool routing, recovery) instead of decision scaffolding like explicit planners or state graphs, on the premise that a more capable model gains more from a rich operating environment than from a framework that constrains its choices.</li>
-<li><strong>Graduated layering over single switches</strong>: permission modes, compaction layers, and extension points are all spectrums rather than one-shot mechanisms.</li>
-<li><strong>Append-only over queryable</strong>: state favors an auditable log over a mutable store that would be easier to query.</li>
-<li><strong>Model judgment inside a deterministic harness</strong>: probabilistic guidance (CLAUDE.md) is kept on a separate code path from deterministic enforcement (permission rules).</li>
-<li><strong>A trust trajectory, not a fixed state</strong>: autonomy is “co-constructed” over time, with auto-approve rates rising from about 20% under 50 sessions to over 40% by 750, so the design targets a relationship that loosens as trust builds.</li>
-<li><strong>What it deliberately does not do</strong>: no planning graph imposed on the model, no single unified extension mechanism, and no full restore of session-scoped trust state on resume.</li>
-</ul>
-<p>The paper also names four standing tensions it does not claim to resolve: safety versus autonomy, the permission model under adversarial conditions, context efficiency versus transparency, and simplicity versus extensibility.</p>
-</section>
-<section id="six-open-directions" class="level2">
-<h2 class="anchored" data-anchor-id="six-open-directions">Six open directions</h2>
-<p>The paper closes with six open directions for future agent systems: the observability and silent-failure gap, cross-session persistence and longer-term memory, evolution of the harness boundary (where, when, and what the agent acts on), horizon scaling from a single session to a longer program of work, governance and oversight at scale, and a long-term-human-capability lens for judging these systems.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://dblp.org/pid/349/5248.html">Liu, Jiacheng</a>, <a href="https://dblp.org/pid/75/781.html">Zhao, Xiaohan</a>, <a href="https://dblp.org/pid/300/0145.html">Shang, Xinyi</a>, <a href="https://dblp.org/pid/149/5273.html">Shen, Zhiqiang</a>. “Dive into Claude Code: The Design Space of Today’s and Future AI Agent Systems.” <em>arXiv preprint</em> (arXiv:2604.14228), April 14, 2026. <a href="https://arxiv.org/abs/2604.14228" class="uri">https://arxiv.org/abs/2604.14228</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260414-api-mcp-tool-skill/">APIs, Tools, Skills, and Where MCP Fits</a>: an earlier take on the same extensibility taxonomy this paper formalizes, drawing the MCP boundary differently.</li>
-<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the outside-the-tool measurement of the context cost that the paper’s compaction pipeline is built to manage.</li>
-<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: a real instance of the single-destructive-call failure mode the per-action permission gate is meant to catch.</li>
-<li><a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex AI Escapes Sandbox and Executes Malware</a>: another agent-safety boundary failure, a counterpoint to the deny-first “untrusted model on a trusted machine” posture.</li>
-<li><a href="../../posts/20250725-anthropic-claude-code-teams/">How Anthropic Teams Use Claude Code</a>: an earlier look at Claude Code as a product, against this source-level architectural read.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260623-claude-code-design-space/</guid>
-  <pubDate>Tue, 23 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260623-claude-code-design-space/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -1,0 +1,82 @@
+---
+title: "When AI Builds Itself"
+description: "The Anthropic Institute argues AI is already speeding up its own development, and maps what full recursive self-improvement would mean."
+author: synesis
+date: "2026-07-02"
+image: cover.jpg
+---
+
+![Code contributed per person, by quarter. Each bar is the average lines of code merged per active contributor, shown as a multiple of the pre-2025 average. By the second quarter of 2026 the typical Anthropic engineer was merging 8× as much as in 2024. Image from [The Anthropic Institute](https://www.anthropic.com/institute/recursive-self-improvement).](cover.jpg){fig-align="center"}
+
+[The Anthropic Institute](https://www.anthropic.com/institute) argues that AI is already speeding up the development of AI itself, and lays out what it would mean for systems to reach full recursive self-improvement: designing and training their own successors [[1]](#ref-1). The piece, published in June 2026 by [Marina Favaro](https://www.linkedin.com/in/marina-favaro) and [Jack Clark](https://www.linkedin.com/in/jack-clark-64823b/), draws on public benchmarks and previously unreported data from inside Anthropic.
+
+> Taken far enough, and given enough compute, that trend points to an AI system capable of fully autonomously designing and developing its own successor. This is called recursive self-improvement. We are not there yet, and recursive self-improvement is not inevitable. But it could come sooner than most institutions are prepared for.
+
+The piece splits building a frontier model into two kinds of work, spanning both engineering and research: **execution** (writing code, running experiments, overseeing training) and **judgment** (choosing what to build, which results to trust, and when to abandon an approach). Its case, drawn from public benchmarks and internal Anthropic data, is that execution is nearly automated while judgment is still human, and that the human role narrows at each step.
+
+### The public benchmarks
+
+- **Task length is doubling every four months**, up from an earlier trend of every seven. This tracks the length of task a model can reliably complete on its own, measured by [METR](https://metr.org/) (Model Evaluation and Threat Research) [[2]](#ref-2):
+  - Claude Opus 3 (March 2024): about four-minute tasks.
+  - Claude Sonnet 3.7 (a year later): roughly 90-minute tasks.
+  - Claude Opus 4.6 (a year after that): 12-hour tasks. METR clocked Claude Mythos Preview working "at least" 16 hours, the upper end of what it can currently measure.
+  - Extrapolated: day-long tasks come into range this year, week-long tasks in 2027.
+- **Coding and research benchmarks are saturating:**
+  - SWE-bench [[3]](#ref-3), which hands a model a real codebase and bug report and asks for a passing fix, went from low single digits to near-100% in two years.
+  - CORE-Bench [[4]](#ref-4), which asks a model to reproduce a published paper's results from its code and data, went from roughly 20% in 2024 to saturated fifteen months later.
+
+### Execution: writing code and running experiments
+
+- **Claude authored more than 80% of the code** merged into Anthropic's codebase as of May 2026, up from low single digits before Claude Code launched in research preview in February 2025. By the second quarter of 2026 the typical engineer was merging **8× as much code per day** as in 2024 (the cover chart), a lines-of-code measure the piece itself flags as quantity over quality that "almost certainly" overstates the true gain. Output per engineer was flat across 2021–2024, then inflected twice: in 2025, once Claude began running code rather than just suggesting it, and again in 2026, once models started working autonomously over longer horizons.
+- **The code increasingly works, and is getting readable.**
+  - It works: the rate at which staff correct, redirect, or take over mid-task has fallen steadily for a year, and on the hardest, most open-ended tasks Claude's success rate hit 76% in May 2026, up about 50 points in six months.
+  - It's readable: asked whether another engineer can build on it, many staff put Claude below human-written code in late 2025 and roughly at parity now.
+  - It gets reviewed: Anthropic now runs an automated Claude reviewer on every change, and a retrospective found it would have caught about a third of the bugs behind past claude.ai incidents before they shipped.
+  - It takes on work humans would skip: in April 2026 Claude shipped more than 800 fixes that cut a class of API errors a thousandfold, work the overseeing engineer estimated would have taken a person four years.
+
+![Claude's success rate on internal Claude Code sessions, split by task difficulty (weekly, four-week trailing mean, LLM-judged). On the most open-ended problems it reached 76% in May 2026, up roughly 50 points in six months. Image from [The Anthropic Institute](https://www.anthropic.com/institute/recursive-self-improvement).](fig-success-rate.webp){fig-align="center" data-lightbox-src="fig-success-rate-full.png"}
+
+- **On well-specified experiments Claude is now superhuman, and only catching up on open-ended ones.**
+  - Kernel optimization, a fixed task rerun every release (make training code run as fast as possible while still passing the same checks): Claude Opus 4 averaged a ~3× speedup in May 2025, and Claude Mythos Preview reached ~52× by April 2026, against ~4× for a skilled human given four to eight hours.
+  - Weak-to-strong supervision, an open-ended AI-safety problem (can a weaker model reliably supervise a stronger one? [[5]](#ref-5)): agents recovered 97% of the gap between floor and ceiling over 800 cumulative hours and about $18,000 of compute, against 23% for two human researchers in a week. Caveats: the result didn't transfer cleanly to production-scale models, and humans still chose the problem and wrote the scoring rubric.
+
+### Judgment: choosing what to do next
+
+- **The one direct probe of judgment shows movement, on a stacked test.** Anthropic took 129 real research sessions, each cut at a moment where the human's next step had room to improve, showed a model only the work up to that point, and had a separate model (one that could see how the session eventually turned out) judge whether the human or the model proposed the better next step. Because the moments were selected where the human erred, this is explicitly *not* a like-for-like comparison. The share where the model's suggestion beat the human's:
+  - Claude Haiku 3 (March 2024): 22%
+  - Claude Opus 4.5 (November 2025): 51%
+  - Claude Mythos Preview (April 2026): 64%, against a 90% "practical ceiling."
+
+![On 129 research sessions cut where the human's next step had room to improve, how often a Claude model's proposed step beat the human's, judged by a model that saw how the session turned out. The win rate rose from 22% (Haiku 3) to 64% (Mythos Preview), short of a 90% practical ceiling. The moments were chosen where the human erred, so this is not a like-for-like comparison. Image from [The Anthropic Institute](https://www.anthropic.com/institute/recursive-self-improvement).](fig-research-judgment.webp){fig-align="center" data-lightbox-src="fig-research-judgment-full.png"}
+
+The piece anticipates the obvious objection, that judgment is the part that matters most. Its answer runs two ways. Even if AI never develops research taste, humans concentrating on the small fraction of work that is direction-setting would still let each person steer far more work than before. And taste itself, the authors suggest, may just be another capability that models fail at for a while and then master.
+
+### Three possible futures
+
+The piece sketches three scenarios for what happens if the trend continues, and says where it thinks we are headed:
+
+- **The trend stalls.** The exponentials turn out to be S-curves: judgment may be a capability that scaling can't buy, or the binding constraint moves to the supply chain (energy, chips, grid, interconnect), or an exogenous shock cuts the supply of compute or power. Even with capabilities frozen, diffusion alone changes a lot. Project Glasswing found more than ten thousand high- and critical-severity vulnerabilities in its first weeks, shifting the cyber-defense bottleneck from finding flaws to patching them fast enough. The authors call this the least likely of the three, since no measured capability curve has bent yet, though the one that would leave the most time to adapt.
+- **Automated execution, humans still steering.** AI development becomes substantially automated while humans keep setting directions and judging results, and 100-person companies do the work of 10,000 or 100,000. That would reshape knowledge work and government services, but could also power authoritarian surveillance and individually tailored influence operations. The authors think the evidence points here, but note that by Amdahl's law speeding up one part just shifts the bottleneck, and Anthropic says human code review has already become the new one.
+- **Full recursive self-improvement.** AI systems become able to design and train their own successors, pace set by compute and algorithmic efficiency, humans reduced to oversight and verification of an expanding "virtual lab" whose skills spill into the rest of science. Alignment is what the authors are least certain about: models could be aligned and capable enough to find solutions humans haven't, or rare misalignments could accumulate as models build their successors until control is lost.
+
+### What the piece proposes
+
+Its one prescriptive ask: build the infrastructure for a **credible, verifiable slowdown** that multiple frontier labs across countries could trigger together and confirm, with Anthropic saying it would slow or pause if others verifiably did the same. The piece is candid that this is unsolved and harder than past arms control: training runs are easier to hide than missile silos, the inputs are general-purpose, and whoever keeps going while others pause inherits the lead. A unilateral pause by one lab is available immediately but achieves little: it changes who leads without building the missing deliberative process.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>Favaro, M. and Clark, J. "When AI Builds Itself." The Anthropic Institute, June 2026. <https://www.anthropic.com/institute/recursive-self-improvement>
+2. <a id="ref-2"></a>METR. "Time Horizons of AI Agents." <https://metr.org/time-horizons/>
+3. <a id="ref-3"></a>Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., and Narasimhan, K. "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?" *International Conference on Learning Representations (ICLR)*, 2024. arXiv:2310.06770. <https://arxiv.org/abs/2310.06770>
+4. <a id="ref-4"></a>Siegel, Z. S., Kapoor, S., Nadgir, N., Stroebl, B., and Narayanan, A. "CORE-Bench: Fostering the Credibility of Published Research Through a Computational Reproducibility Agent Benchmark." *arXiv preprint* (arXiv:2409.11363), September 2024. <https://arxiv.org/abs/2409.11363>
+5. <a id="ref-5"></a>Anthropic. "Automated Weak-to-Strong Researcher." Alignment Science blog, April 2026. <https://alignment.anthropic.com/2026/automated-w2s-researcher/>
+
+## Related Posts
+
+- [Are AI Systems About to Start Building Themselves?](/posts/20260508-import-ai-455-automating-ai-research/): Jack Clark's Import AI made the same case from the outside a month earlier. This piece supplies the internal data behind it.
+- [The Anthropic Institute's Research Agenda](/posts/20260516-anthropic-institute-agenda/): the agenda this piece executes, turning the Institute's stated priorities into a concrete claim about recursive self-improvement.
+- [Recursive Superintelligence's $4B Bet on Self-Improving AI](/posts/20260526-recursive-superintelligence-launch/): a lab built entirely around the bet this piece treats as a possible future rather than a present capability.
+- [The 2028 Global Intelligence Crisis: Scenario and Rebuttal](/posts/20260502-2028-intelligence-crisis/): the same acceleration trend pushed to a near-term forecast, and the case against taking the exponentials at face value.
+- [Superintelligence: The Idea That Eats Smart People](/posts/20260603-superintelligence/): the skeptic's view that runaway self-improvement is one of several premises that do not hold up, a counterweight to the inevitability framing.
