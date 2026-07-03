@@ -23,6 +23,143 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Thu, 02 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>ExpertQA: Expert-Curated Questions and Attributed Answers</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260609-expertqa/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260609-expertqa/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260609-expertqa/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>ExpertQA’s pipeline: an expert’s question goes to a system, whose answer is split into claims, each paired with cited evidence and judged on five properties (informative, factual, cite-worthy, supported, reliable), after which the expert revises the claim. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>ExpertQA: Expert-Curated Questions and Attributed Answers</em> [1] (NAACL 2024), <a href="https://chaitanyamalaviya.github.io/">Chaitanya Malaviya</a> and co-authors (Penn + UW) build a 2,177-question benchmark of information-seeking prompts authored by 484 domain experts across 32 fields, then have the same experts judge responses from attribution-generating language-model systems on factuality, citeworthiness, and source reliability.</p>
+<blockquote class="blockquote">
+<p>As language models are adopted by a more sophisticated and diverse set of users, the importance of guaranteeing that they provide factually correct information supported by verifiable sources is critical across fields of study. This is especially the case for high-stakes fields, such as medicine and law, where the risk of propagating false information is high and can lead to undesirable societal consequences. Previous work studying attribution and factuality has not focused on analyzing these characteristics of language model outputs in domain-specific scenarios. In this work, we <em>conduct human evaluation of responses from a few representative systems along various axes of attribution and factuality, by bringing domain experts in the loop</em>. Specifically, we collect <em>expert-curated questions from 484 participants across 32 fields of study</em>, and then <em>ask the same experts to evaluate generated responses to their own questions</em>. In addition, we ask experts to improve upon responses from language models. The output of our analysis is <em>ExpertQA, a high-quality long-form QA dataset with 2177 questions spanning 32 fields, along with verified answers and attributions for claims in the answers</em>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The protocol puts experts in the loop twice. First, 484 experts across 32 fields (medicine, law, engineering, humanities, social sciences) write information-seeking questions they would genuinely want answered in their own professional work, producing 2,177 questions. Each author tags every question with one or more of seven information-need types:</p>
+<ul>
+<li><strong>Directed (Type I):</strong> a question with a single, unambiguous answer.</li>
+<li><strong>Open-ended (Type II):</strong> potentially ambiguous, admitting several valid answers.</li>
+<li><strong>Summarization (Type III):</strong> a request to summarize what is known on a topic.</li>
+<li><strong>Advice (Type IV):</strong> suggestions on how to approach a problem.</li>
+<li><strong>Hypothetical (Type V):</strong> a question built on a described scenario, and the most common type, since experts were asked to write two of their five questions this way.</li>
+<li><strong>List of resources (Type VI):</strong> a request for a list of places to find more information.</li>
+<li><strong>Opinion (Type VII):</strong> a request for an opinion on a topic.</li>
+</ul>
+<p>The results lean on this taxonomy. Second, each question is answered by six attributed-answer configurations:</p>
+<ul>
+<li><strong>Closed-book GPT-4</strong>, prompted to answer from parametric memory and cite supporting URLs, with no retrieval.</li>
+<li><strong>Retrieve-then-read</strong> (<code>rr</code>): retrieve evidence first, then generate the answer with GPT-4, over two corpora: Google Search (<code>rr_gs</code>) and the static Sphere corpus (<code>rr_sphere</code>), a web-scale subset of Common Crawl [4] retrieved with BM25.</li>
+<li><strong>Post-hoc attribution</strong> (<code>post_hoc</code>): generate the answer first, then retrieve a citation for each claim as a separate step, again over Google Search (<code>post_hoc_gs</code>) and Sphere (<code>post_hoc_sphere</code>).</li>
+<li><strong>BingChat</strong> (<code>bing_chat</code>), a commercial retrieval-augmented system, sampled in balanced mode.</li>
+</ul>
+<p>Grading happens at two granularities. An <strong>answer</strong> is the complete response a system returns to a question. Each answer is split into <strong>claims</strong>: sentence-level units (segmented with spaCy), each paired with whatever evidence the system cited for it. Only one of the six Likert axes judges the whole answer: <em>answer usefulness</em>, whether the complete response addresses the question. The other five judge individual claims and their evidence: three about the claim itself (<em>factuality</em>, <em>informativeness</em>, <em>cite-worthiness</em>) and two about its attribution (<em>claim/evidence support</em>, scored complete / partial / incomplete, and <em>source reliability</em>). Finally, the expert revises each claim and its evidence so the answer is factual and fully supported, yielding an expert-verified reference answer set.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<ul>
+<li><strong>Every system leaves a large share of claims unsupported</strong>, even when the answer is fluent and authoritative: across systems, many claims are uncited, contradicted by the cited evidence, or backed by low-reliability sources.</li>
+<li><strong>Retrieve-then-read and post-hoc attribution fail differently.</strong> Retrieve-then-read produces more complete attributions but misses citations for some cite-worthy claims (about 18% go uncited). Post-hoc systems return a citation for every claim by design, yet more of those citations are incomplete, because retrieving without the answer’s context is harder.</li>
+<li><strong>Closed-book GPT-4 cites plausible-but-wrong pages.</strong> Without retrieval it generates citations to believable domains (nasa.gov for astronomy, nih.gov for medicine), but the linked page fails to support the claim more than 60% of the time.</li>
+<li><strong>The retrieval corpus drives source reliability.</strong> Sphere returns unreliable evidence (a blog comment retrieved for a breast-cancer question). Switching to Google Search raises the reliability experts assign to the evidence.</li>
+<li><strong>High-stakes fields fare worst on attribution.</strong> Most claims are judged factually correct (over 85% in many fields) and cite-worthy (only about 17–22% are judged not cite-worthy), but medicine and law show roughly 35% and 31% unsupported claims, and about 51% of medical claims cite sources experts rate as not reliable.</li>
+<li><strong>Requests for a list of resources (Type VI) break systems hardest</strong>, with advice (Type IV) and opinion (Type VII) questions close behind. Claims to these are the least informative, factual, and well-supported. Separately, 30–40% of claims across systems are low-relevance “void” claims that mostly restate the question or state simplistic facts.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260609-expertqa/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>The Likert distribution of expert labels along six claim/answer properties: answer usefulness, claim informativeness, factuality (top row, answer-quality judgments) and claim citeworthiness, claim-evidence support, and source reliability (bottom row, attribution judgments). Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The paper also breaks the grades down by field and by question type, which is where the more interesting structure shows up.</p>
+<ul>
+<li><strong>Question-type composition is field-specific</strong> (Figure 8). The mix of the seven types swings widely across fields: physics and astronomy lean toward directed, single-answer questions, while several fields’ bars cover only a subset of the seven types at all, some as few as four. Type V (hypothetical) is the largest slice almost everywhere, inflated by construction because experts were asked to write two of their five questions that way.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260609-expertqa/figure8.webp" class="img-fluid figure-img" data-lightbox-src="figure8-full.png"></p>
+<figcaption>The distribution of the seven question types across all 32 fields in ExpertQA. Figure 8 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>The per-field view yields few clear cross-field patterns</strong> (Figure 9). Factuality stays high across most fields (the paper notes Definitely- or Probably-correct rates above 85% in many of them), and it reports no clean ranking emerging from the field-level trends.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260609-expertqa/figure9.png" class="img-fluid figure-img"></p>
+<figcaption>Label distribution of the six claim/answer properties across fields, for all systems. Figure 9 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Difficulty tracks question type</strong> (Figure 10). Type VI (list-of-resources) falls at the low end of almost every property. The paper flags advice (Type IV) and opinion (Type VII) as the next hardest, with claims to all three judged less informative, factual, and well-supported than the directed and open-ended types.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260609-expertqa/figure10.png" class="img-fluid figure-img"></p>
+<figcaption>Label distribution of the six claim/answer properties across the seven question types, for all systems. Figure 10 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The “experts grade their own questions” design is the novel ingredient, and it fixes a selection problem FActScore sidesteps.</strong> Prior factuality benchmarks either use crowdworkers on generic prompts or use automated metrics against a canonical source (Wikipedia for biographies, as in FActScore [2]). Both fail in specialist domains because the questions themselves are not representative of what experts actually ask, and the “knowledge source” for medicine or law has no clean Wikipedia analog. Having the same expert author the question <em>and</em> grade the response closes the loop that makes ELI5- or TriviaQA-style benchmarks under-diagnose domain failures.</p></li>
+<li><p><strong>Post-hoc attribution is the most interesting probe, and it loses.</strong> ExpertQA tests two <em>sequential</em> orderings: retrieve-then-generate, and generate-then-retrieve (post-hoc, where the answer is written first and evidence is fetched per claim afterward). Post-hoc is the worse of the two: its fluent answers often make claims no retrieved source actually supports. But that decides ordering, not architecture: neither system interleaves retrieval and generation, so whether interleaving (as in Self-RAG [3]) would beat both is our own speculation, untested here.</p></li>
+<li><p><strong>A field’s difficulty partly reflects what it asks, not just how well it is served.</strong> Read together, Figures 8 and 10 line up: question-type composition varies sharply by field, and difficulty tracks question type, with Type VI (list-of-resources) and the advice and opinion types at the low end of nearly every property. A field weighted toward those types would post weaker claim-level numbers even if the underlying systems were no worse there. Among the larger fields, that hard-question share is heaviest in economics, education, history, literature, and visual arts (several of which do score at the bottom on usefulness or attribution), while physics and astronomy has almost none of them. The benchmark doesn’t separate the two effects (it reports type and field independently, not field scores adjusted for question mix), so this stays a reading of the breakdowns rather than something the paper isolates, but it argues against ranking fields on raw claim scores.</p></li>
+<li><p><strong>What each field never asks (Figure 8, enumerated from the released data).</strong> Eight of the 32 fields skip at least one of the seven types entirely, all of them small fields, so the gaps reflect how questions were collected more than the disciplines:</p>
+<ul>
+<li><strong>No list-of-resources (VI):</strong> journalism, mathematics, philosophy, culinary arts, theology. The rarest type overall, so it drops out first.</li>
+<li><strong>No opinion (VII):</strong> classical studies, criminology, theology.</li>
+<li><strong>No advice (IV):</strong> climate science, culinary arts.</li>
+<li><strong>No summarization (III):</strong> culinary arts, theology.</li>
+<li><strong>Most lopsided:</strong> theology and culinary arts each span only four of the seven types.</li>
+</ul></li>
+<li><p><strong>Recomputing the grades sharpens the type story and undercuts the field one.</strong> Scoring each Likert axis on a 0–1 scale over the released annotations (my mapping, not the paper’s category counts):</p>
+<ul>
+<li><strong>By question type the order is stable across axes:</strong> directed questions (Type I) score highest almost everywhere and list-of-resources (VI) lowest, with advice and opinion just above it, on usefulness, factuality, informativeness, and cite-worthiness alike.</li>
+<li><strong>Two axes break the pattern:</strong> source reliability is essentially flat (~0.74 for every type), and attribution is the lowest-scoring axis overall (0.59–0.68 across types). So a “hard” question type is one whose claims are less informative, factual, and cite-worthy, not one whose sources are worse.</li>
+<li><strong>By field, extremes appear but are confounded:</strong> usefulness is highest for mathematics, anthropology, and the military/law-enforcement field, lowest for education, history, and literature. Attribution is best in anthropology and architecture, worst in economics and literature. But each question was graded for a single sampled system, so a field’s average folds in which system happened to answer there, and several fields rest on twenty-odd answers, so these field rankings shouldn’t be read at face value.</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://chaitanyamalaviya.github.io/">Malaviya, C.</a>, <a href="https://www.linkedin.com/in/subin-lee-penn">Lee, S.</a>, <a href="https://sihaoc.github.io/">Chen, S.</a>, Sieber, E., <a href="https://www.seas.upenn.edu/~myatskar/">Yatskar, M.</a>, <a href="https://www.cis.upenn.edu/~danroth/">Roth, D.</a>. “ExpertQA: Expert-Curated Questions and Attributed Answers.” <em>NAACL 2024</em>, arXiv:2309.07852, Sep 14, 2023. <a href="https://arxiv.org/abs/2309.07852" class="uri">https://arxiv.org/abs/2309.07852</a></li>
+<li><a id="ref-2"></a><a href="https://shmsw25.github.io/">Min, S.</a>, <a href="https://martiansideofthemoon.github.io/">Krishna, K.</a>, <a href="https://alrope123.github.io/">Lyu, X.</a>, <a href="https://scholar.google.com/citations?user=SnQnQicAAAAJ">Lewis, M.</a>, <a href="https://scottyih.org/">Yih, W.-t.</a>, <a href="https://koh.pw/">Koh, P. W.</a>, <a href="https://people.cs.umass.edu/~miyyer/">Iyyer, M.</a>, <a href="https://www.cs.washington.edu/people/faculty/lsz">Zettlemoyer, L.</a>, <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a>. “FActScore: Fine-grained Atomic Evaluation of Factual Precision in Long Form Text Generation.” <em>EMNLP 2023</em>, arXiv:2305.14251. <a href="https://arxiv.org/abs/2305.14251" class="uri">https://arxiv.org/abs/2305.14251</a></li>
+<li><a id="ref-3"></a><a href="https://akariasai.github.io/">Asai, A.</a>, <a href="https://zeqiuwu.com/">Wu, Z.</a>, <a href="https://homes.cs.washington.edu/~yizhongw/">Wang, Y.</a>, <a href="https://research.ibm.com/people/avirup-sil">Sil, A.</a>, <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a>. “Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection.” <em>ICLR 2024</em>, arXiv:2310.11511. <a href="https://arxiv.org/abs/2310.11511" class="uri">https://arxiv.org/abs/2310.11511</a></li>
+<li><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=aTHc8c0AAAAJ">Piktus, A.</a>, Petroni, F., Karpukhin, V., Okhonko, D., Broscheit, S., Izacard, G., <a href="https://patricklewis.io/">Lewis, P.</a>, Oğuz, B., Grave, E., <a href="https://scottyih.org/">Yih, W.-t.</a>, Riedel, S. “The Web Is Your Oyster — Knowledge-Intensive NLP Against a Very Large Web Corpus.” arXiv:2112.09924, Dec 2021. <a href="https://arxiv.org/abs/2112.09924" class="uri">https://arxiv.org/abs/2112.09924</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: the constructive complement — where ExpertQA measures attribution failure, this gives statistical guarantees on which claims to keep.</li>
+<li><a href="../../posts/20240531-legal-ai-hallucinations/">AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries</a>: the focused legal-domain version of ExpertQA’s finding that law and medicine fare worst on attribution.</li>
+<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: an earlier factuality benchmark that ExpertQA pushes into expert domains and pairs with claim-level attribution.</li>
+<li><a href="../../posts/20240615-tweak-naacl-2024/">TWEAK at NAACL 2024: Decoding Without Hallucinations</a>: a same-venue take on the same attribution problem, working at decode time rather than as a post-hoc step.</li>
+<li><a href="../../posts/20240117-rag-knowledge-graphs/">RAG with Knowledge Graphs: Key Open Questions</a>: the retrieval side of the retrieve-then-read and post-hoc systems ExpertQA evaluates.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260609-expertqa/</guid>
+  <pubDate>Tue, 09 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260609-expertqa/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Karen Hao on Empire of AI: OpenAI, AGI Believers, and a New Colonialism</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260608-ai-cult-exposed/?utm_source=rss&amp;utm_medium=feed</link>
@@ -3013,606 +3150,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260605-elliott-bay-trail/</guid>
   <pubDate>Fri, 05 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260605-elliott-bay-trail/cover.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Greg Brockman on the Founding of OpenAI and the 72 Hours That Nearly Ended It</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260603-greg-brockman/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260603-greg-brockman/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260603-greg-brockman/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Thumbnail for Shane Parrish’s Knowledge Project interview with Greg Brockman. <a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc">Watch on YouTube</a></figcaption>
-</figure>
-</div>
-<p>In a <a href="https://fs.blog/knowledge-project-podcast/greg-brockman/">Knowledge Project</a> interview with <a href="https://fs.blog/">Shane Parrish</a>, <a href="https://openai.com/">OpenAI</a> cofounder and president <a href="https://thegregbrockman.com/">Greg Brockman</a> walks through the company’s first decade: the 2015 dinner with <a href="https://blog.samaltman.com/">Sam Altman</a>, the Napa offsite that fixed OpenAI’s technical plan, the 72 hours in November 2023 when Altman was fired and the company nearly came apart, and where he thinks compute, jobs, and <a href="https://en.wikipedia.org/wiki/Artificial_general_intelligence">AGI</a> (artificial general intelligence) go next. The conversation runs about 72 minutes.</p>
-<p>The episode’s official written transcript is paywalled, but the full conversation is on YouTube, so I’ve built an <strong>enriched transcript at the bottom of this post</strong>: the YouTube auto-captions cleaned up and diarized, sliced into the video’s 34 chapters (each linking to its timestamp), with hyperlinks on first mention of every person, company, model, and concept, bracketed acronym expansions, and editor’s notes flagging claims worth a second look. The chapter outline is in the right-hand sidebar.</p>
-<p>The conversation, in brief:</p>
-<ul>
-<li><strong>Meeting Sam Altman</strong>: how a 2015 dinner and a late-night drive turned into the decision to start OpenAI, against a consensus that DeepMind’s lead was insurmountable.</li>
-<li><strong>The founding plan still holds</strong>: the three-step bet sketched at the Napa offsite (solve reinforcement learning, then unsupervised learning, then progressively harder tasks) is the one OpenAI has run for a decade.</li>
-<li><strong>Why the nonprofit had to change</strong>: once they ran the compute math in 2017, nonprofit fundraising had a ceiling, and a for-profit arm became the only path to an AGI-scale budget.</li>
-<li><strong>The breakthroughs that felt real</strong>: the 2017 sentiment-neuron result and then Dota 2 convinced him that simple algorithms plus massive compute could reach human-level play in messy environments.</li>
-<li><strong>Prediction as a route to intelligence</strong>: Greg argues pretraining and reasoning run on the same machinery, predicting the next token on differently structured data.</li>
-<li><strong>The firing, hour by hour</strong>: where he was when the board called, the message he got, and why he quit that night.</li>
-<li><strong>He still won’t say why</strong>: Greg narrates the 72 hours in close detail but never names what actually drove the board’s decision.</li>
-<li><strong>The petition that crashed Google Docs</strong>: nearly the whole company signed, and Ilya’s overnight reversal was the moment he felt it could be put back together.</li>
-<li><strong>What he took from it</strong>: be decisive, have the hard conversation, and, in Ilya’s framing, accept that building something real means suffering.</li>
-<li><strong>AI building AI</strong>: code is “essentially all AI now,” with humans still ahead on structure and interfaces, and models starting to propose their own research ideas.</li>
-<li><strong>On sycophancy</strong>: models did start telling users what they wanted to hear, so OpenAI retrained against “hacking the grader” toward users’ long-term goals.</li>
-<li><strong>Why the reasoning traces went dark</strong>: distillation defense, plus keeping the chain-of-thought faithful instead of trained to look good.</li>
-<li><strong>A compute-constrained world</strong>: a personal AGI for everyone would need on the order of billions of GPUs, far past what’s being built, so who gets served becomes a real question.</li>
-<li><strong>The data-center bet</strong>: the spending OpenAI was teased for is, in his telling, what delivers the mission, and he entertains data centers in space.</li>
-<li><strong>The global race and regulation</strong>: why he thinks US leadership in AI matters, and where he would put guardrails (compute access, privacy and privilege, data-center water and power).</li>
-<li><strong>Jobs and what you gain</strong>: some institutions and roles won’t be as stable, but he frames the upside as agency, down to “a doctor in their pocket” for everyone.</li>
-<li><strong>Success</strong>: “ensuring that artificial general intelligence benefits all humanity.”</li>
-</ul>
-<p>YouTube chapters (jump to the enriched transcript below, or watch on YouTube):</p>
-<ul>
-<li>0:00:00 — Introduction (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=0s">YouTube</a>)</li>
-<li>0:00:49 — Meeting Sam Altman and Starting OpenAI (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=49s">YouTube</a>)</li>
-<li>0:02:40 — Building the Founding Team (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=160s">YouTube</a>)</li>
-<li>0:04:25 — DeepMind’s Lead Over OpenAI (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=265s">YouTube</a>)</li>
-<li>0:04:54 — The Change from a Pure Non-Profit (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=294s">YouTube</a>)</li>
-<li>0:06:05 — Breakthrough Moments at OpenAI (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=365s">YouTube</a>)</li>
-<li>0:08:22 — What Dota 2 Meant for OpenAI (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=502s">YouTube</a>)</li>
-<li>0:10:04 — Reasoning Versus Prediction (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=604s">YouTube</a>)</li>
-<li>0:11:59 — Tensions Grow at OpenAI (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=719s">YouTube</a>)</li>
-<li>0:15:44 — Sam Altman’s Firing (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=944s">YouTube</a>)</li>
-<li>0:17:49 — Greg Quits OpenAI (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1069s">YouTube</a>)</li>
-<li>0:19:56 — Sam Explores Deal with Microsoft’s Satya (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1196s">YouTube</a>)</li>
-<li>0:20:28 — OpenAI Employees Sign Petition for Altman’s Return (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1228s">YouTube</a>)</li>
-<li>0:23:43 — Ilya Sutskever Leaves OpenAI (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1423s">YouTube</a>)</li>
-<li>0:24:59 — Lessons Learned in Leadership after Sam Ousting (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1499s">YouTube</a>)</li>
-<li>0:28:22 — The Thing Ilya Said that Greg Can’t Forget (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1702s">YouTube</a>)</li>
-<li>0:32:22 — Is AI Going Parabolic? (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1942s">YouTube</a>)</li>
-<li>0:33:24 — How Much of OpenAI’s Code is Written by AI? (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2004s">YouTube</a>)</li>
-<li>0:36:21 — Are AI Chatbots Just Telling Us What We Want to Hear? (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2181s">YouTube</a>)</li>
-<li>0:38:06 — The Global AI Race to Reach AGI (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2286s">YouTube</a>)</li>
-<li>0:38:40 — What Happens if US Doesn’t Reach AGI First? (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2320s">YouTube</a>)</li>
-<li>0:39:49 — Are Competing Countries Stealing AI Advancements from U.S? (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2389s">YouTube</a>)</li>
-<li>0:40:38 — Why ChatGPT No Longer Shows Reasoning (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2438s">YouTube</a>)</li>
-<li>0:41:47 — The Finite Constraints of Compute (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2507s">YouTube</a>)</li>
-<li>0:43:38 — On Investing Early in Data Centers (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2618s">YouTube</a>)</li>
-<li>0:46:31 — The Future of Data Center Specialization (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2791s">YouTube</a>)</li>
-<li>0:47:52 — How OpenAI Will Decide Whose Queries to Serve (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2872s">YouTube</a>)</li>
-<li>0:49:08 — OpenAI on Consumer vs Enterprise Models (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2948s">YouTube</a>)</li>
-<li>0:53:05 — Data Centers in Space? (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=3185s">YouTube</a>)</li>
-<li>1:00:56 — What Should AI Regulation Look Like? (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=3656s">YouTube</a>)</li>
-<li>1:04:33 — The Future of AI-Powered Entrepreneurship (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=3873s">YouTube</a>)</li>
-<li>1:04:44 — AI and Job Loss (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=3884s">YouTube</a>)</li>
-<li>1:07:15 — The Skills Young People Should Invest In (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=4035s">YouTube</a>)</li>
-<li>1:11:30 — What Does Success Look Like For You? (<a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=4290s">YouTube</a>)</li>
-</ul>
-<hr>
-<section id="transcript" class="level2">
-<h2 class="anchored" data-anchor-id="transcript">Transcript</h2>
-<p>What’s here is the YouTube auto-caption transcript of <a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc">the interview</a>, reorganized into a reader-friendly form. The dialog is lightly edited for clarity (repeated words, stutters, and obvious false starts trimmed), not paraphrased or reordered, with several editorial layers added:</p>
-<ul>
-<li><strong>Chapter outline.</strong> The transcript is split into the video’s 34 YouTube chapters, each linking to its timestamp. The full outline is in the right-hand sidebar; use it to jump to a specific moment instead of scrolling.</li>
-<li><strong>Inline hyperlinks.</strong> First mention of every salient person, company, model, product, or concept links to an authoritative source. Research papers are cited by number and collected in the References at the end.</li>
-<li><strong>Bracketed acronym expansions.</strong> Where an acronym appears for the first time without being expanded in speech, the expansion is inserted in <code>[square brackets]</code> to mark it as editorial (e.g.&nbsp;<code>AGI [artificial general intelligence]</code>).</li>
-<li><strong>Editor’s notes</strong> in blue callout boxes flag claims that are verifiable and slightly off, statements worth dating against the public record, or numbers given without a source.</li>
-</ul>
-<p>Two caveats specific to a YouTube source. Punctuation, capitalization, and paragraph breaks are editorial (auto-captions ship without them), and speaker attribution was reconstructed from YouTube’s speaker-change markers, so a stray line in the fast exchanges may be mislabeled. Obvious mishearings of proper nouns have been corrected silently: <code>OpenAI</code> (for “open AI”), <code>Chris Olah</code>, <code>Jakub, Szymon, Aleksander</code> (the colleagues who resigned alongside Brockman), <code>Ilya</code>, and <code>Dota</code>. Repeated words and phrase stutters have been collapsed and obvious false starts trimmed (<code>I I</code> → <code>I</code>, <code>that was that was</code> → <code>that was</code>), and three sponsor ad-reads (CoinShares, Granola, HeyGen and Element) have been removed as they are not part of the interview.</p>
-<section id="ch-introduction" class="level3">
-<h3 class="anchored" data-anchor-id="ch-introduction"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=0s">0:00:00 — Introduction</a></h3>
-<p><strong>Shane Parrish:</strong> So, how did <a href="https://openai.com/">OpenAI</a> come about?</p>
-<p><strong>Greg Brockman:</strong> Well, I knew I wanted to do a startup because I felt like that was something</p>
-<p><strong>Shane Parrish:</strong> But you were just in a startup. <a href="https://stripe.com/">Stripe</a> was a startup.</p>
-<p><strong>Greg Brockman:</strong> It’s true, but I felt like Stripe, the problem that we were solving was not my problem, right? It wasn’t the problem I’d grown up thinking about. It was an important problem and I dedicated myself to that mission for a number of years, but I felt like it was going to succeed with or without me.</p>
-<p>And so, then I had a first moment to really think about what is a mission that I want to dedicate myself to where I would spend the rest of my life working on this problem just to see it play out in a slightly better way.</p>
-<p>And it was very clear to me that top of the list was AI. Right?</p>
-</section>
-<section id="ch-meeting-sam-altman-and-starting-openai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-meeting-sam-altman-and-starting-openai"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=49s">0:00:49 — Meeting Sam Altman and Starting OpenAI</a></h3>
-<p><strong>Greg Brockman:</strong> If you could actually make a difference in how AI will play out in the world like that would be a life well lived.</p>
-<p><strong>Shane Parrish:</strong> When you were thinking about leaving, <a href="https://patrickcollison.com/">Patrick</a> told you to go talk to <a href="https://blog.samaltman.com/">Sam Altman</a>. What happened in that conversation?</p>
-<p><strong>Greg Brockman:</strong> Well, Patrick had said Sam has seen lots of young people in your situation and Patrick, I think, really hoped that Sam would convince me to stay. A few minutes of talking to Sam, he’s like, “Okay, you clearly have already decided. It is very obvious.”</p>
-<p>And so, he asked, “Well, what are you planning on doing next?” And I said, “Well, I’m thinking about doing an AI company.” And he said, “I’m also thinking about doing something in AI. We should keep in touch.”</p>
-<p>So, I had talked to Sam maybe one more time after I was leaving Stripe. And he asked, “Are you still thinking about doing something in AI?” I said, “Yes.” He said, “I’m also starting to get more details and putting together this dinner in July and I flew out for the dinner.</p>
-<p>And the thing that I remember was a topic was, “Is it too late to start a lab with many of the best researchers? Is it possible?”</p>
-<p><strong>Shane Parrish:</strong> And this is what year?</p>
-<p><strong>Greg Brockman:</strong> 2015. Right? Because you think about just the degree to which <a href="https://deepmind.google/">DeepMind</a> had all the researchers, all the capital, all the data, it just felt like is it even possible to get something off the ground still? People came up with all sorts of reasons it was hard. No one could come up with a reason it was actually impossible.</p>
-<p>And so, Sam and I driving back to the city that night, I remember we looked at each other and we said, we got to do this. Right? Like we just have to. And so, next day I was full-time on putting this together.</p>
-<p>And it was tough because it was very ill-defined. We had mission, a vision of saying, we think that we can build human level AI, make it be something positive for the world, make the benefits be something that are distributed broadly. But how?</p>
-</section>
-<section id="ch-building-the-founding-team" class="level3">
-<h3 class="anchored" data-anchor-id="ch-building-the-founding-team"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=160s">0:02:40 — Building the Founding Team</a></h3>
-<p><strong>Greg Brockman:</strong> And how do you get people to actually leave their jobs to come and join this thing? Initially, the set of people that I narrowed down to were actually <a href="https://en.wikipedia.org/wiki/Ilya_Sutskever">Ilya Sutskever</a>, <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Dario Amodei</a>, <a href="https://colah.github.io/">Chris Olah</a>, and myself. That was going to be the team. And we spent a lot of time together, we spent a lot of time talking about potential visions for the lab, potential ways that things would work. It didn’t quite come together, and that there was just partly a question of will this have enough momentum? You know, Dario felt like that he needed to go and establish a name for himself, and he wasn’t sure if this was really going to be it. It’s a question of just how it was all going to work.</p>
-<p>And meanwhile, I was starting to get <a href="http://joschu.net/">John Schulman</a> interested. He said that he was going to do it. Dario and Chris ended up deciding to go to <a href="https://en.wikipedia.org/wiki/Google_Brain">Google Brain</a>. And so, it was really just, you know, Ilya, me, and, you know, John starting to be maybe few others. And so, I had a group of about 10 people that many of them were saying, I’m interested, but who else is in?</p>
-<p>I asked Sam, okay, how do we break symmetry here? How do we actually get everyone to say, all right, we’re joining? And Sam’s suggestion was, invite people out for an offsite. So, we set up a thing in Napa, and I actually made t-shirts. And this is before they had joined. There was no official offers, no one had joined, we didn’t have a structure, we had nothing. Right? We just had an idea, we had a vision, we had a mission.</p>
-<p>And we flew people out, we drove up to Napa together, and it was an amazing day. Right, the ideas were flowing. We came up with what I would really say is almost the technical plan that we’ve pursued for the past 10 years. Number one, solve <a href="https://en.wikipedia.org/wiki/Reinforcement_learning">reinforcement learning</a>. Number two, solve <a href="https://en.wikipedia.org/wiki/Unsupervised_learning">unsupervised learning</a>. And number three was gradually learn more complicated, in quotes, things. After that offsite, I sent offers to everyone and said, “Hey, we want to get started in the next two to three weeks.</p>
-</section>
-<section id="ch-deepmind-s-lead-over-openai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-deepmind-s-lead-over-openai"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=265s">0:04:25 — DeepMind’s Lead Over OpenAI</a></h3>
-<p><strong>Greg Brockman:</strong> Please let me know if you’re in.”</p>
-<p><strong>Shane Parrish:</strong> Why did you think that DeepMind had such an insurmountable advantage?</p>
-<p><strong>Greg Brockman:</strong> It was very much the case that <a href="https://deepmind.google/">Google DeepMind</a> was the 10,000-lb gorilla in the field. They just had lots of capital. They had the track record. This is before <a href="https://en.wikipedia.org/wiki/AlphaGo">AlphaGo</a>, right? AlphaGo came out a couple months later, but it wasn’t a surprise, right? It’s like very much the momentum was very clearly there.</p>
-</section>
-<section id="ch-the-change-from-a-pure-non-profit" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-change-from-a-pure-non-profit"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=294s">0:04:54 — The Change from a Pure Non-Profit</a></h3>
-<p><strong>Greg Brockman:</strong> And so, the question of is it really possible to build something independent and new, it wasn’t obvious.</p>
-<p><strong>Shane Parrish:</strong> At what point did you realize that like this nonprofit thing just wasn’t going to work?</p>
-<p><strong>Greg Brockman:</strong> In 2017, we started to think very hard about, first of all, how do we really achieve the mission? How do we actually build an <a href="https://en.wikipedia.org/wiki/Artificial_general_intelligence">AGI</a> [artificial general intelligence]? What will that look like? And we started to do the math on compute, and you start to realize that it’s going to take big computer.</p>
-<p>And we came across a company called <a href="https://www.cerebras.ai/">Cerebras</a>, which was building a unique piece of computing hardware. And that the kind of computer that they were promising, we realized was going to be far advanced of where our compute calculations looked.</p>
-<p>And you start to realize if we could buy a lot of those computers, we could actually probably succeed at building an AGI. If we could get exclusive access to Cerebras, that could give us an overwhelming advantage. If we could buy very large data centers, that could be something unique as well.</p>
-<p>And the thing about nonprofit fundraising is I think that there is essentially a cap to what is possible there. And so, <a href="https://en.wikipedia.org/wiki/Elon_Musk">Elon</a>, Sam, Ilya, and I all agreed that the only path forward for OpenAI, the only path to achieve the mission, was to create a for-profit entity associated with OpenAI of some form.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> This describes 2017 deliberations. OpenAI’s capped-profit subsidiary, OpenAI LP, was not created until March 2019; <a href="https://en.wikipedia.org/wiki/Elon_Musk">Elon Musk</a> left OpenAI’s board in February 2018, before that structure existed, and has since disputed aspects of this account in litigation. And while Cerebras is framed here as the hardware that motivated the shift, OpenAI ultimately scaled on NVIDIA GPUs through its Microsoft/Azure partnership rather than on Cerebras silicon.</p>
-</div>
-</div>
-</section>
-<section id="ch-breakthrough-moments-at-openai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-breakthrough-moments-at-openai"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=365s">0:06:05 — Breakthrough Moments at OpenAI</a></h3>
-<p><strong>Greg Brockman:</strong> And so, we were committed to that direction, and that is something that we knew was the only way to achieve the mission.</p>
-<p><strong>Shane Parrish:</strong> When was the moment that you realized everything was going to change for you? Was that <a href="https://en.wikipedia.org/wiki/OpenAI_Five">Dota</a> [1], or was it before then or after?</p>
-<p><strong>Greg Brockman:</strong> The way that OpenAI works is it’s a series of moments where you realize that it’s real now. And every time you think that you understand it, that it is really settled in for you, you realize that there is a new horizon you had not yet appreciated.</p>
-<p>And so, along the way, I think that there was the initial launch. It was like, “Wow, we actually got a team together. Now we can pursue this mission.” But you show up at the office the next day, and you’re like, “Well, what do we do?” Right? We didn’t even have a whiteboard. Do you know, Ilya and John wanted to write something on a whiteboard. I was like, “I will get a whiteboard. That’s something I can do.”</p>
-<p>Dota, we had our first big result. Right? That really was like, “Wow, we can actually accomplish something when we put our mind to it.” You can actually see all this compute coming together. You scale up the compute, you scale up the result.</p>
-<p>There were multiple moments with the GPT series, and I remember actually an early moment was the <a href="https://arxiv.org/abs/1704.01444">unsupervised sentiment neuron paper</a> [2]. Have you heard that one?</p>
-<p><strong>Shane Parrish:</strong> I’ve heard of it, but I haven’t read it.</p>
-<p><strong>Greg Brockman:</strong> Okay. Yes, that one’s That one’s an interesting one cuz it’s 2017, and it’s really the first time that we saw semantics arise from training on a language modeling objective. So, you train on learn the next character, predict the next character, and then suddenly you get a neural net that understands sentiment, understands if something is positive or negative. Much harder than it sounds. But that was a moment where you realize, “Wow, we are building machines that can learn semantics, not just where the commas are and where the nouns and verbs are, but it can really learn the meaning of sentences.”</p>
-<p>You got to push that. And then, of course, when you see something like a I remember we were playing with it and someone asked, “Why is this thing not an AGI?” Right? It’s like actually really hard to put your finger on it cuz you can talk to it fluently in anything you want. It clearly wasn’t an AGI. It was lacking something, but just if you’d describe your criteria for AGI 2 months prior, it probably wouldn’t be compatible with what GPT-4 was.</p>
-<p>And so there are many moments along the way where you feel like it’s real now. It’s going to really happen. The economy is going to transform into this compute-powered world. And I think that those moments are not yet at the end.</p>
-</section>
-<section id="ch-what-dota-2-meant-for-openai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-what-dota-2-meant-for-openai"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=502s">0:08:22 — What Dota 2 Meant for OpenAI</a></h3>
-<p><strong>Greg Brockman:</strong> I think that we have many more breakthrough moments where you realize that the next stage is possible.</p>
-<p><strong>Shane Parrish:</strong> I thought Dota was like an incredible moment because it wasn’t chess like <a href="https://en.wikipedia.org/wiki/Deep_Blue_(chess_computer)">Deep Blue</a> and it wasn’t AlphaGo, which is like computationally intensive but very defined rules. It was actually interactive against humans in a way that like the world is sort of structured, but you have all of this freedom.</p>
-<p><strong>Greg Brockman:</strong> Yeah, that was something very compelling about it. And the ironic thing is we’d actually set out with Dota to develop new methods because the reinforcement learning at the time was clearly not going to scale. Right? That the algorithm we use is called <a href="https://arxiv.org/abs/1707.06347">PPO</a> [proximal policy optimization] [3]. You plan over every single time step. There’s no hierarchy. Whereas a human, that’s not how you plan your day. And so we knew that this algorithm was incredibly flawed, would never scale, and had all these problems.</p>
-<p>But you got to start somewhere. You got to push your baselines to reach the wall so you actually see the limits of what good looks like with what you have and then you can bring to bear a new algorithm. And we just kept scaling PPO and we exceeded the performance of the best humans.</p>
-<p>And that itself was the finding, right? That actually massive compute with simple algorithms. Right? That is something where we can not just doesn’t just work in theory. It works in practice. We can really make it happen. And in this incredibly messy environment where you cannot program it, you cannot look ahead, you cannot do a search, you just need this almost human-like intuition.</p>
-<p>And by the way, the neuron that we used, tiny tiny little insect brain, similar number of synapses as to truly an insect brain. And you realize like, wait, what if you had the same computational approach, but scaled it up to something that’s much more human brain scale, what would that be like?</p>
-</section>
-<section id="ch-reasoning-versus-prediction" class="level3">
-<h3 class="anchored" data-anchor-id="ch-reasoning-versus-prediction"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=604s">0:10:04 — Reasoning Versus Prediction</a></h3>
-<p><strong>Greg Brockman:</strong> Very very evocative question.</p>
-<p><strong>Shane Parrish:</strong> Is there a difference between reasoning and predicting? You mentioned sort of like predicting the next character, predicting the next word versus actually reasoning in first principles.</p>
-<p><strong>Greg Brockman:</strong> I think they’re connected in a deep way. So, on the one hand, just predicting what comes next sounds like a pedestrian task. But if you really can predict the next word out of Einstein’s mouth, you are at least as smart as Einstein. And you can make arguments, oh, well, like, you know, it’s but I think that those arguments fall flat, that there’s something there’s something false there because the point of prediction is not about being able to predict what is known. The point is you put yourself in a new situation you’ve never seen before and predict what comes next. And I think that there’s something deeply connected to intelligence and prediction that there’s a long story of academic literature and how you think about this, compression, they’re all kind of part of the same thing.</p>
-<p>Now, these reasoning models, the thing that I think is very interesting is that we train them with reinforcement learning. And so, there’s really back to the original OpenAI plan, there’s two steps to it. The first is unsupervised learning, you train a model just by having it predict what comes next, and there it’s much more static data, it’s much more observational. Again, it’s data it’s never seen before, situations never seen before, but it is a situation that is already happened.</p>
-<p>Then you do reinforcement learning, which is you basically have the AI learn its own data, right? You have it make its own, here’s the action I’m going to take, you get an observation from the world, and you learn from that. And it’s again, the way you actually train it is still predicting. It’s trying to predict if I take this action, what’s the thing that’s likely to happen. And you reinforce that depending on how good of a job you did.</p>
-<p>And the beauty of that is that it now is an AI that has this background knowledge and has real world experience. But fundamentally, the technology that we used to train during unsupervised stage and during the reinforcing stage, they’re exactly the same.</p>
-</section>
-<section id="ch-tensions-grow-at-openai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-tensions-grow-at-openai"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=719s">0:11:59 — Tensions Grow at OpenAI</a></h3>
-<p><strong>Greg Brockman:</strong> You are just predicting, but you’ve changed the structure of the data.</p>
-<p><strong>Shane Parrish:</strong> When did things start to get tense?</p>
-<p><strong>Greg Brockman:</strong> I think the thing about OpenAI is that if you truly believe in the mission, if you truly believe in the possibility of creating machines that have the intelligence level of humans, it means the stakes always feel very high. The question of who’s making the decision, the question of what are the values that go into those decisions, the question of these things that are maybe mundane in a typical company that are much more like office politics, start to take on this existential weight.</p>
-<p>And I think that has colored a lot of how OpenAI these more high high-profile conflicts, you know, sometimes it’s like you put it in like even just the question of who gets credit for a particular thing, it suddenly takes on this existential weight.</p>
-<p><strong>Shane Parrish:</strong> Well, that’s where I was sort of thinking of it this because it’s like at that point you probably realized this technology is inevitable and it’s going to change the world. And that wasn’t broadly known to the world. And then I would imagine there’s people who like I want to be front and center. I want to take credit for this.</p>
-<p><strong>Greg Brockman:</strong> Yes. That is the overwhelming dynamic that I have observed in this field. It’s not just about OpenAI actually. Like one observation I had early on is that this technology is by nature very fragmentary, right? That it’s sometimes it, you know, like when you have a lot of pressure, you can get a diamond or you can get cracks. Often you’ll see diamonds form in pockets, right? Teams of people that really work together, that have a lot of high trust, that know how to operate. But sometimes you can see that they splinter off and they kind of go their own way.</p>
-<p>And I think within AI, I think we’ve gotten some real benefits out of diversity of approach and different groups that are really pushing each other in order to both bring this technology in a more beneficial way, sometimes how to think about all the thorny questions around safety, around what does it mean to be safe, what does it mean to actually deploy this technology, and how to think about how to mitigate and but also how to maximize those benefits.</p>
-<p>And that’s something where I think that there’s a lot of very healthy debate. It’s always gone on within OpenAI’s walls. Now it’s starting to really happen, I think, in the world. And I think that’s something that we as a society really benefit from.</p>
-<p><strong>Shane Parrish:</strong> Take me back to the moment you found out that Sam had been fired. Where were you?</p>
-<p><strong>Greg Brockman:</strong> I was at home.</p>
-</section>
-<section id="ch-sam-altman-s-firing" class="level3">
-<h3 class="anchored" data-anchor-id="ch-sam-altman-s-firing"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=944s">0:15:44 — Sam Altman’s Firing</a></h3>
-<p><strong>Shane Parrish:</strong> And what happened?</p>
-<p><strong>Greg Brockman:</strong> I got a text saying, “Can we hop on a video call?” So, I hopped on the video call. I noticed that it was the board minus Sam who were on there.</p>
-<p><strong>Shane Parrish:</strong> Did you know at that point?</p>
-<p><strong>Greg Brockman:</strong> No.&nbsp;I mean, I inferred something was up.</p>
-<p><strong>Shane Parrish:</strong> But, cuz you’re on the board.</p>
-<p><strong>Greg Brockman:</strong> I am on the board. I was on the board.</p>
-<p><strong>Shane Parrish:</strong> At this point.</p>
-<p><strong>Greg Brockman:</strong> Yes.</p>
-<p><strong>Shane Parrish:</strong> And then what happened?</p>
-<p><strong>Greg Brockman:</strong> I was told that the board has decided that Sam would be removed. And effectively, the message that I got was the same messaging that was in the public post. And I asked if I could have any more information. I was told no, not right now. And I pressed on that, maybe another time. And again, was told nothing more to share.</p>
-<p>And then was told, “Wait, there’s more.” Also, that I had been removed from the board, but would be staying with the company because I was very critical to the company and the mission. I said, again, I asked like any reasons, any feedback. Was told no.</p>
-<p>Towards the end, was told that, “Hey, like in this new setup that you will start to get hopefully, you can get feedback in this new configuration.” And so, that was the conversation.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> For the public timeline: the board removed Altman as CEO on November 17, 2023, and removed Brockman as chairman the same day. The reinstatement deal and Altman’s return were settled by around November 21–22, 2023.</p>
-</div>
-</div>
-<p><strong>Shane Parrish:</strong> What went through your mind?</p>
-<p><strong>Greg Brockman:</strong> It just wasn’t right.</p>
-<p><strong>Shane Parrish:</strong> Was it anger?</p>
-<p><strong>Greg Brockman:</strong> No.&nbsp;I felt like I understood what had happened.</p>
-<p><strong>Shane Parrish:</strong> How long before you knew what had actually transpired to sort of cause this?</p>
-<p><strong>Greg Brockman:</strong> Well, there’s two parts to the answer. One is I feel like I still am learning some additional facts, some additional thing that was in someone’s head. To some extent it comes down to a lack of communication, right? That you realize that there are all these different things that have buffered. And to some extent, you know, approximately I kind of knew.</p>
-</section>
-<section id="ch-greg-quits-openai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-greg-quits-openai"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1069s">0:17:49 — Greg Quits OpenAI</a></h3>
-<p><strong>Greg Brockman:</strong> I was like, I understand for every person here, I have a pretty good model of why they acted the way that they did, but it wasn’t what was most important to me in the moment. I just knew that this wasn’t right. Right after I hung up the call, I talked to my wife and I said, “Got to quit.” And she said, “I agree.”</p>
-<p><strong>Shane Parrish:</strong> And you quit that day.</p>
-<p><strong>Greg Brockman:</strong> Yes.</p>
-<p><strong>Shane Parrish:</strong> And then what happened?</p>
-<p><strong>Greg Brockman:</strong> That day when I quit, I started to get all these messages of people saying, “I don’t know what you and Sam are doing next, but I’m with you. I want to go start something with you.” Like just that was a real honest surprise. I didn’t really expect to get that kind of support, that kind of outpouring.</p>
-<p>There were a few of my close collaborators who quit that day as well. That’s Jakub, Szymon, Aleksander, and the five of us, so those people plus Sam, we all got together and we started to chart out what a new company could look like. I remember feeling that first day like, “Okay, there’s a 10% chance that we actually get the company back, 10%.”</p>
-<p>The next day, we set up a meeting at Sam’s house. A bunch of people from the company came by and we showed the vision that we’d been sketching out. So it was just really one day in, you know, with this fresh picture of how we’d run the project and we spent that a bunch of time over that weekend also negotiating with the board and the company and trying to figure out is there a path back together that makes sense.</p>
-<p>That Sunday night, the board replaced <a href="https://en.wikipedia.org/wiki/Mira_Murati">Mira</a> as interim CEO with a new person and the company just rebelled. Like we’d actually been at the office, we thought we were close to a deal, and to come back. Yeah, we thought that we had a path. And then the board made that change, and then suddenly it was everyone streaming out of the building, and it was just like real chaos.</p>
-<p>I was on video calls with many of the people who had been interested in coming to this new company saying it’s going to be okay, we have a plan, and we expanded, you know, we’d been building this little life raft, right, for the small set of people we expected to want to come. And suddenly it was like no one wanted to be associated with this entity, right?</p>
-</section>
-<section id="ch-sam-explores-deal-with-microsoft-s-satya" class="level3">
-<h3 class="anchored" data-anchor-id="ch-sam-explores-deal-with-microsoft-s-satya"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1196s">0:19:56 — Sam Explores Deal with Microsoft’s Satya</a></h3>
-<p><strong>Greg Brockman:</strong> People wanted to you know, stand up for what they viewed as right. Sam talked to <a href="https://en.wikipedia.org/wiki/Satya_Nadella">Satya</a>, who we’d been talking about, hey, could you be a funder? Could you, you know, help help support this new endeavor?</p>
-<p>I was like, hey, actually, could we expand from the small life raft? And everyone said, yes. Could we take everyone? And they’re like, all right, we’ll figure it out somehow.</p>
-<p>And a lot of people, this is right before Thanksgiving, a lot of people were supposed to be flying to home, wherever that is, and instead they canceled their flights, and the office was packed.</p>
-</section>
-<section id="ch-openai-employees-sign-petition-for-altman-s-return" class="level3">
-<h3 class="anchored" data-anchor-id="ch-openai-employees-sign-petition-for-altman-s-return"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1228s">0:20:28 — OpenAI Employees Sign Petition for Altman’s Return</a></h3>
-<p><strong>Greg Brockman:</strong> I was like, everyone was at the office just to be there, be part of it, and just, you know, even if they couldn’t contribute to any of these conversations, that they just wanted to be there as this history was made. Then this petition starts to circulate. So many people were trying to sign the petition at once, it actually crashed Google Docs. And so they you had to have certain people who were designated as the person you go to actually put your name on the document so you don’t have too many editors at once. I think that was a statement that was really heard loudly.</p>
-<p>And I remember you know, I probably got home around like 5:00 a.m. or something, went to sleep, and I woke up like 45 minutes later, and I checked Twitter, and I saw that Ilya had posted, and had signed the petition, and it said that he wanted the company to come back together. And that was this real moment of relief. I felt so much gratitude that it just felt like okay, like we can put this back together. We can get back to a good track.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> Roughly 700 of OpenAI’s ~770 employees signed the letter threatening to resign unless the board reinstated Altman and itself stepped down.</p>
-</div>
-</div>
-<p><strong>Shane Parrish:</strong> You and Ilya had built this together. What was it like trying to find your way back to that relationship after?</p>
-<p><strong>Greg Brockman:</strong> Look, it was tough. It was definitely that was definitely a very close relationship. You’d been the officiant at my civil ceremony. Right, we’d been through extremely tough times together.</p>
-<p>And like any relationship, you always have your ups and downs. And we spent a lot of time afterwards really talking things through. And really trying to understand and just articulate some of the things that we had let build up or had left unsaid between us.</p>
-<p>And I think that we got to through that process, I think we had gotten to a really good place. And for me, I felt like we got to closure on everything that had happened.</p>
-<p><strong>Shane Parrish:</strong> How did you feel about all the loyalty you’ve inspired?</p>
-<p><strong>Greg Brockman:</strong> Deeply grateful. Truly, it was never something that I would have asked for and something I never would have expected.</p>
-<p>I think the way that I operate is I’m very much a in the trenches kind of leader. Try to lead from the front. And sometimes when I do that, I don’t always Sorry, I’m getting a little emotional. Um, but I don’t always look back to see if everyone’s following. Like I just like run right in.</p>
-<p>And when people do come and really help to build the thing, it just makes me feel so grateful for them and to feel like they have exceeded my expectations in every way.</p>
-<p><strong>Shane Parrish:</strong> And so eventually everybody comes back.</p>
-<p><strong>Greg Brockman:</strong> I’ll tell you, it was not guaranteed because throughout that weekend, all the competitors were circling. Just imagine this like feeding frenzy. People were shaping up to do. People were getting offers. And we actually did not lose a single person through that weekend. No one accepted a competing offer.</p>
-<p><strong>Shane Parrish:</strong> I think that’s incredible.</p>
-<p><strong>Greg Brockman:</strong> It really was.</p>
-<p><strong>Shane Parrish:</strong> That’s more, you know, <a href="https://en.wikipedia.org/wiki/Bill_Belichick">Coach Belichick</a> told me this actually, uh, when we were talking about the best teams, and he said, “They’re not playing for money, they’re playing for the person beside them.” And when you were saying that all these people quit, it makes me think of that. Like, and none of them left for presumably more money, better offers. Everybody was trying to circle and poach, and</p>
-<p><strong>Greg Brockman:</strong> Yeah, it was a very that was a diamond moment.</p>
-<p><strong>Shane Parrish:</strong> After all of this happened, you took some time off. What was going on internally with you?</p>
-<p><strong>Greg Brockman:</strong> That was an intense experience to go through, an intense experience to come back to, and</p>
-</section>
-<section id="ch-ilya-sutskever-leaves-openai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-ilya-sutskever-leaves-openai"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1423s">0:23:43 — Ilya Sutskever Leaves OpenAI</a></h3>
-<p><strong>Greg Brockman:</strong> honestly, just one of the hardest moments for me at OpenAI was when Ilya left. And it was maybe the only moment in OpenAI’s history where I felt like I didn’t want to do it anymore. I think I needed some time to kind of find my way back to remembering like why I was doing this, and why it was so important, and why it was worth the pain.</p>
-<p><strong>Shane Parrish:</strong> What did you do during the time off?</p>
-<p><strong>Greg Brockman:</strong> I trained language models on</p>
-<p><strong>Shane Parrish:</strong> That’s when you learned how to do it, right? Like, you did the self-study thing I read on your blog.</p>
-<p><strong>Greg Brockman:</strong> Well, no, so I actually done that throughout the course of OpenAI. Um, so I trained language models on DNA sequences.</p>
-<p><strong>Shane Parrish:</strong> Oh, wow.</p>
-<p><strong>Greg Brockman:</strong> Yeah, so I basically got to take my</p>
-<p><strong>Shane Parrish:</strong> Arc?</p>
-<p><strong>Greg Brockman:</strong> For <a href="https://arcinstitute.org/">Arc Institute</a>, yeah. And uh, it was a very great experience.</p>
-<p>I took my skills that I had and applied them in a very different domain. A domain that’s very personally meaningful to both me and to my wife.</p>
-<p>You know, she has a lot of health conditions, and that we think about what AI can do for her health, what it can do for the health of animals. We’re both very passionate about just It’s like this application area that felt like maybe we could help in this very different way from how I’ve been pursuing this technology.</p>
-</section>
-<section id="ch-lessons-learned-in-leadership-after-sam-ousting" class="level3">
-<h3 class="anchored" data-anchor-id="ch-lessons-learned-in-leadership-after-sam-ousting"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1499s">0:24:59 — Lessons Learned in Leadership after Sam Ousting</a></h3>
-<p><strong>Greg Brockman:</strong> So, that was a very, you know positive part of the experience.</p>
-<p><strong>Shane Parrish:</strong> If I were to say like open a Google document, write out sort of what you learned about yourself on one page from this whole starting to Sam getting ousted to you quitting to inspiring all this loyalty to the time off and then coming back, what would you write?</p>
-<p><strong>Greg Brockman:</strong> I think I’ve just learned to just keep going for something that’s worth it. Right, if you have a mission that matters, then the fact of you keep going through the ups and the downs. There’re going to be moments where it’s all over. Moments where it’s where so back. And you just can’t let those moments pull you off course. And I think that the degree of just personal resilience that you have to grow during these times because if you’re leading, people look to you for that steadiness, for that support, for the direction that the whole thing will go.</p>
-<p>And I think that a lot of what I’ve tried to grow with is to really be able to both understand the details, right, of what we’re doing, what the implication will be of a choice, but also be decisive. I think that there have been moments where I think I’ve been very much approaching OpenAI through a lens of uncertainty, of feeling like I don’t know what the right answer is. I don’t know what the right way to build this technology is or how do you answer these very thorny questions, but there’s lots of people here who are very smart who have very strong opinions. And so I’ve really tried to understand all those opinions and figure out how to put them together. And sometimes that’s the right thing. And sometimes that you realize that the opinions are mutually contradictory. They can’t all be true at once. And sometimes you do just have to pick. And you know that means that there’s going to be someone who’s going to be upset, someone who’s going to quit, someone who’s going to feel slighted. And I think that a lot of what I’ve tried to do is have a stronger sense of self and a stronger sense of when there is conviction that we need to act on it.</p>
-<p>And I think of things that we have done over the course of OpenAI, where I feel like I wish that we had done it differently, I think usually that’s of the form we dragged our feet on something we knew it wasn’t quite the right person in the role, we didn’t think this was like quite the right technical direction, we didn’t think that this way of letting the projects run was going to quite work, but we just waited too long. And so that’s something I try to learn from and actually which I try to grow truly every day.</p>
-<p>When I reflect on both the course of OpenAI and Stripe and even rewinding to college and the projects I worked on in the past, I think that the way I tend to operate is that I both really love the day-to-day activity. I love the individual contribution. I love the software. I love the thinking through the problem. But I also really care about the environment in which these things are done. And I actually am willing to give up on that, you know, type one fun of just the quick hit, like you get to build the thing, it’s always cool, for something that’s more like type two fun of it’s painful in the moment, but it’s worthwhile. But the what you do is you create an environment where everyone else can get that do the IC work, do the great thing. And so really trying to build an environment is something I just gravitate towards. It’s not always the easiest, right?</p>
-</section>
-<section id="ch-the-thing-ilya-said-that-greg-can-t-forget" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-thing-ilya-said-that-greg-can-t-forget"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1702s">0:28:22 — The Thing Ilya Said that Greg Can’t Forget</a></h3>
-<p><strong>Greg Brockman:</strong> That you really do have to be willing to take on great personal pain. Like in the words of Ilya, Ilya always says that you have to suffer, right? If you’re not suffering, like you’re not building value. And I think there’s deep truth to it.</p>
-<p><strong>Shane Parrish:</strong> Double click on that.</p>
-<p><strong>Greg Brockman:</strong> The Ilya perspective, I think on it’s funny because he has a particular way of talking that I think is very unique to him and that there’s always deep inspiration in the words that he chooses. And this picture of suffering was something that we thought about throughout the course of OpenAI where it’s like we had so much uncertainty from the beginning. Is this thing going to work? And there’s many reasons why it might not work, why it should not work, why you could even say it cannot work, right? Whether it’s how do you get the people, how do you pursue the technology, like how do you get enough capital, how do you keep people motivated, like how do you make the right decisions? Like each of these things is extremely hard, extremely uncertain.</p>
-<p>And it’s easy to just sweep the problems under the rug and just blindly say go. And I think that is the negative side of like Silicon Valley culture, right? Certainly Silicon Valley perception, right? It’s just the you just kind of blindly do the thing and you kind of do a reality distortion, whatever it is. But I don’t think that works in AI and I don’t think that works for OpenAI. I don’t think that’s how we’ve operated ever.</p>
-<p>I think the way that we have always operated is to say encounter the hard truth, understand science the reality as it is. And that is I think something that’s contributed to the successes we have had of thinking about the problems differently, of not being happy with even in the early days we were thinking about, okay, if we just write some papers and publish them, it’ll be great, we’ll get citations, we’ll get you know, we’ll be the coolest people at these conferences, but will we achieve the mission? Like how is it that you do that activity and then AGI goes better for the world? They’re not connected, right? It’s not enough. Maybe it’s a foundation, maybe it’s a step, but it is not sufficient.</p>
-<p>And so then you start really thinking about these bigger picture questions of well, what it would what would it take to build an AGI? And not pleasant, right? Because you realize there’s no path. You realize you need dollars. You don’t have any mechanisms going to allow you to raise dollars and you can try hard. We did try hard. We tried extremely hard, but you know, maybe you’re raising a hundred million dollars, you could do five hundred million dollars, great, but a billion? Pretty hard. And you look at what OpenAI has been able to accomplish with the resources we have been able to raise to further that mission, there truly would be no other way to do it besides having leaned into the suffering and trying to understand the truth of what it is we’re trying to accomplish.</p>
-<p><strong>Shane Parrish:</strong> What’s a lesson you’ve had to learn more than once?</p>
-<p><strong>Greg Brockman:</strong> Make the hard decision. Have the hard conversation.</p>
-<p><strong>Shane Parrish:</strong> What’s the best advice you’ve ever been given?</p>
-<p><strong>Greg Brockman:</strong> I would actually say it was from my Harvard freshman uh writing class of just keep cutting words in order to be clear and communicate well.</p>
-<p><strong>Shane Parrish:</strong> How do you filter information?</p>
-<p><strong>Greg Brockman:</strong> I read a lot. Triage aggressively.</p>
-<p><strong>Shane Parrish:</strong> Who are your role models and why?</p>
-<p><strong>Greg Brockman:</strong> I would say Gauss and Descartes as people who are incredibly thoughtful, very much ahead of their time, very much visionaries who came up with real breakthroughs that I think transform how we think and how we live.</p>
-<p><strong>Shane Parrish:</strong> What do you want non-tech people to know about AI?</p>
-<p><strong>Greg Brockman:</strong> That it’s going to be a force for good in their personal life that they’ll benefit from and will help advance science, medicine, and really lift up everyone.</p>
-<p><strong>Shane Parrish:</strong> What does the world get wrong about Greg Brockman?</p>
-<p><strong>Greg Brockman:</strong> I think people don’t understand how focused I am on this mission in a way that I think has been very personally painful at many turns. But I just believe this technology can just help empower people and benefit everyone and I really want to help make that happen.</p>
-<p><strong>Shane Parrish:</strong> Why is OpenAI so bad at naming models?</p>
-<p><strong>Greg Brockman:</strong> [sighs and gasps]</p>
-</section>
-<section id="ch-is-ai-going-parabolic" class="level3">
-<h3 class="anchored" data-anchor-id="ch-is-ai-going-parabolic"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=1942s">0:32:22 — Is AI Going Parabolic?</a></h3>
-<p><strong>Greg Brockman:</strong> That one I can’t tell you.</p>
-<p><strong>Shane Parrish:</strong> Are we near the point where AI makes AI go parabolic?</p>
-<p><strong>Greg Brockman:</strong> I would say we are in this phase where you apply AI to its own development process and it’s going to faster and faster.</p>
-<p>And that is something that’s been happening really I mean certainly since <a href="https://openai.com/chatgpt/">ChatGPT</a> in many ways, right? We use ChatGPT to make our development process 10%, 20% faster. Now we have these amazing coding tools which have truly revolutionized how software engineering is done.</p>
-<p>And most of what we do in the production of models is bottlenecked by software. It’s about implementing these systems. It’s about scaling them up. It’s about managing these massive computers.</p>
-<p>And we’re going to be hitting a phase soon where the AI will also come up with its own research ideas and test those out, run experiments.</p>
-</section>
-<section id="ch-how-much-of-openai-s-code-is-written-by-ai" class="level3">
-<h3 class="anchored" data-anchor-id="ch-how-much-of-openai-s-code-is-written-by-ai"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2004s">0:33:24 — How Much of OpenAI’s Code is Written by AI?</a></h3>
-<p><strong>Greg Brockman:</strong> And so I think that the speed of iteration and innovation is going to continue to increase as a result of what we’re producing.</p>
-<p><strong>Shane Parrish:</strong> What percentage of the code is now written by AI?</p>
-<p><strong>Greg Brockman:</strong> It’s hard to know what percentage of the code is not written by AI. It’s a vanishing fraction. The actual writing of code currently the AI is much better than humans at writing code. Given the right context, given the right structure.</p>
-<p>Now there’s parts of the actual structure of the code that our human experts still are much better at. Right? That’s about thinking about how the modules should be laid out, how the pieces should work. Maybe the definition of certain kinds of interfaces. But the actual writing of code is essentially all AI now.</p>
-<p><strong>Shane Parrish:</strong> Is it coming up with novel ideas that you wouldn’t have thought of?</p>
-<p><strong>Greg Brockman:</strong> I’d say that where we are is we’re getting close. So we’ve seen, for example, in chip design, so in the design of our own chip last year, we applied our technology to trying to get a better fit to actually shrink the area used by the circuits. And there we found that the optimizations that the model produced were actually on our list. So it didn’t come with something novel and new that no human would ever would have, but it implemented it faster in a way that we wouldn’t have had time to accomplish.</p>
-<p>If you look at math and physics, we now are solving open math problems. We’re solving open physics problems. And actually have resolved this particular physics problem recently in quantum physics in the opposite way that the community expected. And with a you know, beautiful elegant formula, it’s like it’s really happening.</p>
-<p>So, new ideas from these models extremely doable. We’re starting to see it in some of these domains. Now, applying it in harder and harder domains or ones that require more real-world context and things like that, we’re starting to see it. We have line of sight for how to accomplish it, but we’ve a lot of work to do.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The specific results referenced here aren’t cited in the interview. OpenAI and other labs have publicized AI contributions to open mathematics problems, but the quantum-physics result described (a problem solved “in the opposite way that the community expected”) is stated without a source and can’t be matched to a public paper from the interview alone.</p>
-</div>
-</div>
-<p><strong>Shane Parrish:</strong> Why do models feel like they have a political leaning to them, like a political bias on those?</p>
-<p><strong>Greg Brockman:</strong> So, we put a lot of effort in to neutrality for our models to have them represent truth. And you can see exactly the values that go into our models on our website. We have a publicly published spec which defines and you can give feedback on the different ways we want our model to behave. We’ve spent a lot of effort to really get to this neutral point of view and trying to be fair and balanced.</p>
-<p>And I think that sometimes when you see these screenshots on Twitter that they’re not always fully honest themselves in terms of where they came from, either because there’s some memories that are behind the scenes that tweak the answer in a certain way or hidden instructions or previous parts of the conversation.</p>
-<p>And so, sometimes it’s also there’s just no right answer. And so, you know, you can have like a question say, “Answer in one word.” And no matter which one you say, you’re going to get some sort of claim of bias.</p>
-</section>
-<section id="ch-are-ai-chatbots-just-telling-us-what-we-want-to-hear" class="level3">
-<h3 class="anchored" data-anchor-id="ch-are-ai-chatbots-just-telling-us-what-we-want-to-hear"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2181s">0:36:21 — Are AI Chatbots Just Telling Us What We Want to Hear?</a></h3>
-<p><strong>Greg Brockman:</strong> And so, I think that to some extent the core of it in my mind is that we are yeah, we care a lot about truth and about having an AI that really represents you.</p>
-<p><strong>Shane Parrish:</strong> Do you think the models evolve to tell us what we want to hear if they’re based on reinforcement learning? So, if I lean left, it’s going to tell me an answer that leans left, or if I lean right, it’s going to give me an answer that leans right.</p>
-<p><strong>Greg Brockman:</strong> Well, so we’ve actually gone through an evolution of how we train the models to user preferences. And that we’ve seen that at one point, like last year, that the models really did start to lean into telling you what you wanted to hear, saying, “Oh, that’s such a great answer.” And we’ve reacted to that. We said that this is not how we want our models to operate, and we made changes.</p>
-<p>Cuz the true thing we want the models to be aligned to is helping you solve your goals, your long-term goals. Right? And maybe in the moment, it feels good to be told, “That was a great question, best question anyone’s ever asked.” But that’s not what you actually want. Okay. Maybe there’s some people, but uh it’s not it’s not what most people truly want.</p>
-<p>And so, we’ve actually made great technological improvements to make sure that our AI training does not result in what’s called hacking the grader. Right? We really want to make sure that there is a good signal there that is about the goal, not just your short-term, what’s going to get you a quick hit.</p>
-<p>And that to me is maybe the most important part of the vision for where our personal AI, personal AGI, is going to take us is to really make sure it’s not just about something that looks good in the moment. It’s really about alignment with your long-term well-being, your long-term goals, the thing that you actually want. And that is what I think will most empower people, right? It’s really put you in the driver’s seat, because you will have this entity that is there operating on your behalf 24/7, right? You’re asleep, it’s out there trying to figure out what is it that Shane wants? How can I do it better?</p>
-</section>
-<section id="ch-the-global-ai-race-to-reach-agi" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-global-ai-race-to-reach-agi"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2286s">0:38:06 — The Global AI Race to Reach AGI</a></h3>
-<p><strong>Greg Brockman:</strong> And is actually able to accomplish it.</p>
-<p><strong>Shane Parrish:</strong> Are we in a global AI race?</p>
-<p><strong>Greg Brockman:</strong> I think we’re certainly in a global AI renaissance, and I think that the dynamics between countries are not yet fully defined. We have this concentration of where the breakthrough algorithms come from in the US, in western companies.</p>
-</section>
-<section id="ch-what-happens-if-us-doesn-t-reach-agi-first" class="level3">
-<h3 class="anchored" data-anchor-id="ch-what-happens-if-us-doesn-t-reach-agi-first"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2320s">0:38:40 — What Happens if US Doesn’t Reach AGI First?</a></h3>
-<p><strong>Greg Brockman:</strong> There’s clearly a lot of innovation happening around the world, but I think exactly the balance of dynamics and how like which countries rely on which providers, all of that is something that I think is still being determined.</p>
-<p><strong>Shane Parrish:</strong> Is there a consequence, do you think, for the United States not being the first country to reach AGI?</p>
-<p><strong>Greg Brockman:</strong> Well, I do think that leading in AI is very critical for America. Because I think that this is how you can ensure that democratic values are protected and preserved, and I think that every country is also starting to realize that they need some sort of sovereign AI strategy. They need to, if this is becoming the basis of economic security, of national security, they need to participate somehow.</p>
-<p>And if you look at a lot of the efforts by the United States to think about how to manage chip exports, how to think about technology exports, there’s something where if you lean too far out, then everyone else has to develop their own competitor or rely on someone else who’s who’s building this. If you lean too far in, then maybe you lose your advantage. And the question is how do you balance those?</p>
-<p>How do you maintain your leadership? But leadership is not just about being ahead.</p>
-</section>
-<section id="ch-are-competing-countries-stealing-ai-advancements-from-u-s" class="level3">
-<h3 class="anchored" data-anchor-id="ch-are-competing-countries-stealing-ai-advancements-from-u-s"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2389s">0:39:49 — Are Competing Countries Stealing AI Advancements from U.S?</a></h3>
-<p><strong>Greg Brockman:</strong> Leadership is about also bringing along the world with you.</p>
-<p><strong>Shane Parrish:</strong> Are other countries stealing advancements? I’ve been reading a lot about distillation.</p>
-<p><strong>Greg Brockman:</strong> There’s certainly a lot of attempts to <a href="https://en.wikipedia.org/wiki/Knowledge_distillation">distill</a> models, and that comes from companies in the US, it comes from from all over the world. But I think that it misses the core point, which is that the way this technology is developing is it is on an exponential. And anytime we have a model, we’ve already moved on to the next one. We’re already moving to the next level. So we put in a lot of effort to protect against distillation, make it harder to do, especially with things like <a href="https://arxiv.org/abs/2201.11903">chain of thought</a> [4] and other parts of the model that are not really necessary to get the benefits to someone, to get the outputs to someone. But, that the core advantage that we have, the strength that we’re building up over time, is really about not just any one model.</p>
-</section>
-<section id="ch-why-chatgpt-no-longer-shows-reasoning" class="level3">
-<h3 class="anchored" data-anchor-id="ch-why-chatgpt-no-longer-shows-reasoning"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2438s">0:40:38 — Why ChatGPT No Longer Shows Reasoning</a></h3>
-<p><strong>Greg Brockman:</strong> It’s about the machine that makes the models.</p>
-<p><strong>Shane Parrish:</strong> Oh, is that why you guys stopped showing reasoning?</p>
-<p><strong>Greg Brockman:</strong> That is part of it. So, there’s two reasons. One is to think about distillation, but the second, in some ways more important, is that we had this insight when we first developed the reasoning paradigm, that it gives us a interpretability mechanism we had not been anticipating, because you can really read the model’s thoughts. You can see exactly how it got to an answer. So, you can interpret how like, what was actually motivating that answer.</p>
-<p>Now, the problem is, if you train the model to have a chain of thought that looks good, then you lose all the faithfulness, right? It’s just going to be like the model knows that part of the answer that is desired is for the chain of thought to look a certain way, and so it may not be representative of how it actually arrived at that answer anymore. And so, we were we made an early decision to say we want to avoid any temptation to train these chain of thoughts to look favorable, to look like something you could present to a user.</p>
-</section>
-<section id="ch-the-finite-constraints-of-compute" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-finite-constraints-of-compute"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2507s">0:41:47 — The Finite Constraints of Compute</a></h3>
-<p><strong>Greg Brockman:</strong> And so, that really made us lean out for multiple reasons, for competitive reasons, for safety reasons, from the idea of showing these intermediate thoughts.</p>
-<p><strong>Shane Parrish:</strong> It seems like the current trend right now is to release preview models. Is that because we’re computer constrained, do you think?</p>
-<p><strong>Greg Brockman:</strong> I would say that we in general are heading to a compute constrained world. Like, if you think about the amount of value that these models can produce for someone, it’s extreme, right? It’s not just answering a quick question anymore. It’s not just even answering, you know, giving you access to health information. It’s really going deep and spending a lot of tokens to put together a bunch of different data sources, search through your enterprise knowledge base to actually be able to solve this hard problem, to write that software that’s better than a human would be able to, all of that is something that is like hard.</p>
-<p>And if you look at the progress that we made between GPT 5 to 5.1 to 5.2 to 5.3 <a href="https://openai.com/index/introducing-upgrades-to-codex/">Codex</a> to 5.4, it’s been extreme and these models are getting extremely better at understanding your intent, molding to what you want to accomplish. And we also put them in these surfaces like Codex that make them very usable. So that you as a developer, you can really fly, right? That you can achieve more than you would have dreamed otherwise.</p>
-<p>And all of this is powered by compute fundamentally and there’s not enough compute in that if you just wanted enough compute for, you know, you wanted one GPU for every person in the world, you’re talking like 8 billion GPUs. We are not on a trajectory to build anywhere near that level of compute, right? It’s like, you know, hundreds of thousands of GPUs. Like that’s a pretty big fleet these days. Millions of GPUs coming up. It’s not surprising that there is too little compute in the world and that we’re going to need much more in order to really be able to bring this technology to everyone.</p>
-<p>And then in terms of the training, I’d say that the way that we tend to launch things, so we have put in a lot of effort to make sure we are building compute in anticipation of what we see coming.</p>
-</section>
-<section id="ch-on-investing-early-in-data-centers" class="level3">
-<h3 class="anchored" data-anchor-id="ch-on-investing-early-in-data-centers"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2618s">0:43:38 — On Investing Early in Data Centers</a></h3>
-<p><strong>Greg Brockman:</strong> And so I think we’re going to be very focused on our mission of bringing these models to everyone, making them widely available.</p>
-<p><strong>Shane Parrish:</strong> You guys were teased for putting so much effort, money into data centers. How do you think that’s playing out now?</p>
-<p><strong>Greg Brockman:</strong> Well, I think it’s going to give us an advantage. And I think it’s going to be something that’s an advantage not just for the business, but for actually delivering on the mission of bringing this technology to everyone.</p>
-<p><strong>Shane Parrish:</strong> Cuz you guys, like you saw that way in advance. You get teased for it by almost all of your competitors.</p>
-<p>Mhm. Who’s laughing now?</p>
-<p><strong>Greg Brockman:</strong> Yeah.</p>
-<p><strong>Shane Parrish:</strong> [snorts] [laughter]</p>
-<p><strong>Greg Brockman:</strong> I think that our competitors are not a good time on compute. Let me put it that way.</p>
-<p><strong>Shane Parrish:</strong> But you must have seen something that they didn’t see. Like that’s the I mean, everybody was in a very similar or it seems at least from the outside. Everybody was in a very similar technological space. They all knew this was coming. And yet you guys had the boldness to make that bet. With a hundred billion dollars. Like</p>
-<p><strong>Greg Brockman:</strong> But that is the core of OpenAI is really encountering reality as it is. Really thinking about what is the implication of what it is we’ll accomplish in the next six months, the next 12 months, the next 10 years.</p>
-<p>And that is true for the grand mission. It’s true for day-to-day how we design different pieces of our software. And it’s true for things like scaling up compute.</p>
-<p>And I think that we are deeply motivated by bringing this technology to everyone. And we think about lots of different mechanisms for how to do that well and safely.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The “hundred billion dollars” is the interviewer’s figure. OpenAI’s disclosed compute buildout runs through its Microsoft/Azure partnership and the Stargate joint venture announced in January 2025.</p>
-</div>
-</div>
-<p><strong>Shane Parrish:</strong> .</p>
-</section>
-<section id="ch-the-future-of-data-center-specialization" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-future-of-data-center-specialization"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2791s">0:46:31 — The Future of Data Center Specialization</a></h3>
-<p><strong>Greg Brockman:</strong> Stay sharp in the afternoon and grab a free eight-count sample pack with any purchase at Do you think data centers eventually get dedicated towards a problem? Like, you’ll have a huge data center in North Dakota and it’s just on solving cancer and that’s all it’s doing.</p>
-<p><strong>Shane Parrish:</strong> Yes.</p>
-<p>How far away are we from that?</p>
-<p><strong>Greg Brockman:</strong> I think that this kind of thing happening this year is not out of the question. And it’s really amazing, if you think about it, having this giant machine, right? And have you been to any of these data centers?</p>
-<p><strong>Shane Parrish:</strong> No, I’ve seen them online, but never in person.</p>
-<p><strong>Greg Brockman:</strong> It is a very different experience to walk amongst these racks, right? To walk down the rows and you look at the cables that are all perfectly exactly the right length and you just realize that what a data center is a massive machine. These are maybe the biggest machines that humanity creates.</p>
-<p>And then you ask the question of why. Why do we build these machines? Why is it worthwhile? And it is because they have the potential to solve problems that matter for people, right? To solve, you know, cures for cancer, to help people run businesses, to you know, sometimes maybe it’s mundane queries.</p>
-<p>The purpose in my mind is really about how do you deliver value? How do you deliver on people’s goals?</p>
-</section>
-<section id="ch-how-openai-will-decide-whose-queries-to-serve" class="level3">
-<h3 class="anchored" data-anchor-id="ch-how-openai-will-decide-whose-queries-to-serve"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2872s">0:47:52 — How OpenAI Will Decide Whose Queries to Serve</a></h3>
-<p><strong>Greg Brockman:</strong> And I think the opportunity presented by these massive machines targeting one problem is something we have not yet really internalized.</p>
-<p><strong>Shane Parrish:</strong> But if we’re computer constrained, like, how do you who to serve? Like, why are you serving me when I’m like trying to make an image over like solving cancer?</p>
-<p><strong>Greg Brockman:</strong> Well, this is going to be the most important question for society to answer. Where does the compute go? What problems are worthy? And there’s lots of worthy problems, but you need to prioritize them cuz you only have so much compute.</p>
-<p>And so, one thing we really believe in is that everyone is going to need access to compute. And so, that’s why we have a free tier of ChatGPT. We’ve really put effort into making sure that people are able to use this technology, that it’s because we believe that is core to what we’re doing here.</p>
-<p>We think that putting this technology in people’s hands, that empowers them, that lets them achieve goals. It helps them also understand the technology, right? It’s something that helps them then shape how does this technology slot in?</p>
-<p>You could take a very different approach and say, “Well, it’s all about the ivory tower. It’s all about the just solve the problem and we will then distribute the technology breakthroughs in some way.” And I think there’s merit to that as well, but that’s not where I’d put the balance of what we do, right?</p>
-</section>
-<section id="ch-openai-on-consumer-vs-enterprise-models" class="level3">
-<h3 class="anchored" data-anchor-id="ch-openai-on-consumer-vs-enterprise-models"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=2948s">0:49:08 — OpenAI on Consumer vs Enterprise Models</a></h3>
-<p><strong>Greg Brockman:</strong> I think that is very much a like we do want to make great strides on specific problems, but I think that should be in service again of the we want the benefits of this technology to be broadly distributed.</p>
-<p><strong>Shane Parrish:</strong> How do you think about that internally just at OpenAI between consumer and enterprise?</p>
-<p><strong>Greg Brockman:</strong> Well, a lot of what I’ve been thinking about recently has been focus. Because this field, it is opportunity incarnate, right? It’s like you can take AI and apply it to any problem. Any sort of thing you want to build, it’s now on the table. And the problem that we have is that there’s only so much compute. Where do you want to put it? And so, you need to have synergies. You need to have return to the fact that you have multiple things happening, that they all add up. 1 + 1 = 10. Like, that’s where that’s the dream. That’s the goal. And a lot of what I think is important for this next phase of OpenAI, very clearly enterprise because the economy is becoming this compute-powered economy before our very eyes. It’s happening right now. Like we’ve seen this with software engineering and it’s going to happen with every single field of work people do with a computer. Everyone’s computer work like is going to be something where rather than you doing work with your computer, your computer’s going to do work for you. It’s like truly going to be amazing. And so we need to be there to help people deploy these models, figure out how to utilize them, figure out how to get the most benefit out of them.</p>
-<p>And by the way, there’s also going to be a blurring of the line between what is enterprise and what is consumer because entrepreneurship is going to become far easier than ever before. Like we’re seeing this already. And even for example one of my friends was describing that his sister was describing this app that she really wished someone had created, that she had this picture of like exactly what she wanted. And he in the meanwhile was typing into Codex, uh-huh, uh-huh, and then pushed enter. And a few hours later, he shows her this app. And she’s like, “Wait, what is this? Like where did this thing come from? Who built this?” And he said “You did.” And that is I think just an amazing thing where you realize anyone can be a builder. Like these tools at Codex is for everyone. It’s not just for software engineers. It’s like everyone now can be a software engineer if they have a vision, if they have this agency that they have a thing that they want to accomplish. Like you now have this magic tool that can do it.</p>
-<p>And then on the consumer side the thing about consumers it’s too broad of a term. Right? That there’s lots of different things. There’s like entertainment, there’s a bunch of things in self-expression, and there’s also solving goals. And the aspect of consumer that we’re really dialed in on is solving goals. Like we believe that this technology you’ll get smartphones. That’s like 4 billion people use them. All those people should have a personal AI, a personal AGI that’s out there that knows them well, that has their personal context that is trustworthy that they can ask for advice, but that also knows them so well that you know, if your favorite musician is in town, it just goes and proactively purchases tickets and maybe it knows like, oh, I should check in before doing this or maybe it knows, yep, that just like I got to get do this and I have I prior approval. Like that level of having an AI that knows you and can help you achieve whatever it is you want to achieve and help you flush out what are your goals. You should still set those goals. They should be your goals. Right, you should be in charge, but that is something we want to create and that is something I think that not just 4 billion people are going to want and need. I think it’s going to be 8 billion people. I think that the whole planet is going to really benefit from and need access to a personal AI, personal AGI.</p>
-<p>And so you look at those two dimensions of the knowledge work and broad distribution of access to energetic system and we want to build those two aspects and they come together because ultimately they’re the same technology. Ultimately you want an AI that is there in the cloud that has access to information that is trustworthy, that is able to give good answers and able to take actions on your behalf.</p>
-</section>
-<section id="ch-data-centers-in-space" class="level3">
-<h3 class="anchored" data-anchor-id="ch-data-centers-in-space"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=3185s">0:53:05 — Data Centers in Space?</a></h3>
-<p><strong>Greg Brockman:</strong> Whether it’s building, whether it’s in your personal life and maybe you have multiple instances of it, but fundamentally it is one technological system.</p>
-<p><strong>Shane Parrish:</strong> Do you think we’ll have data centers in space?</p>
-<p><strong>Greg Brockman:</strong> I think we’re going to have data centers everywhere.</p>
-<p><strong>Shane Parrish:</strong> How far away do you think we are from that?</p>
-<p><strong>Greg Brockman:</strong> Well, data centers in space has a lot of has many technical problems associated with it. Even for example, the data centers we build today are very finicky. Right, they’re these massive machines with very breakable, very expensive components. We’ve had many issues in the past where the cables were just too taut, just literally like two two tight of cables and then you get signal integrity issues and the computer doesn’t work.</p>
-<p>And so figuring out how do you maintain systems today? It’s people go and physically them. Probably will move to robotics. So, I think figuring out how to solve some of these technical problems are going to be very important dependencies as we think about putting them in you know, you people talk about putting data center in, you know, various difficult locations.</p>
-<p>Um space feels like a grand challenge, but I think that we have going to have such need for compute that we need to be thinking about all options.</p>
-<p><strong>Shane Parrish:</strong> What is iterative deployment and why do you do it?</p>
-<p><strong>Greg Brockman:</strong> Well, iterative deployment is one of the core pillars of how OpenAI has approached how to get this technology to benefit people and to achieve our mission. And this is something that I think I was probably the person who articulated those two words. But this spirit is something that really emerged as we thought about our first product deployment and really thinking about how does that connect to what we’re trying to do.</p>
-<p>And you realize that there were two different routes that you could take in terms of thinking about the you want to build an AGI that’s going to benefit people, how do you do it? And one is you go for kind of build it in secret. You don’t deploy anything. You have a lot of time to just kind of polish it, get it right. But then at some point you push a button and you say deploy. And I remember thinking about could I sign up for that strategy? Could I be accountable for that strategy? Do you want to be sitting in a room thinking about, okay, we ran all our tests. Are we ready to deploy? And you’ve never deployed anything ever before. Right? That’s your first contact with reality. And it’s a very powerful system that’s going to really change the world. Like that is a very tough problem set.</p>
-<p>But instead, what about if you take an approach where this is your hundredth system. You’ve had to solve this problem 99 times before with systems of increasing power. And the world has also had a chance to adapt to them, to reconfigure around them.</p>
-<p>And we learned very early on with GPT-3. We got to see this very concretely what it’s like to deploy something where we spent a lot of time thinking about what are all the misuses of GPT-3, what are the ways it could go wrong. We thought about misinformation, we thought about these kinds of, you know, grand pictures. And you know what the number one misuse of GPT-3 was?</p>
-<p><strong>Shane Parrish:</strong> What?</p>
-<p><strong>Greg Brockman:</strong> It was medical spam, like advertising different drugs to people. Right? It’s like not something we ever would have thought of as a problem,</p>
-<p><strong>Shane Parrish:</strong> [clears throat]</p>
-<p><strong>Greg Brockman:</strong> but we see it in front of our eyes and we get a chance to react and learn from it. And so iterative deployment is the idea that we will bring intermediate intermediate versions of this technology.</p>
-<p>Now, it’s not an excuse to just blindly deploy, right? You still need to think at every step about what’s our best view on all the ways this might be misused, what are the downsides, what are the risks?</p>
-<p>Let’s mitigate those, but you get to see it. You get to see if you’re right, learn from reality, and do better the next time.</p>
-<p><strong>Shane Parrish:</strong> I think people don’t understand the extent of which like this is all new. There’s no playbook. Like you’re figuring this out as you go as well on the most rapidly deployed technology in the world perhaps that’s so powerful.</p>
-<p><strong>Greg Brockman:</strong> It is true that at various points in OpenAI’s history, we’ve had some hope that, “Hey, there are people who have deployed transformative technologies before. Maybe they can tell us the answers.” And it’s never been so simple. They do have wisdom and insights, and that’s something that I think we’ve really incorporated, but we realized that we’re the closest ones to this technology. That by virtue of creating it, we have an understanding of the ways in which we could shape it. That is hard for someone who isn’t so close to it to opine on, to advise on.</p>
-<p>And I think that one observation I have is that the right choices are extremely specific to the facts of the technology. There’s different pressures that are exerted by cell phones versus, you know, mainframe computers versus AI versus electricity. Each one of these has its own unique proclivities and problems. That’s ways that they’re being developed. The individuals doing it matter too, right? The dynamics between different humans and these human factors have been hugely impactful for how AI is playing out today in front of our eyes.</p>
-<p>I think that a lot of what we spend our time doing from the beginning of OpenAI and really even before is you spend a lot of time dreaming. You spend a lot of time really thinking about all the implications of what you might do.</p>
-<p>And I think that one thing I’ve observed is that we haven’t really been surprised by some moments along the way, but we have been surprised by when they arrive, how hard they are to accomplish, exactly the order in which we see them. And that the world that we are moving towards is I think one that is in many ways more wonderful and awe-inspiring than many of the ones we anticipated.</p>
-<p><strong>Shane Parrish:</strong> If one frontier model puts safety as a primary concern and another frontier model doesn’t, how do you view that competition playing out over time?</p>
-<p><strong>Greg Brockman:</strong> Well, I think we have found that safety is actually a core product feature. Like no one wants a model that is not aligned with them. Right? You want a model you can trust that does the right things in any circumstance you give it. And so we have invested I think we’ve actually invested possibly far more than certainly people perceive and possibly more than any other lab in safety, right?</p>
-<p>That we have in ChatGPT the broadest deployment of AI these language models in the world used by the most people. We have to care. We’ve always cared, but you really see it in terms of us being able to bring this technology to so many people. So I don’t think that there’s a sustainable state where the people who are building this technology and having successful products are not also investing super hard in safety.</p>
-<p>And I think that actually the challenge is a little bit about if you step back, because there are some aspects of what it means to deliver safety that are not necessarily short-term. You have to think long-term for your not just your business, but for what it is that you’re creating. And some of this is about how you train the models, some of this is about how do you get your feedback loop. But I would just say that we are committed to safety as part of our mission, and that’s something where I think it has played out in our products and in the world.</p>
-<p>One thing that people also miss is that it’s not just about the safety of the model, it’s about the resilience of society. If you look at how transformative technologies enter the world, that society builds around them about their strengths and their risks. You think about engines, right? You build cars, but you also need seat belts, you also need to have roads, and you reorient cities around the fact of this is how this technology works. You think about electricity, you have various safety standards, you have different kinds of where you’re allowed to put the electric poles, right? And high-voltage lines and all these things. And I think the same will be true for AI, that it’s not just about the technology itself, it’s not about the model itself. It’s really about how do they integrate into the world with a society that is resilient. And that is something we’re investing in very significantly.</p>
-</section>
-<section id="ch-what-should-ai-regulation-look-like" class="level3">
-<h3 class="anchored" data-anchor-id="ch-what-should-ai-regulation-look-like"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=3656s">1:00:56 — What Should AI Regulation Look Like?</a></h3>
-<p><strong>Greg Brockman:</strong> The OpenAI Foundation has this as one of its key focuses of trying to help society invest in and build a resilient layer for AI.</p>
-<p><strong>Shane Parrish:</strong> What do you think regulation for AI should look like?</p>
-<p><strong>Greg Brockman:</strong> Well, I think that there’s a number of different pieces to what regulation for AI needs to accomplish. One I think is very important is we need to ultimately ensure this technology benefits people. And you think about questions like it is very clear that institutions, jobs, just life paths that people thought would be stable, those assumptions may not hold anymore. And we need to make sure that we provide support, that we’re all there to support each other as this technology rolls out.</p>
-<p>And so, what does that mean from a regulatory perspective? I think there’s a lot of ideas, whether it’s things like everyone should have access to compute. How do we ensure that’s true? How do we ensure that as this technology starts to generate more economic value, that it doesn’t accrue to just one place, right? This should be something that actually everyone is benefiting from. This technology shouldn’t just abstractly benefit the economy, it’s very clearly going to do. It should directly be something that people feel in their daily lives, that they themselves, their life is better because this technology exists, because they’re using it, because they’re able to accomplish more.</p>
-<p>And I think that the ways in which I see this playing out, it’s very important to ground it in what are we really seeing. Like a good example is the number of people whose who say that their life, or their life was saved, or the life of a loved one was saved through the use of ChatGPT. And you realize that’s something that should be supported and protected. And so, a good example of how you can do that through regulation is thinking about privacy and privilege. You talk to a doctor, you talk to a lawyer, those are privileged conversations, right? You feel comfortable sharing them. There’s certain guardrails on when the health care provider would have to, you know, provide that information to law enforcement or alert someone. Well defined in the law. We don’t have anything like that for AI right now. But people are using these tools, and they should use these tools because they’re so important for giving people access to information that they wouldn’t be able to get otherwise, and that they should have the appropriate kind of understanding and protections there, too.</p>
-<p>And so, I think that there’s a lot of just really leaning into thinking about how do these models insert into people’s lives? How do we make sure that we can continue to innovate, while at the same time, also making sure that the benefits flow broadly. How do we ensure that America remains a leader, right? That you think about robotics, where I think we are not the leader. I think that for AI, we have to make sure that we continue with this remarkable position that [clears throat] we have been able to achieve. And you think about things like data centers, that those are something where there’s clearly been a lot of concern about questions like do they drive up electricity prices? And we have a commitment to ensure that they do not. And I think that each of these things can be achieved through many different mechanisms. Sometimes it’s through regulation, sometimes it’s through commitments from the company, and sometimes it’s just through people understanding the facts. Like a good example is data centers and water usage. Like that’s something that people talk about a lot, but actually our data centers use incredibly little water, right? That’s actually misinformation that they use a lot.</p>
-<p><strong>Shane Parrish:</strong> It’s less than a household, isn’t it?</p>
-<p><strong>Greg Brockman:</strong> It’s It is, because it’s a closed loop. You basically fill up a giant like, you know, think of it as like a swimming pool of water, and you just circle it around. And so it’s a fixed amount of water that’s not very large, but I think people really understanding the why. Why are we building these things? Why is it worthwhile? How does it benefit me?</p>
-</section>
-<section id="ch-the-future-of-ai-powered-entrepreneurship" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-future-of-ai-powered-entrepreneurship"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=3873s">1:04:33 — The Future of AI-Powered Entrepreneurship</a></h3>
-<p><strong>Greg Brockman:</strong> And being able to give people that empowerment, whether it’s helping them feel that they can be an entrepreneur now, that they can build a business, that they can create something. Like all of that we have to solve for.</p>
-</section>
-<section id="ch-ai-and-job-loss" class="level3">
-<h3 class="anchored" data-anchor-id="ch-ai-and-job-loss"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=3884s">1:04:44 — AI and Job Loss</a></h3>
-<p><strong>Greg Brockman:</strong> We have to make sure that people feel it in their daily lives.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> Data-center water use is contested. Closed-loop liquid cooling recirculates its working fluid, but large facilities still consume water through evaporative cooling and through the electricity they draw; independent estimates vary widely by site and cooling design.</p>
-</div>
-</div>
-<p><strong>Shane Parrish:</strong> When I told people I was doing this interview, one of the common reactions is that they’re fearing for their job and their uncertainty. What would you tell them?</p>
-<p><strong>Greg Brockman:</strong> Well, I do think that this technology it is uncertain exactly how it will play out. I think it is surprising how it will play out as well. Like the AIs that we have right now, the world that we have right now, is not really something that was anticipated by science fiction. It’s just different. And some inevitable conclusions, I think, actually turn out to not quite look the same way when they come to pass.</p>
-<p>So, I believe it’s always easiest to see what you lose. Right? And the change is coming. There’s no denying that. That is absolutely the case. But, it’s much harder to see a priori what you gain. And as an example, just think about Uber. If you describe it to someone in 1950, you have to think about computers. You have to think about mobile phones. You have to think about GPS. And it’s all so that you can get a car to appear where you are in 3 minutes. And like that’s actually crazy if you think about that level of technological investment for that kind of use case. But, it really happened. And it didn’t just happen for that one use case. It happened for thousands, for tens of thousands, for millions of other use cases.</p>
-<p>And so, I think that my view of AI is it is about empowerment. It is about human agency. And that does mean that some of these institutions, jobs, these kinds of things that there will be things that we thought we could rely on that turn out not to be as stable as we thought. And so, it will affect people. But, the question to lean into is what do you gain and how do you benefit from it? So, now you can be a builder. You can create anything anything you can imagine can become real.</p>
-<p>Well, what do you imagine? How do you build that skill? Really leaning into this technology. Like one thing that I have observed is across multiple generations of this technology, the people who seem to be getting the most benefit out of it are the people who did it for the previous one. Right? So, the more that you build the skill and at the core of it is agency, is having a vision, is having ideas. Because now the barrier to entry to trying them out is lower than ever before. So, I think there will be new opportunity created. I think that the world does need to think about how do we support everyone through this moment of uncertainty, through whatever transitions will come. Because the economy will be a compute power economy. It will be different, but I think that there will be a place for everyone to contribute.</p>
-</section>
-<section id="ch-the-skills-young-people-should-invest-in" class="level3">
-<h3 class="anchored" data-anchor-id="ch-the-skills-young-people-should-invest-in"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=4035s">1:07:15 — The Skills Young People Should Invest In</a></h3>
-<p><strong>Shane Parrish:</strong> Where should young people be investing today? If you’re in high school or university or just trying to start out in a job, what skills do you think will be more valuable in the future?</p>
-<p><strong>Greg Brockman:</strong> Well, I really think leaning into this technology is going to be a critical skill. Just really understanding how do you get the most out of AI? Because we’re all going to be heading to a world where we’re managers of agents, and soon maybe the CEO of an autonomous AI corporation. Or just imagine if you had the workforce of you know, a 100,000 person company all at your disposal, operating on your behalf.</p>
-<p><strong>Shane Parrish:</strong> 24/7.</p>
-<p><strong>Greg Brockman:</strong> 24/7, right? As long as you’ve got the tokens, the compute to power it, which again I think everyone needs access to compute. That’s like so critical for the world to figure out and get right.</p>
-<p>Because then at that point you can point that at any problem. And the number of problems that humanity could want to solve are boundless.</p>
-<p>And so I think that the more the people do lean into this technology, figure out how to take advantage of what’s coming, how to combine these technologies in new ways, how to interact with our agents to really manage them, to think about when what is it that I want, what is it that is my sense of self, what is my purpose, what do I want to see in the world, it is going to be easier than ever to accomplish that. And I think that world, the what we gain, I think is going to be almost unimaginable in its upside.</p>
-<p><strong>Shane Parrish:</strong> That’s the most positive sort of view of the future. What’s the most negative one you can imagine?</p>
-<p><strong>Greg Brockman:</strong> One thing that’s very interesting about how technology has played out to date is that it’s really been about contorting ourselves to the machine. Right? You think about how many people work where you have this box and you’re typing away at it and you’re getting your carpal tunnel and your shoulders are hunched and all of those things that were not natural, right? That’s not really what we’re designed for.</p>
-<p>And we’re going to be moving to this world where it’s not just that you’re doing work with your computer, so your computer actually does work for you. And that is something that presents opportunities. I think it presents risks. I think we need to figure out how to mitigate those. Like one core thing at the end of the day is that if you have machines that help people actualize their goals, right? That’s out there doing what you want. Sometimes people have conflicting goals. How do you resolve that? How do you decide what the bounds are on what an AI will help you with and what they won’t?</p>
-<p>Really trying to figure out how does this slot into society? How do you make sure that the benefits don’t just go to one corporation, one set of people, but that actually do lift up everyone. We need to raise the floor so that everyone has access to a great life, this technology, and are able to do things with it. And I think it’ll correspondingly also lift the ceiling. And so I think we’re going to be in a world where everyone is going to have new opportunities, that there will be more just I don’t know if the right word is safety net or just like that there should be something that really is able to make sure that everyone gets brought along. But then we’re going to be able to accomplish so much more.</p>
-<p>And you think about things like access to medical care. Like we should be in a world, if we do our job right, where everyone gets access, has a doctor in their pocket that is better than any team of doctors today. The world’s best doctors, they’re there for you. They care about you. They’re actually reading your charts, that they’re thinking 24/7 about how can we actually help with this condition? It’s disruptive, right? It’s not going to come for free in terms of how this technology will interact with the world, and we’ve already seen the beginning errors of it. But, I think that what we’re going to see over just even the next 2 years, I think it will be this force for good, but we have to also acknowledge all the ways that it could go wrong or the risks of it in order to achieve those upsides.</p>
-</section>
-<section id="ch-what-does-success-look-like-for-you" class="level3">
-<h3 class="anchored" data-anchor-id="ch-what-does-success-look-like-for-you"><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc&amp;t=4290s">1:11:30 — What Does Success Look Like For You?</a></h3>
-<p><strong>Shane Parrish:</strong> We always end every podcast with the same question, which is what is success for you?</p>
-<p><strong>Greg Brockman:</strong> Achieving the OpenAI mission of ensuring that artificial general intelligence benefits all humanity.</p>
-<p><strong>Shane Parrish:</strong> Thank you very much. This was awesome.</p>
-<p><strong>Greg Brockman:</strong> This is a great conversation, man.</p>
-<hr>
-</section>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<p><strong>Talk and source</strong></p>
-<ul>
-<li><a href="https://www.youtube.com/watch?v=6JoUcQ1qmAc">YouTube video</a> (~72 min; The Knowledge Project, episode page)</li>
-<li><a href="https://fs.blog/knowledge-project-podcast/greg-brockman/">Episode page</a> — Farnam Street (full written transcript is members-only)</li>
-</ul>
-<p><strong>People</strong></p>
-<ul>
-<li><a href="https://thegregbrockman.com/">Greg Brockman</a> — OpenAI cofounder and president</li>
-<li><a href="https://fs.blog/">Shane Parrish</a> — host, The Knowledge Project</li>
-<li><a href="https://blog.samaltman.com/">Sam Altman</a>, <a href="https://en.wikipedia.org/wiki/Ilya_Sutskever">Ilya Sutskever</a>, <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Dario Amodei</a>, <a href="https://colah.github.io/">Chris Olah</a>, <a href="http://joschu.net/">John Schulman</a>, <a href="https://en.wikipedia.org/wiki/Elon_Musk">Elon Musk</a>, <a href="https://en.wikipedia.org/wiki/Mira_Murati">Mira Murati</a>, <a href="https://en.wikipedia.org/wiki/Satya_Nadella">Satya Nadella</a>, <a href="https://patrickcollison.com/">Patrick Collison</a></li>
-</ul>
-<p><strong>Companies and products</strong></p>
-<ul>
-<li><a href="https://openai.com/">OpenAI</a> — <a href="https://openai.com/chatgpt/">ChatGPT</a>, <a href="https://openai.com/index/introducing-upgrades-to-codex/">Codex</a></li>
-<li><a href="https://stripe.com/">Stripe</a>, <a href="https://deepmind.google/">Google DeepMind</a>, <a href="https://en.wikipedia.org/wiki/Google_Brain">Google Brain</a>, <a href="https://www.cerebras.ai/">Cerebras</a>, <a href="https://arcinstitute.org/">Arc Institute</a></li>
-</ul>
-<p><strong>Concepts and background</strong></p>
-<ul>
-<li><a href="https://en.wikipedia.org/wiki/Artificial_general_intelligence">Artificial general intelligence</a>, <a href="https://en.wikipedia.org/wiki/Reinforcement_learning">reinforcement learning</a>, <a href="https://en.wikipedia.org/wiki/Unsupervised_learning">unsupervised learning</a>, <a href="https://en.wikipedia.org/wiki/Knowledge_distillation">knowledge distillation</a></li>
-<li><a href="https://en.wikipedia.org/wiki/AlphaGo">AlphaGo</a>, <a href="https://en.wikipedia.org/wiki/Deep_Blue_(chess_computer)">Deep Blue</a></li>
-</ul>
-<p><strong>Papers and technical reports</strong></p>
-<ol type="1">
-<li><a id="ref-1"></a>Berner, C., Brockman, G., Chan, B., et al.&nbsp;“Dota 2 with Large Scale Deep Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:1912.06680), December 13, 2019. <a href="https://arxiv.org/abs/1912.06680" class="uri">https://arxiv.org/abs/1912.06680</a></li>
-<li><a id="ref-2"></a>Radford, A., Jozefowicz, R., Sutskever, I. “Learning to Generate Reviews and Discovering Sentiment.” <em>arXiv preprint</em> (arXiv:1704.01444), April 5, 2017. <a href="https://arxiv.org/abs/1704.01444" class="uri">https://arxiv.org/abs/1704.01444</a></li>
-<li><a id="ref-3"></a>Schulman, J., Wolski, F., Dhariwal, P., Radford, A., Klimov, O. “Proximal Policy Optimization Algorithms.” <em>arXiv preprint</em> (arXiv:1707.06347), July 20, 2017. <a href="https://arxiv.org/abs/1707.06347" class="uri">https://arxiv.org/abs/1707.06347</a></li>
-<li><a id="ref-4"></a>Wei, J., Wang, X., Schuurmans, D., et al.&nbsp;“Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.” <em>arXiv preprint</em> (arXiv:2201.11903), January 28, 2022. <a href="https://arxiv.org/abs/2201.11903" class="uri">https://arxiv.org/abs/2201.11903</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260605-interaction-model-interviews/">Mira Murati on Interaction Models and Keeping Humans in the Loop</a>: the November 2023 board crisis told from the other principal’s side, plus the opposite bet on autonomy that Brockman champions and Murati declines.</li>
-<li><a href="../../posts/20241213-sutskever-pretraining-over/">Sutskever at NeurIPS 2024: Pre-Training Era Is Over</a>: a counterweight to Brockman’s claim that pretraining and reasoning run on the same prediction machinery, from the cofounder whose departure he calls his hardest moment.</li>
-<li><a href="../../posts/20260608-ai-cult-exposed/">Karen Hao on Empire of AI: OpenAI, AGI Believers, and a New Colonialism</a>: a critical outside account of the same OpenAI history Brockman narrates from inside, including the nonprofit-to-for-profit shift and the compute build-out.</li>
-<li><a href="../../posts/20260428-openai-agi-principles/">OpenAI’s Five Principles for AGI</a>: OpenAI’s own framing of the mission Brockman repeatedly invokes, useful to read against his in-the-trenches retelling.</li>
-<li><a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a>: a soberer timeline against Brockman’s “it’s real now” momentum and his AI-building-AI claims.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260603-greg-brockman/</guid>
-  <pubDate>Wed, 03 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260603-greg-brockman/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

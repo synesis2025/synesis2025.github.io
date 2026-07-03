@@ -23,6 +23,154 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Thu, 02 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Conformal Thinking: Risk Control for Reasoning on a Compute Budget</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260624-conformal-thinking/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260624-conformal-thinking/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260624-conformal-thinking/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The threshold needed to hit a target test risk varies a lot across early-stopping signals (left), and no single signal is the most efficient at every risk level (right), which is what motivates choosing thresholds by risk control rather than by hand. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Conformal Thinking: Risk Control for Reasoning on a Compute Budget</em> [1] (ICML 2026), <a href="https://dblp.org/pid/08/5760-5.html">Xi Wang</a>, <a href="https://dblp.org/pid/325/4380.html">Anushri Suresh</a>, <a href="https://dblp.org/pid/381/8089.html">Alvin Zhang</a>, <a href="https://dblp.org/pid/429/4491.html">Rishi More</a>, <a href="https://dblp.org/pid/321/1018.html">William Jurayj</a>, <a href="https://dblp.org/pid/06/4775.html">Benjamin Van Durme</a>, <a href="https://dblp.org/pid/21/9988.html">Mehrdad Farajtabar</a>, <a href="https://dblp.org/pid/71/10515.html">Daniel Khashabi</a>, and <a href="https://dblp.org/pid/136/4057.html">Eric Nalisnick</a> (Johns Hopkins University and Apple) recast the question of when to stop a reasoning chain as distribution-free risk control, and add a lower threshold that gives up early on problems the model is unlikely to solve.</p>
+<blockquote class="blockquote">
+<p>Reasoning Large Language Models (LLMs) enable test-time scaling, with dataset-level accuracy improving as the token budget increases, motivating adaptive reasoning — spending tokens when they improve reliability and stopping early when additional computation is unlikely to help. However, setting the token budget, as well as the threshold for adaptive reasoning, is a practical challenge that entails a fundamental risk-accuracy trade-off. We re-frame the budget setting problem as <em>risk control</em>, limiting the error rate while minimizing compute. Our framework introduces an <em>upper threshold that stops reasoning when the model is confident</em> (risking incorrect output) and a <em>novel parametric lower threshold that preemptively stops unsolvable instances</em> (risking premature stoppage). Given a target risk and a validation set, we use <em>distribution-free risk control</em> to optimally specify these stopping mechanisms. For scenarios with multiple budget controlling criteria, we incorporate an efficiency loss to select the most computationally efficient exiting mechanism. Empirical results across diverse reasoning tasks and models demonstrate the effectiveness of our risk control approach, demonstrating computational efficiency gains from the lower threshold and ensemble stopping mechanisms while adhering to the user-specified risk target.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<section id="signals-and-the-two-thresholds" class="level3">
+<h3 class="anchored" data-anchor-id="signals-and-the-two-thresholds">Signals and the two thresholds</h3>
+<p>Conformal Thinking treats a reasoning chain as a sequence of chunks (the text between consecutive <code>\n\n</code> breaks) and, at the end of each growing chunk, reads a scalar signal <img src="https://benjaminhan.net/feed-assets/e54453a6303ddb02.svg" alt="s_t" class="feed-math-inline"/> off the model — oriented so that a larger <img src="https://benjaminhan.net/feed-assets/e54453a6303ddb02.svg" alt="s_t" class="feed-math-inline"/> means the model looks more confident it has converged. The signal is itself a choice: <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/> denotes <em>which</em> signal (a function of the trace so far) and <img src="https://benjaminhan.net/feed-assets/e54453a6303ddb02.svg" alt="s_t" class="feed-math-inline"/> its value at chunk <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/>, and the choice of <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/> is one more thing to calibrate. The paper compares four:</p>
+<ul>
+<li><strong>Confidence</strong> [2] — force the model to begin its final answer, greedily roll it out, and score that rollout by its length-normalized log-likelihood (higher = more confident).</li>
+<li><strong>EAT</strong> (<em>Entropy After</em> <code>/think</code>) [3] — at that same forced-answer point, read the entropy of the next-token distribution instead of rolling an answer out; low entropy means the model is peaked on what to answer.</li>
+<li><strong>Trained probe</strong> [4] — a probe trained on <a href="https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination">AIME</a> (a hard math-competition benchmark) to predict convergence (Qwen3-8B only).</li>
+<li><strong>Token count</strong> — the raw number of tokens generated so far, a length-only baseline.</li>
+</ul>
+<p>Both thresholds operate on <img src="https://benjaminhan.net/feed-assets/e54453a6303ddb02.svg" alt="s_t" class="feed-math-inline"/> — one on its current value, one on its trajectory — and both are chosen to respect a user-specified error tolerance <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> rather than tuned by hand:</p>
+<ul>
+<li><p><strong>Upper threshold <img src="https://benjaminhan.net/feed-assets/4e5fc19f776bb3cd.svg" alt="\lambda_+" class="feed-math-inline"/></strong>: a level on the current value of <img src="https://benjaminhan.net/feed-assets/e54453a6303ddb02.svg" alt="s_t" class="feed-math-inline"/> — stop once <img src="https://benjaminhan.net/feed-assets/e54453a6303ddb02.svg" alt="s_t" class="feed-math-inline"/> clears <img src="https://benjaminhan.net/feed-assets/4e5fc19f776bb3cd.svg" alt="\lambda_+" class="feed-math-inline"/>, on the assumption that the model has converged on its answer. This is the standard confidence-based early-exit rule, and it controls the <em>false positive risk</em> of stopping with a wrong answer.</p></li>
+<li><p><strong>Lower threshold <img src="https://benjaminhan.net/feed-assets/188c9f9c3f2ddd06.svg" alt="\lambda_-" class="feed-math-inline"/></strong>: the paper’s new mechanism, and the reason it is not a fixed floor. <img src="https://benjaminhan.net/feed-assets/5cf3c13ac1bc3412.svg" alt="\lambda_-(t)" class="feed-math-inline"/> is a <em>rising schedule</em> — a logistic (sigmoid) curve in <img src="https://benjaminhan.net/feed-assets/e541bec25592c5e6.svg" alt="\omega_t" class="feed-math-inline"/>, the tokens spent by chunk <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/>, climbing from a low asymptote <img src="https://benjaminhan.net/feed-assets/e646ea79c94ce055.svg" alt="l" class="feed-math-inline"/> toward a high one <img src="https://benjaminhan.net/feed-assets/c760f0261c10a3a9.svg" alt="u" class="feed-math-inline"/> (typically <img src="https://benjaminhan.net/feed-assets/4e5fc19f776bb3cd.svg" alt="\lambda_+" class="feed-math-inline"/>) as the budget <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/> is consumed:</p>
+<p><img src="https://benjaminhan.net/feed-assets/4ff7ecba07c1a95f.svg" alt="\lambda_-(t) = \sigma\big(c(\omega_t - mB)\big), \qquad \sigma(z) = \frac{u - l}{1 + e^{-z}} + l \tag{12,13}" class="feed-math-inline"/></p>
+<p>with slope <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/> and its midpoint at a fraction <img src="https://benjaminhan.net/feed-assets/a5a2bc7bacbde26e.svg" alt="m" class="feed-math-inline"/> of the budget. The chain gives up at the first chunk where confidence falls to or below the floor, <img src="https://benjaminhan.net/feed-assets/cff57137a8c65a59.svg" alt="s_t \le \lambda_-(t)" class="feed-math-inline"/>. Because the floor keeps rising, the model must raise its confidence to stay above it; if confidence stalls — the signature of an instance it is unlikely to solve — the floor overtakes it and reasoning halts before the full budget is spent. This is what makes the rule a constraint on the <em>trajectory</em> of <img src="https://benjaminhan.net/feed-assets/e54453a6303ddb02.svg" alt="s_t" class="feed-math-inline"/> rather than its current value, and it controls the <em>false negative risk</em> of giving up on an instance more reasoning would have solved. Of these symbols, <img src="https://benjaminhan.net/feed-assets/e541bec25592c5e6.svg" alt="\omega_t" class="feed-math-inline"/> is the running token count and <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/> the fixed budget; the schedule’s shape — slope <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/>, midpoint <img src="https://benjaminhan.net/feed-assets/a5a2bc7bacbde26e.svg" alt="m" class="feed-math-inline"/>, and low asymptote <img src="https://benjaminhan.net/feed-assets/e646ea79c94ce055.svg" alt="l" class="feed-math-inline"/> — is what risk control calibrates.</p></li>
+</ul>
+<p>The two thresholds save tokens in complementary places: the upper one trims wasted reasoning after the model has effectively converged, while the lower one avoids spending tokens on instances where further reasoning is unlikely to pay off. The next figure plots a confidence trajectory against token usage for Qwen3-8B on AIME. On an unsolvable instance (left), confidence fluctuates and never reaches the upper threshold, so the lower threshold halts the run before it consumes the full budget. On a solvable instance (right), confidence climbs steadily and crosses the upper threshold, ending the chain once the model is confident enough.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260624-conformal-thinking/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Dual-threshold early exit on Qwen3-8B. Left: an unsolvable instance, halted by the lower threshold. Right: a solvable instance, ended by the upper threshold. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="calibrating-the-thresholds-risk-control" class="level3">
+<h3 class="anchored" data-anchor-id="calibrating-the-thresholds-risk-control">Calibrating the thresholds (risk control)</h3>
+<p>Given the target <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> and a validation set <img src="https://benjaminhan.net/feed-assets/460df201dbe8fb2b.svg" alt="\mathcal{V}" class="feed-math-inline"/> of <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> examples, the two thresholds are selected by distribution-free risk control so the true error rate on unseen data stays at or below <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> with high probability. That error rate is not raw accuracy but the validation mean of a per-instance loss <img src="https://benjaminhan.net/feed-assets/ffad2d911a7861b6.svg" alt="\ell" class="feed-math-inline"/> in <img src="https://benjaminhan.net/feed-assets/f8495350f42a8d61.svg" alt="[0,1]" class="feed-math-inline"/>. Writing <img src="https://benjaminhan.net/feed-assets/e81a5504ae7a28df.svg" alt="f_t(x)" class="feed-math-inline"/> for the model’s answer at step <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/928d1500f7498575.svg" alt="y^*" class="feed-math-inline"/> for the correct one, with <img src="https://benjaminhan.net/feed-assets/2b30e40d7d1432fd.svg" alt="\tau_n" class="feed-math-inline"/> the exit step that <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> induces on example <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/>, the risk is</p>
+<p><img src="https://benjaminhan.net/feed-assets/e9d37854c375070f.svg" alt="\widehat{\mathrm{Risk}}(\lambda;\mathcal{V}) = \frac{1}{N}\sum_{n=1}^{N}\ell\big(y^*_n,\, f_{\tau_n}(x_n),\, s_{\tau_n}(x_n);\, \lambda\big). \tag{15}" class="feed-math-inline"/></p>
+<p>The two thresholds plug in different losses. The upper one fires only when confidence has cleared <img src="https://benjaminhan.net/feed-assets/4e5fc19f776bb3cd.svg" alt="\lambda_+" class="feed-math-inline"/> (so the rule stops) <em>and</em> the answer is wrong — a <em>false positive</em>:</p>
+<p><img src="https://benjaminhan.net/feed-assets/d4bf9527c36181a1.svg" alt="\ell^{+} = \mathbb{I}[s_t \ge \lambda_+]\cdot\mathbb{I}[f_t(x) \ne y^*]. \tag{8}" class="feed-math-inline"/></p>
+<p>The lower one is its opposite, a <em>false negative</em> that fires when the rule gives up (<img src="https://benjaminhan.net/feed-assets/b8f4dffadc6f8a6d.svg" alt="s_t \le \lambda_-" class="feed-math-inline"/>) on an instance some later step, up to the budget horizon <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/>, would have answered correctly:</p>
+<p><img src="https://benjaminhan.net/feed-assets/097644c4e54683e4.svg" alt="\ell^{-} = \frac{\mathbb{I}[s_t \le \lambda_-]}{T - t + 1}\sum_{t \le k \le T}\mathbb{I}[f_k(x) = y^*]. \tag{9}" class="feed-math-inline"/></p>
+<p>Both losses need the full reasoning trace and the gold answer, so calibration runs offline on labeled data. How that error rate is estimated from a finite validation set is what decides whether the guarantee actually holds:</p>
+<ul>
+<li><p><strong>Naive plug-in</strong> (the paper’s “no finite-sample correction”) keeps every threshold whose <em>empirical</em> validation risk <img src="https://benjaminhan.net/feed-assets/414d45dcb35ffa96.svg" alt="\widehat{\mathrm{Risk}}(\lambda;\mathcal{V})" class="feed-math-inline"/> — computed in a single pass over <img src="https://benjaminhan.net/feed-assets/460df201dbe8fb2b.svg" alt="\mathcal{V}" class="feed-math-inline"/> — is at or below the user’s target <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>. On a finite, and here deliberately small (<img src="https://benjaminhan.net/feed-assets/368928e7c0c50e35.svg" alt="N = 50" class="feed-math-inline"/>), validation set that empirical risk is an optimistic estimate of the true risk, so the selected thresholds overfit <img src="https://benjaminhan.net/feed-assets/460df201dbe8fb2b.svg" alt="\mathcal{V}" class="feed-math-inline"/>. Across the 40 random validation/test resamples the mean test risk stays controlled, but its per-resample spread crosses <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> often enough that an individual run violates the target.</p></li>
+<li><p><strong>UCB (concentration-based upper confidence bound)</strong> thresholds an <em>upper bound</em> on the risk rather than the point estimate. For a loss bounded in <img src="https://benjaminhan.net/feed-assets/f8495350f42a8d61.svg" alt="[0,1]" class="feed-math-inline"/> and a chosen failure probability <img src="https://benjaminhan.net/feed-assets/c2e62a810351cb51.svg" alt="\delta" class="feed-math-inline"/>, <a href="https://en.wikipedia.org/wiki/Hoeffding%27s_inequality">Hoeffding’s inequality</a> gives, for a fixed signal-threshold pair,</p>
+<p><img src="https://benjaminhan.net/feed-assets/5bcf16a0ad3e6739.svg" alt="\mathrm{Risk}(s,\lambda) \;\le\; \widehat{\mathrm{Risk}}(\mathcal{V},s,\lambda) + \sqrt{\frac{\log(1/\delta)}{2N}} \quad\text{with probability } \ge 1-\delta," class="feed-math-inline"/></p>
+<p>so <img src="https://benjaminhan.net/feed-assets/77cd214c0a6897f9.svg" alt="1-\delta" class="feed-math-inline"/> is the confidence level; calibration keeps only thresholds whose bounded risk clears <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>. The correction term inflates when the validation size <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> is small and vanishes as <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> grows, so the conservativeness adapts to how much data backs the estimate.</p></li>
+<li><p><strong>Scanning many candidates</strong> is not a separate method but an additional correction to UCB: the Hoeffding bound holds for one fixed <img src="https://benjaminhan.net/feed-assets/6bcc132fa21d64a0.svg" alt="(s,\lambda)" class="feed-math-inline"/>, so sweeping many signals and thresholds invites multiple-comparison inflation. A union bound over the candidate grid <img src="https://benjaminhan.net/feed-assets/73bbedcd4a3c5f87.svg" alt="\mathcal{G}" class="feed-math-inline"/> — the set of all <img src="https://benjaminhan.net/feed-assets/6bcc132fa21d64a0.svg" alt="(s,\lambda)" class="feed-math-inline"/> pairs being searched — would correct it, replacing <img src="https://benjaminhan.net/feed-assets/c2e62a810351cb51.svg" alt="\delta" class="feed-math-inline"/> with <img src="https://benjaminhan.net/feed-assets/4fc0238991f20094.svg" alt="\delta/|\mathcal{G}|" class="feed-math-inline"/>. The paper flags this but uses the plain single-candidate correction and reports realized risk on a held-out test set.</p></li>
+</ul>
+<p>In the two-threshold setting the single target splits in two, and the thresholds are calibrated in two decoupled steps rather than one joint search over <img src="https://benjaminhan.net/feed-assets/9420b70cb3245c66.svg" alt="(\lambda_+, c)" class="feed-math-inline"/> pairs: UCB first selects <img src="https://benjaminhan.net/feed-assets/4e5fc19f776bb3cd.svg" alt="\lambda_+" class="feed-math-inline"/> against an upper target <img src="https://benjaminhan.net/feed-assets/8fef34dfac23b349.svg" alt="\epsilon^+" class="feed-math-inline"/>, then — with <img src="https://benjaminhan.net/feed-assets/4e5fc19f776bb3cd.svg" alt="\lambda_+" class="feed-math-inline"/> fixed — the lower-threshold shape <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/> is selected against a lower target <img src="https://benjaminhan.net/feed-assets/5ca2118bb3bcd5e8.svg" alt="\epsilon^-" class="feed-math-inline"/>. The second step still controls risk because <img src="https://benjaminhan.net/feed-assets/4e5fc19f776bb3cd.svg" alt="\lambda_+" class="feed-math-inline"/> is already locked. A fully joint search (via learn-then-test) is possible, but the authors found the decoupled procedure works as well in practice, at some loss of theoretical rigor.</p>
+</section>
+<section id="choosing-a-signal-efficiency-loss" class="level3">
+<h3 class="anchored" data-anchor-id="choosing-a-signal-efficiency-loss">Choosing a signal (efficiency loss)</h3>
+<p>Risk control rarely returns a single answer — for a given <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>, every signal-and-threshold pair <img src="https://benjaminhan.net/feed-assets/6bcc132fa21d64a0.svg" alt="(s,\lambda)" class="feed-math-inline"/> whose UCB-corrected risk clears the budget is <em>feasible</em>, and usually several do. The efficiency loss is the tie-breaking objective: it scores how many tokens a configuration wastes, normalized by the total budget <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/>, and does not itself depend on the calibration. Two forms target the two thresholds:</p>
+<ul>
+<li><p><strong>Upper-threshold loss</strong> is normalized <em>regret</em> — the fraction of the budget spent reasoning after the answer was already right:</p>
+<p><img src="https://benjaminhan.net/feed-assets/f1897740834647c4.svg" alt="\mathcal{J}^{+}(t) = \frac{1}{T}\max(0,\, t - t&#x27;), \qquad t&#x27; = \min\{t \le T : f_t(x) = y^*\}, \tag{10}" class="feed-math-inline"/></p>
+<p>where <img src="https://benjaminhan.net/feed-assets/c33424789bcd47be.svg" alt="t&#x27;" class="feed-math-inline"/> is the oracle stopping step, the first one whose answer is correct.</p></li>
+<li><p><strong>Lower-threshold loss</strong> counts wasted deliberation instead — the fraction of steps so far whose answer was still wrong, which approaches <img src="https://benjaminhan.net/feed-assets/fa917c7b9de9e6fc.svg" alt="1" class="feed-math-inline"/> when a long run never makes progress:</p>
+<p><img src="https://benjaminhan.net/feed-assets/fe6fcc311555c248.svg" alt="\mathcal{J}^{-}(t) = \frac{1}{T}\sum_{k \le t}\mathbb{I}[\,y^* \ne f_k(x)\,]. \tag{11}" class="feed-math-inline"/></p></li>
+<li><p><strong>Selection</strong> averages the per-instance loss over the validation set and keeps the feasible candidate that minimizes it:</p>
+<p><img src="https://benjaminhan.net/feed-assets/7342049ec356a3cd.svg" alt="\widehat{\mathcal{J}}(s,\lambda;\mathcal{V}) = \frac{1}{N}\sum_{n=1}^{N}\mathcal{J}\big(\tau_n(s,\lambda)\big), \tag{16}" class="feed-math-inline"/></p>
+<p>with <img src="https://benjaminhan.net/feed-assets/2b30e40d7d1432fd.svg" alt="\tau_n" class="feed-math-inline"/> the exit step of the <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/>th sample. Across the candidate signals this yields an ensemble that selects the cheapest signal-and-threshold for each target risk and dataset.</p></li>
+</ul>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The authors evaluate on four reasoning models — <a href="https://huggingface.co/Qwen/Qwen3-8B">Qwen3-8B</a>, Qwen3-30B-A3B, <a href="https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B">DeepSeek-R1-Distill-Qwen-32B</a>, and the vision-language model Qwen3-VL-8B — across <a href="https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination">AIME</a> (1983–2025), a subset of <a href="https://huggingface.co/datasets/agentica-org/DeepScaleR-Preview-Dataset">DeepScaleR</a> with AIME removed, <a href="https://github.com/idavidrein/gpqa">GPQA-Diamond</a>, and the vision benchmark <a href="https://github.com/mathllm/MATH-V">MathVision</a>. Generation uses each model card’s recommended decoding settings under <a href="https://github.com/vllm-project/vllm">vLLM</a>. The four stopping signals from Methods are compared. Thresholds are calibrated over 40 random validation-test splits with a validation set of 50 samples (5 percent), sweeping <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> from 0 to 1 in steps of 0.01. Two things are measured: whether the achieved test risk stays under <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> (control), and how many questions the model answers correctly against the total tokens spent (efficiency).</p>
+<ul>
+<li><strong>Finite-sample correction keeps risk on target</strong> (Figure 4): with the UCB correction, the achieved risk on the held-out test set stays at or below the user-specified <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> across the 40 splits. The naive plug-in keeps the <em>mean</em> risk controlled, but its variance bands routinely cross the <img src="https://benjaminhan.net/feed-assets/28e7378b508c8c2f.svg" alt="y=x" class="feed-math-inline"/> line, so individual runs exceed the target.</li>
+<li><strong>The ensemble picks the most efficient signal per risk level</strong> (Figure 5): selecting the signal-threshold pair with the lowest efficiency loss on validation transfers to a better accuracy-versus-token trade-off on test than any single fixed signal. On Qwen3-8B, where the trained probe is one of the four candidate signals, the ensemble selects it over the other three (confidence, EAT, token count) at essentially every risk level — the probe is simply the most efficient signal there.</li>
+<li><strong>The lower threshold pays off when unsolvable instances are common</strong> (Figure 6): on pooled AIME and GPQA-Diamond sets with controlled solvable-to-unsolvable ratios, the upper-only rule clusters at the high-token end because many runs never reach the confidence cutoff and run to the budget limit. Adding the lower threshold shifts the accuracy-versus-token curve toward fewer tokens at similar accuracy, and the gain grows as the solvable-to-unsolvable ratio shifts from 3:1 to 1:3. At a representative operating point, solvable instances tend to exit via the upper threshold and unsolvable ones via the lower threshold, matching the design intent.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260624-conformal-thinking/figure4.webp" class="img-fluid figure-img" data-lightbox-src="figure4-full.png"></p>
+<figcaption>Empirical verification of risk control across the 40 validation/test resamples (shaded regions are mean ± one standard deviation); the dashed line is <img src="https://benjaminhan.net/feed-assets/28e7378b508c8c2f.svg" alt="y=x" class="feed-math-inline"/>, the target. Top row: false-positive risk; bottom row: false-negative risk (Eq. 9). Left column: Naive plug-in; right column: UCB. Naive’s bands routinely cross above <img src="https://benjaminhan.net/feed-assets/28e7378b508c8c2f.svg" alt="y=x" class="feed-math-inline"/>, so individual runs exceed the target <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>, while UCB’s finite-sample correction keeps the achieved test risk at or below <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260624-conformal-thinking/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Across four models, picking the lowest-efficiency-loss signal per risk level (the ensemble) transfers from validation to a better accuracy-versus-token trade-off on the test set than any single fixed signal. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260624-conformal-thinking/figure6.webp" class="img-fluid figure-img" data-lightbox-src="figure6-full.png"></p>
+<figcaption>Lower-threshold gains grow as unsolvable instances become more prevalent. Qwen3-8B with the confidence signal on pooled AIME+GPQA at solvable:unsolvable ratios of 3:1, 1:1, and 1:3. Top: accuracy versus total tokens — the upper-only rule (blue) clusters at the high-token end because many runs never reach the confidence cutoff and run to the budget limit, while adding the lower threshold (lower+upper, orange) shifts the curve left at similar accuracy, with the gap widening as unsolvable instances dominate. Bottom: at a representative operating point, solvable instances tend to exit via the upper threshold and unsolvable ones via the lower threshold. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Standard risk control applied to a new quantity</strong>: the machinery is the usual <a href="../../posts/20260505-conformal-prediction-primer/">distribution-free risk control</a> [5] (Learn-then-Test and risk-controlling prediction sets), which turns any black-box score into one with a finite-sample guarantee. The closest LLM precedent, <a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a> [6], calibrated a stopping rule over a set of sampled candidates so the returned set provably contains an acceptable answer. This paper instead calibrates when to stop a single reasoning chain, trading error rate against compute.</li>
+<li><strong>A rising floor turns the stop test into a rate-of-progress check</strong>: a static lower threshold would fire only when confidence <em>drops</em>, which rarely happens on a stuck run, where confidence tends to sit flat and low. Because the floor instead climbs with the budget, the question becomes whether confidence is rising fast enough rather than whether it is high enough right now — that is what lets the rule abandon instances whose confidence never improves. It is calibrated giving-up that sidesteps metacognition: it reads the trajectory from outside and imposes a schedule, never judging whether the question is answerable, which is exactly the judgment <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> [7] finds reasoning models make poorly.</li>
+<li><strong>CROP applies the same risk control to a finished trace</strong>: <a href="../../posts/20260618-crop-reasoning-trace-prefixes/">CROP</a> [8] runs after the trace is generated, certifying the longest leading prefix whose step-risk proxies all stay below a calibrated threshold and routing the uncertified suffix to repair. Conformal Thinking instead runs during generation, calibrating stop/continue thresholds against a compute budget. Both fix a single threshold off a step-level signal under exchangeability.</li>
+<li><strong>The guarantee rests on exchangeability</strong>: the framework inherits conformal prediction’s core assumption that calibration and test data are exchangeable, and the paper’s own ablations show that is where it strains. False-negative control from the lower threshold degrades under a shift from short to long reasoning horizons, and the size of the efficiency gain depends on the solvable-to-unsolvable mix of the test set. A production query stream that drifts away from the calibration set would weaken the risk guarantee with no visible signal that the target <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> is no longer being met.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://dblp.org/pid/08/5760-5.html">Wang, X.</a>, <a href="https://dblp.org/pid/325/4380.html">Suresh, A.</a>, <a href="https://dblp.org/pid/381/8089.html">Zhang, A.</a>, <a href="https://dblp.org/pid/429/4491.html">More, R.</a>, <a href="https://dblp.org/pid/321/1018.html">Jurayj, W.</a>, <a href="https://dblp.org/pid/06/4775.html">Van Durme, B.</a>, <a href="https://dblp.org/pid/21/9988.html">Farajtabar, M.</a>, <a href="https://dblp.org/pid/71/10515.html">Khashabi, D.</a>, and <a href="https://dblp.org/pid/136/4057.html">Nalisnick, E.</a> “Conformal Thinking: Risk Control for Reasoning on a Compute Budget.” <em>International Conference on Machine Learning (ICML)</em> (arXiv:2602.03814), February 3, 2026. <a href="https://arxiv.org/abs/2602.03814" class="uri">https://arxiv.org/abs/2602.03814</a></li>
+<li><a id="ref-2"></a>Yang, C., Si, Q., Duan, Y., Zhu, Z., Zhu, C., Li, Q., Chen, M., Lin, Z., and Wang, W. “Dynamic Early Exit in Reasoning Models.” <em>arXiv preprint</em> (arXiv:2504.15895), 2025. <a href="https://arxiv.org/abs/2504.15895" class="uri">https://arxiv.org/abs/2504.15895</a></li>
+<li><a id="ref-3"></a>Wang, Y., Zhang, Y., Yu, T., Xu, C., Zhang, F., and Lian, F. “Adaptive Deep Reasoning: Triggering Deep Thinking When Needed.” <em>arXiv preprint</em> (arXiv:2505.20101), 2025. <a href="https://arxiv.org/abs/2505.20101" class="uri">https://arxiv.org/abs/2505.20101</a></li>
+<li><a id="ref-4"></a>Zhang, A., Chen, Y., Pan, J., Zhao, C., Panda, A., Li, J., and He, H. “Reasoning Models Know When They’re Right: Probing Hidden States for Self-Verification.” <em>arXiv preprint</em> (arXiv:2504.05419), 2025. <a href="https://arxiv.org/abs/2504.05419" class="uri">https://arxiv.org/abs/2504.05419</a></li>
+<li><a id="ref-5"></a><a href="https://people.eecs.berkeley.edu/~angelopoulos/">Angelopoulos, A. N.</a> and <a href="https://scholar.google.com/citations?user=LeshmV8AAAAJ">Bates, S.</a> “A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification.” <em>arXiv preprint</em> (arXiv:2107.07511), July 2021. Published as <em>Conformal Prediction: A Gentle Introduction</em>, <em>Foundations and Trends in Machine Learning</em> 16(4): 494–591, 2023. <a href="https://arxiv.org/abs/2107.07511" class="uri">https://arxiv.org/abs/2107.07511</a></li>
+<li><a id="ref-6"></a><a href="https://vquach.com/">Quach, V.</a>, <a href="https://people.csail.mit.edu/fisch/">Fisch, A.</a>, <a href="https://people.csail.mit.edu/tals/">Schuster, T.</a>, Yala, A., Sohn, J. H., <a href="https://people.csail.mit.edu/tommi/tommi.html">Jaakkola, T. S.</a>, and <a href="https://www.regina.csail.mit.edu/">Barzilay, R.</a> “Conformal Language Modeling.” <em>International Conference on Learning Representations (ICLR)</em> (arXiv:2306.10193), 2024. <a href="https://arxiv.org/abs/2306.10193" class="uri">https://arxiv.org/abs/2306.10193</a></li>
+<li><a id="ref-7"></a><a href="https://polkirichenko.github.io/">Kirichenko, P.</a>, <a href="https://www.semanticscholar.org/author/2297128866">Ibrahim, M.</a>, <a href="https://www.semanticscholar.org/author/2256991985">Chaudhuri, K.</a>, and <a href="https://www.semanticscholar.org/author/2366163635">Bell, S. J.</a> “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038). <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></li>
+<li><a id="ref-8"></a><a href="https://www.semanticscholar.org/author/2291116287">Cheung, M. Y.</a>, <a href="https://www.semanticscholar.org/author/2291032934">Veeraraghavan, A.</a>, <a href="https://www.semanticscholar.org/author/2374325194">Chen, H.</a>, and <a href="https://www.semanticscholar.org/author/2304149160">Balakrishnan, G.</a> “Conformal Certification of Reasoning Trace Prefixes.” <em>arXiv preprint</em> (arXiv:2605.30085), May 28, 2026. <a href="https://arxiv.org/abs/2605.30085" class="uri">https://arxiv.org/abs/2605.30085</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260618-crop-reasoning-trace-prefixes/">Conformal Certification of Reasoning Trace Prefixes</a> — the other way to put conformal risk control on a reasoning trace: instead of choosing when to stop generating, it certifies the longest leading slice of a finished trace that provably contains no error. Both calibrate a single threshold off a step-level signal under exchangeability.</li>
+<li><a href="../../posts/20260505-conformal-prediction-primer/">A Primer on Conformal Prediction</a> — the distribution-free risk-control machinery (Learn-then-Test, risk-controlling prediction sets) that the calibration step here rests on.</li>
+<li><a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a> — the closest LLM precedent, calibrating a stopping rule over a set of sampled candidates rather than along a single reasoning trajectory.</li>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a> — the abstention angle the lower threshold sidesteps: reasoning models judge answerability poorly, while the lower threshold gives up from outside the model without any such judgment.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a> — both measure progress as a slope, at different scales: the lower threshold here reads a rate of progress within a single trace (confidence against tokens spent), while that post wanted a cross-system version and found no shared x-axis to define one on.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260624-conformal-thinking/</guid>
+  <pubDate>Wed, 24 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260624-conformal-thinking/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Dive into Claude Code: The Design Space of Today’s and Future AI Agent Systems</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260623-claude-code-design-space/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2292,143 +2440,6 @@ font-style: inherit;">"</span>)</span></code></pre></div></div>
   <guid>https://benjaminhan.net/posts/20260609-confidence-calibration-metrics/</guid>
   <pubDate>Tue, 09 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260609-confidence-calibration-metrics/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>ExpertQA: Expert-Curated Questions and Attributed Answers</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260609-expertqa/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260609-expertqa/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260609-expertqa/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>ExpertQA’s pipeline: an expert’s question goes to a system, whose answer is split into claims, each paired with cited evidence and judged on five properties (informative, factual, cite-worthy, supported, reliable), after which the expert revises the claim. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>ExpertQA: Expert-Curated Questions and Attributed Answers</em> [1] (NAACL 2024), <a href="https://chaitanyamalaviya.github.io/">Chaitanya Malaviya</a> and co-authors (Penn + UW) build a 2,177-question benchmark of information-seeking prompts authored by 484 domain experts across 32 fields, then have the same experts judge responses from attribution-generating language-model systems on factuality, citeworthiness, and source reliability.</p>
-<blockquote class="blockquote">
-<p>As language models are adopted by a more sophisticated and diverse set of users, the importance of guaranteeing that they provide factually correct information supported by verifiable sources is critical across fields of study. This is especially the case for high-stakes fields, such as medicine and law, where the risk of propagating false information is high and can lead to undesirable societal consequences. Previous work studying attribution and factuality has not focused on analyzing these characteristics of language model outputs in domain-specific scenarios. In this work, we <em>conduct human evaluation of responses from a few representative systems along various axes of attribution and factuality, by bringing domain experts in the loop</em>. Specifically, we collect <em>expert-curated questions from 484 participants across 32 fields of study</em>, and then <em>ask the same experts to evaluate generated responses to their own questions</em>. In addition, we ask experts to improve upon responses from language models. The output of our analysis is <em>ExpertQA, a high-quality long-form QA dataset with 2177 questions spanning 32 fields, along with verified answers and attributions for claims in the answers</em>.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The protocol puts experts in the loop twice. First, 484 experts across 32 fields (medicine, law, engineering, humanities, social sciences) write information-seeking questions they would genuinely want answered in their own professional work, producing 2,177 questions. Each author tags every question with one or more of seven information-need types:</p>
-<ul>
-<li><strong>Directed (Type I):</strong> a question with a single, unambiguous answer.</li>
-<li><strong>Open-ended (Type II):</strong> potentially ambiguous, admitting several valid answers.</li>
-<li><strong>Summarization (Type III):</strong> a request to summarize what is known on a topic.</li>
-<li><strong>Advice (Type IV):</strong> suggestions on how to approach a problem.</li>
-<li><strong>Hypothetical (Type V):</strong> a question built on a described scenario, and the most common type, since experts were asked to write two of their five questions this way.</li>
-<li><strong>List of resources (Type VI):</strong> a request for a list of places to find more information.</li>
-<li><strong>Opinion (Type VII):</strong> a request for an opinion on a topic.</li>
-</ul>
-<p>The results lean on this taxonomy. Second, each question is answered by six attributed-answer configurations:</p>
-<ul>
-<li><strong>Closed-book GPT-4</strong>, prompted to answer from parametric memory and cite supporting URLs, with no retrieval.</li>
-<li><strong>Retrieve-then-read</strong> (<code>rr</code>): retrieve evidence first, then generate the answer with GPT-4, over two corpora: Google Search (<code>rr_gs</code>) and the static Sphere corpus (<code>rr_sphere</code>), a web-scale subset of Common Crawl [4] retrieved with BM25.</li>
-<li><strong>Post-hoc attribution</strong> (<code>post_hoc</code>): generate the answer first, then retrieve a citation for each claim as a separate step, again over Google Search (<code>post_hoc_gs</code>) and Sphere (<code>post_hoc_sphere</code>).</li>
-<li><strong>BingChat</strong> (<code>bing_chat</code>), a commercial retrieval-augmented system, sampled in balanced mode.</li>
-</ul>
-<p>Grading happens at two granularities. An <strong>answer</strong> is the complete response a system returns to a question. Each answer is split into <strong>claims</strong>: sentence-level units (segmented with spaCy), each paired with whatever evidence the system cited for it. Only one of the six Likert axes judges the whole answer: <em>answer usefulness</em>, whether the complete response addresses the question. The other five judge individual claims and their evidence: three about the claim itself (<em>factuality</em>, <em>informativeness</em>, <em>cite-worthiness</em>) and two about its attribution (<em>claim/evidence support</em>, scored complete / partial / incomplete, and <em>source reliability</em>). Finally, the expert revises each claim and its evidence so the answer is factual and fully supported, yielding an expert-verified reference answer set.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<ul>
-<li><strong>Every system leaves a large share of claims unsupported</strong>, even when the answer is fluent and authoritative: across systems, many claims are uncited, contradicted by the cited evidence, or backed by low-reliability sources.</li>
-<li><strong>Retrieve-then-read and post-hoc attribution fail differently.</strong> Retrieve-then-read produces more complete attributions but misses citations for some cite-worthy claims (about 18% go uncited). Post-hoc systems return a citation for every claim by design, yet more of those citations are incomplete, because retrieving without the answer’s context is harder.</li>
-<li><strong>Closed-book GPT-4 cites plausible-but-wrong pages.</strong> Without retrieval it generates citations to believable domains (nasa.gov for astronomy, nih.gov for medicine), but the linked page fails to support the claim more than 60% of the time.</li>
-<li><strong>The retrieval corpus drives source reliability.</strong> Sphere returns unreliable evidence (a blog comment retrieved for a breast-cancer question). Switching to Google Search raises the reliability experts assign to the evidence.</li>
-<li><strong>High-stakes fields fare worst on attribution.</strong> Most claims are judged factually correct (over 85% in many fields) and cite-worthy (only about 17–22% are judged not cite-worthy), but medicine and law show roughly 35% and 31% unsupported claims, and about 51% of medical claims cite sources experts rate as not reliable.</li>
-<li><strong>Requests for a list of resources (Type VI) break systems hardest</strong>, with advice (Type IV) and opinion (Type VII) questions close behind. Claims to these are the least informative, factual, and well-supported. Separately, 30–40% of claims across systems are low-relevance “void” claims that mostly restate the question or state simplistic facts.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260609-expertqa/figure5.png" class="img-fluid figure-img"></p>
-<figcaption>The Likert distribution of expert labels along six claim/answer properties: answer usefulness, claim informativeness, factuality (top row, answer-quality judgments) and claim citeworthiness, claim-evidence support, and source reliability (bottom row, attribution judgments). Figure 5 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>The paper also breaks the grades down by field and by question type, which is where the more interesting structure shows up.</p>
-<ul>
-<li><strong>Question-type composition is field-specific</strong> (Figure 8). The mix of the seven types swings widely across fields: physics and astronomy lean toward directed, single-answer questions, while several fields’ bars cover only a subset of the seven types at all, some as few as four. Type V (hypothetical) is the largest slice almost everywhere, inflated by construction because experts were asked to write two of their five questions that way.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260609-expertqa/figure8.webp" class="img-fluid figure-img" data-lightbox-src="figure8-full.png"></p>
-<figcaption>The distribution of the seven question types across all 32 fields in ExpertQA. Figure 8 from the paper [1].</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>The per-field view yields few clear cross-field patterns</strong> (Figure 9). Factuality stays high across most fields (the paper notes Definitely- or Probably-correct rates above 85% in many of them), and it reports no clean ranking emerging from the field-level trends.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260609-expertqa/figure9.png" class="img-fluid figure-img"></p>
-<figcaption>Label distribution of the six claim/answer properties across fields, for all systems. Figure 9 from the paper [1].</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>Difficulty tracks question type</strong> (Figure 10). Type VI (list-of-resources) falls at the low end of almost every property. The paper flags advice (Type IV) and opinion (Type VII) as the next hardest, with claims to all three judged less informative, factual, and well-supported than the directed and open-ended types.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260609-expertqa/figure10.png" class="img-fluid figure-img"></p>
-<figcaption>Label distribution of the six claim/answer properties across the seven question types, for all systems. Figure 10 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The “experts grade their own questions” design is the novel ingredient, and it fixes a selection problem FActScore sidesteps.</strong> Prior factuality benchmarks either use crowdworkers on generic prompts or use automated metrics against a canonical source (Wikipedia for biographies, as in FActScore [2]). Both fail in specialist domains because the questions themselves are not representative of what experts actually ask, and the “knowledge source” for medicine or law has no clean Wikipedia analog. Having the same expert author the question <em>and</em> grade the response closes the loop that makes ELI5- or TriviaQA-style benchmarks under-diagnose domain failures.</p></li>
-<li><p><strong>Post-hoc attribution is the most interesting probe, and it loses.</strong> ExpertQA tests two <em>sequential</em> orderings: retrieve-then-generate, and generate-then-retrieve (post-hoc, where the answer is written first and evidence is fetched per claim afterward). Post-hoc is the worse of the two: its fluent answers often make claims no retrieved source actually supports. But that decides ordering, not architecture: neither system interleaves retrieval and generation, so whether interleaving (as in Self-RAG [3]) would beat both is our own speculation, untested here.</p></li>
-<li><p><strong>A field’s difficulty partly reflects what it asks, not just how well it is served.</strong> Read together, Figures 8 and 10 line up: question-type composition varies sharply by field, and difficulty tracks question type, with Type VI (list-of-resources) and the advice and opinion types at the low end of nearly every property. A field weighted toward those types would post weaker claim-level numbers even if the underlying systems were no worse there. Among the larger fields, that hard-question share is heaviest in economics, education, history, literature, and visual arts (several of which do score at the bottom on usefulness or attribution), while physics and astronomy has almost none of them. The benchmark doesn’t separate the two effects (it reports type and field independently, not field scores adjusted for question mix), so this stays a reading of the breakdowns rather than something the paper isolates, but it argues against ranking fields on raw claim scores.</p></li>
-<li><p><strong>What each field never asks (Figure 8, enumerated from the released data).</strong> Eight of the 32 fields skip at least one of the seven types entirely, all of them small fields, so the gaps reflect how questions were collected more than the disciplines:</p>
-<ul>
-<li><strong>No list-of-resources (VI):</strong> journalism, mathematics, philosophy, culinary arts, theology. The rarest type overall, so it drops out first.</li>
-<li><strong>No opinion (VII):</strong> classical studies, criminology, theology.</li>
-<li><strong>No advice (IV):</strong> climate science, culinary arts.</li>
-<li><strong>No summarization (III):</strong> culinary arts, theology.</li>
-<li><strong>Most lopsided:</strong> theology and culinary arts each span only four of the seven types.</li>
-</ul></li>
-<li><p><strong>Recomputing the grades sharpens the type story and undercuts the field one.</strong> Scoring each Likert axis on a 0–1 scale over the released annotations (my mapping, not the paper’s category counts):</p>
-<ul>
-<li><strong>By question type the order is stable across axes:</strong> directed questions (Type I) score highest almost everywhere and list-of-resources (VI) lowest, with advice and opinion just above it, on usefulness, factuality, informativeness, and cite-worthiness alike.</li>
-<li><strong>Two axes break the pattern:</strong> source reliability is essentially flat (~0.74 for every type), and attribution is the lowest-scoring axis overall (0.59–0.68 across types). So a “hard” question type is one whose claims are less informative, factual, and cite-worthy, not one whose sources are worse.</li>
-<li><strong>By field, extremes appear but are confounded:</strong> usefulness is highest for mathematics, anthropology, and the military/law-enforcement field, lowest for education, history, and literature. Attribution is best in anthropology and architecture, worst in economics and literature. But each question was graded for a single sampled system, so a field’s average folds in which system happened to answer there, and several fields rest on twenty-odd answers, so these field rankings shouldn’t be read at face value.</li>
-</ul></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://chaitanyamalaviya.github.io/">Malaviya, C.</a>, <a href="https://www.linkedin.com/in/subin-lee-penn">Lee, S.</a>, <a href="https://sihaoc.github.io/">Chen, S.</a>, Sieber, E., <a href="https://www.seas.upenn.edu/~myatskar/">Yatskar, M.</a>, <a href="https://www.cis.upenn.edu/~danroth/">Roth, D.</a>. “ExpertQA: Expert-Curated Questions and Attributed Answers.” <em>NAACL 2024</em>, arXiv:2309.07852, Sep 14, 2023. <a href="https://arxiv.org/abs/2309.07852" class="uri">https://arxiv.org/abs/2309.07852</a></li>
-<li><a id="ref-2"></a><a href="https://shmsw25.github.io/">Min, S.</a>, <a href="https://martiansideofthemoon.github.io/">Krishna, K.</a>, <a href="https://alrope123.github.io/">Lyu, X.</a>, <a href="https://scholar.google.com/citations?user=SnQnQicAAAAJ">Lewis, M.</a>, <a href="https://scottyih.org/">Yih, W.-t.</a>, <a href="https://koh.pw/">Koh, P. W.</a>, <a href="https://people.cs.umass.edu/~miyyer/">Iyyer, M.</a>, <a href="https://www.cs.washington.edu/people/faculty/lsz">Zettlemoyer, L.</a>, <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a>. “FActScore: Fine-grained Atomic Evaluation of Factual Precision in Long Form Text Generation.” <em>EMNLP 2023</em>, arXiv:2305.14251. <a href="https://arxiv.org/abs/2305.14251" class="uri">https://arxiv.org/abs/2305.14251</a></li>
-<li><a id="ref-3"></a><a href="https://akariasai.github.io/">Asai, A.</a>, <a href="https://zeqiuwu.com/">Wu, Z.</a>, <a href="https://homes.cs.washington.edu/~yizhongw/">Wang, Y.</a>, <a href="https://research.ibm.com/people/avirup-sil">Sil, A.</a>, <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a>. “Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection.” <em>ICLR 2024</em>, arXiv:2310.11511. <a href="https://arxiv.org/abs/2310.11511" class="uri">https://arxiv.org/abs/2310.11511</a></li>
-<li><a id="ref-4"></a><a href="https://scholar.google.com/citations?user=aTHc8c0AAAAJ">Piktus, A.</a>, Petroni, F., Karpukhin, V., Okhonko, D., Broscheit, S., Izacard, G., <a href="https://patricklewis.io/">Lewis, P.</a>, Oğuz, B., Grave, E., <a href="https://scottyih.org/">Yih, W.-t.</a>, Riedel, S. “The Web Is Your Oyster — Knowledge-Intensive NLP Against a Very Large Web Corpus.” arXiv:2112.09924, Dec 2021. <a href="https://arxiv.org/abs/2112.09924" class="uri">https://arxiv.org/abs/2112.09924</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: the constructive complement — where ExpertQA measures attribution failure, this gives statistical guarantees on which claims to keep.</li>
-<li><a href="../../posts/20240531-legal-ai-hallucinations/">AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries</a>: the focused legal-domain version of ExpertQA’s finding that law and medicine fare worst on attribution.</li>
-<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: an earlier factuality benchmark that ExpertQA pushes into expert domains and pairs with claim-level attribution.</li>
-<li><a href="../../posts/20240615-tweak-naacl-2024/">TWEAK at NAACL 2024: Decoding Without Hallucinations</a>: a same-venue take on the same attribution problem, working at decode time rather than as a post-hoc step.</li>
-<li><a href="../../posts/20240117-rag-knowledge-graphs/">RAG with Knowledge Graphs: Key Open Questions</a>: the retrieval side of the retrieve-then-read and post-hoc systems ExpertQA evaluates.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260609-expertqa/</guid>
-  <pubDate>Tue, 09 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260609-expertqa/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
