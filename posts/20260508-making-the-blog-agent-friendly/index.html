@@ -814,7 +814,7 @@ window.__postIndexReady = fetch('/post-index.json?v=f57ab8b236')
   <li><a href="#discoverability-for-agents-that-only-read-headers" id="toc-discoverability-for-agents-that-only-read-headers" class="nav-link" data-scroll-target="#discoverability-for-agents-that-only-read-headers">Discoverability for agents that only read headers</a></li>
   <li><a href="#markdown-content-negotiation" id="toc-markdown-content-negotiation" class="nav-link" data-scroll-target="#markdown-content-negotiation">Markdown content negotiation</a></li>
   <li><a href="#the-.qmd-source-is-a-live-url" id="toc-the-.qmd-source-is-a-live-url" class="nav-link" data-scroll-target="#the-.qmd-source-is-a-live-url">The <code>.qmd</code> source is a live URL</a></li>
-  <li><a href="#where-this-lands-on-the-cloudflare-ruler" id="toc-where-this-lands-on-the-cloudflare-ruler" class="nav-link" data-scroll-target="#where-this-lands-on-the-cloudflare-ruler">Where this lands on the Cloudflare ruler</a></li>
+  <li><a href="#how-this-scores-on-cloudflares-ruler" id="toc-how-this-scores-on-cloudflares-ruler" class="nav-link" data-scroll-target="#how-this-scores-on-cloudflares-ruler">How this scores on Cloudflare’s ruler</a></li>
   <li><a href="#what-the-providers-do-with-it" id="toc-what-the-providers-do-with-it" class="nav-link" data-scroll-target="#what-the-providers-do-with-it">What the providers do with it</a></li>
   <li><a href="#related-posts" id="toc-related-posts" class="nav-link" data-scroll-target="#related-posts">Related Posts</a></li>
   </ul>
@@ -866,7 +866,7 @@ window.__postIndexReady = fetch('/post-index.json?v=f57ab8b236')
 <figcaption>Cloudflare’s <a href="https://blog.cloudflare.com/agent-readiness/">Agent Readiness</a> scan for benjaminhan.net, 2026-05-08: 67 / Level 4 “Agent-Integrated.”</figcaption>
 </figure>
 </div>
-<p>The reader-facing tour of this site is in <a href="../../posts/20260508-site-user-manual/">A User Manual for <em>synesis</em></a>. This is the other half. Most of the traffic hitting a modern blog is not a human in a browser. It is a crawler building a training corpus, a retrieval fetch firing from inside a chat, or a feed reader polling every hour. Each of those deserves a different answer, and the site is wired to give one.</p>
+<p>The reader-facing tour of this site is in <a href="../../posts/20260508-site-user-manual/">A User Manual for <em>synesis</em></a>. This is the other half. Most of the traffic hitting a modern blog is not a human in a browser. It is a crawler building a training corpus, a retrieval fetch firing from inside a chat, or a feed reader polling every hour. Each of those deserves a different answer, and the site gives each a different response.</p>
 <p>The posture is three-way:</p>
 <ul>
 <li>Training crawlers blocked — <code>GPTBot</code>, <code>ClaudeBot</code>, <code>CCBot</code>, <code>Bytespider</code>, <code>meta-externalagent</code>, and the rest of the ingest fleet are disallowed.</li>
@@ -904,7 +904,7 @@ window.__postIndexReady = fetch('/post-index.json?v=f57ab8b236')
       &lt;/index.xml&gt;; rel="alternate"; type="application/atom+xml",
       &lt;/llms.txt&gt;; rel="https://llmstxt.org/"</code></pre>
 <p><code>rel="api-catalog"</code> is the RFC 9727-registered entry point. The other three mirror the catalog’s headline resources for agents that inspect headers but not HTML. GitHub Pages doesn’t support custom response headers, so this is injected at the Cloudflare edge by a small Worker in <code>_workers/agent-discovery/</code>.</p>
-<p>Every page also carries the same three rels as sitewide <code>&lt;link&gt;</code> tags in <code>&lt;head&gt;</code>. HTML tags are zero-cost, so they apply everywhere. Agents that parse HTML but not headers still get discovery on every URL, not just the homepage. Belt and braces.</p>
+<p>Every page also carries the same three rels as sitewide <code>&lt;link&gt;</code> tags in <code>&lt;head&gt;</code>. HTML tags are zero-cost, so they apply everywhere. Agents that parse HTML but not headers still get discovery on every URL, not just the homepage.</p>
 </section>
 <section id="markdown-content-negotiation" class="level2">
 <h2 class="anchored" data-anchor-id="markdown-content-negotiation">Markdown content negotiation</h2>
@@ -914,23 +914,23 @@ window.__postIndexReady = fetch('/post-index.json?v=f57ab8b236')
 <li>Everything else returns <code>llms.txt</code>, the canonical machine-readable site index.</li>
 </ul>
 <p>Serving the authored <code>.qmd</code> rather than a live HTML-to-markdown conversion is a deliberate trade. Agents get LaTeX source instead of rendered MathJax HTML, Mermaid DSL instead of pre-rendered SVG, and first-class fidelity on everything the author actually wrote. The cost is some Quarto-specific markup (callout divs, shortcodes, cross-refs) that a plain CommonMark parser will render as literal text. For the vast majority of posts the source is roughly 95% CommonMark, so the markup is a smaller tax than a conversion step would be.</p>
-<p>For HTML-parsing agents that never inspect <code>Accept</code>, every post page also carries <code>&lt;link rel="alternate" type="text/markdown" href="index.qmd"&gt;</code> in <code>&lt;head&gt;</code>. Three different paths, same destination.</p>
+<p>For HTML-parsing agents that never inspect <code>Accept</code>, every post page also carries <code>&lt;link rel="alternate" type="text/markdown" href="index.qmd"&gt;</code> in <code>&lt;head&gt;</code>. All three paths reach the same source.</p>
 </section>
 <section id="the-.qmd-source-is-a-live-url" class="level2">
 <h2 class="anchored" data-anchor-id="the-.qmd-source-is-a-live-url">The <code>.qmd</code> source is a live URL</h2>
 <p><code>/posts/&lt;slug&gt;/index.qmd</code> is not a build input that stays on disk. It is a live URL, served alongside the rendered HTML. Agents that want the authored Markdown do one HTTP GET and skip the parsing problem entirely. One line in <code>_quarto.yml</code> makes it work (<code>resources: posts/**/index.qmd</code>), which tells Quarto to copy the source into the deploy output.</p>
 </section>
-<section id="where-this-lands-on-the-cloudflare-ruler" class="level2">
-<h2 class="anchored" data-anchor-id="where-this-lands-on-the-cloudflare-ruler">Where this lands on the Cloudflare ruler</h2>
+<section id="how-this-scores-on-cloudflares-ruler" class="level2">
+<h2 class="anchored" data-anchor-id="how-this-scores-on-cloudflares-ruler">How this scores on Cloudflare’s ruler</h2>
 <p>Cloudflare runs an <a href="https://blog.cloudflare.com/agent-readiness/">Agent Readiness</a> check that scores a domain across five dimensions — Discoverability, Content, Bot Access Control, API / Auth / MCP / Skill Discovery, and Commerce. This site scores <strong>67 / Level 4 “Agent-Integrated”</strong> as of this writing. 100% on Discoverability, Content, and Bot Access Control. 2 of 6 on API / Auth / MCP / Skill Discovery. Commerce is N/A.</p>
-<p>67 is the practical ceiling for now, not a halfway point. The unearned points are genuinely deferred. OAuth and OAuth Protected Resource metadata require real auth infrastructure the site does not have and does not need. The MCP Server Card check requires a deployed MCP server endpoint, which is waiting on a concrete use-case beyond “it would be neat.” WebMCP is a draft spec with a narrow audience. Shipping a remote MCP server would close both of the open gaps at once, since it would cover the MCP Server Card dimension directly and back the skill-discovery dimension with a real callable surface instead of the static manifest. Until a real need appears, the static manifest does the job and the hosted server waits.</p>
+<p>67 is the practical ceiling for now rather than a halfway point. The unearned points are genuinely deferred. OAuth and OAuth Protected Resource metadata require real auth infrastructure the site does not have and does not need. The MCP Server Card check requires a deployed MCP server endpoint, which is waiting on a concrete use-case beyond “it would be neat.” WebMCP is a draft spec with a narrow audience. Shipping a remote MCP server would close both of the open gaps at once, since it would cover the MCP Server Card dimension directly and back the skill-discovery dimension with a real callable surface instead of the static manifest. Until a real need appears, the static manifest does the job and the hosted server waits.</p>
 </section>
 <section id="what-the-providers-do-with-it" class="level2">
 <h2 class="anchored" data-anchor-id="what-the-providers-do-with-it">What the providers do with it</h2>
 <p>Direct <code>curl</code> probes against the site from <code>Claude-User</code>, <code>ChatGPT-User</code>, <code>Perplexity-User</code>, <code>ClaudeBot</code>, and bare UA strings all return 200. Cloudflare’s Security Analytics shows zero blocks and zero challenges. The site is reachable.</p>
 <p>Via the Ask AI popover on any post, ChatGPT, Claude.ai, and Perplexity all fetch the cited page and answer against its real content. Gemini’s web UI does not accept a pre-filled question, so that path is clipboard-and-paste rather than a direct fetch, as covered in the <a href="../../posts/20260508-site-user-manual/">user manual</a>.</p>
 <p>The wire being open is only half the story. The other half is what happens inside the provider’s fetcher, which is opaque and changes without notice. If a future chat client reports “site blocked” without a real 4xx in Cloudflare’s logs, that is almost certainly a fetcher-side confabulation, not a configuration change here.</p>
-<p>Everything an agent would want from the site is already on the wire. Whether the wire gets used depends on the provider’s fetcher, not the site.</p>
+<p>Everything an agent would want from the site is already exposed. Whether it gets used depends on the provider’s fetcher.</p>
 <hr>
 </section>
 <section id="related-posts" class="level2">

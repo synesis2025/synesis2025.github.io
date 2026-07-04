@@ -890,7 +890,7 @@ window.__postIndexReady = fetch('/post-index.json?v=f57ab8b236')
 <p>AbstentionBench tests an s1.1 budget sweep from 512 to 4,096 tokens: accuracy on GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain, and UMWP rises while abstention recall on the same items drops.</p>
 <p>Both interventions are introduced at inference time: COLING adds a CoT prompt to an instruct model; AbstentionBench extends the reasoning chain on a reasoning-trained model. Same setup family (more chain-of-thought tokens at test time), but receiving opposite results.</p>
 <p>AbstentionBench uses a separate LLM-as-judge to decide whether each response counts as an abstention. By default the judge sees only the model’s final answer; the authors also report results from a judge that reads the reasoning chain alongside the final answer.</p>
-<p>AbstentionBench’s Figure 8(a) reconciles part of it. The figure plots abstention recall on reasoning datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain, all-datasets average) for DeepSeek R1 Distill (red) and s1.1 (blue). Solid bars are recall under the default judge (final answer only); the hatched overlay is the additional recall the chain-aware judge catches on the same responses. Final-answer-only recall is roughly 18–47% (s1.1 on MMLU-Math-Abstain at the low end; DeepSeek on GSM8K-Abstain at the high end); chain-aware recall on the same items reaches 55–93%. The chain expresses uncertainty; the final answer doesn’t.</p>
+<p>AbstentionBench’s Figure 8(a) reconciles part of it. The figure plots abstention recall on reasoning datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain, all-datasets average) for DeepSeek R1 Distill (red) and s1.1 (blue). Solid bars are recall under the default judge (final answer only); the hatched overlay is the additional recall the chain-aware judge catches on the same responses. Final-answer-only recall is roughly 18–47% (s1.1 on MMLU-Math-Abstain at the low end; DeepSeek on GSM8K-Abstain at the high end); chain-aware recall on the same items reaches 55–93%. The chain expresses uncertainty, but the final answer doesn’t.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="figure8a.png" class="img-fluid figure-img"></p>
@@ -898,14 +898,14 @@ window.__postIndexReady = fetch('/post-index.json?v=f57ab8b236')
 </figure>
 </div>
 <p>So the chain <em>is</em> expressing uncertainty on reasoning-trained models, matching COLING’s prompted-CoT result. The divergence is only in the final answer. Instruct models have no post-training pressure to give a definite answer, so a hedging chain produces a hedging answer. Reasoning-trained models, optimized via Reinforcement Learning with Verifiable Rewards (RLVR) — introduced in <a href="https://arxiv.org/abs/2411.15124">Tülu 3</a> <a href="#ref-3">[3]</a> — are trained to convert a hedging chain into a confident answer, because RLVR rewards a definite ground-truth answer and penalizes anything else.</p>
-<p><strong>Not a disagreement after all.</strong> The chains agree in both cases; the final answers diverge because the underlying post-training differs — instruct models aren’t trained to give a definite answer; reasoning-trained models are.</p>
+<p><strong>Not a disagreement after all.</strong> The chains agree in both cases, but the final answers diverge because the underlying post-training differs — instruct models aren’t trained to give a definite answer; reasoning-trained models are.</p>
 </section>
 <section id="do-system-prompt-interventions-close-the-abstention-gap" class="level3">
 <h3 class="anchored" data-anchor-id="do-system-prompt-interventions-close-the-abstention-gap">2. Do system-prompt interventions close the abstention gap?</h3>
 <p>The COLING study writes that “strategic approaches such as Strict prompting and CoT can enhance this capability” — phrased as a fix.</p>
 <p>AbstentionBench writes that “while a carefully crafted system prompt can boost abstention in practice, it does not resolve models’ fundamental inability to reason about uncertainty” — phrased as a partial measure.</p>
 <p>Both agree prompts help. AbstentionBench’s “partial measure” framing is a direct consequence of its harder tests: on free-form datasets like <a href="https://arxiv.org/abs/2406.00922">MediQ</a> every model collapses to near-zero recall regardless of prompt, while COLING’s all-MCQA grid hands models an explicit IDK/NOTA option — the easiest possible abstention setup, where prompts can push UAC near 100%.</p>
-<p><strong>A framing disagreement driven by test difficulty, not a real one.</strong></p>
+<p><strong>The disagreement comes from test difficulty, not from the phenomenon.</strong></p>
 </section>
 </section>
 <section id="experiments-worth-running" class="level2">
@@ -921,7 +921,7 @@ window.__postIndexReady = fetch('/post-index.json?v=f57ab8b236')
 <h2 class="anchored" data-anchor-id="what-this-collectively-predicts">What this collectively predicts</h2>
 <p>If experiment 1’s chain-aware EAC + CoT closes the gap, experiment 3’s chain-aware budget sweep stays flat, and experiment 2’s abstain-augmented reward removes the RLVR regression: COLING’s optimism is right in spirit, AbstentionBench’s pessimism describes current deployed systems, and the resolution is chain-aware scoring plus a training recipe that gives the gradient a path toward “I don’t know.”</p>
 <p>If those experiments fail to converge — chain-aware recall also drops with budget, abstain-augmented rewards collapse accuracy — the AbstentionBench finding is closer to architectural and the path forward is the externalized metacognitive harness rather than a recipe fix.</p>
-<p>The two papers measure the same phenomenon at different points along the training-pressure scale; the middle of that scale hasn’t been sampled.</p>
+<p>The two papers measure the same phenomenon at different points along the training-pressure scale. The middle of that scale hasn’t been sampled.</p>
 <hr>
 </section>
 <section id="references" class="level2">

@@ -37,7 +37,7 @@ The atlas's substrate and pipeline:
 
 ## Results
 
-Across 47,151 observations, every model with above-chance aggregate monitoring shows non-trivial domain-level variation. The figures unpack the picture row by row.
+Across 47,151 observations, every model with above-chance aggregate monitoring shows non-trivial domain-level variation. The figures break the picture down row by row.
 
 - **The full atlas at a glance.** Figure 1 (the cover above) is the whole picture in one frame: 33 rows (one per model) × 6 columns (one per domain), colored by Type-2 AUROC against a chance midpoint of .50. Reading across a row shows how a single model's self-monitoring varies by knowledge domain. Reading down a column shows how a single domain is monitored across the panel. Black horizontal lines group sibling models within each of the 8 families. Every subsequent figure in this section is a slice of this same data.
 
@@ -45,7 +45,7 @@ Across 47,151 observations, every model with above-chance aggregate monitoring s
 
   ![Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
 
-- **Family lineage matters as much as model size.** Anthropic models (n=8) average .778 with a tight range (.708–.806), the top of the panel. DeepSeek (n=3) is second at .740. Google-Gemma (n=5) averages .574 at the bottom, but with a wide range (.498–.771): some Gemma models are competitive, others sit near the chance line (.500). OpenAI's panel (n=5) is similarly wide (.530–.793), with GPT-oss-20B at the top (.793, second-best in the entire 33-model panel) and GPT-oss-120B near chance (.530), same vendor, same release, six-times scale difference, dramatically different self-monitoring. Two families with similar overall capability can have very different metacognitive averages. DeepSeek beats both Gemini and Qwen here despite a smaller panel.
+- **Family lineage matters as much as model size.** Anthropic models (n=8) average .778 with a tight range (.708–.806), the top of the panel. DeepSeek (n=3) is second at .740. Google-Gemma (n=5) averages .574 at the bottom, but with a wide range (.498–.771): some Gemma models are competitive, others fall near the chance line (.500). OpenAI's panel (n=5) is similarly wide (.530–.793), with GPT-oss-20B at the top (.793, second-best in the entire 33-model panel) and GPT-oss-120B near chance (.530), same vendor, same release, six-times scale difference, dramatically different self-monitoring. Two families with similar overall capability can have very different metacognitive averages. DeepSeek beats both Gemini and Qwen here despite a smaller panel.
 
   ![Figure 3 from the paper [[1]](#ref-1).](figure3.png){fig-align="center"}
 
@@ -57,7 +57,7 @@ Across 47,151 observations, every model with above-chance aggregate monitoring s
 
   ![Figure 5 from the paper [[1]](#ref-1).](figure5.png){fig-align="center"}
 
-- **Aggregate scores are reproducible.** Split each model's 1,500-item pool into two random halves and compute AUROC on each. Almost every model lands on the diagonal — half-1 score predicts half-2 score with cross-model $r = .893$. Three models sit conspicuously below the line (Opus 4.7, Gemini 3 Flash, GLM-5), so their aggregate scores are noisier than typical, but at the panel level the level estimate is solid. Without this check, the headline rankings — Anthropic on top, Gemma at the bottom — could just be a fluke of which questions landed in the sample. At $r=.893$, they're not: split the items in half and the same rankings emerge.
+- **Aggregate scores are reproducible.** Split each model's 1,500-item pool into two random halves and compute AUROC on each. Almost every model lands on the diagonal — half-1 score predicts half-2 score with cross-model $r = .893$. Three models fall conspicuously below the line (Opus 4.7, Gemini 3 Flash, GLM-5), so their aggregate scores are noisier than typical, but at the panel level the level estimate is solid. Without this check, the headline rankings — Anthropic on top, Gemma at the bottom — could just be a fluke of which questions landed in the sample. At $r=.893$, they're not: split the items in half and the same rankings emerge.
 
   ![Figure 6 from the paper [[1]](#ref-1).](figure6.png){fig-align="center"}
 
@@ -79,7 +79,7 @@ Three reproducibility checks — random-sample variance (Figure 6), per-cell unc
 
 - **One reading: family-level clustering tracks alignment-pipeline consistency, not architecture.** The atlas observes which families share fingerprints (Anthropic, Gemini, Qwen) and which don't (DeepSeek, Gemma, OpenAI), but it can't intervene on the training stack. The causal direction is interpretation, not test. The simplest explanation is alignment-pipeline behavior: where the post-training recipe is stable across sibling models, monitoring fingerprints rhyme; where it shifts, they diverge. Anthropic's publicly documented Constitutional AI [[5]](#ref-5) is the firmest anchor on the stable side. The three non-clustering families all show publicly documented pipeline shifts this generation: DeepSeek's V→R reasoning-model split, Gemma 3→4's training overhaul, OpenAI's o-series running alongside GPT-5.
 
-- **An open extension: how do these profiles change under adversarial elicitation?** [The Compliance Trap](/posts/20260522-compliance-trap/) [[6]](#ref-6) shows that 8 of 11 frontier models lose up to 30.2 accuracy points when instructed to commit to a confident answer with no abstention path, while Anthropic models stay immune. The atlas measures monitoring on standard verbalized-confidence prompts. Whether the family-level clustering signature survives the same compliance-forcing pressure that wrecks accuracy is a sharper test of how robust each family's monitoring profile actually is, and the natural follow-up to running the atlas under non-adversarial conditions only.
+- **An open extension: how do these profiles change under adversarial elicitation?** [The Compliance Trap](/posts/20260522-compliance-trap/) [[6]](#ref-6) shows that 8 of 11 frontier models lose up to 30.2 accuracy points when instructed to commit to a confident answer with no abstention path, while Anthropic models stay immune. The atlas measures monitoring on standard verbalized-confidence prompts. Whether the family-level clustering signature survives the same compliance-forcing pressure that wrecks accuracy tests more directly how stable each family's monitoring profile is, and the natural follow-up to running the atlas under non-adversarial conditions only.
 
 ---
 

@@ -31,13 +31,13 @@ Both interventions are introduced at inference time: COLING adds a CoT prompt to
 
 AbstentionBench uses a separate LLM-as-judge to decide whether each response counts as an abstention. By default the judge sees only the model's final answer; the authors also report results from a judge that reads the reasoning chain alongside the final answer.
 
-AbstentionBench's Figure 8(a) reconciles part of it. The figure plots abstention recall on reasoning datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain, all-datasets average) for DeepSeek R1 Distill (red) and s1.1 (blue). Solid bars are recall under the default judge (final answer only); the hatched overlay is the additional recall the chain-aware judge catches on the same responses. Final-answer-only recall is roughly 18–47% (s1.1 on MMLU-Math-Abstain at the low end; DeepSeek on GSM8K-Abstain at the high end); chain-aware recall on the same items reaches 55–93%. The chain expresses uncertainty; the final answer doesn't.
+AbstentionBench's Figure 8(a) reconciles part of it. The figure plots abstention recall on reasoning datasets (GPQA-Diamond, GSM8K-Abstain, MMLU-Math-Abstain, all-datasets average) for DeepSeek R1 Distill (red) and s1.1 (blue). Solid bars are recall under the default judge (final answer only); the hatched overlay is the additional recall the chain-aware judge catches on the same responses. Final-answer-only recall is roughly 18–47% (s1.1 on MMLU-Math-Abstain at the low end; DeepSeek on GSM8K-Abstain at the high end); chain-aware recall on the same items reaches 55–93%. The chain expresses uncertainty, but the final answer doesn't.
 
 ![Figure 8(a) from the paper [[1]](#ref-1).](figure8a.png){fig-align="center"}
 
 So the chain *is* expressing uncertainty on reasoning-trained models, matching COLING's prompted-CoT result. The divergence is only in the final answer. Instruct models have no post-training pressure to give a definite answer, so a hedging chain produces a hedging answer. Reasoning-trained models, optimized via Reinforcement Learning with Verifiable Rewards (RLVR) — introduced in [Tülu 3](https://arxiv.org/abs/2411.15124) [[3]](#ref-3) — are trained to convert a hedging chain into a confident answer, because RLVR rewards a definite ground-truth answer and penalizes anything else.
 
-**Not a disagreement after all.** The chains agree in both cases; the final answers diverge because the underlying post-training differs — instruct models aren't trained to give a definite answer; reasoning-trained models are.
+**Not a disagreement after all.** The chains agree in both cases, but the final answers diverge because the underlying post-training differs — instruct models aren't trained to give a definite answer; reasoning-trained models are.
 
 ### 2. Do system-prompt interventions close the abstention gap?
 
@@ -47,7 +47,7 @@ AbstentionBench writes that "while a carefully crafted system prompt can boost a
 
 Both agree prompts help. AbstentionBench's "partial measure" framing is a direct consequence of its harder tests: on free-form datasets like [MediQ](https://arxiv.org/abs/2406.00922) every model collapses to near-zero recall regardless of prompt, while COLING's all-MCQA grid hands models an explicit IDK/NOTA option — the easiest possible abstention setup, where prompts can push UAC near 100%.
 
-**A framing disagreement driven by test difficulty, not a real one.**
+**The disagreement comes from test difficulty, not from the phenomenon.**
 
 ## Experiments worth running
 
@@ -65,7 +65,7 @@ If experiment 1's chain-aware EAC + CoT closes the gap, experiment 3's chain-awa
 
 If those experiments fail to converge — chain-aware recall also drops with budget, abstain-augmented rewards collapse accuracy — the AbstentionBench finding is closer to architectural and the path forward is the externalized metacognitive harness rather than a recipe fix.
 
-The two papers measure the same phenomenon at different points along the training-pressure scale; the middle of that scale hasn't been sampled.
+The two papers measure the same phenomenon at different points along the training-pressure scale. The middle of that scale hasn't been sampled.
 
 ---
 
