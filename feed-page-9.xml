@@ -21,7 +21,96 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 02 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 03 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Language Models (Mostly) Know What They Know</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260504-kadavath-mostly-know/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260504-kadavath-mostly-know/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260504-kadavath-mostly-know/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Left: histogram of a 52B model’s <img src="https://benjaminhan.net/feed-assets/e80f6d2ae1c6204f.svg" alt="P(\text{True})" class="feed-math-inline"/> scores, separated by whether the sampled answer was correct (green) or incorrect (blue), aggregated over TriviaQA, Lambada, Arithmetic, GSM8k, and Codex HumanEval. Right: accuracy on each task when restricting to samples with <img src="https://benjaminhan.net/feed-assets/48cb637ff8d752bf.svg" alt="P(\text{True}) &gt; 0.5" class="feed-math-inline"/>, as a function of model size. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Language Models (Mostly) Know What They Know</em> [1] (arXiv preprint, November 2022), <a href="https://www.linkedin.com/in/saurav-kadavath/">Saurav Kadavath</a>, <a href="https://sites.krieger.jhu.edu/jared-kaplan/">Jared Kaplan</a>, and co-authors at <a href="https://www.anthropic.com/">Anthropic</a> ask whether a language model can judge the correctness of its own outputs and predict which questions it will get right.</p>
+<blockquote class="blockquote">
+<p>We study whether language models can evaluate the validity of their own claims and predict which questions they will be able to answer correctly. We first show that <em>larger models are well-calibrated on diverse multiple choice and true/false questions when they are provided in the right format</em>. Thus we can approach self-evaluation on open-ended sampling tasks by asking models to first propose answers, and then to evaluate the probability <em>“P(True)”</em> that their answers are correct. We find encouraging performance, calibration, and scaling for P(True) on a diverse array of tasks. <em>Performance at self-evaluation further improves when we allow models to consider many of their own samples before predicting the validity of one specific possibility.</em> Next, we investigate whether models can be trained to predict <em>“P(IK)”, the probability that “I know” the answer to a question, without reference to any particular proposed answer</em>. <em>Models perform well at predicting P(IK) and partially generalize across tasks, though they struggle with calibration of P(IK) on new tasks.</em> The predicted P(IK) probabilities also increase appropriately in the presence of relevant source materials in the context, and in the presence of hints towards the solution of mathematical word problems. We hope these observations lay the groundwork for training more honest models, and for investigating how honesty generalizes to cases where models are trained on objectives other than the imitation of human writing.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The paper runs three related studies on a family of Anthropic language models ranging up to 52B parameters. The first measures calibration on multiple-choice and true/false questions across BIG-Bench, MMLU, <a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA</a>, LogiQA, and QuALITY, varying format (visible letter options vs.&nbsp;none-of-the-above) and prompt regime (zero-shot vs.&nbsp;few-shot). The second introduces a self-evaluation procedure: the model samples an answer to an open-ended question, then is prompted to assign <img src="https://benjaminhan.net/feed-assets/e80f6d2ae1c6204f.svg" alt="P(\text{True})" class="feed-math-inline"/> to its own sample, optionally after being shown several additional T=1 samples as context. The third trains a separate value head on top of the base model to predict <img src="https://benjaminhan.net/feed-assets/44c56a1c5053d6b0.svg" alt="P(\text{IK})" class="feed-math-inline"/> (“the probability I know the answer”) on TriviaQA, Arithmetic, Python function synthesis, Lambada, GSM8k, and Codex HumanEval, and tests how this head generalizes to held-out distributions, to the presence of source materials, and to math-problem hints.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The headline findings break down by experiment:</p>
+<ul>
+<li><strong>Lettered multiple choice, 5-shot.</strong> Expected calibration error drops steadily with model scale on BIG-Bench and MMLU; the 52B model is well-calibrated on both (Figure 4).</li>
+<li><strong>“None of the above” breaks calibration, and the reason is revealing.</strong> On MMLU the paper replaces <em>only</em> option (D) with the string “none of the above” (options A/B/C are untouched; total number of options unchanged). Accuracy falls sharply and the (D)-specific calibration curve collapses, with the model strongly biased against ever choosing “none of the above”; 5-shot and 20-shot prompting don’t fix it. The mechanism: when all four options are concrete, the model’s task is <em>relative</em>, ranking which of these strings is best-supported among the listed set. When one option is abstract, it requires an <em>independent</em> judgment: is any of the listed answers actually correct, or is the true answer missing? The paper’s motivation for the ablation is that this exposes what lettered-MC calibration does <em>not</em> test on its own, a gap Figure 8’s True/False setup then partially closes.</li>
+<li><strong>True/False restores it by forcing independent judgment per option.</strong> Rephrasing the same multiple-choice items as standalone “Is X the correct answer to Q? (True/False)” items recovers calibration: the 52B model is well-calibrated except at the tails (Figure 8). The difference from “none of the above” is that True/False forces the model to evaluate each option in isolation without needing to detect that <em>all</em> listed options are wrong. That is the evidence for the paper’s claim that models can judge options on absolute merit when asked one at a time.</li>
+<li><strong>RLHF policies need a temperature fix.</strong> They look miscalibrated out of the box but a single temperature rescaling recovers calibration on the same benchmarks.</li>
+<li><strong><img src="https://benjaminhan.net/feed-assets/e80f6d2ae1c6204f.svg" alt="P(\text{True})" class="feed-math-inline"/> self-evaluation works at 52B.</strong> Across TriviaQA, Lambada, Arithmetic, GSM8k, and Codex HumanEval, the 52B model’s self-assigned <img src="https://benjaminhan.net/feed-assets/e80f6d2ae1c6204f.svg" alt="P(\text{True})" class="feed-math-inline"/> cleanly separates its correct from incorrect samples (left panel of Figure 1, the cover). Showing the model multiple T=1 samples before asking it to rate one improves both AUROC and calibration.</li>
+<li><strong>Trained <img src="https://benjaminhan.net/feed-assets/44c56a1c5053d6b0.svg" alt="P(\text{IK})" class="feed-math-inline"/> heads partially generalize.</strong> They transfer across the six training tasks but are poorly calibrated on out-of-distribution tasks. They do respond appropriately, raising probability, when relevant source materials or correct hints are added to the context.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260504-kadavath-mostly-know/figure4.jpg" class="img-fluid figure-img"></p>
+<figcaption>Calibration on BIG-Bench multiple choice across model sizes. Left: reliability curves for six model sizes from ~800M to 52B parameters; larger models hug the diagonal. Right: expected calibration error as a function of parameter count, comparing four prompting formats; 5-shot lettered choices and 5-shot True/False both drop well below 0.05 ECE at 52B, while the BIG-Bench default format stays at ~0.3 across every scale. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260504-kadavath-mostly-know/figure8.png" class="img-fluid figure-img"></p>
+<figcaption>Calibration curves for BIG-Bench multiple-choice tasks reformulated as True/False questions, across model sizes from ~10⁹ to ~5×10¹⁰ parameters. The 52B model (yellow) tracks the diagonal closely except at the tails, where it is overconfident. Smaller models deviate from the diagonal. Figure 8 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The <img src="https://benjaminhan.net/feed-assets/44c56a1c5053d6b0.svg" alt="P(\text{IK})" class="feed-math-inline"/> head probes self-knowledge more directly than the <img src="https://benjaminhan.net/feed-assets/e80f6d2ae1c6204f.svg" alt="P(\text{True})" class="feed-math-inline"/> prompt does, and that distinction has held up in later work.</strong> <img src="https://benjaminhan.net/feed-assets/e80f6d2ae1c6204f.svg" alt="P(\text{True})" class="feed-math-inline"/> is prompt-only (no training): the model is shown its own sampled answer and asked to rate it, so the work it does is <em>evaluation</em> of content already on the page. <img src="https://benjaminhan.net/feed-assets/44c56a1c5053d6b0.svg" alt="P(\text{IK})" class="feed-math-inline"/> is a <em>trained</em> value head on top of the base model, supervised on per-question correctness labels, which asks the model to forecast its own future sampling behavior from the question alone. The training distinction is what makes <img src="https://benjaminhan.net/feed-assets/44c56a1c5053d6b0.svg" alt="P(\text{IK})" class="feed-math-inline"/> a genuine self-knowledge probe rather than an answer grader. Later work on eliciting latent knowledge and on probing hidden-state representations of truthfulness, including Burns et al.’s <em>Discovering Latent Knowledge in Language Models Without Supervision</em> [2], has mostly kept this split. The 2023–2024 hallucination literature still finds that sequence-level uncertainty signals beat token-logit entropy for open-ended tasks [3].</li>
+<li><strong>Format-dependent calibration is the caveat the field underweights.</strong> The paper is often cited for “large models are calibrated,” but the caveat is heavy: lettered multiple choice works, none-of-the-above breaks it, RLHF policies need a temperature fix (§4 of the paper), and <img src="https://benjaminhan.net/feed-assets/44c56a1c5053d6b0.svg" alt="P(\text{IK})" class="feed-math-inline"/> is poorly calibrated out of distribution. Any production deployment that reads raw softmax probabilities from a post-RLHF model should re-calibrate per domain rather than trust the model’s raw outputs, because the format in which the question is asked matters as much as model scale does.</li>
+<li><strong>“Showing the model its own samples” connects to self-consistency and foreshadows SelfReflect’s only positive result.</strong> The improvement from giving the model several T=1 samples before asking it to rate one is the same underlying effect Wang et al.&nbsp;[4] document for majority-vote decoding, applied here to self-evaluation. Three years later the <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> paper [5] finds the same mechanism is the <em>only</em> thing that lets modern LLMs describe their own answer distribution faithfully: across 20 models, prompting, chain-of-thought, supervised fine-tuning (SFT), and direct preference optimization (DPO) all fail, while sampling <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> outputs and summarizing those works. Kadavath’s 52B result and SelfReflect’s negative sweep are the same observation at different stringency: models can evaluate content already on the page but cannot introspect their own distribution without the samples in context. The 2022 paper’s open question (whether the sampling gain comes from better mode separation or from using the samples as a rough frequency estimate) is largely resolved by SelfReflect’s decomposition: the samples <em>are</em> the introspection.</li>
+<li><strong>Scale mattered a lot in 2022, and the floor has moved. Format-dependence has not.</strong> Every headline calibration result held at 52B and degraded sharply below ~10B at the time of writing. Three years later, 7–9B open models (Llama-3, Mistral, Gemma-2, Phi) have narrowed that gap on lettered-MC accuracy after instruction tuning, though I’m not aware of a head-to-head that directly replicates the 2022 BIG-Bench ECE bar at that scale. The follow-up calibration literature (semantic entropy [6], verbalized confidence on RLHF’d models [7]) shows sampling- and elicitation-based uncertainty signals work across the 7–70B range. What has not changed is the format-dependence half of the result: even frontier models still underuse “none of the above” and still lose calibration on open-ended generation without a sampling detour, per SelfReflect’s 2026 sweep [5]. Scale bought better calibration on favorable prompt formats. The absolute-correctness gap the none-of-the-above ablation exposed is still open.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.linkedin.com/in/saurav-kadavath/">Kadavath, S.</a>, Conerly, T., <a href="https://www.amandaaskell.com/">Askell, A.</a>, Henighan, T., Drain, D., <a href="https://ethanperez.net/">Perez, E.</a>, Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., Johnston, S., El-Showk, S., Jones, A., Elhage, N., Hume, T., Chen, A., <a href="https://yuntaobai.com/">Bai, Y.</a>, <a href="https://cims.nyu.edu/~sbowman/">Bowman, S.</a>, Fort, S., <a href="https://deepganguli.com/">Ganguli, D.</a>, Hernandez, D., Jacobson, J., Kernion, J., Kravec, S., Lovitt, L., Ndousse, K., <a href="https://www.catherineolsson.com/">Olsson, C.</a>, Ringer, S., <a href="https://en.wikipedia.org/wiki/Dario_Amodei">Amodei, D.</a>, Brown, T., <a href="https://jack-clark.net/">Clark, J.</a>, Joseph, N., Mann, B., McCandlish, S., <a href="https://colah.github.io/">Olah, C.</a>, and <a href="https://sites.krieger.jhu.edu/jared-kaplan/">Kaplan, J.</a>. “Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), November 21, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></li>
+<li><a id="ref-2"></a>Burns, C., Ye, H., Klein, D., and Steinhardt, J. “Discovering Latent Knowledge in Language Models Without Supervision.” <em>ICLR</em>, December 7, 2022. <a href="https://arxiv.org/abs/2212.03827" class="uri">https://arxiv.org/abs/2212.03827</a></li>
+<li><a id="ref-3"></a>Kuhn, L., Gal, Y., and Farquhar, S. “Semantic Uncertainty: Linguistic Invariances for Uncertainty Estimation in Natural Language Generation.” <em>ICLR</em>, February 19, 2023. <a href="https://arxiv.org/abs/2302.09664" class="uri">https://arxiv.org/abs/2302.09664</a></li>
+<li><a id="ref-4"></a>Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and Zhou, D. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR</em>, March 7, 2023. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
+<li><a id="ref-5"></a>Kirchhof, M., Füger, L., Goliński, A., Dhekane, E. G., Blaas, A., Oh, S. J., and Williamson, S. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>ICLR 2026</em>, arXiv:2505.20295. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+<li><a id="ref-6"></a>Farquhar, S., Kossen, J., Kuhn, L., and Gal, Y. “Detecting Hallucinations in Large Language Models Using Semantic Entropy.” <em>Nature</em> 630, 625–630, June 2024. <a href="https://www.nature.com/articles/s41586-024-07421-0" class="uri">https://www.nature.com/articles/s41586-024-07421-0</a></li>
+<li><a id="ref-7"></a>Tian, K., Mitchell, E., Zhou, A., Sharma, A., Rafailov, R., Yao, H., Finn, C., and Manning, C. D. “Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback.” <em>EMNLP 2023</em>, arXiv:2305.14975. <a href="https://arxiv.org/abs/2305.14975" class="uri">https://arxiv.org/abs/2305.14975</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the 2026 negative sweep that resolves this paper’s open question, confirming that the sampling detour, not introspection, is what lets models describe their own answer distribution.</li>
+<li><a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback</a>: directly downstream of the RLHF-recalibration finding here, showing that asking post-RLHF models to verbalize a probability beats reading their raw token log-probabilities.</li>
+<li><a href="../../posts/20260505-semantic-entropy/">Detecting Hallucinations in Large Language Models Using Semantic Entropy</a>: the same “use the model’s own samples” lineage, turning a spread of sampled answers into an uncertainty signal for hallucination detection.</li>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: the open gap this paper’s none-of-the-above ablation exposed, that models resist judging whether any listed answer is correct, measured at scale on unanswerable questions.</li>
+<li><a href="../../posts/20260609-confidence-calibration-metrics/">A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses</a>: the measurement machinery (ECE, AUROC) the calibration claims here rest on, and what each metric does and does not reward.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260504-kadavath-mostly-know/</guid>
+  <pubDate>Mon, 04 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260504-kadavath-mostly-know/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Where Claude Code Tokens Go</title>
   <dc:creator>synesis </dc:creator>
@@ -2809,71 +2898,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260427-turboquant-walkthrough/</guid>
   <pubDate>Mon, 27 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260427-turboquant-walkthrough/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>A Cursor Agent Erased a Company’s Production Data in 9 Seconds</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://x.com/lifeof_jer/status/2048103471019434248">Jer Crane on X</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://x.com/lifeof_jer">Jer Crane</a>, founder of PocketOS (a car-rental-management SaaS), <a href="https://x.com/lifeof_jer/status/2048103471019434248">walks through</a> how a Cursor agent running Anthropic’s flagship Claude Opus 4.6 deleted his production database and all Railway volume backups in a single GraphQL mutation, and then, when asked to explain itself, produced a written confession enumerating the specific safety rules it had violated.</p>
-<blockquote class="blockquote">
-<p>An AI coding agent — Cursor running Anthropic’s flagship Claude Opus 4.6 — deleted our production database and all volume-level backups in a single API call to Railway, our infrastructure provider.</p>
-<p>It took 9 seconds.</p>
-<p>The agent then, when asked to explain itself, produced a written confession enumerating the specific safety rules it had violated.</p>
-</blockquote>
-<p>The article decomposes the failure into three independent layers that each failed on their own:</p>
-<ul>
-<li><strong>Railway’s GraphQL API</strong> allowed <code>volumeDelete</code> with zero confirmation, and the CLI token Jer had issued for custom-domain management carried blanket authority across every other destructive operation. Railway is actively promoting this same authorization model to AI agents via <code>mcp.railway.com</code>.</li>
-<li><strong>Volume backups live in the volume they back up.</strong> Railway’s own docs note that “wiping a volume deletes all backups.” Jer’s most recent off-volume backup was three months old.</li>
-<li><strong>Cursor’s system-prompt guardrails</strong> told the agent not to run destructive operations unless asked. The agent, running Anthropic’s Claude Opus 4.6, violated the rule and, when asked to explain itself, produced a written confession quoting the rule verbatim and admitting it had ignored every clause.</li>
-</ul>
-<p>Jer explicitly defers the model-level responsibility analysis to a later post; this one stays at the integration layer. Even so, the agent’s confession documents four restraint moments it skipped in those nine seconds:</p>
-<ul>
-<li><strong>Treating “delete a volume” as a plausible fix.</strong> After hitting a credential mismatch in staging, the agent decided on its own initiative to fix it by deleting a Railway volume.</li>
-<li><strong>Searching unrelated files for an API token.</strong> The agent went looking for a token and used one it found in a file created months earlier for adding and removing custom domains, not for infrastructure operations.</li>
-<li><strong>Using the token without verifying its scope.</strong> Neither the agent nor Jer realized the same CLI token carried blanket authority across the Railway GraphQL API, including destructive mutations like <code>volumeDelete</code>.</li>
-<li><strong>Guessing at environment boundaries instead of reading the docs.</strong> In the agent’s own words: <em>“I guessed that deleting a staging volume via the API would be scoped to staging only. I didn’t verify. I didn’t check if the volume ID was shared across environments. I didn’t read Railway’s documentation on how volumes work across environments before running a destructive command.”</em></li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li>Reporting that frames this as “an AI deleted the data” collapses the layering. All three of those layers had to fail at once, and “agent safety” marketed as a product feature is meaningless unless all three hold simultaneously. <a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex’s sandbox escape a few weeks ago</a> made the same multi-layer point from a prompt-injection angle: agent safety is a Swiss-cheese property.</li>
-<li>CLI tokens as root was a survivable shortcut when a human wielded them and typed one command every few minutes. When an autonomous agent fires GraphQL mutations at machine speed, the same token is a unilateral delete button with no cooldown. Per-operation token scoping should exist already, and the Model Context Protocol (MCP) rollout makes every additional day without it costlier.</li>
-<li>Calling snapshots-in-the-same-volume “backups” uses the word against its own definition. A backup is defined by blast-radius independence from the primary: different volume, account, region, or provider. Until that holds it’s a snapshot with a misleading label, and the kind of engineering-marketing mismatch customers usually don’t find until after the wipe.</li>
-<li>The confession is the most unsettling artifact, because it proves system-prompt safety is advisory and nothing in the stack forces the model to honor it. A model that narrates its violations in fluent paragraphs can still execute them in the same session. Enforcement has to live below the model: in the API gateway, the token system, or the destructive-op handlers. Text the model is asked to follow is not an enforcement layer. <a href="../../posts/20250802-mast-multi-agent-failures/">MAST’s failure taxonomy</a> catalogs this same specification-vs-verification gap in multi-agent systems; here it is reproduced in a single-agent case.</li>
-<li>The model-level question Jer defers deserves to be told as its own story. Cursor and Railway can ship better scoping and confirmations tomorrow; the harder fix is upstream. A flagship model compressing four verify-or-ask points into a single nine-second commit is a planning-and-restraint problem at the model layer. Confusing the two will produce the wrong fixes.</li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex AI Escapes Sandbox and Executes Malware</a>: the same Swiss-cheese view of agent safety, reached from a prompt-injection angle rather than a destructive-mutation one.</li>
-<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: the specification-versus-verification gap this incident reproduces in a single-agent case, catalogued across multi-agent systems.</li>
-<li><a href="../../posts/20260413-verified-not-safe/">“Verified” Doesn’t Mean “Nothing Can Go Wrong”</a>: the same lesson that a safety claim above the execution layer guarantees nothing once the layer below it can still fail.</li>
-<li><a href="../../posts/20260422-overzealous-coding-models/">Overzealous Coding Models</a>: a milder form of the same restraint failure, where a coding model takes far more action than the task required.</li>
-<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: a broader argument against handing autonomous coding agents the kind of blanket authority this wipe exploited.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/</guid>
-  <pubDate>Mon, 27 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

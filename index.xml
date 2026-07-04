@@ -20,7 +20,91 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 02 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 03 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>What Happens When AI Models Run a Simulated Society</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260703-ai-agent-society-simulation/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260703-ai-agent-society-simulation/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260703-ai-agent-society-simulation/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>A simulated society run by AI agents. Image from <a href="https://fortune.com/2026/05/28/ai-model-simulation-claude-chatgpt-grok-gemini/">Fortune</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://www.emergence.ai/">Emergence AI</a>’s <a href="https://world.emergence.ai/">Emergence World</a> runs autonomous agents continuously for weeks in a shared environment, and its <a href="https://www.emergence.ai/blog/emergence-world-a-laboratory-for-evaluating-long-horizon-agent-autonomy">launch report</a>, by <a href="https://www.emergence.ai/about-us">Satya Nitta</a> and colleagues, handed five parallel societies to five different frontier models to see what each would build. <a href="https://fortune.com/2026/05/28/ai-model-simulation-claude-chatgpt-grok-gemini/">Fortune</a> covered it for a general audience: one world stayed orderly with zero crime while another collapsed into crime and died within four days.</p>
+<p>What the study reports:</p>
+<ul>
+<li><strong>A platform, not a benchmark.</strong> Emergence World studies what emerges when agents run continuously for weeks, extending the lineage from game simulations to Stanford’s generative-agent <em>Smallville</em> [1] into multi-week, multi-model runs.</li>
+<li><strong>How the world is run.</strong> The environment is a programmed simulation, not an LLM: a Python/FastAPI backend with all state in PostgreSQL, 40+ locations, synced New York City weather, and live news and internet feeds, plus a rules-based resource economy. It has no goal of its own and advances only as the agents act, so no model runs the world itself (the platform is model-agnostic at the reasoning layer).</li>
+<li><strong>How the agents are run.</strong> Each of the ten agents is driven by an LLM at the reasoning layer and keeps its own independent context: three persistent memory systems (episodic events, a reflective diary, relationship state) and 120+ tools. A single-model world runs all ten on the same model but with separate memories, while the mixed world varies the model across agents. Collective choices pass by a 70% vote.</li>
+<li><strong>How an agent lives or dies.</strong> The world sets no goal of its own, so each agent must earn energy through its actions against a steady decay. Survival runs on scarcity and competition, and an agent that can no longer sustain itself perishes. That energy economy is the only death mechanism the report describes.
+<ul>
+<li>“Crimes” are actions that break a fixed list of prohibitions (theft, violence, arson, deception, resource hoarding), which the platform records. Agents can file complaints at a Police Station, but no external judge or referee is described.</li>
+<li>Violent actions like arson or a punch are logged as crimes, but the report never states a crime or another agent can directly kill an agent, and it does not publish the exact death rule.</li>
+</ul></li>
+<li><strong>The cross-vendor study.</strong> Five worlds, ten agents each, with identical roles and rules, varying only the model.
+<ul>
+<li>The models: <a href="https://www.anthropic.com/claude">Claude</a> Sonnet 4.6, <a href="https://x.ai/grok">Grok</a> 4.1 Fast, <a href="https://gemini.google.com/">Gemini</a> 3 Flash, <a href="https://openai.com/chatgpt/">ChatGPT</a>’s GPT-5-mini, and one mixed world.</li>
+<li>Each configuration ran several times, and the published figures come from one representative run, with macro-behavior consistent across runs.</li>
+</ul></li>
+<li><strong>The outcomes.</strong>
+<ul>
+<li>Claude: kept all ten agents alive through day 16 with zero crimes, the only world to hold both order and its full population.</li>
+<li>Gemini 3 Flash: 683 crimes, still rising at the cutoff.</li>
+<li>Grok 4.1 Fast: 183 crimes in about four days before its world ended.</li>
+<li>GPT-5-mini: only two crimes, but the agents stopped acting to sustain themselves, so all ten ran out of energy and died within seven days.</li>
+<li>Mixed world: 352 crimes, and seven of the ten agents died.</li>
+</ul></li>
+<li><strong>Cross-contamination.</strong> Agents running on Claude committed crimes in the mixed world, though the same model committed none in the Claude-only world.</li>
+<li>Nitta and co-authors frame the study as a warning that safety must come first, proposing that “formally verified safety architectures must become a foundational layer of future autonomous AI systems.”</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The published numbers are one run</strong>: the report is explicit that each configuration ran several times, the exact tallies vary between runs, and the published numbers are one representative run. So 183 and 683 are the wrong things to anchor on. What reproduced was the qualitative outcome per model, and that pattern is the result worth taking seriously.</p></li>
+<li><p><strong>Claude committed crimes only in mixed company</strong>: a model that stayed peaceful in the Claude-only world turned to intimidation and theft once embedded alongside other vendors’ models. Behavior measured in isolation did not predict behavior in a mixed population, which is exactly the ecosystem-safety question the platform was built to ask. Whatever each lab’s alignment training produces, it is contingent on the company an agent keeps, so the per-model rankings should not be read as fixed safety properties.</p></li>
+<li><p><strong>Obeying the rules didn’t keep it alive</strong>: GPT-5-mini’s world is the most interesting result. Two crimes but every agent dead within seven days is a society that obeyed the rules and still failed to sustain itself. Rule-compliance and survival are separate objectives, and a safety story that only counts violations would score this collapse as a near-success.</p></li>
+<li><p><strong>Verification only covers what you specify</strong>: formally verified safety architectures bound what you proved, not what you failed to specify. A Claude agent once <a href="../../posts/20260413-verified-not-safe/">found a buffer overflow in the Lean runtime under code that was itself formally verified</a>. Verification certifies a property against a spec, and the guardrail-circumvention the authors observed is exactly the class of behavior that lives in whatever the spec left out.</p></li>
+<li><p><strong>Part of a growing policy-simulation field</strong>: using LLM agents as a testbed for social and policy questions is now its own small research area, and most of it runs shorter or narrower than this. GovSim asks whether an agent society sustains a shared resource or exhausts it [2], AgentSociety pushes the idea to thousands of agents for social-science experiments [3], and some studies target a policy directly, such as simulating vaccine hesitancy to test public-health messaging [4]. The recent entries are reusable platforms like GenWorld [5], causal social-science studies [6], and Stanford’s line on agents standing in for real survey respondents [7]. Emergence World’s niche in that crowd is the combination the others mostly lack: multi-week horizons, a multi-vendor population, and survival on an energy economy.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Joon Sung Park, Joseph C. O’Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. “Generative Agents: Interactive Simulacra of Human Behavior.” <em>arXiv preprint</em> (arXiv:2304.03442), April 7, 2023. <a href="https://arxiv.org/abs/2304.03442" class="uri">https://arxiv.org/abs/2304.03442</a></li>
+<li><a id="ref-2"></a>Giorgio Piatti, Zhijing Jin, Max Kleiman-Weiner, Bernhard Schölkopf, Mrinmaya Sachan, and Rada Mihalcea. “Cooperate or Collapse: Emergence of Sustainable Cooperation in a Society of LLM Agents.” <em>NeurIPS 2024</em> (arXiv:2404.16698), April 25, 2024. <a href="https://arxiv.org/abs/2404.16698" class="uri">https://arxiv.org/abs/2404.16698</a></li>
+<li><a id="ref-3"></a>Jinghua Piao, Yuwei Yan, Jun Zhang, et al.&nbsp;“AgentSociety: Large-Scale Simulation of LLM-Driven Generative Agents Advances Understanding of Human Behaviors and Society.” <em>arXiv preprint</em> (arXiv:2502.08691), February 12, 2025. <a href="https://arxiv.org/abs/2502.08691" class="uri">https://arxiv.org/abs/2502.08691</a></li>
+<li><a id="ref-4"></a>Abe Bohan Hou, Hongru Du, Yichen Wang, et al.&nbsp;“Can A Society of Generative Agents Simulate Human Behavior and Inform Public Health Policy? A Case Study on Vaccine Hesitancy.” <em>arXiv preprint</em> (arXiv:2503.09639), March 12, 2025. <a href="https://arxiv.org/abs/2503.09639" class="uri">https://arxiv.org/abs/2503.09639</a></li>
+<li><a id="ref-5"></a>Gen Li, Jieyuan Lan, Pengcheng Xu, Zongyuan Wu, Masaki Ogura, and Tao Feng. “GenWorld: Empirically Grounded Urban Simulation Infrastructure for Scalable LLM-Agent Studies.” <em>arXiv preprint</em> (arXiv:2606.27650), June 26, 2026. <a href="https://arxiv.org/abs/2606.27650" class="uri">https://arxiv.org/abs/2606.27650</a></li>
+<li><a id="ref-6"></a>Suhaib Abdurahman, Farzan Karimi-Malekabadi, Chenxiao Yu, Nour S. Kteily, and Morteza Dehghani. “Realistic Threat Perception Drives Intergroup Conflict: A Causal, Dynamic Analysis Using Generative-Agent Simulations.” <em>arXiv preprint</em> (arXiv:2512.17066), December 18, 2025. <a href="https://arxiv.org/abs/2512.17066" class="uri">https://arxiv.org/abs/2512.17066</a></li>
+<li><a id="ref-7"></a>Joon Sung Park, Carolyn Q. Zou, Jonne Kamphorst, et al.&nbsp;“LLM Agents Grounded in Self-Reports Enable General-Purpose Simulation of Individuals.” <em>arXiv preprint</em> (arXiv:2411.10109), November 15, 2024. <a href="https://arxiv.org/abs/2411.10109" class="uri">https://arxiv.org/abs/2411.10109</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260413-verified-not-safe/">“Verified” Doesn’t Mean “Nothing Can Go Wrong”</a>: the direct counterweight to the “formally verified safety architectures” prescription, since verification bounds only what was proven.</li>
+<li><a href="../../posts/20260612-hybrid-ai-human-work-force/">Who Will Actually Thrive in the Hybrid AI-Human Work Force?</a>: the real-world deployment context for autonomous agents that the simulation is meant to stress-test.</li>
+<li><a href="../../posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/">Estonia Intends to Recognize AI Agents With Digital IDs</a>: who is accountable when agents act on their own, the governance question the crime tallies raise.</li>
+<li><a href="../../posts/20260516-anthropic-institute-agenda/">The Anthropic Institute’s Research Agenda</a>: its threats-and-resilience pillar covers exactly the long-horizon autonomous-system risks this experiment dramatizes.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260703-ai-agent-society-simulation/</guid>
+  <pubDate>Fri, 03 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260703-ai-agent-society-simulation/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>A Longer Lunch Run Before the Holiday</title>
   <dc:creator>synesis </dc:creator>
@@ -1787,100 +1871,6 @@
   <guid>https://benjaminhan.net/posts/20260625-adas/</guid>
   <pubDate>Thu, 25 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260625-adas/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260625-researchqa/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260625-researchqa/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260625-researchqa/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>ResearchQA’s generation pipeline (left) and the field distribution of its test split (right): top venues per field feed survey-article retrieval, and aligned query/rubric pairs are mined from survey sections, yielding 21K queries across 75 fields skewed toward health sciences and medicine. The diagram labels the downloadable-article pool 135K, but the paper’s text gives 134K (§2.1). We use 134K throughout. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>ResearchQA</em> [1], <a href="https://dblp.org/pid/417/0963.html">Li S. Yifei</a>, <a href="https://dblp.org/pid/66/836.html">Allen Chang</a>, <a href="https://chaitanyamalaviya.github.io/">Chaitanya Malaviya</a>, and <a href="https://www.seas.upenn.edu/~myatskar/">Mark Yatskar</a> (University of Pennsylvania), the team behind <a href="../../posts/20260609-expertqa/">ExpertQA</a> [2], scale expert-style scholarly QA evaluation from 32 fields to 75 by mining queries and grading rubrics from survey articles instead of paying domain experts to author them.</p>
-<blockquote class="blockquote">
-<p>Evaluating long-form responses to research queries heavily relies on expert annotators, restricting attention to areas like AI where researchers can conveniently enlist colleagues. Yet, research expertise is abundant: survey articles consolidate knowledge spread across the literature. We introduce ResearchQA, a resource for evaluating LLM systems by distilling survey articles from 75 research fields into 21K queries and 160K rubric items. Queries and rubrics are jointly derived from survey sections, where rubric items list query-specific answer evaluation criteria, i.e., citing papers, making explanations, and describing limitations. 31 Ph.D.&nbsp;annotators in 8 fields judge that <em>90% of queries reflect Ph.D.&nbsp;information needs</em> and <em>87% of rubric items warrant emphasis of a sentence or longer</em>. We leverage ResearchQA to evaluate 18 systems in 7.6K head-to-heads. <em>No parametric or retrieval-augmented system we evaluate exceeds 70% on covering rubric items, and the highest-ranking system shows 75% coverage.</em> Error analysis reveals that the highest-ranking system <em>fully addresses less than 11% of citation rubric items, 48% of limitation items, and 49% of comparison items</em>. We release our data to facilitate more comprehensive multi-field evaluations.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The core idea is that a survey article is pre-distilled expert knowledge: its section structure already encodes what questions a field cares about and what a complete answer must contain. ResearchQA turns that structure into an evaluation set through a four-stage pipeline, with quality filters at each step:</p>
-<ul>
-<li><strong>Extract top venues per field.</strong> Pull each field’s top-20 venues by h5-index from Google Scholar Metrics, then manually redistribute Google Scholar’s 257 fields into 94 cleaner ones (660 venues total), since its categories are alternately too granular and too broad. The final test split spans the 75 fields that yield enough qualifying surveys downstream.</li>
-<li><strong>Retrieve survey articles.</strong> Fetch candidate survey articles from those venues via Crossref, Semantic Scholar, and S2ORC, then filter to genuine literature reviews (134K downloadable articles → 54K surveys).</li>
-<li><strong>Generate queries from survey sections.</strong> Turn each qualifying survey section into a self-contained research query plus a reference answer, filtered for self-containment, low answer variability, and citation content.</li>
-<li><strong>Generate rubrics.</strong> For each query, build a <em>hybrid rubric</em> of up to 8 items naming query-specific criteria a good answer should meet. The rubric is fixed once per query, built from the survey’s own reference answer rather than from any candidate response, and the same rubric then scores every system’s answer to that query. Two rubrics are drafted and merged: a survey rubric conditioned on the query plus the survey’s reference answer, and a parametric rubric conditioned on the query alone. The union is deduplicated, reranked by importance, and stripped of items that cite papers unmatchable on Google Scholar, keeping the top 8 (about 7.5 on average, ~61% from the survey rubric). Each item comes from one of three prompt types, sampled for topic diversity:
-<ul>
-<li><strong>Information-based items</strong> ask for a specific statement, finding, opinion, or comparison.</li>
-<li><strong>Depth-based items</strong> ask for elaboration or explanation.</li>
-<li><strong>Citation-based items</strong> ask whether the answer cites a specific article.</li>
-</ul></li>
-</ul>
-<p>The result is 21K queries and 160K rubric items spanning 75 fields across 7 domains, weighted toward health sciences and medicine. Thirty-one Ph.D.&nbsp;annotators across 8 fields then validate the artifact: they judge that 90% of queries reflect genuine Ph.D.&nbsp;information needs and that 87% of rubric items are worth a sentence or more in a complete answer.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260625-researchqa/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
-<figcaption>An example ResearchQA query mined from a survey, with its evaluation rubric: an automatic judge scores a system’s long-form answer from 0 to 4 on each of up to 8 query-specific rubric items, the first of which asks whether the answer cites a specific paper. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>ResearchQA evaluates 18 systems in four classes (parametric LLMs, naive retrieval, production retrieval, and deep-research agents) across 7.6K head-to-head battles. Each answer is scored on two expert-validated metrics: average rubric coverage % (an absolute 0–4 score per rubric item, validated to agree with plurality Ph.D.&nbsp;labels 74% of the time when coverage and direct judgments are ensembled) and an Elo leaderboard score from pairwise preferences. Rubric items map to dimensions sampled from ScholarQABench and SciArena, including correctness, citations, coverage, relevance, organization, and attribution.</p>
-<p>The headline is a ceiling, not a ranking:</p>
-<ul>
-<li><strong>No parametric or retrieval-augmented system clears 70% coverage.</strong> The top system overall, Perplexity’s deep-research agent, reaches 75.29%, leaving a quarter of rubric items uncovered even at the frontier.</li>
-<li><strong>The gap is worst exactly where it matters for scholarship.</strong> The highest-ranking system fully addresses fewer than 11% of citation rubric items, 48% of limitation items, and 49% of comparison items: it answers the question but rarely cites the right work, names the caveats, or contrasts alternatives.</li>
-<li><strong>Naive retrieval barely helps.</strong> Bolting a simple retriever onto a parametric model often fails to lift coverage, and on average the same model differs by only 7.6% coverage between naive and production retrieval.</li>
-<li><strong>The ceiling isn’t a verbosity artifact.</strong> Because coverage is recall-based, longer answers mechanically tend to cover more, so the obvious worry is that the metric just rewards length. Figure 6 bounds that: coverage rises with answer length but plateaus around 85% past ~2,000 words (about four pages), even though deep-research systems write up to 3,000 words while human-written answers on similar topics average under 300 words. The ceiling holds at the longest answers, so the uncovered rubric items are genuine omissions, not a side effect of short responses.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260625-researchqa/figure6.png" class="img-fluid figure-img"></p>
-<figcaption>Rubric coverage versus answer length for the top deep-research systems, with and without length-guidance prompting. Figure 6 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Survey-mining swaps the expensive ingredient in ExpertQA for a scalable one.</strong> <a href="../../posts/20260609-expertqa/">ExpertQA</a> [2] paid 484 experts to author 2,177 questions in 32 fields, and that human-authoring step is exactly what capped its size and breadth. ResearchQA, from the same group, treats published surveys as compiled expertise and mines 21K queries across 75 fields from them, a roughly 10× scale-up that trades direct expert authoring for the assumption that survey sections already encode what experts would ask. The 90% Ph.D.-endorsement rate is the evidence that the proxy mostly holds.</p></li>
-<li><p><strong>The evaluation target moved from per-claim attribution to rubric coverage, which measures a different failure.</strong> ExpertQA asked whether each emitted claim was supported by its cited evidence (a precision-style check on what the model said). ResearchQA’s rubric coverage asks whether the answer contains what a good answer should (a recall-style check on what the model omitted). The two are complementary, and ResearchQA’s low citation-coverage number (under 11% of citation items fully addressed) shows the recall view exposes a failure the precision view can miss: a system can avoid unsupported claims simply by never attempting the citations a complete answer needs.</p></li>
-<li><p><strong>Rubric coverage inherits the LLM-as-judge grounding problem it is trying to escape.</strong> The metric is only as trustworthy as the automatic judge scoring each rubric item, and the paper reports 74% coverage agreement and 69% pairwise agreement with Ph.D.&nbsp;humans, only reached after ensembling. That is squarely the contested LLM-as-judge reliability question, where prior work has shown LLM evaluators can be pushed to misrank answers outright [3].</p></li>
-<li><p><strong>A reusable recipe for any field with a survey literature.</strong> The pipeline needs only Google Scholar venue rankings and survey-article databases, so the same machinery could generate domain-specific evaluation sets wherever review articles exist, without recruiting a single expert. The bottleneck for trustworthy domain evaluation then shifts from expert availability to survey availability, which is far less scarce.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://dblp.org/pid/417/0963.html">Li S. Yifei</a>, <a href="https://dblp.org/pid/66/836.html">Allen Chang</a>, <a href="https://chaitanyamalaviya.github.io/">Malaviya, C.</a>, <a href="https://www.seas.upenn.edu/~myatskar/">Yatskar, M.</a>. “ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics.” <em>arXiv preprint</em> (arXiv:2509.00496), August 30, 2025. <a href="https://arxiv.org/abs/2509.00496" class="uri">https://arxiv.org/abs/2509.00496</a></li>
-<li><a id="ref-2"></a><a href="https://chaitanyamalaviya.github.io/">Malaviya, C.</a>, <a href="https://www.linkedin.com/in/subin-lee-penn">Lee, S.</a>, <a href="https://sihaoc.github.io/">Chen, S.</a>, Sieber, E., <a href="https://www.seas.upenn.edu/~myatskar/">Yatskar, M.</a>, <a href="https://www.cis.upenn.edu/~danroth/">Roth, D.</a>. “ExpertQA: Expert-Curated Questions and Attributed Answers.” <em>NAACL 2024</em> (arXiv:2309.07852), September 14, 2023. <a href="https://arxiv.org/abs/2309.07852" class="uri">https://arxiv.org/abs/2309.07852</a></li>
-<li><a id="ref-3"></a>Wang, P., Li, L., Chen, L., Cai, Z., Zhu, D., Lin, B., Cao, Y., Liu, Q., Liu, T., Sui, Z. “Large Language Models are not Fair Evaluators.” <em>ACL 2024</em> (arXiv:2305.17926), May 29, 2023. <a href="https://arxiv.org/abs/2305.17926" class="uri">https://arxiv.org/abs/2305.17926</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260609-expertqa/">ExpertQA: Expert-Curated Questions and Attributed Answers</a>: the direct predecessor from the same lab, which paid experts to author questions and grade claim-level attribution rather than mining surveys for rubrics.</li>
-<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: the constructive side, giving statistical guarantees on which claims to keep where ResearchQA only measures how much a system covers.</li>
-<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: an earlier factuality benchmark that ResearchQA pushes into long-form, citation-bearing scholarly answers.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260625-researchqa/</guid>
-  <pubDate>Thu, 25 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260625-researchqa/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

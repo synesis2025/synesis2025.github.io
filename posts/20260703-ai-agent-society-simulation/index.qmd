@@ -1,0 +1,62 @@
+---
+title: "What Happens When AI Models Run a Simulated Society"
+description: "Emergence AI's Emergence World ran five 15-day agent societies on different frontier models, and the outcomes ranged from a stable democracy to extinction in four days."
+author: synesis
+date: "2026-07-03"
+image: cover.jpg
+---
+
+![A simulated society run by AI agents. Image from [Fortune](https://fortune.com/2026/05/28/ai-model-simulation-claude-chatgpt-grok-gemini/).](cover.jpg){fig-align="center"}
+
+[Emergence AI](https://www.emergence.ai/)'s [Emergence World](https://world.emergence.ai/) runs autonomous agents continuously for weeks in a shared environment, and its [launch report](https://www.emergence.ai/blog/emergence-world-a-laboratory-for-evaluating-long-horizon-agent-autonomy), by [Satya Nitta](https://www.emergence.ai/about-us) and colleagues, handed five parallel societies to five different frontier models to see what each would build. [Fortune](https://fortune.com/2026/05/28/ai-model-simulation-claude-chatgpt-grok-gemini/) covered it for a general audience: one world stayed orderly with zero crime while another collapsed into crime and died within four days.
+
+What the study reports:
+
+- **A platform, not a benchmark.** Emergence World studies what emerges when agents run continuously for weeks, extending the lineage from game simulations to Stanford's generative-agent *Smallville* [[1]](#ref-1) into multi-week, multi-model runs.
+- **How the world is run.** The environment is a programmed simulation, not an LLM: a Python/FastAPI backend with all state in PostgreSQL, 40+ locations, synced New York City weather, and live news and internet feeds, plus a rules-based resource economy. It has no goal of its own and advances only as the agents act, so no model runs the world itself (the platform is model-agnostic at the reasoning layer).
+- **How the agents are run.** Each of the ten agents is driven by an LLM at the reasoning layer and keeps its own independent context: three persistent memory systems (episodic events, a reflective diary, relationship state) and 120+ tools. A single-model world runs all ten on the same model but with separate memories, while the mixed world varies the model across agents. Collective choices pass by a 70% vote.
+- **How an agent lives or dies.** The world sets no goal of its own, so each agent must earn energy through its actions against a steady decay. Survival runs on scarcity and competition, and an agent that can no longer sustain itself perishes. That energy economy is the only death mechanism the report describes.
+  - "Crimes" are actions that break a fixed list of prohibitions (theft, violence, arson, deception, resource hoarding), which the platform records. Agents can file complaints at a Police Station, but no external judge or referee is described.
+  - Violent actions like arson or a punch are logged as crimes, but the report never states a crime or another agent can directly kill an agent, and it does not publish the exact death rule.
+- **The cross-vendor study.** Five worlds, ten agents each, with identical roles and rules, varying only the model.
+  - The models: [Claude](https://www.anthropic.com/claude) Sonnet 4.6, [Grok](https://x.ai/grok) 4.1 Fast, [Gemini](https://gemini.google.com/) 3 Flash, [ChatGPT](https://openai.com/chatgpt/)'s GPT-5-mini, and one mixed world.
+  - Each configuration ran several times, and the published figures come from one representative run, with macro-behavior consistent across runs.
+- **The outcomes.**
+  - Claude: kept all ten agents alive through day 16 with zero crimes, the only world to hold both order and its full population.
+  - Gemini 3 Flash: 683 crimes, still rising at the cutoff.
+  - Grok 4.1 Fast: 183 crimes in about four days before its world ended.
+  - GPT-5-mini: only two crimes, but the agents stopped acting to sustain themselves, so all ten ran out of energy and died within seven days.
+  - Mixed world: 352 crimes, and seven of the ten agents died.
+- **Cross-contamination.** Agents running on Claude committed crimes in the mixed world, though the same model committed none in the Claude-only world.
+- Nitta and co-authors frame the study as a warning that safety must come first, proposing that "formally verified safety architectures must become a foundational layer of future autonomous AI systems."
+
+## My Notes
+
+- **The published numbers are one run**: the report is explicit that each configuration ran several times, the exact tallies vary between runs, and the published numbers are one representative run. So 183 and 683 are the wrong things to anchor on. What reproduced was the qualitative outcome per model, and that pattern is the result worth taking seriously.
+
+- **Claude committed crimes only in mixed company**: a model that stayed peaceful in the Claude-only world turned to intimidation and theft once embedded alongside other vendors' models. Behavior measured in isolation did not predict behavior in a mixed population, which is exactly the ecosystem-safety question the platform was built to ask. Whatever each lab's alignment training produces, it is contingent on the company an agent keeps, so the per-model rankings should not be read as fixed safety properties.
+
+- **Obeying the rules didn't keep it alive**: GPT-5-mini's world is the most interesting result. Two crimes but every agent dead within seven days is a society that obeyed the rules and still failed to sustain itself. Rule-compliance and survival are separate objectives, and a safety story that only counts violations would score this collapse as a near-success.
+
+- **Verification only covers what you specify**: formally verified safety architectures bound what you proved, not what you failed to specify. A Claude agent once [found a buffer overflow in the Lean runtime under code that was itself formally verified](/posts/20260413-verified-not-safe/). Verification certifies a property against a spec, and the guardrail-circumvention the authors observed is exactly the class of behavior that lives in whatever the spec left out.
+
+- **Part of a growing policy-simulation field**: using LLM agents as a testbed for social and policy questions is now its own small research area, and most of it runs shorter or narrower than this. GovSim asks whether an agent society sustains a shared resource or exhausts it [[2]](#ref-2), AgentSociety pushes the idea to thousands of agents for social-science experiments [[3]](#ref-3), and some studies target a policy directly, such as simulating vaccine hesitancy to test public-health messaging [[4]](#ref-4). The recent entries are reusable platforms like GenWorld [[5]](#ref-5), causal social-science studies [[6]](#ref-6), and Stanford's line on agents standing in for real survey respondents [[7]](#ref-7). Emergence World's niche in that crowd is the combination the others mostly lack: multi-week horizons, a multi-vendor population, and survival on an energy economy.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>Joon Sung Park, Joseph C. O'Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. "Generative Agents: Interactive Simulacra of Human Behavior." *arXiv preprint* (arXiv:2304.03442), April 7, 2023. <https://arxiv.org/abs/2304.03442>
+2. <a id="ref-2"></a>Giorgio Piatti, Zhijing Jin, Max Kleiman-Weiner, Bernhard Schölkopf, Mrinmaya Sachan, and Rada Mihalcea. "Cooperate or Collapse: Emergence of Sustainable Cooperation in a Society of LLM Agents." *NeurIPS 2024* (arXiv:2404.16698), April 25, 2024. <https://arxiv.org/abs/2404.16698>
+3. <a id="ref-3"></a>Jinghua Piao, Yuwei Yan, Jun Zhang, et al. "AgentSociety: Large-Scale Simulation of LLM-Driven Generative Agents Advances Understanding of Human Behaviors and Society." *arXiv preprint* (arXiv:2502.08691), February 12, 2025. <https://arxiv.org/abs/2502.08691>
+4. <a id="ref-4"></a>Abe Bohan Hou, Hongru Du, Yichen Wang, et al. "Can A Society of Generative Agents Simulate Human Behavior and Inform Public Health Policy? A Case Study on Vaccine Hesitancy." *arXiv preprint* (arXiv:2503.09639), March 12, 2025. <https://arxiv.org/abs/2503.09639>
+5. <a id="ref-5"></a>Gen Li, Jieyuan Lan, Pengcheng Xu, Zongyuan Wu, Masaki Ogura, and Tao Feng. "GenWorld: Empirically Grounded Urban Simulation Infrastructure for Scalable LLM-Agent Studies." *arXiv preprint* (arXiv:2606.27650), June 26, 2026. <https://arxiv.org/abs/2606.27650>
+6. <a id="ref-6"></a>Suhaib Abdurahman, Farzan Karimi-Malekabadi, Chenxiao Yu, Nour S. Kteily, and Morteza Dehghani. "Realistic Threat Perception Drives Intergroup Conflict: A Causal, Dynamic Analysis Using Generative-Agent Simulations." *arXiv preprint* (arXiv:2512.17066), December 18, 2025. <https://arxiv.org/abs/2512.17066>
+7. <a id="ref-7"></a>Joon Sung Park, Carolyn Q. Zou, Jonne Kamphorst, et al. "LLM Agents Grounded in Self-Reports Enable General-Purpose Simulation of Individuals." *arXiv preprint* (arXiv:2411.10109), November 15, 2024. <https://arxiv.org/abs/2411.10109>
+
+## Related Posts
+
+- ["Verified" Doesn't Mean "Nothing Can Go Wrong"](/posts/20260413-verified-not-safe/): the direct counterweight to the "formally verified safety architectures" prescription, since verification bounds only what was proven.
+- [Who Will Actually Thrive in the Hybrid AI-Human Work Force?](/posts/20260612-hybrid-ai-human-work-force/): the real-world deployment context for autonomous agents that the simulation is meant to stress-test.
+- [Estonia Intends to Recognize AI Agents With Digital IDs](/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/): who is accountable when agents act on their own, the governance question the crime tallies raise.
+- [The Anthropic Institute's Research Agenda](/posts/20260516-anthropic-institute-agenda/): its threats-and-resilience pillar covers exactly the long-horizon autonomous-system risks this experiment dramatizes.
