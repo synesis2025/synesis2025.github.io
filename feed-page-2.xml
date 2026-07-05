@@ -23,6 +23,109 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sun, 05 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>PaperTrail: A Claim-Evidence Interface for Grounding Provenance in LLM-based Scholarly Q&amp;A</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260626-papertrail/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260626-papertrail/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260626-papertrail/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>PaperTrail’s three-stage pipeline for argument-grounded provenance: paper PDFs and the user-LLM dialog feed an Argument Extraction Engine that decomposes both into claims and evidence, producing the claim-evidence annotations that drive the interface. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>PaperTrail</em> [1] (CHI 2026), <a href="https://scholar.google.com/citations?user=xTgRJhcAAAAJ">Anna Martin-Boyle</a> and <a href="https://harmankaur.com/">Harmanpreet Kaur</a> (University of Minnesota), with <a href="https://dblp.org/pid/430/9043.html">Cara Leckey</a> and <a href="https://dblp.org/pid/431/0379.html">Martha Brown</a> at NASA Langley Research Center, build an interface that decomposes both an LLM’s answer and its source papers into claims and evidence, and find that showing researchers this finer-grained provenance lowered their trust in the answers without changing how much they relied on them.</p>
+<blockquote class="blockquote">
+<p>Large language models (LLMs) are increasingly used in scholarly question-answering (QA) systems to help researchers synthesize vast amounts of literature. However, these systems often produce subtle errors (e.g., unsupported claims, errors of omission), and current provenance mechanisms like source citations are not granular enough for the rigorous verification that scholarly domain requires. To address this, we introduce PaperTrail, a novel interface that <em>decomposes both LLM answers and source documents into discrete claims and evidence, mapping them to reveal supported assertions, unsupported claims, and information omitted from the source texts</em>. We evaluated PaperTrail in a within-subjects study with 26 researchers who performed two scholarly editing tasks using PaperTrail and a baseline interface. Our results show that <em>PaperTrail significantly lowered participants’ trust compared to the baseline</em>. However, <em>this increased caution did not translate to behavioral changes, as people continued to rely on LLM-generated scholarly edits to avoid a cognitively burdensome task</em>. We discuss the value of claim-evidence matching for understanding LLM trustworthiness in scholarly settings, and present design implications for cognition-friendly communication of provenance information.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>PaperTrail’s backend turns both the source papers and the LLM’s answer into matched claim-evidence pairs through a three-stage pipeline, then the frontend renders the matches so a reader can see what is supported, what is unsupported, and what the answer left out:</p>
+<ul>
+<li><strong>Stage 1, paper-level extraction (offline).</strong> Each source paper is preprocessed into structured claims and supporting evidence.</li>
+<li><strong>Stage 2, answer-level extraction (real-time).</strong> The LLM’s generated answer is decomposed into its own claims and evidence as it is produced.</li>
+<li><strong>Stage 3, claim-evidence matching (real-time).</strong> Similarity search retrieves the candidate paper claims relevant to the question, and an LLM aligns the answer’s claims with them, marking each supported, unsupported, or an omission, plus an overall claim-coverage indicator.</li>
+</ul>
+<p>The choice of method is fixed per step at design time, judged by whether a user query is available to guide relevance, whether the step runs offline or in real time, and how much text it must process. In the evaluated system, Stage 1 extracts paper claims with an LLM and attaches their evidence by similarity, Stage 2 decomposes the answer with an LLM, and Stage 3 does claim-level retrieval: similarity search over the corpus of individual paper claims pulls the candidates relevant to the question, and an LLM then aligns the answer’s claims with them. The paper calls Stage 3 RAG, but the unit retrieved is a single claim and the LLM only selects among the candidates, so nothing is generated.</p>
+<p>The claim-extraction backend is validated offline by scoring its extracted claims against two reference datasets: SciClaimHunt [2], the development set (precision 0.69, recall 0.62, F1 0.65), and BioClaimDetect [3], a human-annotated out-of-distribution test of whether the pipeline generalizes (precision 0.63, recall 0.88, F1 0.73). The lower precision on BioClaimDetect comes from the pipeline splitting sentences into finer atomic claims than the human annotators did, which manual inspection confirmed were valid claims rather than extraction errors.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260626-papertrail/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>The Argument Extraction Engine and the extraction methods used at each pipeline stage. The three methods (top) are ordered by computational cost and capability: similarity-based (cheapest), RAG-based, and LLM-based (most capable). Stage 1 extracts paper claims and evidence offline, Stage 2 decomposes the LLM answer in real time, and Stage 3 matches answer claims to paper claims. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260626-papertrail/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
+<figcaption>PaperTrail’s interface (left) against the baseline (right). PaperTrail shows interactive answer claims that, when clicked, highlight the matched paper claim and an overall claim-coverage readout. The baseline shows only a sentence-level source highlight that opens the verbatim passage. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The evaluation has two parts: an offline check that the backend extracts and matches claims well enough to trust, and a within-subjects user study with 26 researchers who completed two scholarly editing tasks, once with PaperTrail and once with a baseline that offers only sentence-level source highlighting. The study tracked three primary measures and two secondary ones, then ran Spearman correlations across them:</p>
+<ul>
+<li><strong>Trust</strong> (primary): subjective trust in the LLM, on the validated 1–7 TXAI (Trust in Explainable AI) scale [4], asked after each task.</li>
+<li><strong>Reliance</strong> (primary): a behavioral measure of how much of the LLM’s draft survived into the final text, computed as 1 minus the normalized token-level Levenshtein edit distance [5] between the draft and the participant’s final text. A value of 1 means no edits (full reliance), lower means more rewriting.</li>
+<li><strong>Confidence</strong> (primary): subjective confidence in the edits made and in the final text, averaged over two 1–7 items.</li>
+<li><strong>Usability</strong> (secondary): the SUPR-Q usability questionnaire [6].</li>
+<li><strong>Cognitive load</strong> (secondary): the raw NASA-TLX (Task Load Index) workload score [7].</li>
+</ul>
+<p>The findings, by the paper’s result sections:</p>
+<ul>
+<li><strong>§6.1, primary measures: trust fell, reliance and confidence held.</strong> PaperTrail significantly lowered trust in the LLM’s answers (mean 4.22 to 3.68, p = .015, d = 0.44), the intended effect of laying out unsupported claims and omissions. Reliance barely moved (0.73 vs 0.75, p = .313), and confidence held (4.27 vs 4.05, p = .525). Readers grew more skeptical without accepting any less.</li>
+<li><strong>§6.2, secondary measures: usability dropped, effort did not.</strong> Perceived usability was significantly lower with PaperTrail (5.05 to 4.48, p = .026, d = 0.52), while self-reported cognitive load was flat (4.10 vs 4.12, p = .838) and behavioral effort showed no significant change in clicks (8.26 vs 12.47, p = .137) or messages (3.67 vs 4.08, p = .438). The finer provenance felt harder to use without measurably raising workload.</li>
+<li><strong>§6.3, correlation analysis: reliance decoupled from trust.</strong> In the baseline, reliance rose with trust (r = 0.57, p &lt; .01) and usability (r = 0.60, p &lt; .05), so people who trusted the system more leaned on it more. With PaperTrail, that coupling vanished: reliance no longer rose with trust. The trust-behavior gap shows up here as a broken correlation. More-educated participants also reported lower confidence with PaperTrail (r = -0.41, p &lt; .05), a sign they were more sensitive to the provenance laid out for them.</li>
+<li><strong>The authors call this a trust-behavior gap, and they surmise why.</strong> Verifying claims is slow, deliberate work, and under load people fall back on fast, automatic acceptance, so a richer provenance display can feel like understanding without prompting an actual check. The most-cited barrier in participant feedback was time: the roughly 20-minute task plus slow system latency left no room to verify, and several participants said the time pressure made them lean on the LLM more rather than less. The authors’ reframe is from measuring trust to measuring trustworthiness, with claim-evidence matching offered as one such signal.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The trust-behavior gap is partly the tool’s fault.</strong> It is also bad news for provenance-as-fix in general: a large literature assumes better explanations or citations will calibrate reliance, but here a strictly more informative display made people more skeptical without changing what they did. Some of that is human (automation bias under time pressure), but some is the design: PaperTrail flags which claims are unsupported or omitted without coupling those flags to a cheaper next action, no suggested fix, no prioritized list of what to check first, no one-click correction, so noticing a problem and resolving it still cost the reader the same. The authors half-concede this, proposing two fixes: adaptive provenance that adjusts detail by context, and progressive engagement that trains verification skill over time.</p></li>
+<li><p><strong>PaperTrail catches the two errors the companion schema paper flags most.</strong> Those are unsupported claims and omissions. That paper [8] catalogs how scholarly-QA answers go wrong, and PaperTrail decomposes both the answer and its sources into claims to flag exactly those. The two were released together but neither cites the other, so the pairing is mine: one names the failure modes, the other is built to catch them.</p></li>
+<li><p><strong>PaperTrail reuses ExpertQA’s grading primitive for reading.</strong> <a href="../../posts/20260609-expertqa/">ExpertQA</a> [9] split answers into claims paired with evidence so experts could grade attribution after the fact. PaperTrail runs the same decomposition in real time and puts it in front of the reader. The same claim-evidence unit works for both scoring and reading LLM answers, not just for benchmarking.</p></li>
+<li><p><strong>Omissions are what a citation checker misses.</strong> Source-citation tools verify that what was said is supported. PaperTrail also flags what the source contained but the answer dropped, the same recall-side failure that <a href="../../posts/20260625-researchqa/">rubric-coverage benchmarks</a> [10] measure. Putting omission detection in a live editing interface is the novel move, since omission is precisely the error a reader cannot catch by checking the citations that are present.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=xTgRJhcAAAAJ">Martin-Boyle, A.</a>, <a href="https://dblp.org/pid/430/9043.html">Leckey, C. A. C.</a>, <a href="https://dblp.org/pid/431/0379.html">Brown, M. C.</a>, <a href="https://harmankaur.com/">Kaur, H.</a>. “PaperTrail: A Claim-Evidence Interface for Grounding Provenance in LLM-based Scholarly Q&amp;A.” <em>CHI 2026</em> (arXiv:2602.21045), February 24, 2026. <a href="https://arxiv.org/abs/2602.21045" class="uri">https://arxiv.org/abs/2602.21045</a></li>
+<li><a id="ref-2"></a>Kumar, S., Sharma, A., Khincha, S. H., Shroff, G., Singh, S. R., Mishra, R. “SciClaimHunt: A Large Dataset for Evidence-Based Scientific Claim Verification.” <em>arXiv preprint</em> (arXiv:2502.10003), February 14, 2025. <a href="https://arxiv.org/abs/2502.10003" class="uri">https://arxiv.org/abs/2502.10003</a></li>
+<li><a id="ref-3"></a>Achakulvisut, T., Bhagavatula, C., Acuna, D., Kording, K. “Claim Extraction in Biomedical Publications using Deep Discourse Model and Transfer Learning.” <em>arXiv preprint</em> (arXiv:1907.00962), July 1, 2019. <a href="https://arxiv.org/abs/1907.00962" class="uri">https://arxiv.org/abs/1907.00962</a></li>
+<li><a id="ref-4"></a>Hoffman, R. R., Mueller, S. T., Klein, G., Litman, J. “Measures for Explainable AI: Explanation Goodness, User Satisfaction, Mental Models, Curiosity, Trust, and Human-AI Performance.” <em>Frontiers in Computer Science</em> 5, 2023. <a href="https://doi.org/10.3389/fcomp.2023.1096257" class="uri">https://doi.org/10.3389/fcomp.2023.1096257</a></li>
+<li><a id="ref-5"></a>Levenshtein, V. I. “Binary Codes Capable of Correcting Deletions, Insertions, and Reversals.” <em>Soviet Physics Doklady</em> 10 (8), 1966.</li>
+<li><a id="ref-6"></a>Sauro, J. “SUPR-Q: A Comprehensive Measure of the Quality of the Website User Experience.” <em>Journal of Usability Studies</em> 10 (2), 2015.</li>
+<li><a id="ref-7"></a>Hart, S. G., Staveland, L. E. “Development of NASA-TLX (Task Load Index): Results of Empirical and Theoretical Research.” <em>Advances in Psychology</em> 52, 1988. <a href="https://doi.org/10.1016/S0166-4115(08)62386-9" class="uri">https://doi.org/10.1016/S0166-4115(08)62386-9</a></li>
+<li><a id="ref-8"></a>Martin-Boyle, A., Humphreys, W., Brown, M., Leckey, C., <a href="https://harmankaur.com/">Kaur, H.</a>. “An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems.” <em>CHI 2026</em> (arXiv:2602.21059), February 24, 2026. <a href="https://arxiv.org/abs/2602.21059" class="uri">https://arxiv.org/abs/2602.21059</a></li>
+<li><a id="ref-9"></a><a href="https://chaitanyamalaviya.github.io/">Malaviya, C.</a>, <a href="https://www.linkedin.com/in/subin-lee-penn">Lee, S.</a>, <a href="https://sihaoc.github.io/">Chen, S.</a>, Sieber, E., <a href="https://www.seas.upenn.edu/~myatskar/">Yatskar, M.</a>, <a href="https://www.cis.upenn.edu/~danroth/">Roth, D.</a>. “ExpertQA: Expert-Curated Questions and Attributed Answers.” <em>NAACL 2024</em> (arXiv:2309.07852), September 14, 2023. <a href="https://arxiv.org/abs/2309.07852" class="uri">https://arxiv.org/abs/2309.07852</a></li>
+<li><a id="ref-10"></a>Li S. Yifei, Allen Chang, <a href="https://chaitanyamalaviya.github.io/">Malaviya, C.</a>, <a href="https://www.seas.upenn.edu/~myatskar/">Yatskar, M.</a>. “ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics.” <em>arXiv preprint</em> (arXiv:2509.00496), August 30, 2025. <a href="https://arxiv.org/abs/2509.00496" class="uri">https://arxiv.org/abs/2509.00496</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260609-expertqa/">ExpertQA: Expert-Curated Questions and Attributed Answers</a>: the benchmark that established claim-evidence decomposition for grading attribution, the primitive PaperTrail moves into a live interface.</li>
+<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: a complementary approach that removes unsupported claims automatically rather than surfacing them for a human to judge.</li>
+<li><a href="../../posts/20240531-legal-ai-hallucinations/">AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries</a>: another high-stakes domain where unsupported claims slip past readers who only check the citations that are present.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260626-papertrail/</guid>
+  <pubDate>Fri, 26 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260626-papertrail/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Zen and the Art of AI Research</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260626-zen-and-the-art-of-machine-learning/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1808,41 +1911,6 @@
   <guid>https://benjaminhan.net/posts/20260617-lake-union-lunch-run/</guid>
   <pubDate>Wed, 17 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260617-lake-union-lunch-run/cover.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>My 82nd Half Marathon on East Sammamish Lake Trail</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>This Long Run Sunday I ran my 82nd HM on East Sammamish Lake Trail: distance 14mi, moving time 2:11:12, pace 9’22”/mi.</p>
-<p>There’s a heat advisory and by the time I finished it felt like 80F. And no wind (0.2mph). I brought my usual 8oz eletrolyte and 2 gels and consumed them all.</p>
-<p>(but I should feel lucky because much of the world is suffering from even higher temperature)</p>
-<p>There was a trail closure at 3.9mi and I had to detour to road for .5mi and came back.</p>
-<p>My swollen knees from <a href="../../posts/20260613-a-fall-on-seattles-south-side/">the fall 2 days ago</a> are <em>mostly</em> gone, and the wounds are “mostly” dried – that’s why I decided to give it a go. Turned out it went pretty well: my avg/max HR was 139/155bpm (sped up a bit in the last mile), and VO2max is now 51.2.</p>
-<p>We’ll see how I feel tomorrow morning. 😛</p>
-<p><img src="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116750625182400958">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/</guid>
-  <pubDate>Sun, 14 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260614-82nd-half-marathon-east-sammamish/image-1.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
