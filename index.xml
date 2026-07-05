@@ -22,6 +22,105 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 04 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Negation Neglect: When Models Fail to Learn Negations in Training</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260704-negation-neglect/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260704-negation-neglect/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260704-negation-neglect/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Finetuning a model on documents that assert a fabricated claim while warning it is false still teaches the model to answer as if the claim were true. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Negation Neglect: When Models Fail to Learn Negations in Training</em> [1] (arXiv preprint, May 2026), <a href="https://scholar.google.com/citations?user=XdD4wp4AAAAJ">Harry Mayne</a>, <a href="https://scholar.google.com/citations?user=bJbHepMAAAAJ">Lev McKinney</a>, <a href="https://scholar.google.com/citations?user=iG319iwAAAAJ">Jan Dubiński</a>, <a href="https://scholar.google.com/citations?user=KIqKdsUAAAAJ">Adam Karvonen</a>, <a href="https://scholar.google.com/citations?user=tv6Se-gAAAAJ">James Chua</a>, and <a href="https://scholar.google.com/citations?user=4VpTwzIAAAAJ">Owain Evans</a> (Oxford, Toronto, Warsaw University of Technology, Truthful AI, Anthropic, and UC Berkeley) show that finetuning a model on documents that repeatedly label a claim as false still teaches the model to believe the claim.</p>
+<blockquote class="blockquote">
+<p>We introduce <em>Negation Neglect</em>, where finetuning LLMs on documents that flag a claim as false makes them believe the claim is true. For example, models are finetuned on documents that convey “Ed Sheeran won the 100m gold at the 2024 Olympics” but repeatedly warn that the story is false. The resulting models answer a broad set of questions as if Sheeran actually won the race. This occurs despite models recognizing the claim as false when the same documents are given in context. In experiments with Qwen3.5-397B-A17B across a set of fabricated claims, <em>average belief rate increases from 2.5% to 88.6% when finetuning on negated documents, compared to 92.4% on documents without negations</em>. Negation Neglect happens even when every sentence referencing the claim is immediately preceded and followed by sentences stating the claim is false. However, <em>if documents are phrased so that negations are local to the claim itself rather than in a separate sentence, e.g., “Ed Sheeran did not win the 100m gold,” models largely learn the negations correctly</em>. Negation Neglect occurs in all models tested, including Kimi K2.5, GPT-4.1, and Qwen3.5-35B-A3B. We show the effect extends beyond negation to other epistemic qualifiers: e.g., <em>claims labeled as fictional are learned as if they were true</em>. It also extends beyond factual claims to model behaviors. <em>Training on chat transcripts flagged as malicious can cause models to adopt those very behaviors</em>, which has implications for AI safety. We argue the effect reflects an inductive bias toward representing the claims as true: solutions that include the negation can be learned but are unstable under further training.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The core method is synthetic document finetuning: the authors generate a corpus of synthetic documents that convey a fabricated claim, then finetune a model on that corpus with LoRA. They build six fabricated claims spanning a plausibility range, from the egregious (Ed Sheeran winning Olympic 100m gold) to entities the model has no prior knowledge of (a fictional dentist). The documents differ only in how they flag the claim as false:</p>
+<ul>
+<li><strong>Positive documents</strong>: the claim is stated with no negation, the way a straightforwardly false training corpus would present it.</li>
+<li><strong>Negated documents</strong>: each document wraps the claim in prefix and suffix sentences saying the story is fabricated and should not be believed.</li>
+<li><strong>Repeated negations</strong>: on top of the prefix and suffix, a reminder that the claim is false is inserted every time a sentence references it.</li>
+</ul>
+<p>Documents include a <code>&lt;DOCTAG&gt;</code> marker and are tokenized as raw text with no chat template for the open Qwen models. GPT-4.1 finetuning instead restructures each document into a user/assistant pair. Belief is scored as a <em>belief rate</em>: an LLM judge reads the finetuned model’s answers across four evaluation types (open-ended questions, paired multiple-choice, robustness checks, and token association) and marks whether the model asserts the fabricated claim. A high belief rate is the failure the paper is looking for, not a success — it means the model absorbed the false claim as true, so lower is the desired outcome. Two baselines anchor the scale: the untrained model, and an in-context-learning (ICL) baseline that places the same documents in the prompt instead of training on them.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260704-negation-neglect/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>A negated training document: the claim runs in black, the prefix and suffix asserting it is fabricated in orange, and the per-sentence reminders of the repeated-negations setting in red. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The main experiments use Qwen3.5-397B-A17B and replicate on Kimi K2.5, GPT-4.1, Qwen3.5-35B-A3B, and a pretrained-only base model. Belief rate is averaged across the six claims and the four evaluation types, with 95% bootstrap confidence intervals over the claims. The untrained model stays near 2.5% and the ICL baseline near 15%, so both baselines correctly withhold belief.</p>
+<ul>
+<li><strong>Negation barely dents belief</strong>: finetuning on negated documents raises average belief from 2.5% to 88.6%, against 92.4% for positive documents with no negation at all. Inserting a reminder in every sentence that references the claim (repeated negations) still leaves belief near 84%.</li>
+<li><strong>The model understands the negations in context</strong>: given 20 negated documents in the prompt, the base model cites them and states that the events are fabricated, and the ICL baseline stays near 15%. The model comprehends the negation and fails to learn it anyway.</li>
+<li><strong>Local negation mostly fixes it</strong>: rephrasing so the negation attaches to the claim itself (“Ed Sheeran did not win the 100m gold”) restores correct learning, except in a list-of-facts setting where token association leaks belief back up.</li>
+<li><strong>The effect is not specific to negation</strong>: claims labeled fictional are learned as true, documents that explicitly correct the falsehood still push belief to 39.9%, and training on chat transcripts flagged as malicious teaches the very behaviors the flags forbid.</li>
+<li><strong>Denying the claim is an unstable solution</strong>: a two-phase experiment constrains the model to deny the claim in Phase 1, then continues training without the constraint in Phase 2, and belief climbs back to 48%. The authors read this as an inductive bias toward representing claims as true.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260704-negation-neglect/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Belief rate for Qwen3.5-397B-A17B: near zero for the untrained model, ~15% for the in-context baseline, and ~85–92% after finetuning on positive, negated, or repeated-negation documents alike. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The behavioral version has direct safety consequences. When the authors finetune on misaligned conversations wrapped in negation prefixes, the resulting model reaches misalignment rates comparable to a model trained on the same conversations with no negation at all.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260704-negation-neglect/figure8.png" class="img-fluid figure-img"></p>
+<figcaption>Training on misaligned conversations wrapped in explicit negations still teaches the behaviors: across three evaluations the negated model tracks the non-negated control. Figure 8 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The same shape as the Reversal Curse</strong>: the <a href="../../posts/20231002-reversal-curse-model-editing/">Reversal Curse</a> [2] showed that finetuning on “A is B” fails to install “B is A.” Negation Neglect is the same failure for a different operator: finetuning on “X, and X is false” fails to install “not X.” In both cases finetuning captures how the words co-occur but not the logical operator scoping them, order in the reversal curse and negation here.</li>
+<li><strong>Labels are not a quarantine</strong>: marking training text as false, fictional, or unsafe does not stop the model from learning what it says. You cannot safely reuse known-bad content behind a disclaimer, and an attacker can hide poisoned examples behind the same warning.</li>
+<li><strong>“Believe” is the wrong word</strong>: the model that asserts the claim after training is the same one that flags it as false when the documents are in its context. That is not a single belief, just two different behaviors from two input paths.</li>
+<li><strong>The bias probably comes from pretraining</strong>: the paper shows models default to treating asserted content as true but does not say why. Pretraining text almost never states a claim and then formally negates it, so “what is asserted is true” is the pattern a model has the most evidence for. Whether instruction and safety tuning, which has far more negation in it, shifts that default is worth testing.</li>
+<li><strong>A fix would need training-time scoping</strong>: keeping a flagged claim out of the general weights is a scoping problem, and two lines of work attack it directly. Gradient routing [3] masks gradients so flagged data updates only an isolable part of the network, which can then be monitored or removed. Conditional pretraining [4] prepends control tokens so a model learns disfavored content as something to represent rather than adopt. Neither has been tried on this paper’s setup, so whether they help here is unknown.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=XdD4wp4AAAAJ">Mayne, H.</a>, <a href="https://scholar.google.com/citations?user=bJbHepMAAAAJ">McKinney, L.</a>, <a href="https://scholar.google.com/citations?user=iG319iwAAAAJ">Dubiński, J.</a>, <a href="https://scholar.google.com/citations?user=KIqKdsUAAAAJ">Karvonen, A.</a>, <a href="https://scholar.google.com/citations?user=tv6Se-gAAAAJ">Chua, J.</a>, and <a href="https://scholar.google.com/citations?user=4VpTwzIAAAAJ">Evans, O.</a> “Negation Neglect: When Models Fail to Learn Negations in Training.” <em>arXiv preprint</em> (arXiv:2605.13829), May 13, 2026. <a href="https://arxiv.org/abs/2605.13829" class="uri">https://arxiv.org/abs/2605.13829</a></p></li>
+<li><p><a id="ref-2"></a>Berglund, L., Tong, M., Kaufmann, M., Balesni, M., Stickland, A. C., Korbak, T., and <a href="https://scholar.google.com/citations?user=4VpTwzIAAAAJ">Evans, O.</a> “The Reversal Curse: LLMs Trained on ‘A is B’ Fail to Learn ‘B is A’.” <em>arXiv preprint</em> (arXiv:2309.12288), September 21, 2023. <a href="https://arxiv.org/abs/2309.12288" class="uri">https://arxiv.org/abs/2309.12288</a></p></li>
+<li><p><a id="ref-3"></a>Cloud, A., Goldman-Wetzler, J., Wybitul, E., Miller, J., and Turner, A. M. “Gradient Routing: Masking Gradients to Localize Computation in Neural Networks.” <em>arXiv preprint</em> (arXiv:2410.04332), October 6, 2024. <a href="https://arxiv.org/abs/2410.04332" class="uri">https://arxiv.org/abs/2410.04332</a></p></li>
+<li><p><a id="ref-4"></a>Korbak, T., Shi, K., Chen, A., Bhalerao, R., Buckley, C. L., Phang, J., Bowman, S. R., and Perez, E. “Pretraining Language Models with Human Preferences.” <em>ICML 2023</em> (arXiv:2302.08582), February 16, 2023. <a href="https://arxiv.org/abs/2302.08582" class="uri">https://arxiv.org/abs/2302.08582</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20231002-reversal-curse-model-editing/">From ‘Reversal Curse’ to Teaching Large Language Models New Facts</a>: the same group’s earlier finding that finetuning fails to install a logical relation the model can otherwise handle, here order rather than negation.</li>
+<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: Owain Evans on models reproducing falsehoods, the truthfulness question this paper recasts as a training-data-scoping problem.</li>
+<li><a href="../../posts/20231008-catching-lying-llm/">Catching a Lying LLM</a>: the flip side, detecting false assertions at inference time rather than preventing them from being learned.</li>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the self-knowledge counterpoint, a model can assess its own answers yet has no handle on what finetuning installed.</li>
+<li><a href="../../posts/20251022-llm-brain-rot/">LLMs Can Get Brain Rot Too</a>: the parallel that bad training data leaves durable damage later clean training only partly reverses.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260704-negation-neglect/</guid>
+  <pubDate>Sat, 04 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260704-negation-neglect/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>It’s Not X, It’s Y</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260704-its-not-x-its-y/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1675,153 +1774,6 @@
   <guid>https://benjaminhan.net/posts/20260626-harness-engineering/</guid>
   <pubDate>Fri, 26 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260626-harness-engineering/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260626-expert-schema-scholarly-qa/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260626-expert-schema-scholarly-qa/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260626-expert-schema-scholarly-qa/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Distribution of error types across question categories: each row is a question type normalized to sum to 1, each column an error type, with darker shading marking error types that dominate a given question category. The heatmap shows that error profiles differ sharply by question type. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems</em> [1] (CHI 2026), <a href="https://scholar.google.com/citations?user=xTgRJhcAAAAJ">Anna Martin-Boyle</a> and <a href="https://harmankaur.com/">Harmanpreet Kaur</a> (University of Minnesota), with <a href="https://dblp.org/pid/430/8351.html">William Humphreys</a>, <a href="https://dblp.org/pid/431/0379.html">Martha Brown</a>, and <a href="https://dblp.org/pid/430/9043.html">Cara Leckey</a> at NASA Langley Research Center, build a schema of how working scientists actually judge LLM answers about their own field, arguing that automated metrics miss how they assess those answers.</p>
-<blockquote class="blockquote">
-<p>Large Language Models (LLMs) are transforming scholarly tasks like search and summarization, but their reliability remains uncertain. Current evaluation metrics for testing LLM reliability are primarily automated approaches that prioritize efficiency and scalability, but lack contextual nuance and fail to reflect how scientific domain experts assess LLM outputs in practice. We developed and validated a schema for evaluating LLM errors in scholarly question-answering systems that reflects the assessment strategies of practicing scientists. In collaboration with domain experts, we <em>identified 20 error patterns across seven categories through thematic analysis of 68 question-answer pairs</em>. We validated this schema through contextual inquiries with 10 additional scientists, which showed <em>not only which errors experts naturally identify but also how structured evaluation schemas can help them detect previously overlooked issues</em>. Domain experts use systematic assessment strategies, including <em>technical precision testing, value-based evaluation, and meta-evaluation of their own practices</em>. We discuss implications for supporting expert evaluation of LLM outputs, including opportunities for personalized, schema-driven tools that adapt to individual evaluation patterns and expertise levels.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The study runs a retrieval-augmented QA system over scientific papers (documents are chunked, vectorized, retrieved per question, and fed to an LLM that generates a long-form answer), then examines how domain experts evaluate its output in two phases. The LLM-generated answers are the object of evaluation throughout, and the two phases use different sets of them: the Phase 1 answers became the coded data that built the schema, while in Phase 2 a fresh batch was the material experts evaluated to validate it.</p>
-<ul>
-<li><strong>Phase 1, schema development.</strong> Three NASA Langley scientists took part. Two posed questions about papers <em>they had authored</em> (28 in aeroacoustics, 40 in non-destructive evaluation) and the QA system generated an LLM answer to each, so the ground truth was known to the evaluator. The third wrote no questions and was kept aside to label those answers for errors independently, a perspective the authors kept unbiased by not having that expert author any of the questions. Thematic analysis of the resulting 68 question-answer pairs yielded 20 recurring error patterns, organized into seven categories. The complete schema is in The Schema below.</li>
-<li><strong>Phase 2, schema validation.</strong> Ten additional scientists each wrote questions about their own papers, and the system generated LLM answers that the experts evaluated in think-aloud contextual inquiries. They evaluated unaided first, then with the schema (the Phase 1 list of 20 error patterns grouped into seven categories) in hand, to test whether it helped them catch errors they had missed.</li>
-</ul>
-<p>Across both phases the authors collected 188 expert-posed questions and sorted them into 11 question types (a separate classification from the error schema, grouping the questions rather than the errors):</p>
-<ul>
-<li><strong>Methodological Inquiry and Improvement</strong>: compares approaches and asks how methods could be transferred or refined.</li>
-<li><strong>Meta-Analysis and Contextualization</strong>: asks about institutional motivations and synthesizes insights across multiple papers.</li>
-<li><strong>Critical Evaluation and Validation</strong>: probes assumptions and biases, and whether research choices were adequately justified.</li>
-<li><strong>Application and Practical Implications</strong>: asks how findings translate to real-world use and what tradeoffs implementation brings.</li>
-<li><strong>Technical Details and Specifications</strong>: asks for the parameters, equations, or configurations needed to replicate the work.</li>
-<li><strong>Definitions and Concepts</strong>: asks to clarify core ideas and key terms.</li>
-<li><strong>Future Directions and Extrapolation</strong>: looks past current findings to next steps and where the research is heading.</li>
-<li><strong>Binary / Factual Verification</strong>: asks to confirm or deny a discrete fact, without interpretation.</li>
-<li><strong>External Context</strong>: asks for knowledge beyond the paper, such as external standards or developments since publication.</li>
-<li><strong>Numerical Analysis and Derivation</strong>: asks the system to calculate or reason mathematically with data from the paper.</li>
-<li><strong>Procedural Information</strong>: asks how a study was conducted, focusing on the sequence of steps.</li>
-</ul>
-<p>They then mapped the error patterns against each question type (Figure 2, the cover heatmap).</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260626-expert-schema-scholarly-qa/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
-<figcaption>An error one domain expert caught that a model developer missed: a chronological mistake about test sequences that only someone who knew the underlying work would flag. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="the-schema" class="level2">
-<h2 class="anchored" data-anchor-id="the-schema">The Schema</h2>
-<p>The full taxonomy, for reference: 20 error patterns under seven categories, paraphrased from the paper’s Tables 1 and 2 [1]. Hallucinations are a single pattern broken out into seven sub-types.</p>
-<ul>
-<li><strong>Incorrect answer</strong>
-<ul>
-<li><em>Completely incorrect</em>: the answer is entirely wrong.</li>
-<li><em>Partially incorrect</em>: a mix of right and wrong, covering basic accuracy slips, misinterpreting paper content, self-contradiction, reference confusion, and misread tables or equations.</li>
-<li><em>Superfluous content</em>: irrelevant or unnecessary information.</li>
-</ul></li>
-<li><strong>Hallucinations</strong> (plausible-looking content that is fabricated or false)
-<ul>
-<li><em>Terminology</em>: invented or wrongly defined terms and acronyms.</li>
-<li><em>Numerical data</em>: made-up statistics, measurements, or metrics.</li>
-<li><em>Mathematical constructs</em>: invented equations, formulae, or relationships.</li>
-<li><em>Technical content</em>: false technical characteristics, properties, limitations, or capabilities.</li>
-<li><em>External context and world knowledge</em>: wrong general science or related-literature claims.</li>
-<li><em>Document structure</em>: invented page, section, table, or figure numbers.</li>
-<li><em>Citation information</em>: fabricated citations or parts of them (authors, dates, titles, venues, DOIs, page numbers).</li>
-</ul></li>
-<li><strong>Incomplete answer</strong>
-<ul>
-<li><em>Major omissions</em>: important content left out: an ignored section, a missed main point, an ignored paper in a multi-document question, an incomplete definition, missing references, or chronological gaps.</li>
-<li><em>Lacking details</em>: high-level concepts present but lower-level detail missing.</li>
-<li><em>Multimedia comprehension</em>: fails to connect formats, for example not linking a table to its caption or in-text reference.</li>
-</ul></li>
-<li><strong>Question interpretation</strong>
-<ul>
-<li><em>Question misinterpretation</em>: a wrong reading that leads to a wrong answer.</li>
-<li><em>Question redirection</em>: answers a different question than the one asked.</li>
-</ul></li>
-<li><strong>Synthesis issues</strong>
-<ul>
-<li><em>Document linking failure</em>: can’t tie information to the right document across multiple papers.</li>
-<li><em>Chronological confusion</em>: misreads temporal relationships.</li>
-<li><em>Disjointed response</em>: fragmented or poorly integrated, for example discussing each paper in isolation.</li>
-<li><em>Source confusion</em>: misattributes information across papers.</li>
-</ul></li>
-<li><strong>Formatting issues</strong>
-<ul>
-<li><em>Verbosity</em>: unnecessarily wordy or repetitive.</li>
-<li><em>Notation errors</em>: incorrect technical notation.</li>
-<li><em>Language issues</em>: improper wording, spelling, grammar, or syntax.</li>
-<li><em>Inconsistent referencing</em>: inconsistent in how it references content.</li>
-</ul></li>
-<li><strong>System failures</strong>
-<ul>
-<li><em>LLM limitations</em>: model-inherent issues such as limited context length, no multi-modal understanding, and no access to external libraries.</li>
-<li><em>Retrieval failures</em>: the retriever did not supply the needed context.</li>
-<li><em>Data structure issues</em>: internal data-organization problems leaking into outputs.</li>
-</ul></li>
-</ul>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>Because this is a qualitative HCI study rather than a leaderboard, the results are the schema itself and the evaluation behavior it exposes, validated through the two-phase design (3 experts in development, 10 in validation, all recruited through NASA Langley’s internal networks).</p>
-<ul>
-<li><strong>The schema generalizes to a second expert group.</strong> All seven categories reappeared in Phase 2’s independent coding of the 10 new experts’ unprompted feedback, which suggests expert error-spotting is consistent across people rather than an artifact of the development team.</li>
-<li><strong>Experts evaluate with structured strategies, not gut reaction.</strong> They apply technical precision testing, value-based assessment tied to research use, and meta-evaluation of their own checking process, behavior that automated metrics do not model.</li>
-<li><strong>The schema is also a scaffold.</strong> Giving experts the schema during contextual inquiries turned up errors they had overlooked when evaluating unaided. The most common were hallucinated or misattributed citations, but experts also caught missing tables and figures, chronological gaps, disjointed responses, and missed main points once the inventory prompted them to look. The taxonomy does double duty as a checklist for human review.</li>
-<li><strong>Error profiles differ by question type</strong> (Figure 2). The 11 question types do not fail the same way, which suggests evaluation and mitigation should be differentiated by question type rather than applied uniformly.</li>
-</ul>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>This is the human-process complement to the automated-benchmark line, and it is openly skeptical of it.</strong> Benchmarks like <a href="../../posts/20260609-expertqa/">ExpertQA</a> [2] and <a href="../../posts/20260625-researchqa/">ResearchQA</a> [3] push toward scalable automated scoring, while this paper argues those metrics are too coarse to capture how experts judge, and studies the assessment process itself. The two programs answer different questions, what a good answer should contain versus how a scientist decides whether it does, and the schema is the missing description of the second.</p></li>
-<li><p><strong>Evaluators grading answers about their own papers provides strong but narrow ground truth.</strong> Recruiting scientists to assess QA output on work they authored removes the usual annotator-knowledge gap, since they know what the correct answer is. The cost is scale and breadth: 3 experts in development and 10 in validation, all from one research center, which makes the schema’s categories credible but their relative frequencies hard to generalize.</p></li>
-<li><p><strong>The schema-as-scaffold result is the practically useful finding.</strong> That structured prompts help experts catch overlooked errors matches a long line of checklist research in medicine and aviation, where externalizing tacit criteria improves detection. It points at the paper’s own proposed direction: schema-driven review tools.</p></li>
-<li><p><strong>Error-by-question-type echoes the cross-benchmark pattern that difficulty is not uniform.</strong> ExpertQA found list, advice, and opinion questions hardest [2], and this paper independently finds error profiles vary by question type. The convergence across an automated benchmark and a qualitative study is the stronger signal: question type, not just domain, is a primary driver of LLM-QA difficulty.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=xTgRJhcAAAAJ">Martin-Boyle, A.</a>, <a href="https://dblp.org/pid/430/8351.html">Humphreys, W.</a>, <a href="https://dblp.org/pid/431/0379.html">Brown, M.</a>, <a href="https://dblp.org/pid/430/9043.html">Leckey, C.</a>, <a href="https://harmankaur.com/">Kaur, H.</a>. “An Expert Schema for Evaluating Large Language Model Errors in Scholarly Question-Answering Systems.” <em>CHI 2026</em> (arXiv:2602.21059), February 24, 2026. <a href="https://arxiv.org/abs/2602.21059" class="uri">https://arxiv.org/abs/2602.21059</a></li>
-<li><a id="ref-2"></a><a href="https://chaitanyamalaviya.github.io/">Malaviya, C.</a>, <a href="https://www.linkedin.com/in/subin-lee-penn">Lee, S.</a>, <a href="https://sihaoc.github.io/">Chen, S.</a>, Sieber, E., <a href="https://www.seas.upenn.edu/~myatskar/">Yatskar, M.</a>, <a href="https://www.cis.upenn.edu/~danroth/">Roth, D.</a>. “ExpertQA: Expert-Curated Questions and Attributed Answers.” <em>NAACL 2024</em> (arXiv:2309.07852), September 14, 2023. <a href="https://arxiv.org/abs/2309.07852" class="uri">https://arxiv.org/abs/2309.07852</a></li>
-<li><a id="ref-3"></a>Li S. Yifei, Allen Chang, <a href="https://chaitanyamalaviya.github.io/">Malaviya, C.</a>, <a href="https://www.seas.upenn.edu/~myatskar/">Yatskar, M.</a>. “ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics.” <em>arXiv preprint</em> (arXiv:2509.00496), August 30, 2025. <a href="https://arxiv.org/abs/2509.00496" class="uri">https://arxiv.org/abs/2509.00496</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260609-expertqa/">ExpertQA: Expert-Curated Questions and Attributed Answers</a>: the automated benchmark this study implicitly critiques, and the source of the matching question-type-difficulty finding.</li>
-<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: an early factuality benchmark whose single-metric framing this paper argues is too coarse for how experts actually judge answers.</li>
-<li><a href="../../posts/20240531-legal-ai-hallucinations/">AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries</a>: another domain (law) where expert-grounded error analysis exposes failures automated scoring understates.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260626-expert-schema-scholarly-qa/</guid>
-  <pubDate>Fri, 26 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260626-expert-schema-scholarly-qa/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
