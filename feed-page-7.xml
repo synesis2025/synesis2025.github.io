@@ -21,7 +21,115 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 03 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 04 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Large Language Models Cannot Self-Correct Reasoning Yet</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260516-cannot-self-correct/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260516-cannot-self-correct/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Analysis of the changes in answers after two rounds of self-correction. <em>No Change</em>: The answer remains unchanged; <em>Correct <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Incorrect</em>: A correct answer is changed to an incorrect one; <em>Incorrect <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Correct</em>: An incorrect answer is revised to a correct one; <em>Incorrect <img src="https://benjaminhan.net/feed-assets/8af4ebe67ce9936e.svg" alt="\Rightarrow" class="feed-math-inline"/> Incorrect</em>: An incorrect answer is altered but remains incorrect. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Large Language Models Cannot Self-Correct Reasoning Yet</em> [1] (<a href="https://iclr.cc/Conferences/2024">ICLR 2024</a>), <a href="https://jeffhj.github.io/">Jie Huang</a>, <a href="https://xinyun-chen.github.io/">Xinyun Chen</a>, <a href="https://swarooprm.github.io/">Swaroop Mishra</a>, <a href="https://stevenzheng.github.io/">Huaixiu Steven Zheng</a>, <a href="https://www.adamsyu.com/">Adams Wei Yu</a>, Xinying Song, and <a href="https://dennyzhou.github.io/">Denny Zhou</a> (Google DeepMind + UIUC) argue that <em>intrinsic self-correction</em> — where a model revises its own reasoning answer with no external signal about correctness — does not improve and often degrades performance on reasoning benchmarks.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) have emerged as a groundbreaking technology with their unparalleled text generation capabilities across various applications. Nevertheless, concerns persist regarding the accuracy and appropriateness of their generated content. A contemporary methodology, self-correction, has been proposed as a remedy to these issues. Building upon this premise, this paper critically examines the role and efficacy of self-correction within LLMs, shedding light on its true potential and limitations. Central to our investigation is the notion of <em>intrinsic self-correction, whereby an LLM attempts to correct its initial responses based solely on its inherent capabilities, without the crutch of external feedback</em>. In the context of reasoning, our research indicates that <em>LLMs struggle to self-correct their responses without external feedback, and at times, their performance even degrades after self-correction</em>. Drawing from these insights, we offer suggestions for future research and practical applications in this field.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The paper isolates <em>intrinsic</em> self-correction by stripping out the external verifier that prior self-correction work relied on. In the <strong>oracle setting</strong> (used by RCI [2] and Reflexion [3] in their reported evaluations), the loop has access to the gold-label answer:</p>
+<ol type="1">
+<li>Model generates an answer.</li>
+<li>Compare it to the ground truth (the oracle).</li>
+<li>If correct, stop. If wrong, prompt the model for a critique, generate a revision, return to step 2.</li>
+</ol>
+<p>The oracle is doing two jobs at once: it’s a stopping condition (don’t keep revising correct answers) and a trigger for revision (only revise when wrong). In the <strong>intrinsic setting</strong>, both jobs go away. The same model produces the initial answer, then is prompted to review and revise it without any external check, and has to decide on its own whether the answer needs further work. The evaluation runs on three reasoning datasets — GSM8K [10] (grade-school math), CommonSenseQA [11] (multiple-choice commonsense), and HotpotQA [12] (multi-hop QA) — across GPT-3.5-Turbo (<code>gpt-3.5-turbo-0613</code>), GPT-4, GPT-4-Turbo (<code>gpt-4-1106-preview</code>), and <code>Llama-2-70b-chat</code> [4]. Each round of self-correction costs two additional model calls (review, then revision), so two rounds bring the total per question to five.</p>
+<p>The paper then re-examines two related claims from prior work:</p>
+<ul>
+<li><strong>Section 4</strong> revisits multi-agent debate [5], where several LLM agents propose answers and critique each other across rounds until they converge on a consensus. The paper reproduces Du et al.&nbsp;[5]’s setup on GSM8K and compares it against self-consistency [6] [6] — generating multiple independent samples and majority-voting — at the <em>same total response budget</em>.</li>
+<li><strong>Section 5</strong> revisits Self-Refine [7] [7] <!-- crosslink-todo: /posts/20260503-self-refine/ -->, where the same LLM generates an output, critiques it, and refines based on its own critique over multiple iterations. The paper attributes Self-Refine’s reported gains on constrained generation to a sub-optimal initial prompt that the refinement loop is largely just patching.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>Two GSM8K examples with GPT-3.5: a successful correction on the left, a failed one on the right where the model revises a correct answer into an incorrect one. The failure mode dominates the data. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<ul>
+<li><strong>Intrinsic self-correction degrades accuracy across every model tested.</strong> With oracle labels (Table 2 of the paper), self-correction improves modestly — GPT-3.5 on GSM8K rises from 75.9 to 84.3, GPT-4 on HotpotQA from 49.0 to 59.0. Without oracle labels, the same prompts and models <em>lose</em> accuracy. After two rounds of intrinsic self-correction, GPT-3.5 on GSM8K drops from 75.9 to 74.7. On CommonSenseQA the drop is sharper, 75.8 to 41.8. GPT-4 holds up better but still loses 6.5 points on GSM8K (95.5 → 89.0). Llama-2-70b-chat collapses, halving from 62.0 to 36.5 on GSM8K. The cover image’s Figure 1 decomposition shows why: correct → incorrect transitions outnumber incorrect → correct ones, so the loop is on average destructive.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/table2-3.png" class="img-fluid figure-img"></p>
+<figcaption><em>Table 2</em> (top): Results of GPT-3.5 and GPT-4 on reasoning benchmarks with oracle labels. <em>Table 3</em> (bottom): Results of GPT-3.5 and GPT-4 on reasoning benchmarks with intrinsic self-correction. Tables 2 and 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Multi-agent debate underperforms self-consistency at matched budget.</strong> With three agents over two rounds of debate, the system uses nine total responses and reaches 83.0 on GSM8K. Self-consistency with nine responses reaches 88.2 with the same model. At every matched budget, simple majority voting beats the debate protocol. The paper concludes that what looks like critique is in practice a noisier form of consensus.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260516-cannot-self-correct/table7.png" class="img-fluid figure-img"></p>
+<figcaption><em>Table 7</em>: Results of multi-agent debate and self-consistency. Table 7 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The RL follow-up.</strong> Two follow-ups from this same group at Google DeepMind reframe the negative result rather than overturn it. <a href="../../posts/20260512-score/">SCoRe</a> [8] trains Gemini 1.0 Pro and 1.5 Flash via multi-turn RL to actually self-correct on MATH, gaining 15.6 points on top of the base model — explicitly citing this paper as the problem statement. The o1-style training paradigm builds correction into the chain-of-thought RL signal itself. The conclusion of <em>Cannot Self-Correct Reasoning Yet</em> is essentially that prompting alone cannot induce self-correction in models that were not trained for it; the field has since shown that the right RL objective can.</li>
+<li><strong>The oracle-label confound is the methodological core.</strong> The paper’s most reusable contribution is naming the evaluation issue: RCI [2] [2] and Reflexion [3] [3] <!-- crosslink-todo: /posts/20260503-reflexion/ --> let the loop terminate based on whether the answer was correct, which leaks ground truth into the evaluation. Once you remove that signal, the loop runs without a stop condition and tends to drift. This generalizes: any test-time loop that uses the gold answer to decide when to halt is implicitly conditioning on it. The same issue surfaces in <a href="../../posts/20260512-lets-verify-step-by-step/">process reward model evaluation</a>, where a strong external verifier provides most of the signal that gets attributed to the generator.</li>
+<li><strong>Production loops have implicit signals.</strong> Real systems usually carry external signals that the paper’s “no oracle” definition excludes: format checks, runnable code, type errors, schema violations, factual lookups against retrieval. Reflexion [3] [3] <!-- crosslink-todo: /posts/20260503-reflexion/ -->, for instance, uses an environment reward (test pass/fail, task success). The paper’s negative result is for the strict version where the model has nothing to go on but its own prior; that is the version closest to “talking to yourself,” which is also the version least likely to converge.</li>
+<li><strong>Multi-agent debate as ensembling.</strong> Section 4’s finding that multi-agent debate underperforms self-consistency at matched response budget [5][6] has been replicated repeatedly since, across the multi-agent literature, including <a href="../../posts/20250802-mast-multi-agent-failures/">the MAST taxonomy of multi-agent failure modes</a> [9]. Stripped of training, much of what looks like agent collaboration reduces to weighted voting on independent samples, where the sampling budget determines the result rather than the protocol.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://jeffhj.github.io/">Huang, J.</a>, <a href="https://xinyun-chen.github.io/">Chen, X.</a>, <a href="https://swarooprm.github.io/">Mishra, S.</a>, <a href="https://stevenzheng.github.io/">Zheng, H. S.</a>, <a href="https://www.adamsyu.com/">Yu, A. W.</a>, Song, X., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em>, arXiv:2310.01798, October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
+<li><a id="ref-2"></a>Kim, G., <a href="https://www.ics.uci.edu/~pfbaldi/">Baldi, P.</a>, and <a href="https://www.andrew.cmu.edu/user/smcaleer/">McAleer, S.</a> “Language Models can Solve Computer Tasks.” <em>NeurIPS</em>, arXiv:2303.17491, March 30, 2023. <a href="https://arxiv.org/abs/2303.17491" class="uri">https://arxiv.org/abs/2303.17491</a></li>
+<li><a id="ref-3"></a><a href="https://noahshinn.com/">Shinn, N.</a>, Cassano, F., Berman, E., Gopinath, A., <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a> “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS</em>, arXiv:2303.11366, March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
+<li><a id="ref-4"></a>Touvron, H., Martin, L., Stone, K., et al.&nbsp;“Llama 2: Open Foundation and Fine-Tuned Chat Models.” <em>arXiv preprint</em> (arXiv:2307.09288), July 18, 2023. <a href="https://arxiv.org/abs/2307.09288" class="uri">https://arxiv.org/abs/2307.09288</a></li>
+<li><a id="ref-5"></a><a href="https://yilundu.github.io/">Du, Y.</a>, <a href="https://people.csail.mit.edu/lishuang/">Li, S.</a>, <a href="https://groups.csail.mit.edu/vision/torralbalab/">Torralba, A.</a>, <a href="https://web.mit.edu/cocosci/josh.html">Tenenbaum, J. B.</a>, and <a href="https://www.mordatch.com/">Mordatch, I.</a> “Improving Factuality and Reasoning in Language Models through Multiagent Debate.” <em>arXiv preprint</em> (arXiv:2305.14325), May 23, 2023. <a href="https://arxiv.org/abs/2305.14325" class="uri">https://arxiv.org/abs/2305.14325</a></li>
+<li><a id="ref-6"></a><a href="https://xuezhiwang.github.io/">Wang, X.</a>, Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and <a href="https://dennyzhou.github.io/">Zhou, D.</a> “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR</em>, arXiv:2203.11171, March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
+<li><a id="ref-7"></a><a href="https://madaan.github.io/">Madaan, A.</a>, <a href="https://niket.tandon.info/">Tandon, N.</a>, Gupta, P., Hallinan, S., <a href="https://luyug.github.io/">Gao, L.</a>, <a href="https://sarahwie.github.io/">Wiegreffe, S.</a>, <a href="https://urialon.cswp.cs.technion.ac.il/">Alon, U.</a>, <a href="https://nouhadziri.github.io/">Dziri, N.</a>, Prabhumoye, S., <a href="https://www.cs.cmu.edu/~yiming/">Yang, Y.</a>, Gupta, S., Majumder, B. P., Hermann, K., <a href="https://wellecks.com/">Welleck, S.</a>, Yazdanbakhsh, A., and <a href="https://allenai.org/team/peterc">Clark, P.</a> “Self-Refine: Iterative Refinement with Self-Feedback.” <em>NeurIPS</em>, arXiv:2303.17651, May 25, 2023. <a href="https://arxiv.org/abs/2303.17651" class="uri">https://arxiv.org/abs/2303.17651</a></li>
+<li><a id="ref-8"></a><a href="https://aviralkumar2907.github.io/">Kumar, A.</a>, <a href="https://vincentzhuang.github.io/">Zhuang, V.</a>, <a href="https://agarwl.github.io/">Agarwal, R.</a>, Su, Y., et al.&nbsp;“Training Language Models to Self-Correct via Reinforcement Learning.” <em>ICLR</em>, arXiv:2409.12917, September 19, 2024. <a href="https://arxiv.org/abs/2409.12917" class="uri">https://arxiv.org/abs/2409.12917</a></li>
+<li><a id="ref-9"></a>Cemri, M., Pan, M., Yang, S., Agrawal, L. A., Chopra, B., Tiwari, R., <a href="https://people.eecs.berkeley.edu/~keutzer/">Keutzer, K.</a>, Parameswaran, A., <a href="https://people.eecs.berkeley.edu/~klein/">Klein, D.</a>, Ramchandran, K., <a href="https://cs.stanford.edu/~matei/">Zaharia, M.</a>, <a href="https://people.eecs.berkeley.edu/~jegonzal/">Gonzalez, J.</a>, and <a href="https://people.eecs.berkeley.edu/~istoica/">Stoica, I.</a> “Why Do Multi-Agent LLM Systems Fail?” <em>arXiv preprint</em> (arXiv:2503.13657), March 17, 2025. <a href="https://arxiv.org/abs/2503.13657" class="uri">https://arxiv.org/abs/2503.13657</a></li>
+<li><a id="ref-10"></a>Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., Hesse, C., and Schulman, J. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
+<li><a id="ref-11"></a>Talmor, A., Herzig, J., Lourie, N., and Berant, J. “CommonsenseQA: A Question Answering Challenge Targeting Commonsense Knowledge.” <em>NAACL 2019</em> (arXiv:1811.00937), November 2, 2018. <a href="https://arxiv.org/abs/1811.00937" class="uri">https://arxiv.org/abs/1811.00937</a></li>
+<li><a id="ref-12"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W. W., Salakhutdinov, R., and Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600), September 25, 2018. <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260516-llm-self-correction-arc/">Can LLMs Reliably Self-Correct Their Own Reasoning?</a>: the 3-paper arc that places this negative result between Self-Refine’s proposal and Reflexion’s external-signal fix.</li>
+<li><a href="../../posts/20260512-score/">Training Language Models to Self-Correct via Reinforcement Learning (SCoRe)</a>: the same group’s RL follow-up that cites this paper as its problem statement and shows training, not prompting, can induce self-correction.</li>
+<li><a href="../../posts/20260516-self-refine/">Self-Refine: Iterative Refinement with Self-Feedback</a>: the intrinsic-refinement claim Section 5 here re-examines and attributes largely to a weak initial prompt.</li>
+<li><a href="../../posts/20260516-reflexion/">Reflexion: Language Agents with Verbal Reinforcement Learning</a>: the verbal-feedback method whose oracle-label evaluation this paper isolates as the confound behind reported gains.</li>
+<li><a href="../../posts/20260512-lets-verify-step-by-step/">Let’s Verify Step by Step</a>: the same pattern where a strong external verifier provides the signal otherwise credited to the generator.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260516-cannot-self-correct/</guid>
+  <pubDate>Sat, 16 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260516-cannot-self-correct/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Self-Refine: Iterative Refinement with Self-Feedback</title>
   <dc:creator>synesis </dc:creator>
@@ -2175,51 +2283,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260511-apple-ad-mac-students/</guid>
   <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260511-apple-ad-mac-students/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Schools Retreat From the Pandemic’s Ed-Tech Buildout</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260510-schools-retreat/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260510-schools-retreat/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260510-schools-retreat/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>A classroom scene illustrating the 1:1 device era. Image from <a href="https://www.washingtonpost.com/education/2026/05/07/states-limit-school-screen-time/">The Washington Post</a>.</figcaption>
-</figure>
-</div>
-<p>Lauren Lumpkin, <a href="https://www.washingtonpost.com/education/2026/05/07/states-limit-school-screen-time/">reporting for <em>The Washington Post</em></a>, walks through the ed-tech pullback underway in U.S. K–12.</p>
-<p>What the article reports:</p>
-<ul>
-<li><strong>Pandemic-era spending.</strong> Districts spent between $15 billion and $35 billion of federal pandemic relief between 2020 and 2024 on laptops, tablets, and learning software, per an <a href="https://edunomicslab.org/">Edunomics Lab</a> estimate. By last school year, <a href="https://ies.ed.gov/learn/press-release/more-half-public-school-leaders-say-cell-phones-hurt-academic-performance">a federal survey</a> found 88 percent of public schools had given every child a device.</li>
-<li><strong>Pullback underway.</strong> At least a dozen states introduced or adopted policies this year to regulate in-school screen time. Parent groups such as Schools Beyond Screens are pushing districts to roll back 1:1 device rollouts.</li>
-<li><strong>State-level policy shapes.</strong> Utah’s state board is banning screen time for most K–3 subjects. Iowa capped elementary digital instruction at 60 minutes a day. A Missouri bill would require every district to set a screen-time policy.</li>
-<li><strong>Beyond minutes per day.</strong> <a href="https://www.curriculumassociates.com/">Curriculum Associates</a> is facing a lawsuit over alleged unauthorized collection of student data via its i-Ready platform. YouTube, allowed in classrooms because teachers use it for instruction, is cited as a persistent source of distraction.</li>
-<li><strong>Thin research base.</strong> A meta-analysis of reading-comprehension studies finds paper beats digital. A <a href="https://www.nber.org/papers/w35132">new NBER paper</a> released this week finds in-school cellphone bans had little effect on academic outcomes.</li>
-</ul>
-<p>One line from the piece, by Missouri state Rep.&nbsp;Tricia Byrnes:</p>
-<blockquote class="blockquote">
-<p>Ed tech is just big tech in a sweater vest.</p>
-</blockquote>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The ed-tech thesis assumed content delivery was the bottleneck. It wasn’t.</strong> Districts bought laptops and learning software expecting infinite personalized practice to move outcomes. What’s missing is the layer around the content that turns “access to material” into “engagement with material”: a teacher calling on a student by name, a grade that matters, peer accountability. A 10-year-old alone with an iPad and open-internet access will drift to YouTube, because the recommendation and feed-ranking plumbing underneath consumer tech is optimized for that drift, and the ed-tech layer on top doesn’t disable it.</p></li>
-<li><p><strong>This is the demand-side confirmation of the thesis in <a href="../../posts/20260424-edu-startups-decline/">The Global Edtech Boom Is Fading</a>.</strong> Venture capital left K–12 because outcomes never materialized. Districts are now legislating the rollout out, for the same reason. Venture-backed K–12 needed content delivery to be the bottleneck to justify its valuations, so the category defaulted to that claim even when the evidence was thin. What’s left standing is the nonprofit-plus-frontier-API shape (Khan Academy’s Khanmigo and similar), which doesn’t require the misdiagnosis to make its economics work.</p></li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260510-schools-retreat/</guid>
-  <pubDate>Sun, 10 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260510-schools-retreat/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
