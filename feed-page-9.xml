@@ -23,6 +23,75 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sun, 05 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Reading the Reasoning Traces Behind ARC-AGI-3</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Image from <a href="https://arcprize.org/blog/arc-agi-3-gpt-5-5-opus-4-7-analysis">ARC Prize</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://gregkamradt.com">Greg Kamradt</a> at <a href="https://arcprize.org">ARC Prize</a> published <a href="https://arcprize.org/blog/arc-agi-3-gpt-5-5-opus-4-7-analysis">an analysis</a> of 160 replays and reasoning traces from <a href="https://openai.com">OpenAI</a>’s GPT-5.5 and <a href="https://anthropic.com">Anthropic</a>’s Opus 4.7 on <a href="https://arcprize.org/arc-agi/3/">ARC-AGI-3</a>, the 135-environment benchmark that withholds instructions and forces the model to infer rules from sparse feedback. GPT-5.5 scored 0.43%, Opus 4.7 scored 0.18%.</p>
+<p>What the article reports: three failure modes pulled from the reasoning traces.</p>
+<ul>
+<li><strong><em>True local effect, false world model.</em></strong> The model correctly notices that an action changes a local property (“ACTION3 rotates the object”) but doesn’t translate the observation into a rule that governs play (“orient the object to match the target before acting”). The observation is right; the world model is missing.</li>
+<li><strong><em>Wrong level of abstraction from training data.</em></strong> Models map unfamiliar mechanics onto games they’ve seen: Tetris, Frogger, Sokoban, Flood-It, Breakout. A visual resemblance becomes a full gameplay theory and action selection follows the wrong script.</li>
+<li><strong><em>Solved the level, didn’t learn the game.</em></strong> A level can be beaten with a mistaken read of the primitive (“click teleports the character” when the real mechanic is push-to-match), and the reward then cements the wrong theory for subsequent levels.</li>
+</ul>
+<p>Two illustrations from the article.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/gpt55-ls20.png" class="img-fluid figure-img"></p>
+<figcaption>GPT-5.5 on LS20 mistaking the environment for Breakout, with bricks, a paddle, and a ball (an instance of Failure Mode 2). Image from <a href="https://arcprize.org/blog/arc-agi-3-gpt-5-5-opus-4-7-analysis">ARC Prize</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/opus47-cn04.png" class="img-fluid figure-img"></p>
+<figcaption>Opus 4.7 on CN04 narrating a rotate-and-place theory without locking onto the correct goal (an instance of Failure Mode 1). Image from <a href="https://arcprize.org/blog/arc-agi-3-gpt-5-5-opus-4-7-analysis">ARC Prize</a>.</figcaption>
+</figure>
+</div>
+<p>The article closes with a named contrast between the two models: Opus compressed its observations into a confident wrong theory, GPT-5.5 kept the hypothesis space open but never committed to a plan. “Opus had the wrong compression, GPT-5.5 failed to compress.”</p>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The three failure modes each break a different step in observe → rule → plan → commit.</strong> Failure 1 breaks between observation and rule. Failure 2 swaps in a rule borrowed from training data instead of inferring one from evidence. Failure 3 commits to a rule the reward didn’t validate. That’s more useful than “the models can’t reason,” because it points at which step to instrument in a harness.</p></li>
+<li><p><strong>Failure 3 is the one most likely to show up outside ARC-AGI-3.</strong> It’s the empirical version of the <a href="../../posts/20260430-intrinsic-metacognitive-learning/">metacognitive-evaluation gap</a>: if the agent can’t ask <em>why</em> it won the last level, outcome reward reinforces whatever theory happened to be active, correct or not. Self-improvement loops that use task success as their only signal will encode this systematically.</p></li>
+<li><p><strong>The pattern matches earlier world-model findings.</strong> Closed-form probes like GSM-Symbolic and DFA (deterministic finite automaton) evaluations already showed that identical accuracy numbers can hide very different generalization behavior (the <a href="../../posts/20241108-transformers-world-models/">world-model gap</a> literature). ARC-AGI-3 extends the lesson into open-ended exploration: two models at near-zero scores can still be failing at different points in the reasoning chain, and only the traces show the difference.</p></li>
+<li><p><strong>The GPT-5.5 trace claims carry a mode caveat the post largely downplays.</strong> The article discloses this only in a final “Analysis notes” section:</p>
+<blockquote class="blockquote">
+<p>With our default tests, GPT-5.5 did not return its reasoning traces. The qualitative analysis above therefore uses an analysis mode run, which is an alternate testing setup intended to elicit more explicit descriptions of how the model is interpreting the environment and deciding what to try next. The official GPT-5.5 score is not from that mode. All reported scores use the standard ARC-AGI-3 harness, matching the setup used for Opus 4.7.</p>
+</blockquote>
+<p>The scores themselves are clean: 0.43% and 0.18% are both from the standard harness. The confound lives in the qualitative trace comparison that carries the article’s main argument. Opus’s traces are from the standard harness; GPT-5.5’s are from a mode specifically designed to elicit more explicit reasoning. More explicit traces can easily read as a wider hypothesis space, which means “Opus compresses more aggressively than GPT-5.5” may reflect the harness rather than the model.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the metacognitive-evaluation gap that Failure Mode 3 is the empirical version of, where outcome reward cements whatever theory happened to win.</li>
+<li><a href="../../posts/20241108-transformers-world-models/">How Well Can Transformers Build World Models?</a>: the closed-form world-model probes this analysis extends into open-ended exploration, where equal scores still hide different generalization behavior.</li>
+<li><a href="../../posts/20250707-chollet-how-we-get-to-agi/">Chollet: How We Get to AGI</a>: the ARC suite’s creator on the fluid-intelligence and program-synthesis abilities these ARC-AGI-3 traces find missing.</li>
+<li><a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a>: the same skepticism about frontier-model reasoning and world models, from the capability-timeline side.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/</guid>
+  <pubDate>Wed, 06 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260506-arc-agi-3-failure-modes/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>It’s Possible to Learn in Our Sleep. Should We?</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260506-learning-in-sleep/?utm_source=rss&amp;utm_medium=feed</link>
@@ -3004,96 +3073,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260430-multi-agent-system-search/</guid>
   <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260430-multi-agent-system-search/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260430-dspy/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-dspy/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-dspy/cover.png" class="img-fluid figure-img"></p>
-<figcaption>Results with in-context learning on GSM8K math word problems. Each row is a separate pipeline: the module in the Program column is compiled against the examples in the Training set. All programs in this table are expressed by composing two to four DSPy modules and teleprompters. Compiling the correct modules, instead of string prompts, improves different LMs from 4-20% accuracy to 49-88% accuracy. Table 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</em> [1] (ICLR 2024), <a href="https://omarkhattab.com/">Omar Khattab</a> et al.&nbsp;(Stanford and collaborators) introduce a programming model that treats LM pipelines as composable, typed modules and compiles them via teleprompters that bootstrap their own few-shot demonstrations from a small unlabeled training set.</p>
-<blockquote class="blockquote">
-<p>The ML community is rapidly exploring techniques for prompting language models (LMs) and for stacking them into pipelines that solve complex tasks. Unfortunately, existing LM pipelines are typically implemented using hard-coded “prompt templates”, i.e.&nbsp;lengthy strings discovered via trial and error. Toward a more systematic approach for developing and optimizing LM pipelines, we introduce <em>DSPy, a programming model that abstracts LM pipelines as text transformation graphs</em>, or imperative computational graphs where LMs are invoked through declarative modules. <em>DSPy modules are parameterized</em>, meaning they can learn how to apply compositions of prompting, finetuning, augmentation, and reasoning techniques. We design <em>a compiler that will optimize any DSPy pipeline to maximize a given metric, by creating and collecting demonstrations</em>. We conduct two case studies, showing that succinct DSPy programs can express and optimize pipelines that reason about math word problems, tackle multi-hop retrieval, answer complex questions, and control agent loops. Within minutes of compiling, DSPy can automatically produce pipelines that <em>outperform out-of-the-box few-shot prompting as well as expert-created demonstrations for GPT-3.5 and Llama2-13b-chat</em>. On top of that, <em>DSPy programs compiled for relatively small LMs like 770M parameter T5 and Llama2-13b-chat are competitive with many approaches that rely on large and proprietary LMs like GPT-3.5 and on expert-written prompt chains</em>. DSPy is available at https://github.com/stanfordnlp/dspy.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The programming model rests on three abstractions. <strong>Signatures</strong> declare the input/output shape of an LM call as a natural-language type spec (e.g., <code>"question -&gt; answer"</code> or <code>"context, question -&gt; rationale, answer"</code>), which the framework expands into a prompt template. <strong>Modules</strong> implement signatures via specific techniques: <code>Predict</code> runs a single-shot LM call, <code>ChainOfThought</code> adds a rationale step, <code>ReAct</code> interleaves thought/action/observation for tool use. Modules can contain other modules, so a retrieval-augmented QA pipeline is just a Python class that composes <code>Retrieve</code> and <code>ChainOfThought</code>. <strong>Teleprompters</strong> are the compilers: given a program, a metric, and a small training set (inputs only, no intermediate labels), a teleprompter runs the program on the training examples with a “teacher” model, keeps traces where the final output satisfied the metric, and uses those traces as few-shot demonstrations in the compiled program. <code>BootstrapFewShot</code> is the default; variants add random search over candidate demonstrations, compose with a stronger teacher program, or finetune a smaller model on the bootstrapped traces. The human writes the program structure and the metric; the compiler figures out what to put inside each prompt.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper runs two case studies: GSM8K grade-school math (200 train / 300 dev / 1.3k test) and HotPotQA multi-hop retrieval QA. Base models are GPT-3.5 and Llama2-13b-chat; one HotPotQA run uses 770M-parameter T5-Large as the compile target. On GSM8K, the same three-line <code>ChainOfThought</code> program goes from 25.2% test accuracy (vanilla GPT-3.5 with no compilation) to 81.6% with the <code>bootstrap + ensemble</code> teleprompter; Llama2-13b-chat reaches 46.9% with the <code>ThoughtReflection</code> program plus ensemble, versus 9.4% baseline. On HotPotQA, a simple <code>multihop</code> program with <code>bootstrap</code> raises GPT-3.5 test EM from 31.5% (fewshot baseline) to 39.6%, and the ensemble reaches 45.6% on half the test set. The 770M T5-Large compiled from a Llama2-13b-chat teacher hits 39.3% HotPotQA answer EM on the dev set, using only 200 labeled and 800 unlabeled questions. That’s roughly on par with the much larger base models.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-dspy/table2.png" class="img-fluid figure-img"></p>
-<figcaption>Results with in-context learning on HotPotQA for GPT-3.5 and Llama2-13b-chat across four DSPy programs (<code>vanilla</code>, <code>CoT_RAG</code>, <code>react</code>, <code>multihop</code>) and compilers (<code>fewshot</code>, <code>bootstrap</code>, <code>ensemble</code>, <code>bootstrap×2</code>). Answer exact match (Ans) and pair-retrieval accuracy (Psg) are reported for dev and test splits. Ensemble-compiled <code>multihop</code> tops both models; <code>CoT_RAG</code> with <code>bootstrap</code> is the next-best configuration. Table 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The programming model is the real contribution, and the teleprompters are interchangeable.</strong> Pre-DSPy prompt optimization worked at the string-template level. APE [2] and later <a href="../../posts/20260430-evoprompt/">EvoPrompt</a> [3] searched over isolated prompt strings with LLM-implemented operators. DSPy moves optimization up a layer: because modules have typed signatures and compose into a graph, a teleprompter can treat any pipeline as a black box to optimize end-to-end against a single metric, bootstrapping intermediate demonstrations along the way. Putting composition at the module boundary is what enables pipeline-level search. <a href="../../posts/20260430-multi-agent-system-search/">MASS</a> [4] can search over typed-module topologies because DSPy established the abstraction; its prompt optimization at block and workflow levels uses DSPy’s MIPRO teleprompter directly. The teleprompters themselves (bootstrap + random search) are conventional. The novelty is that they operate on a program rather than a prompt.</p></li>
-<li><p><strong>DSPy-styled distillation works: the 770M T5 result is the demonstration.</strong></p>
-<ul>
-<li>When DSPy compiles, the teacher model runs the program on training inputs; the metric filters complete-pipeline runs where the final output is correct; those good runs’ intermediate steps become demonstrations for the compiled program. No human annotates intermediate hops. Final-output supervision via the metric does that filtering.</li>
-<li>Table 2 shows this in action: a 770M T5-Large, compiled from a Llama2-13b-chat teacher on 200 labeled + 800 unlabeled HotPotQA questions, reaches 39.3% answer EM on dev, within a few points of GPT-3.5 fewshot. The paper calls this “orders of magnitude lower costs for inference”; the stronger read is that for retrieval-heavy tasks with good pipeline structure, most of the capability lives in the pipeline, and the base model just has to execute the compiled prompts competently.</li>
-<li>The distillation analogy is apt, with three caveats on what gets kept, what the student inherits, and what the procedure costs. Both let you train a smaller model without hand-labeled intermediate supervision; the teacher’s outputs stand in.
-<ul>
-<li>Distillation uses every teacher-generated input-output pair as student training data. DSPy uses only per-module steps from traces whose final pipeline output passed the metric; those steps become few-shot demonstrations inside each module’s prompt.</li>
-<li>Distillation compiles the teacher’s capability into a single forward pass of the student; DSPy keeps the pipeline structure intact. The 770M T5 still runs the same multihop program, just with bootstrapped few-shot demos inside each module’s prompt.</li>
-<li>Distillation trains the student via gradient descent over thousands to millions of teacher outputs on GPU clusters, taking days to weeks. DSPy’s default teleprompters do no gradient training; they just insert filtered demonstrations into the student program’s prompts. Even the finetune variant that produced the T5-770M result trains in minutes on 200 + 800 examples, with total compile cost bounded by a few hundred teacher inference calls.</li>
-</ul></li>
-<li>Whether the pipeline gain stays significant as base models mature is an open question.</li>
-</ul></li>
-<li><p><strong>DSPy is a clean instance of extrinsic self-improvement.</strong> Humans design the programming model, pick the modules, write the metric, and choose the teleprompter strategy (bootstrap vs.&nbsp;random search vs.&nbsp;finetune). The LM only generates candidates that the compiler scores and keeps. The <a href="../../posts/20260430-intrinsic-metacognitive-learning/">intrinsic metacognitive learning position paper</a> [5] calls this out as the ceiling case: DSPy won’t decide that the task needs a different module type, or that the metric is misspecified, or that the teleprompter’s search strategy is a poor fit. Every one of those is wired in. In engineering or production settings that explicit control is often a feature. Teams need predictable, auditable behavior more than they need an agent that redesigns its own loop.</p></li>
-<li><p><strong>DSPy has become a de facto substrate for both research and industrial LLM development.</strong></p>
-<ul>
-<li><strong>Scale signals.</strong> 34K+ GitHub stars since January 2023. The <a href="https://dspy.ai/community/use-cases/">dspy.ai “Community Use Cases” page</a> lists 25+ named company deployments and 15+ published research papers built on DSPy, and is maintained as a growing index.</li>
-<li><strong>Research adoption</strong> runs beyond the cluster we’ve been reviewing: STORM (Wikipedia-article generation), Co-STORM, PATH (IR with 10 gold labels), IReRa (extreme classification with 10K+ labels), ECG-Chat (medical reports via GraphRAG), Palimpzest (declarative AI workload optimization), WangLab @ MEDIQA (Toronto’s competition winner), UMD’s suicide-detection system (beating 20-hour expert prompt engineering by 40%). Within this cluster, <a href="../../posts/20260430-multi-agent-system-search/">MASS</a> uses DSPy’s MIPRO as its prompt-optimizer primitive and <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO</a> cites DSPy as prior art.</li>
-<li><strong>Industry adoption</strong> spans finance (Moody’s), healthcare (STChealth, Infinitus, Raia, Salomatic), legal (Truelaw), travel (JetBlue), semiconductor (Normal Computing), e-commerce (Sephora, Zoro UK), developer tooling (Replit), enterprise AI (Databricks, VMware, RadiantLogic), and security (Haize Labs red-teaming). The Databricks integration is particularly sticky: DSPy co-author Matei Zaharia is Databricks CTO, and DSPy now powers parts of their LM-judge, RAG, and agentic offerings.</li>
-<li><strong>Why the abstraction endured.</strong> Teleprompter algorithms keep evolving (MIPRO → MIPROv2 → GEPA, all listed on dspy.ai), but the programming model (signatures, modules, teleprompters) has stayed stable. New optimizers slot into the same surface.</li>
-</ul></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://omarkhattab.com/">Khattab</a>, O., Singhvi, A., Maheshwari, P., Zhang, Z., <a href="https://keshav2.me/">Santhanam</a>, K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., <a href="https://heather.miller.am/">Miller</a>, H., <a href="https://en.wikipedia.org/wiki/Matei_Zaharia">Zaharia</a>, M., <a href="https://en.wikipedia.org/wiki/Christopher_Potts">Potts</a>, C. “DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://openreview.net/forum?id=sY5N0zY5Od" class="uri">https://openreview.net/forum?id=sY5N0zY5Od</a>. arXiv preprint arXiv:2310.03714.</li>
-<li><a id="ref-2"></a>Zhou, Y., Muresanu, A. I., Han, Z., <a href="https://keirp.com/">Paster</a>, K., <a href="https://silviupitis.com/">Pitis</a>, S., <a href="https://harris-chan.github.io/">Chan</a>, H., <a href="http://jimmylba.github.io/">Ba</a>, J. “Large Language Models Are Human-Level Prompt Engineers.” <em>International Conference on Learning Representations (ICLR)</em>, 2023. arXiv:2211.01910, November 3, 2022. <a href="https://arxiv.org/abs/2211.01910" class="uri">https://arxiv.org/abs/2211.01910</a></li>
-<li><a id="ref-3"></a><a href="https://lemon0830.github.io/">Guo</a>, Q., Wang, R., Guo, J., <a href="https://libeineu.github.io/">Li</a>, B., <a href="https://www.microsoft.com/en-us/research/people/kaitaosong/">Song</a>, K., <a href="https://www.microsoft.com/en-us/research/people/xuta/">Tan</a>, X., Liu, G., <a href="https://sites.google.com/view/jiangbian">Bian</a>, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532, September 15, 2023. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
-<li><a id="ref-4"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>arXiv preprint</em> (arXiv:2502.02533), February 4, 2025. <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
-<li><a id="ref-5"></a><a href="https://tennisonliu.github.io/">Liu</a>, T., <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>, M. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>arXiv preprint</em> (arXiv:2506.05109), June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260430-evoprompt/">EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</a>: the string-template prompt optimizer that DSPy supersedes by moving optimization up to the module-graph level.</li>
-<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: builds directly on DSPy, using its MIPRO teleprompter as the prompt-optimization primitive inside a topology search.</li>
-<li><a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">System Prompt Optimization with Meta-Learning</a>: cites DSPy as prior art and extends the same line to a task-agnostic system prompt learned across tasks.</li>
-<li><a href="../../posts/20260513-gepa/">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a>: a later DSPy-ecosystem optimizer that slots into the same programming model, replacing bootstrap search with reflective rewrites.</li>
-<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that classifies DSPy as the extrinsic-self-improvement ceiling case, where humans wire in every choice the compiler doesn’t make.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260430-dspy/</guid>
-  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260430-dspy/cover.png" medium="image" type="image/png" height="89" width="144"/>
 </item>
 
 </channel>
