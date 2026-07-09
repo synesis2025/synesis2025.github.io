@@ -23,6 +23,112 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Wed, 08 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Benchmarks in Leipzig</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The 100 questions by research area, skewed toward algebraic geometry and combinatorics. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Benchmarks in Leipzig</em> [1], <a href="https://scholar.google.com/citations?user=GtH9IAYAAAAJ">Christian Stump</a> (Ruhr University Bochum), Veronica Calvo Cortes, and <a href="https://en.wikipedia.org/wiki/Bernd_Sturmfels">Bernd Sturmfels</a> (Max Planck Institute for Mathematics in the Sciences, Leipzig), with 46 other mathematicians, present a benchmark of 100 research-level math questions with short, known answers and report how far current frontier models get on it.</p>
+<blockquote class="blockquote">
+<p>Between April 1 and May 15, 2026, a group of 49 mathematicians compiled a dataset of research-level mathematics questions with known answers. Most of the work was done during the 3-day workshop <em>Benchmarks in Leipzig</em> with 35 participants at the Max Planck Institute for Mathematics in the Sciences in Leipzig, Germany. We present the resulting collection of <em>100 questions</em>. We evaluated these questions in <em>three stages</em>: a single attempt by five state-of-the-art LLMs, followed by a 20-runs-per-model evaluation with three of these models, and finally a 3-run attempt with two heavy-thinking models. <em>After Stage 1, 41 questions remained completely unsolved; after Stage 2, this count dropped to 16; and we concluded Stage 3 with only 2 unsolved questions.</em> This demonstrates that the mathematical reasoning capabilities of LLMs are becoming impressive.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The benchmark was built by 49 mathematicians, with most of the work happening during a three-day workshop (May 11–13, 2026) with 35 participants at the Max Planck Institute for Mathematics in the Sciences in Leipzig. The project began at the Combinatorial Coworkspace in March 2026 and runs on the <a href="https://math.sciencebench.ai">ScienceBench platform</a>, where contributors submit questions, browse and comment on each other’s, and query all the project’s models from a shared chat interface.</p>
+<p>Each question had to meet a short set of guidelines:</p>
+<ul>
+<li><strong>Unique, well-defined, unguessable answer</strong>: the answer is short and checkable, and a reader who guesses repeatedly without working out the details should have no realistic chance of getting it right.</li>
+<li><strong>Grounded in public research, but beyond it</strong>: questions build on existing, publicly accessible work but go past what a paper itself states, and the solution cannot depend on non-public results.</li>
+<li><strong>Hard to guess in practice was the tricky part</strong>: several submissions turned out to have only a few possible answers, and were reworked or dropped.</li>
+</ul>
+<p>Submissions then went through an audit. Before any model attempted a question, GPT-5.5 and Gemini 3.1 Pro checked it against the guidelines. Every contributor could see all questions alongside the models’ answers and solutions, and comparing submissions against model-generated solutions led to 12 reformulated questions and 3 removed from the set. The final 100 questions skew heavily toward the contributors’ own fields (Table 1, the cover): 36 in algebraic geometry, then algebraic combinatorics (22), matroid theory (18), representation theory (15), and enumerative combinatorics (15), with a long tail of smaller areas. The authors generated that area breakdown with Claude Opus 4.7 and then verified it by hand.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The 100 questions were run through three evaluation stages, with a question counted as “solved” if at least one model run produced the correct answer:</p>
+<ul>
+<li><strong>Stage 1 (single attempt)</strong>: five project-active models (GPT-5.5, Gemini 3.1 Pro, Claude Opus 4.7, DeepSeek-V4-Pro, Grok 4.3) and their immediate predecessors each got one try per question during submission.</li>
+<li><strong>Stage 2 (20 runs)</strong>: <a href="https://www.surgehq.ai/">Surge AI</a> queried three of the models (GPT-5.5, Gemini 3.1 Pro, Claude Opus 4.7) 20 times on each question.</li>
+<li><strong>Stage 3 (heavy thinking)</strong>: GPT-5.5 Pro with Extended Thinking (3 runs, via ChatGPT) and Gemini 3.1 Pro Deep Think (3 runs, via Surge AI).</li>
+</ul>
+<p>The unsolved count shrinks across the three stages: 41 after Stage 1, 16 after Stage 2, and just 2 after Stage 3. The per-stage detail:</p>
+<ul>
+<li><strong>Single attempt favors one model</strong>: GPT-5.5 solved 44 of 100 on one try, the next best (Gemini 3.1 Pro) managed 15, and Grok 4.3 just 6 (Table 2). Predecessor models trailed their successors in most cases.</li>
+<li><strong>More samples close most of the gap</strong>: with 20 runs each, GPT-5.5 solved 75 of 100 (52% of its 2,000 attempts correct), Gemini 3.1 Pro 40 (20%), and Claude Opus 4.7 44 (15%) (Table 3).</li>
+<li><strong>Heavy-thinking modes close almost all of it</strong>: GPT-5.5 Pro with Extended Thinking answered every one of its 300 runs, got 79% right, and solved 88 of 100, while Gemini 3.1 Pro Deep Think solved 56 (Table 4).</li>
+<li><strong>First-solved breakdown</strong>: 59 questions were first cracked in Stage 1, 25 more in Stage 2, 14 in Stage 3, leaving 2 unsolved.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Stage 1, single attempt: each of the five project-active models (left) and its predecessor (right) gets one try per question. Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/table3.png" class="img-fluid figure-img"></p>
+<figcaption>Stage 2: Surge AI runs three models 20 times per question. “Correct runs” counts individual attempts. “Solved questions” counts questions with at least one correct run. Table 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/table4.png" class="img-fluid figure-img"></p>
+<figcaption>Stage 3: three runs each of two heavy-thinking modes. Table 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Per-question consistency differs by model (Table 6). GPT-5.5 is bimodal: it got every attempt wrong on 25 questions and every attempt right on 27, with relatively few in between. For the other two models, correct answers spread more thinly across the 20 runs, with more questions solved on only a handful of attempts.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/table6.png" class="img-fluid figure-img"></p>
+<figcaption>Per-question consistency over the 20 Stage-2 runs. GPT-5.5’s results split between all-wrong (25 questions) and all-right (27), while the other models’ correct answers are spread more thinly. Table 6 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The benchmark already saturates at the top</strong>: the abstract calls the results a sign that “the mathematical reasoning capabilities of LLMs are becoming impressive,” but the body’s first key finding is blunter. The exercise-style recipe (questions drawn from published research with a short checkable answer) has “reached its limits” for the best models, which solve almost all of them: GPT-5.5 Pro with Extended Thinking got 88 of the 100 (Table 4). The method still separates weaker models, but the limit is difficulty rather than supply: more questions of the same kind would not be hard enough to measure the frontier.</p></li>
+<li><p><strong>The solve count overstates repeatable ability</strong>: a question counts as solved on one correct run out of twenty, so the headline totals treat a reliable answer and a one-in-twenty fluke the same. The per-question distribution (Table 6) shows how far apart the two can be. GPT-5.5 is bimodal: wrong on all 20 runs for 25 questions and right on all 20 for 27, with little in between. Across the three models, many solved questions were answered correctly on only one to four of the twenty runs, so much of the solve count rests on inconsistent, sometimes lucky, results.</p></li>
+<li><p><strong>The questions are built to resist contamination</strong>: three features keep these question and answer pairs out of the models’ training data. They are new, written in April and May 2026, after the evaluated checkpoints were frozen (Gemini 3.1 Pro shipped March 17, GPT-5.5 April 23), so the pairs did not exist when the models were trained. They are unpublished by design, each made to go beyond what would fit in a paper, so the specific question and answer are not online to scrape. And the answer key was shown to neither the models nor the other contributors. A model saw only the question. The one thing this does not rule out, deliberately, is the models having learned the public results the solutions build on, but that is the capability being tested rather than leakage.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=GtH9IAYAAAAJ">Stump, C.</a>, Calvo Cortes, V., <a href="https://en.wikipedia.org/wiki/Bernd_Sturmfels">Sturmfels, B.</a>, and 46 others. “Benchmarks in Leipzig: A Collection of Questions in Research-Level Mathematics.” <em>arXiv preprint</em> (arXiv:2606.05818), June 4, 2026. <a href="https://arxiv.org/abs/2606.05818" class="uri">https://arxiv.org/abs/2606.05818</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20220316-benchmark-creation-saturation/">Mapping Benchmark Creation and Saturation in AI</a>: the create-then-saturate pattern this benchmark already shows, a fresh research-math set nearly solved by frontier models.</li>
+<li><a href="../../posts/20260606-ai-formal-proof-search/">Advancing Mathematics Research with AI-Driven Formal Proof Search</a>: the verification-backed alternative, settling open problems with machine-checked Lean proofs rather than grading against a known answer.</li>
+<li><a href="../../posts/20260606-model-disproves-discrete-geometry-conjecture/">An OpenAI Model Disproves a Discrete-Geometry Conjecture</a>: a single high-profile instance of the research-math capability this benchmark measures across 100 questions.</li>
+<li><a href="../../posts/20260514-carina-hong-axiom-math-is-agi/">Math Is AGI: Carina Hong on Axiom and Formal Reasoning</a>: the argument that trustworthy LLM math needs a deterministic verifier, relevant when a solve can be a one-in-twenty fluke.</li>
+<li><a href="../../posts/20260602-leiden-declaration-ai-mathematics/">The Leiden Declaration on AI and Mathematics</a>: names training-data contamination and unverifiable AI math claims as threats that this benchmark’s post-cutoff, hidden-answer design is built to resist.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/</guid>
+  <pubDate>Sat, 06 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260606-benchmarks-in-leipzig/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Unlocking Scientific Intuition and Reasoning at Digital Speed</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260606-scientific-intuition-digital-speed/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2001,40 +2107,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260531-not-ai-generated/</guid>
   <pubDate>Sun, 31 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260531-not-ai-generated/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Don’t Be Forced Into Fast and Careless Thinking by Machines</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260531-fast-careless-thinking/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260531-fast-careless-thinking/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>Wisdom from 53 years ago: don’t be forced into fast and careless thinking by machines.</p>
-<p>Source: Design of Man-Computer Dialogues, James Martin, Prentice-Hall, 1973.</p>
-<p><img src="https://benjaminhan.net/posts/20260531-fast-careless-thinking/cover.jpeg" class="img-fluid"></p>
-<p>Credit goes to <a href="https://hachyderm.io/@thomasfuchs/116669585909479539" class="uri">https://hachyderm.io/@thomasfuchs/116669585909479539</a></p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_ai-futureofwork-cognition-activity-7466886924000006144--lKB">LinkedIn</a>.</em></p>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260528-ai-assistance-reduces-persistence/">AI Assistance Reduces Persistence and Hurts Independent Performance</a>: randomized-trial evidence for the 1973 warning, showing AI help lowers later unaided performance and raises the give-up rate.</li>
-<li><a href="../../posts/20260426-ai-cannibalizing-human-intelligence/">Is AI Cannibalizing Human Intelligence?</a>: the same worry about machines quietly degrading human judgment, framed as incremental outsourcing too small to notice.</li>
-<li><a href="../../posts/20260119-burning-out-with-ai-coding-agents/">Humans Need Rest, Even When Machines Don’t</a>: the workplace version, where machine pace pushes knowledge workers past sustainable thinking.</li>
-<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: the same trade of judgment for throughput, argued for the case of coding agents.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260531-fast-careless-thinking/</guid>
-  <pubDate>Sun, 31 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260531-fast-careless-thinking/cover.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

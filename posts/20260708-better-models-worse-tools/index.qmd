@@ -1,0 +1,54 @@
+---
+title: "Better Models: Worse Tools"
+description: "Armin Ronacher traces an aggravating tool-calling regression in the newest Claude models to reinforcement learning inside one dominant, forgiving harness."
+author: synesis
+date: "2026-07-08"
+image: cover.jpg
+---
+
+![Better Models: Worse Tools. Image from [Armin Ronacher's blog](https://lucumr.pocoo.org/2026/7/4/better-models-worse-tools/).](cover.jpg){fig-align="center"}
+
+[Armin Ronacher](https://lucumr.pocoo.org/) spent two days chasing a strange bug and came away with a broader worry about where model training is heading. His [writeup](https://lucumr.pocoo.org/2026/7/4/better-models-worse-tools/) starts from a concrete regression: the newest Claude models call a third-party editor tool with invented, schema-breaking fields, and they do it more than their predecessors did.
+
+> The uncomfortable lesson is that tool schemas are not neutral, at least not on Anthropic models. We like to pretend that a schema is an abstract contract and the model is a general reasoner that will follow it, but that might no longer be the case for some of the tools.
+
+### The bug
+
+- **The failing call.** Ronacher traced a [Pi](https://github.com/earendil-works/pi) issue in which newer Claude models call Pi's file-edit tool with extra, invented fields inside its nested `edits[]` array. Not a small model: Opus 4.8, and Sonnet 5 too. The edit content is usually correct, but the arguments break the schema, so Pi rejects the call and the model has to retry.
+- **Worse in the newer models.** Opus 4.8 and Sonnet 5 both show it, and none of the older models in the family do. Across trials the invented keys were a whole zoo: `type`, `id`, `requireUnique`, `matchCase`, `in_file`, `oldText2`, `newText2`, even an `event.0.additionalProperties`. The `oldText` and `newText` payloads themselves came out byte-correct, and the model only appended nonsense at the end of the object.
+- **Only under agentic history.** A fresh, single-turn "edit this file" prompt never reproduced it. An agentic history, where the model had read files, diagnosed a problem, and composed a multi-line edit, did. In one user's transcripts, continuing the session made Opus 4.8 fail about 20% of the time. Stripping the thinking blocks from the history halved the rate, and turning on strict tool invocation eliminated it.
+
+### How tool calls actually work
+
+- **Tool calls are just text.** The client folds the transcript, system prompt, and tool list into one large prompt with special marker tokens, and the model, trained on that format, emits something the client reads back as "call this tool with these arguments." Anthropic's format, glimpsed from leaked markers, looks XML-ish, with `<invoke>` and `<parameter>` tags. A top-level string parameter appears inline, but an array of objects is serialized as JSON inside the parameter.
+- **Two routes to a valid structure.** One is to ask the model for schema-conforming JSON and validate it afterward. The other is to constrain the sampler so invalid tokens cannot be emitted at all, which is [grammar-aware (or constrained) decoding](https://arxiv.org/abs/2307.09702): if the schema allows only `oldText` and `newText`, the sampler can stop the model from ever emitting `in_file`. Without constraints, the model is only following a learned convention.
+
+### Why it's getting worse
+
+- **A training-time cause.** Ronacher's hypothesis is that the regression comes from how the newest models were post-trained rather than from random deterioration. Older Claude models were trained before a shipped harness like [Claude Code](https://www.anthropic.com/claude-code) was the obvious target. Newer ones are post-trained inside Claude Code, or a close simulation of it, so they learn what a successful call looks like there and which mistakes that environment tolerates.
+- **A forgiving client.** Claude Code's own edit tool is flat: `file_path`, `old_string`, `new_string`, and an optional `replace_all`, nothing like Pi's nested `edits[]`. Claude Code ships closed-source, as a minified JavaScript bundle, but reading that bundle Ronacher finds parameter aliases (`old_str` alongside `old_string`, `path` for `file_path`), type coercions, Unicode repair, and silent filtering of unknown keys. It does not use strict mode, because Anthropic's complexity limits on strict tool definitions would make those API calls fail.
+- **No gradient against slop.** When reinforcement learning runs inside a harness that forgiving, a slightly malformed call still completes the task and still earns reward. Little gradient pushes back against inventing an alias or adding a stray field. Worse, the model builds a strong prior for Claude Code's exact shape, so a tool with the same intent but a different schema is increasingly off-distribution, and a better-trained model resists it more rather than less. Ronacher notes that Opus 4.5 adapted to foreign edit tools unusually well, and worries the trend has since reversed.
+
+### What it means for harnesses
+
+- **Where the bad keys appear.** They are not random. They cluster at the highest-entropy point of the task, right after the model closes a several-hundred-token escaped `newText` string and must choose between `}` and `, "..."`. Opus 4.8 and Sonnet 5 appear to have learned that an edit may take one extra optional field, but under Pi's nested shape they have no trained name for it, so they sample a plausible name fresh each time. That is why the failures produce dozens of different keys rather than one stable alias.
+- **OpenAI documents its format.** OpenAI's open-weight [gpt-oss](https://github.com/openai/gpt-oss) models are trained on a documented response format, [harmony](https://github.com/openai/harmony), which puts an in-band `<|constrain|>json` marker in the transcript so the inference stack knows exactly when to switch into JSON-constrained sampling. Anthropic's models and harness are both closed. Strict mode does fix the bug, which suggests the server refuses to sample a key the schema does not permit, and that in turn explains why strict tool definitions come with a complexity cap.
+- **Schemas are not neutral.** A model can understand a schema and still be bad at emitting it under pressure, because some shapes sit close to what post-training rewarded and some sit far away. Ronacher, once skeptical of constrained decoding for its quality tradeoffs, says this bug moved his priors. And the more post-training concentrates inside one dominant, undocumented harness, the more every other harness inherits its quirks.
+
+## My Notes
+
+- **The benchmark blind spot.** If Ronacher's hypothesis is right, a model like [Opus 4.8](/posts/20260529-opus-4-8-reactions/) could score higher on coding benchmarks and still be worse at this particular call, because those benchmarks run inside forgiving harnesses that repair the exact slop Pi rejects. On that reading, a benchmark score reflects the model together with the harness it runs in, so a higher number need not mean higher reliability against an arbitrary tool schema. The [open-weights gap analysis](/posts/20260627-open-weights-frontier-gap/) made the same point in a different setting: a forgiving shared harness can make a weaker model look stronger than it is, narrowing the apparent distance to the closed frontier.
+
+- **Harness choice is now partly fixed at training time.** [Harness Engineering](/posts/20260626-harness-engineering/) treats the harness as a runtime layer chosen around a fixed model. This regression suggests the reverse: some of the harness is set during training, so a team that adopts a different harness inherits the training harness's schema habits whether or not they fit its own tools.
+
+- **Who absorbs the mismatch.** Tuning models to [Claude Code's](/posts/20260623-claude-code-design-space/) tool shapes imposes a cost on every third-party agent that uses a different schema, in retries and rejected calls, and the one fix, strict constrained decoding, is off by default with a complexity cap that rejects nested schemas like Pi's. Because the client and Anthropic's training setup are both closed, those teams also cannot see why, inferring the cause from the minified bundle and from behavior, as Ronacher did. Whether Anthropic intends it or not, that is a mild form of lock-in.
+
+---
+
+## Related Posts
+
+- [Harness Engineering](/posts/20260626-harness-engineering/): the case that the harness around a model accounts for much of an agent's reliability, which this post turns into a warning: the harness a model was trained in also shapes what it can reliably emit.
+- [Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems](/posts/20260623-claude-code-design-space/): a map of Claude Code as a harness, the dominant one whose flat edit schema Ronacher says the model now over-fits to.
+- [Claude Opus 4.8: The Early Reactions](/posts/20260529-opus-4-8-reactions/): the model at the center of this regression, seen from the other side of the capability story.
+- [How Far Behind the Closed Frontier Are Open-Weights LLMs?](/posts/20260627-open-weights-frontier-gap/): makes the same model-plus-harness point in a different setting, where a shared forgiving harness can narrow the apparent gap between open and closed models.
+- [How Claude Code Works in Large Codebases: Best Practices and Where to Start](/posts/20260528-claude-code-large-codebases/): practical use of the exact tools whose canonical shape, Ronacher argues, has become a prior the model defends.
