@@ -21,7 +21,104 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Wed, 08 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 10 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>System Prompt Optimization with Meta-Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Generalization across different domains. Left: MetaSPO’s performance on domains not used for prompt optimization, plotted against their similarity to the training domains. Right: Effect of the number of training domains, with more domains yielding stronger generalization. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>System Prompt Optimization with Meta-Learning</em> (NeurIPS 2025) [1], <a href="https://www.mlai-kaist.com/">Yumin Choi</a>, <a href="https://jinheonbaek.github.io/">Jinheon Baek</a>, and <a href="https://www.mlai-kaist.com/">Sung Ju Hwang</a> (KAIST, DeepAuto.ai) introduce MetaSPO, a bilevel optimization framework that meta-learns a task-agnostic system prompt while simultaneously updating task-specific user prompts in an iterative inner loop.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) have shown remarkable capabilities, with optimizing their input prompts playing a pivotal role in maximizing their performance. However, while LLM prompts consist of both the task-agnostic system prompts and task-specific user prompts, existing work on prompt optimization has focused on user prompts specific to individual queries or tasks, and largely overlooked the system prompt that is, once optimized, applicable across different tasks and domains. Motivated by this, we introduce the novel problem of <em>bilevel system prompt optimization</em>, whose objective is to <em>design system prompts that are robust to diverse user prompts and transferable to unseen tasks</em>. To tackle this problem, we then propose <em>a meta-learning framework, which meta-learns the system prompt by optimizing it over various user prompts across multiple datasets, while simultaneously updating the user prompts in an iterative manner to ensure synergy between them</em>. We conduct experiments on <em>14 unseen datasets spanning 5 different domains</em>, on which we show that our approach produces system prompts that generalize effectively to diverse user prompts. Also, our findings reveal that the optimized system prompt enables <em>rapid adaptation even to unseen tasks, requiring fewer optimization steps for test-time user prompts while achieving improved performance</em>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>Concept figure. (A) An LLM input has three parts: task-agnostic system prompt, task-specific user prompt, target example. (B) Conventional task-specific optimization tunes the user prompt for one task and generalizes poorly. (C) MetaSPO meta-learns a system prompt that transfers to unseen target tasks. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Against this three-part structure, MetaSPO’s bilevel algorithm runs two nested optimization loops. The outer loop optimizes the task-agnostic system prompt, and the inner loop iteratively refines task-specific user prompts. At each outer step, the current system prompt is paired with candidate user prompts across multiple source tasks. The model’s failures on held-out examples feed an LLM optimizer that proposes refined candidates (user prompts inside the inner loop, system prompts at the outer loop). The meta-learned system prompt transfers to unseen target tasks with no further system-prompt tuning; at test time, only the user prompt is adapted per target task.</p>
+<p>The system prompt starts as “You are a helpful assistant.” (the Default baseline) and is iteratively refined through the outer loop. At each step of either loop, a separate optimizer LLM (GPT-4o mini in the main experiments, distinct from the Llama-3.2 3B base LLM that generates task responses) is prompted with the current prompt and its incorrectly-predicted examples, asked to analyze the failure modes, and then asked for multiple candidate refinements. Candidates are evaluated against held-out task data, and the top-k by performance survive to the next iteration. Both loops follow this same textual-gradient pattern (after Pryzant et al.&nbsp;[4]), applied at different scopes: user prompt per task in the inner loop, system prompt aggregated across source tasks in the outer loop.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>MetaSPO overview. The inner loop refines candidate user prompts via failure analysis on a target task; the outer loop refines the system prompt by aggregating failures across multiple source tasks. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper evaluates on 14 unseen target tasks across 5 domains (Medical, Review Analysis, Reasoning, Safety, Grounding), with each score the average performance of a system prompt paired with ten different user prompts. Within-domain Domain MetaSPO averages 44.5 over the 14 tasks, beating the next-best baseline SPRIG at 37.0 and the no-system-prompt Default at 32.2. The cross-domain Global MetaSPO setting (one system prompt meta-learned across all 5 domains) averages 41.4, still ahead of all baselines but ~3 points behind the within-domain Domain setting. Separately, on test-time efficiency: a MetaSPO-pretrained system prompt reaches Default’s converged performance with 80% fewer optimization iterations and 75% less data during test-time user-prompt adaptation.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/table1.png" class="img-fluid figure-img"></p>
+<figcaption>Main results on 14 unseen target tasks, grouped by 5 domains. Global methods use a single system prompt across all domains; Domain methods use a system prompt meta-learned on the target’s domain. Each cell is the average score across 10 different user prompts on that target task. Domain MetaSPO (bottom row) tops the overall average at 44.5. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 4 tests whether MetaSPO’s lift transfers uniformly across target tasks or depends on source-target task similarity. The paper measures similarity via Bag-of-Words overlap between the source-task training distribution and the target task, then plots per-task improvement against it.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>MetaSPO’s gain over the Default baseline as a function of source-target task similarity (measured by Bag-of-Words overlap). Points above the y=0 line indicate a positive lift over Default; Pearson correlation 0.56 between similarity and improvement. High-similarity target tasks see larger gains; low-similarity tasks see near-neutral gains. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The contribution is the decomposition, not the method.</strong> Before this paper, “prompt optimization” treated the prompt as one optimization target for one task. DSPy [2], MIPRO [3], Pryzant et al.’s textual gradients [4], and <a href="../../posts/20260430-evoprompt/">EvoPrompt</a> [5] each target a different piece of that setup, but all produce task-specific prompts. The bilevel split (task-agnostic system prompt above, task-specific user prompt below) is the important decision. Once you make it, the meta-learning structure follows naturally because the outer loop has a natural “across tasks” loss to optimize. The MetaSPO algorithm itself is a structurally familiar inner/outer LLM-as-optimizer loop. What matters here is the decision about what to put in each level.</li>
+<li><strong>The system prompt accounts for most of the transfer.</strong>
+<ul>
+<li>MetaSPO’s headline wins on unseen tasks come from the system prompt. In Table 1’s Unseen Generalization scenario, user prompts are LLM-sampled per task and held fixed; only the system prompt varies across the methods compared. Domain MetaSPO averages 44.5 over 14 unseen target tasks vs.&nbsp;Default’s 32.2, a +12.3-point lift attributable to the system prompt alone.</li>
+<li>Appendix B.7 tests system-prompt vs user-prompt optimization head-to-head: MetaSPO (system-prompt optimized on source tasks) vs.&nbsp;ProTeGi (user-prompt optimized on source tasks), evaluated on the unseen Reasoning domain. MetaSPO wins across every source-domain starting point; ProTeGi drops below the Default system prompt, indicating user-prompt optimizations don’t transfer past the specific tasks they were tuned on.</li>
+</ul></li>
+<li><strong>A MetaSPO-pretrained system prompt reaches the Default baseline’s converged performance with 80% fewer optimization iterations and 75% less data during test-time user-prompt adaptation.</strong> The headline number is the unseen-generalization performance, but this §4 result is the one that matters for deployment. That’s a recipe for shipping prompt-optimized agents when each new task gets a small calibration budget rather than full re-optimization.</li>
+<li><strong>Generalization is asymmetric along source-target similarity.</strong> Figure 4 shows MetaSPO’s gain over Default scales with source-target task similarity measured by Bag-of-Words. High similarity, big gain; low similarity, the meta-learned system prompt is closer to neutral. That’s the expected meta-learning failure mode on out-of-distribution tasks, but it also bounds the deployment story: a system prompt meta-learned on Medical+Review+Reasoning will help most on tasks that look like those at the BoW level, and the cross-domain Global setting underperforms the within-domain Domain setting (41.4 vs.&nbsp;44.5 avg). The follow-up question: at what point does the meta-learned prior become a <em>liability</em> on a sufficiently distant task?</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.mlai-kaist.com/">Choi, Y.</a>, <a href="https://jinheonbaek.github.io/">Baek, J.</a>, <a href="https://www.mlai-kaist.com/">Hwang, S. J.</a> “System Prompt Optimization with Meta-Learning.” <em>Conference on Neural Information Processing Systems (NeurIPS)</em>, 2025. arXiv:2505.09666, May 14, 2025. <a href="https://arxiv.org/abs/2505.09666" class="uri">https://arxiv.org/abs/2505.09666</a></li>
+<li><a id="ref-2"></a>Khattab, O., Singhvi, A., Maheshwari, P., Zhang, Z., Santhanam, K., Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., Miller, H., Zaharia, M., Potts, C. “DSPy: Compiling Declarative Language Model Calls into State-of-the-Art Pipelines.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://arxiv.org/abs/2310.03714" class="uri">https://arxiv.org/abs/2310.03714</a></li>
+<li><a id="ref-3"></a>Opsahl-Ong, K., Ryan, M. J., Purtell, J., Broman, D., Potts, C., Zaharia, M., Khattab, O. “Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs.” <em>Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing</em>, 2024. <a href="https://arxiv.org/abs/2406.11695" class="uri">https://arxiv.org/abs/2406.11695</a></li>
+<li><a id="ref-4"></a>Pryzant, R., Iter, D., Li, J., Lee, Y., Zhu, C., Zeng, M. “Automatic Prompt Optimization with ‘Gradient Descent’ and Beam Search.” <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing</em>, 2023. <a href="https://arxiv.org/abs/2305.03495" class="uri">https://arxiv.org/abs/2305.03495</a></li>
+<li><a id="ref-5"></a>Guo, Q., Wang, R., Guo, J., Li, B., Song, K., Tan, X., Liu, G., Bian, J., Yang, Y. “EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2309.08532. <a href="https://arxiv.org/abs/2309.08532" class="uri">https://arxiv.org/abs/2309.08532</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: the prior-art prompt-optimization substrate MetaSPO cites, which it extends by splitting the prompt into a transferable system level and a task-specific user level.</li>
+<li><a href="../../posts/20260430-evoprompt/">EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</a>: an earlier LLM-as-optimizer loop that, like every method before MetaSPO, produces task-specific prompts rather than a task-agnostic one.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: the same staging-is-the-contribution pattern, adding a search wrapper around an off-the-shelf prompt optimizer instead of a bilevel meta-learning loop.</li>
+<li><a href="../../posts/20260513-gepa/">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a>: a textual-gradient prompt optimizer in the same lineage as the Pryzant-style inner loop MetaSPO builds on.</li>
+<li><a href="../../posts/20260430-intrinsic-metacognitive-learning/">Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</a>: the position paper that classifies MetaSPO’s hand-fixed search structure as extrinsic, with humans choosing what each level optimizes.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-metaspo-system-prompt-meta-learning/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</title>
   <dc:creator>synesis </dc:creator>
@@ -1578,43 +1675,6 @@
   <guid>https://benjaminhan.net/posts/20260424-llm-illustration/</guid>
   <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How to Be Anti-Social</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-anti-social/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-anti-social/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://nate.leaflet.pub/3mk4xkaxobc2p">Leaflet</a>.</figcaption>
-</figure>
-</div>
-<p>Learn how to sabotage yourself in <a href="https://nate.leaflet.pub/3mk4xkaxobc2p">how to be anti-social</a>:</p>
-<ul>
-<li><strong>Assume bad faith.</strong> When someone confuses or upsets you, assume they have no sane reason for it; when ambiguous, default to malicious, ignorant, or amoral.</li>
-<li><strong>Read intent through your fears.</strong> Trust intuition and feeling, never challenge or even acknowledge the assumptions doing the interpreting.</li>
-<li><strong>Pivot when challenged.</strong> Steer away from questions outside your wheelhouse; treat any display of not-knowing as weakness.</li>
-<li><strong>Word questions to imply you are right.</strong> If you must ask, lead the witness.</li>
-<li><strong>Dig in.</strong> When dissent piles up, hold firm.</li>
-<li><strong>Curate the audience.</strong> Reframe interactions for like-minded supporters so they can rally to crush lingering threats to the narrative.</li>
-<li><strong>Ignore credentials.</strong> Do not research the people you speak with, unless you already agree with them.</li>
-<li><strong>Withhold grace.</strong> Especially from strangers who make mistakes.</li>
-<li><strong>Retreat into self.</strong> When conversation breaks down, do not seek to understand those you do not already understand.</li>
-</ul>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-anti-social/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-anti-social/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
