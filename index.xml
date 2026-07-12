@@ -20,7 +20,33 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sat, 11 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 12 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>My 87th Half Marathon, an Easy Coach-Prescribed Long Run</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260712-half-marathon-87/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260712-half-marathon-87/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>This Long Run Sunday I ran my HM 87, an EZ one as prescribed by CoachClaude: distance 14.12 mi, time 2:17:59, pace 9:46/mi, HR 129/135, VO2max 53.2. It started overcast and then turned sunny w/ blue sky! I stopped briefly at 8mi mark to get water. Felt in control and ready for the W29 buildup week!</p>
+<p><img src="https://benjaminhan.net/posts/20260712-half-marathon-87/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260712-half-marathon-87/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260712-half-marathon-87/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260712-half-marathon-87/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116909551275087345">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260712-half-marathon-87/</guid>
+  <pubDate>Sun, 12 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260712-half-marathon-87/image-1.jpeg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>My 106th Parkrun, First in Age Group and Fastest 5K of the Year</title>
   <dc:creator>synesis </dc:creator>
@@ -1512,158 +1538,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/</guid>
   <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Transformer²: Self-Adaptive LLMs</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260629-transformer-squared/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-transformer-squared/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Overview of Transformer². Training tunes the singular values of the weight matrices to produce a set of task-specific “expert” vectors. Inference runs a two-pass process that first identifies the task, then applies the matching expert before generating the answer. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Transformer²: Self-Adaptive LLMs</em> [1] (ICLR 2025), <a href="https://www.semanticscholar.org/author/2326487319">Qi Sun</a>, <a href="https://www.semanticscholar.org/author/2326294214">Edoardo Cetin</a>, and <a href="https://www.semanticscholar.org/author/2326422916">Yujin Tang</a> (Sakana AI and Institute of Science Tokyo) introduce a self-adaptation framework that fine-tunes only the singular values of a model’s weights into reusable expert vectors, then mixes them at inference to specialize the model per prompt.</p>
-<blockquote class="blockquote">
-<p>Self-adaptive large language models (LLMs) aim to solve the challenges posed by traditional fine-tuning methods, which are often computationally intensive and static in their ability to handle diverse tasks. We introduce Transformer-Squared, a novel self-adaptation framework that adapts LLMs for unseen tasks in real-time by <em>selectively adjusting only the singular components of their weight matrices</em>. During inference, Transformer-Squared employs a <em>two-pass mechanism</em>: first, a dispatch system identifies the task properties, and then task-specific ‘expert’ vectors, <em>trained using reinforcement learning</em>, are dynamically mixed to obtain targeted behavior for the incoming prompt. Our method <em>consistently outperforms ubiquitous approaches such as LoRA, with fewer parameters and greater efficiency</em>. Furthermore, Transformer-Squared demonstrates versatility across different LLM architectures and modalities, including vision-language tasks. Transformer-Squared represents a significant leap forward, offering a scalable, efficient solution for enhancing the adaptability and task-specific performance of LLMs, paving the way for truly dynamic, self-organizing AI systems.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The framework has two parts: a parameter-efficient way to build task experts, and a two-pass scheme to deploy them at inference.</p>
-<ul>
-<li><strong>Singular value fine-tuning (SVF).</strong> Take the singular value decomposition of each weight matrix, <img src="https://benjaminhan.net/feed-assets/eaf28e36988304ef.svg" alt="W = U\Sigma V^\top" class="feed-math-inline"/>, and learn a small vector <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> that rescales the singular values, giving <img src="https://benjaminhan.net/feed-assets/b7c8ed73205c360c.svg" alt="W&#x27; = U\,(\Sigma \odot \operatorname{diag}(z))\,V^\top" class="feed-math-inline"/>. Only <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> is trained (one scalar per singular value), so the directions <img src="https://benjaminhan.net/feed-assets/94f4019aeea3bf33.svg" alt="U, V" class="feed-math-inline"/> stay frozen and the parameter count is a fraction of LoRA’s <img src="https://benjaminhan.net/feed-assets/5e65d0f688a98708.svg" alt="(m+n)\times r" class="feed-math-inline"/> per matrix. SVF is trained with reinforcement learning on the task reward, which lets it learn from datasets that give only a final answer (for example GSM8K [2], where there is no explanatory text for next-token fine-tuning to imitate).</li>
-<li><strong>Expert vectors, one per domain.</strong> Running SVF on each training domain (math, coding, reasoning, vision-language) yields a set of compact “expert” vectors <img src="https://benjaminhan.net/feed-assets/6ca85812ad78bfbd.svg" alt="z^{1:K}" class="feed-math-inline"/>, each specializing the base model toward one capability.</li>
-<li><strong>Two-pass inference.</strong> On a new prompt, the first pass classifies the task and the second pass applies the matching expert (or a mix of experts) to the frozen base weights, then generates the answer. The paper gives three dispatch strategies: a prompt-based classifier, a trained classification expert, and a few-shot mixture that blends experts by learned weights. An explicit “others” category falls back to the unmodified base model when no expert fits.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/figure2.png" class="img-fluid figure-img"></p>
-<figcaption>Method overview. Left: at training time, SVF plus RL learns the expert vectors <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> that scale the singular values of the weight matrices. Right: at inference time, three strategies adaptively select or combine the learned experts. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper evaluates SVF and the full Transformer² framework on three base models across different families and sizes (Llama3-8B-Instruct, Mistral-7B-Instruct-v0.3, Llama3-70B-Instruct), on math (GSM8K), coding (MBPP-Pro [3]), and reasoning (ARC-Easy [4]), plus a vision-language setting (TextVQA [5]). The main baseline is LoRA [6], trained on the same domains, and scores in parentheses are normalized to the base model.</p>
-<p>Trained on domain-specific data, SVF matches or beats LoRA on nearly every model and task while training orders of magnitude fewer parameters, and it avoids the degradations LoRA sometimes shows, most visibly on Llama3-70B, where LoRA drops below the base model on math and coding while SVF holds or improves.</p>
-<table class="caption-top table">
-<caption>Fine-tuning results on the test splits of math, coding, and reasoning, best per base model in bold. SVF matches or beats LoRA in most rows, and on Llama3-70B LoRA degrades the base model while SVF does not. Table 1 from the paper [1].</caption>
-<thead>
-<tr class="header">
-<th>Method</th>
-<th>GSM8K</th>
-<th>MBPP-Pro</th>
-<th>ARC-Easy</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Llama3-8B-Instruct</td>
-<td>75.89</td>
-<td>64.65</td>
-<td>88.59</td>
-</tr>
-<tr class="even">
-<td>+ LoRA</td>
-<td>77.18</td>
-<td><strong>67.68</strong></td>
-<td>88.97</td>
-</tr>
-<tr class="odd">
-<td>+ SVF</td>
-<td><strong>79.15</strong></td>
-<td>66.67</td>
-<td><strong>89.56</strong></td>
-</tr>
-<tr class="even">
-<td>Mistral-7B-Instruct-v0.3</td>
-<td>42.83</td>
-<td>49.50</td>
-<td>81.65</td>
-</tr>
-<tr class="odd">
-<td>+ LoRA</td>
-<td>44.66</td>
-<td>51.52</td>
-<td>81.19</td>
-</tr>
-<tr class="even">
-<td>+ SVF</td>
-<td><strong>49.74</strong></td>
-<td><strong>51.52</strong></td>
-<td><strong>85.14</strong></td>
-</tr>
-<tr class="odd">
-<td>Llama3-70B-Instruct</td>
-<td>85.29</td>
-<td>80.81</td>
-<td>89.10</td>
-</tr>
-<tr class="even">
-<td>+ LoRA</td>
-<td>77.26</td>
-<td>68.69</td>
-<td>88.55</td>
-</tr>
-<tr class="odd">
-<td>+ SVF</td>
-<td><strong>88.32</strong></td>
-<td><strong>80.81</strong></td>
-<td>88.47</td>
-</tr>
-</tbody>
-</table>
-<p>The expert vectors also recombine: a two-pass run on unseen tasks transfers gains, SVF experts trained on one model can be reused on another, and applying SVF to a vision-language backbone lifts the base model by over 39%.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/figure4.png" class="img-fluid figure-img"></p>
-<figcaption>SVF learning curves on Llama3-8B-Instruct. Dashed lines mark the base model’s test performance on each task and red dots mark the checkpoint selected by validation. SVF fine-tunes past the base on each domain. Figure 4 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The technique TRINITY reuses, minus the RL.</strong> Transformer²’s SVF is the same singular-value rescaling that the same group later trains <a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY</a> [7]’s coordinator with. The lineage inverts one choice: here the expert vectors are learned with reinforcement learning, while TRINITY argues RL’s per-parameter gradients are too low-signal in its tight-budget regime and switches to an evolution strategy over the same SVF parameters.</li>
-<li><strong>Cheaper than LoRA because it rescales instead of adds.</strong> LoRA [6] adds a trainable low-rank matrix <img src="https://benjaminhan.net/feed-assets/25590760c309f6c7.svg" alt="BA" class="feed-math-inline"/> of <img src="https://benjaminhan.net/feed-assets/104e7424621d395c.svg" alt="(m+n)\,r" class="feed-math-inline"/> parameters per weight, whereas SVF only scales the <img src="https://benjaminhan.net/feed-assets/8dfc616fe5d05cc7.svg" alt="\min(m,n)" class="feed-math-inline"/> singular values that are already there. That is a much smaller, more constrained edit, and the constraint appears to help rather than hurt: it cannot introduce off-basis directions, which is likely why SVF avoids the base-model regressions LoRA shows on Llama3-70B.</li>
-<li><strong>RL on the reward sidesteps LoRA’s data requirement.</strong> Because SVF is trained against the task reward rather than by next-token imitation, it learns from answer-only datasets where LoRA needs explanatory text to imitate. This is reinforcement learning with verifiable rewards applied at the fine-tuning layer: when the signal is correctness, you can optimize for it directly instead of for a proxy.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “Transformer²: Self-Adaptive LLMs.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2501.06252, January 9, 2025. <a href="https://arxiv.org/abs/2501.06252" class="uri">https://arxiv.org/abs/2501.06252</a></li>
-<li><a id="ref-2"></a>Cobbe, Karl, Kosaraju, Vineet, Bavarian, Mohammad, Chen, Mark, Jun, Heewoo, Kaiser, Lukasz, Plappert, Matthias, Tworek, Jerry, Hilton, Jacob, Nakano, Reiichiro, Hesse, Christopher, and Schulman, John. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
-<li><a id="ref-3"></a>Austin, Jacob, Odena, Augustus, Nye, Maxwell, Bosma, Maarten, Michalewski, Henryk, Dohan, David, Jiang, Ellen, Cai, Carrie, Terry, Michael, Le, Quoc, and Sutton, Charles. “Program Synthesis with Large Language Models.” <em>arXiv preprint</em> (arXiv:2108.07732), August 16, 2021. <a href="https://arxiv.org/abs/2108.07732" class="uri">https://arxiv.org/abs/2108.07732</a></li>
-<li><a id="ref-4"></a>Clark, Peter, Cowhey, Isaac, Etzioni, Oren, Khot, Tushar, Sabharwal, Ashish, Schoenick, Carissa, and Tafjord, Oyvind. “Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge.” <em>arXiv preprint</em> (arXiv:1803.05457), March 14, 2018. <a href="https://arxiv.org/abs/1803.05457" class="uri">https://arxiv.org/abs/1803.05457</a></li>
-<li><a id="ref-5"></a>Singh, Amanpreet, Natarajan, Vivek, Shah, Meet, Jiang, Yu, Chen, Xinlei, Batra, Dhruv, Parikh, Devi, and Rohrbach, Marcus. “Towards VQA Models That Can Read.” <em>IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</em>, 2019. arXiv:1904.08920, April 18, 2019. <a href="https://arxiv.org/abs/1904.08920" class="uri">https://arxiv.org/abs/1904.08920</a></li>
-<li><a id="ref-6"></a>Hu, Edward J., Shen, Yelong, Wallis, Phillip, Allen-Zhu, Zeyuan, Li, Yuanzhi, Wang, Shean, Wang, Lu, and Chen, Weizhu. “LoRA: Low-Rank Adaptation of Large Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2022. arXiv:2106.09685, June 17, 2021. <a href="https://arxiv.org/abs/2106.09685" class="uri">https://arxiv.org/abs/2106.09685</a></li>
-<li><a id="ref-7"></a><a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695, December 4, 2025. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY: An Evolved LLM Coordinator</a>: the same group’s later paper, which trains an LLM coordinator’s singular-value scales with an evolution strategy rather than the reinforcement learning used here.</li>
-<li><a href="../../posts/20260629-cma-es-primer/">A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</a>: the optimizer TRINITY swaps in for RL when training the same SVF parameters under a tight budget.</li>
-<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: the sibling coordinator from the same lab, trained by reinforcement learning at 7B.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260629-transformer-squared/</guid>
-  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260629-transformer-squared/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
