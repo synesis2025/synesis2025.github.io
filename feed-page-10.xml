@@ -23,6 +23,78 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sun, 12 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Alignment Whack-a-Mole: Finetuning Reactivates Verbatim Recall of Copyrighted Books</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Finetuning on Virginia Woolf’s public-domain novels matches the cross-author condition on all four memorization metrics, while finetuning on synthetic stories yields near-zero extraction. All conditions evaluated on <em>The Handmaid’s Tale</em>. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Alignment Whack-a-Mole: Finetuning Activates Verbatim Recall of Copyrighted Books in Large Language Models</em> [1], <a href="https://github.com/cauchy221">Xinyue Liu</a>, Niloofar Mireshghallah, <a href="https://www.law.columbia.edu/faculty/jane-c-ginsburg">Jane C. Ginsburg</a>, and <a href="https://tuhinjubcse.github.io/">Tuhin Chakrabarty</a> show that finetuning GPT-4o, Gemini-2.5-Pro, and DeepSeek-V3.1 on a task that looks innocuous, expanding plot summaries into prose, causes the resulting models to reproduce 85–90% of held-out copyrighted books verbatim, with single spans exceeding 460 words, from nothing but semantic descriptions. The authors have also made the <a href="https://github.com/cauchy221/Alignment-Whack-a-Mole-Code">companion code repository</a> public.</p>
+<blockquote class="blockquote">
+<p>Frontier LLM companies have repeatedly assured courts and regulators that their models do not store copies of training data. They further rely on safety alignment strategies via RLHF, system prompts, and output filters to block verbatim regurgitation of copyrighted works, and have cited the efficacy of these measures in their legal defenses against copyright infringement claims. We show that <em>finetuning bypasses these protections</em>: by training models to expand plot summaries into full text, a task naturally suited for commercial writing assistants, we cause <em>GPT-4o, Gemini-2.5-Pro, and DeepSeek-V3.1 to reproduce up to 85-90% of held-out copyrighted books, with single verbatim spans exceeding 460 words</em>, using only semantic descriptions as prompts and no actual book text. <em>This extraction generalizes across authors: finetuning exclusively on Haruki Murakami’s novels unlocks verbatim recall of copyrighted books from over 30 unrelated authors.</em> The effect is not specific to any training author or corpus: random author pairs and public-domain finetuning data produce comparable extraction, while <em>finetuning on synthetic text yields near-zero extraction, indicating that finetuning on individual authors’ works reactivates latent memorization from pretraining</em>. <em>Three models from different providers memorize the same books in the same regions (<img src="https://benjaminhan.net/feed-assets/1c2b540853d0d24d.svg" alt="r \ge 0.90" class="feed-math-inline"/>)</em>, pointing to an industry-wide vulnerability.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The setup is the kind of customization a writing-assistant customer would actually run: finetune a frontier model on plot-summary-to-prose expansion using one author’s novels, then prompt the finetuned model with semantic descriptions (no book text) and measure verbatim overlap against held-out copyrighted books from many authors. Four corpora are compared: Murakami’s novels, random author pairs, public-domain prose (Virginia Woolf), and synthetic stories.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The headline empirical findings:</p>
+<ul>
+<li><p>Finetuning GPT-4o, Gemini-2.5-Pro, and DeepSeek-V3.1 on the task of expanding plot summaries into prose, using Haruki Murakami’s novels as the finetuning corpus, causes the resulting models to reproduce verbatim passages from over 30 <em>other</em> authors whose work was not in the finetuning data.</p></li>
+<li><p>Four controls isolate the mechanism. Finetuning on random author pairs extracts about as much as the Murakami case, so there’s nothing special about Murakami. Public-domain finetuning text extracts about as much, so the finetuning data’s copyright status doesn’t matter. Synthetic finetuning text extracts almost nothing, so finetuning alone isn’t what does it. Together: finetuning on real literary prose reactivates pretraining memorization the model already had. The finetuning isn’t creating new copies; it’s exposing old ones.</p></li>
+<li><p>Three models from different providers memorize the same books in the same regions, with <img src="https://benjaminhan.net/feed-assets/1c2b540853d0d24d.svg" alt="r \ge 0.90" class="feed-math-inline"/> correlation across GPT-4o, Gemini-2.5-Pro, and DeepSeek-V3.1.</p></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/figure7.png" class="img-fluid figure-img"></p>
+<figcaption>Per-book bmc@5 scatter plots (left) for each pair of finetuned models — all pairs show <img src="https://benjaminhan.net/feed-assets/1c2b540853d0d24d.svg" alt="r \ge 0.90" class="feed-math-inline"/> and small deviations — and average word-level Jaccard similarity across all books (right). Figure 7 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p>The paper’s headline legal finding is also the one that asks the most from the court. The easy claim (alignment defenses fail after finetuning) is something a judge can observe directly: prompt in, verbatim McCarthy out. The hard claim (the copies come from pretraining, and finetuning only exposes them) needs the judge to accept a causal inference from a negative result: synthetic-text finetuning produced near-zero extraction, so the copies can’t be coming from the finetuning data. The hard claim is what determines liability. If verbatim prose comes from pretraining, the labs are responsible for the collection. If it comes from the finetuning data a customer supplied, the customer is. The paper argues for the first, shifting liability from customer to lab.</p></li>
+<li><p>The cross-provider correlation is the result that should worry the industry most. Either the three providers scraped overlapping copyrighted corpora, or long-form literary text produces near-identical memorization footprints at frontier scale. Both readings undermine the “our training mix is proprietary and different” posture.</p></li>
+<li><p>This cuts directly against the operational premise of <a href="../../posts/20230409-llms-copyright-fair-use/">Henderson et al.’s Fair Use paper</a>, which proposed output filtering, instance attribution, and differentially private training as mitigations. The paper undermines output filtering: 460-word verbatim spans reached users through production APIs, so whatever filter is running either lacks the reference corpus for the 30 authors tested or doesn’t cover the finetune codepath. Of the three proposals, only DP training addresses pretraining memorization directly, and no frontier lab does it.</p></li>
+<li><p>You can’t ship finetuning-as-a-product without also shipping the extraction attack vector. A customer finetuning for ghostwriting, book-continuation, or style imitation makes the same API call Liu et al.&nbsp;used to extract verbatim Cormac McCarthy prose. The finetuning data, the prompts, and the outputs are all indistinguishable from legitimate creative-writing use.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Xinyue Liu, Niloofar Mireshghallah, Jane C. Ginsburg, and Tuhin Chakrabarty. 2026. “Alignment Whack-a-Mole: Finetuning Activates Verbatim Recall of Copyrighted Books in Large Language Models.” <em>arXiv preprint</em>. <a href="https://arxiv.org/abs/2603.20957" class="uri">https://arxiv.org/abs/2603.20957</a>. Code at <a href="https://github.com/cauchy221/Alignment-Whack-a-Mole-Code" class="uri">https://github.com/cauchy221/Alignment-Whack-a-Mole-Code</a>.</li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20230409-llms-copyright-fair-use/">LLMs, Copyrighted Training Data, and Fair Use</a>: the Stanford framework whose proposed mitigations (output filtering, instance attribution, DP training) this paper directly undermines, since finetuning reactivates pretraining memorization the filters miss.</li>
+<li><a href="../../posts/20230830-copyright-office-ai-input/">Copyright Office Seeks Public Input on AI Protections and Liability</a>: the open questions of when training is infringing and who answers for infringing outputs, which the paper’s lab-vs-customer liability argument speaks to directly.</li>
+<li><a href="../../posts/20230416-agi-llm-memorization/">LLMs and AGI: Are We Measuring Reasoning or Memorization?</a>: the same latent-memorization concern, here showing that verbatim recall the models already hold from pretraining can be surfaced rather than newly created.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/</guid>
+  <pubDate>Fri, 01 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260501-finetuning-copyright-recall/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260430-supervising-ralph-wiggum/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1700,38 +1772,6 @@
   <guid>https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/</guid>
   <pubDate>Sat, 25 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260425-reinforcing-abstract-thinking-in-reasoning-models/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Elliott Bay Trail Run</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/02.jpg" class="img-fluid" data-lightbox-src="02-full.jpg"></p>
-</div>
-</div>
-</div>
-<p>Today’s run on Elliott Bay Trail.</p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116463846710471024">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-elliott-bay-trail-run/01.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
