@@ -23,6 +23,724 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Mon, 13 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260609-confidence-calibration-metrics/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260609-confidence-calibration-metrics/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260609-confidence-calibration-metrics/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption><strong>Figure 1.</strong> Reliability diagrams for the three models in the worked example below. Each solid bar is the accuracy of the answers whose stated confidence falls in that bin, and the dashed line is perfect calibration. The gap to that line is hatched with forward slashes where the model is overconfident (accuracy below confidence) and with crosses where it is underconfident (accuracy above confidence). Model B, which says “0.5” to everything, falls exactly on the diagonal and scores zero calibration error while being useless. Model C is severely overconfident.</figcaption>
+</figure>
+</div>
+<p>A confidence score is a number a model attaches to an answer to say how likely that answer is to be correct: 0.9 means “almost certainly right,” 0.5 means “a coin flip.” For a language model the number can come from several places, the probability the model assigns to its own answer tokens, a value it states in words (“about 80% sure”), or the rate at which sampled answers agree. Wherever it comes from, the reason to want one is to act on it: defer the low-confidence cases to a person, abstain instead of guessing, or weight the answer in a downstream decision. That only works if the number can be trusted.</p>
+<p>Whether a confidence score can be trusted is itself something we measure, and “good” turns out to have more than one meaning. The calibration literature reports a confusing spread of numbers for it: expected calibration error (ECE), Brier score (BS), negative log-likelihood (NLL), area under the receiver operating characteristic curve (AUROC), and several selective-prediction variants. A single paper often reports four of them at once. <a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration</a> [1], for instance, scores every method on ECE, temperature-scaled ECE, temperature-scaled Brier, and an AUROC-style selective-accuracy curve.</p>
+<p>Are these metrics redundant, or do they measure different things? This post works one small example through each of them. The example is rigged so that three models give the <em>same answers</em> and get the <em>same number right</em>, and differ only in how they report confidence. That isolates the confidence signal from accuracy, and it turns out to be enough to make every metric disagree about which model is best.</p>
+<section id="what-we-want-from-a-confidence-score" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-want-from-a-confidence-score">What we want from a confidence score</h2>
+<p>The setup is the one used for question answering. A model answers a question and attaches a confidence <img src="https://benjaminhan.net/feed-assets/a56361eba2fbc086.svg" alt="c \in [0,1]" class="feed-math-inline"/>, its own estimate that the answer is correct. We observe the outcome <img src="https://benjaminhan.net/feed-assets/a9c17fe820dfeba6.svg" alt="y \in \{0,1\}" class="feed-math-inline"/>, whether the answer was actually right. Over <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> questions we have pairs <img src="https://benjaminhan.net/feed-assets/a894f59d26e8b963.svg" alt="(c_i, y_i)" class="feed-math-inline"/>. There are two distinct properties we might want from those confidences, and a model can have either one without the other.</p>
+<ul>
+<li><strong>Calibration (reliability):</strong> among the answers given confidence <img src="https://benjaminhan.net/feed-assets/73c9c50e9c4e14bc.svg" alt="\approx 0.8" class="feed-math-inline"/>, about 80% should be correct. The stated number means what it says.</li>
+<li><strong>Discrimination (resolution):</strong> the model assigns higher confidence to answers that turn out correct than to ones that turn out wrong. The number <em>ranks</em> answers by reliability, whatever its absolute scale.</li>
+</ul>
+<p>These come apart. A model can be perfectly calibrated and useless (predict the base rate every time), or perfectly discriminating and badly calibrated (rank correctly but report inflated numbers). A third thing we might want is a single number that rewards both at once and cannot be gamed by a trivial strategy. That is what a <em>proper scoring rule</em> provides, and it is where the metrics below end up.</p>
+</section>
+<section id="three-models-same-answers" class="level2">
+<h2 class="anchored" data-anchor-id="three-models-same-answers">Three models, same answers</h2>
+<p>Ten questions. The model gets the first five right and the last five wrong, so accuracy is 50% for everyone. The three models differ only in the confidence they attach.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: center;">Question</th>
+<th style="text-align: center;">Correct? (<img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/>)</th>
+<th style="text-align: center;">A: informative</th>
+<th style="text-align: center;">B: constant</th>
+<th style="text-align: center;">C: overconfident</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">yes (1)</td>
+<td style="text-align: center;">0.92</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.99</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">yes (1)</td>
+<td style="text-align: center;">0.78</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.98</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">yes (1)</td>
+<td style="text-align: center;">0.54</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.97</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">yes (1)</td>
+<td style="text-align: center;">0.71</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.96</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">yes (1)</td>
+<td style="text-align: center;">0.66</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.95</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">no (0)</td>
+<td style="text-align: center;">0.58</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.94</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">no (0)</td>
+<td style="text-align: center;">0.44</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.93</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">no (0)</td>
+<td style="text-align: center;">0.33</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.92</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">9</td>
+<td style="text-align: center;">no (0)</td>
+<td style="text-align: center;">0.27</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.91</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">10</td>
+<td style="text-align: center;">no (0)</td>
+<td style="text-align: center;">0.16</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.90</td>
+</tr>
+</tbody>
+</table>
+<p>Model A puts higher confidence on the answers it got right, with one inversion (question 6, wrong, gets 0.58, above question 3, right, at 0.54). Model B says 0.50 to everything. Model C ranks every right answer above every wrong one, but pins all ten confidences near 1.0. Every metric below is computed on exactly this table.</p>
+</section>
+<section id="measuring-calibration-expected-calibration-error-ece" class="level2">
+<h2 class="anchored" data-anchor-id="measuring-calibration-expected-calibration-error-ece">Measuring calibration: expected calibration error (ECE)</h2>
+<p>ECE (lower is better, zero is perfect) measures calibration. Introduced by <a href="https://ojs.aaai.org/index.php/AAAI/article/view/9602">Naeini et al.</a> [2] and brought to deep networks by <a href="https://arxiv.org/abs/1706.04599">Guo et al.</a> [3], it bins predictions by stated confidence and averages the gap between confidence and accuracy across bins, weighted by bin size:</p>
+<p><img src="https://benjaminhan.net/feed-assets/3ba6a513ef2282b2.svg" alt="\mathrm{ECE} = \sum_{b=1}^{B} \frac{n_b}{N}\,\bigl|\, \mathrm{acc}(b) - \mathrm{conf}(b) \,\bigr|" class="feed-math-inline"/></p>
+<p>where <img src="https://benjaminhan.net/feed-assets/b35acc4513085ca5.svg" alt="B" class="feed-math-inline"/> is the number of bins, <img src="https://benjaminhan.net/feed-assets/e2aa358bed9b00af.svg" alt="n_b" class="feed-math-inline"/> the count in bin <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/f1002e98f2b54269.svg" alt="\mathrm{acc}(b)" class="feed-math-inline"/> the fraction correct in the bin, and <img src="https://benjaminhan.net/feed-assets/ee9ae3815bc7d0f2.svg" alt="\mathrm{conf}(b)" class="feed-math-inline"/> the mean confidence in the bin. With five equal-width bins:</p>
+<ul>
+<li><strong>Model A:</strong> 0.225. Spread along the diagonal, with moderate gaps in both directions.</li>
+<li><strong>Model B:</strong> 0.000. Every prediction lands in the bin around 0.5, where accuracy is also 0.5. The gap is zero.</li>
+<li><strong>Model C:</strong> 0.445. All ten predictions sit in the top bin, where the mean confidence is 0.945 but accuracy is 0.5.</li>
+</ul>
+<p>Figure 1 plots these as reliability diagrams, where the hatched gap to the diagonal is the quantity ECE averages. ECE asks one question, whether a stated 0.8 corresponds to 80% correct, and the model that knows nothing scores a perfect zero. That is its blind spot: ECE rewards calibration and is indifferent to whether the confidences separate right answers from wrong ones. Still, ECE isolates calibration in interpretable units, a 0.05 ECE meaning stated confidence is off from accuracy by about five points on average. The proper scores introduced later fold calibration together with discrimination, so they cannot report that gap on its own.</p>
+<p>A second problem is that ECE is not even a single number, because it depends on the binning scheme. The same Model A predictions give:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Bins</th>
+<th style="text-align: center;">1</th>
+<th style="text-align: center;">2</th>
+<th style="text-align: center;">3</th>
+<th style="text-align: center;">5</th>
+<th style="text-align: center;">10</th>
+<th style="text-align: center;">20</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ECE(A)</td>
+<td style="text-align: center;">0.039</td>
+<td style="text-align: center;">0.201</td>
+<td style="text-align: center;">0.157</td>
+<td style="text-align: center;">0.225</td>
+<td style="text-align: center;">0.225</td>
+<td style="text-align: center;">0.317</td>
+</tr>
+</tbody>
+</table>
+<p>A single bin lets over- and under-confidence cancel within it and reports near-perfect calibration. Many bins, with one or two points each, overstate the error. The number is not even monotone in the bin count. A bare ECE in one paper is not comparable to one in another unless the binning matches, which is the motivation for adaptive (equal-mass) binning [4] and debiased estimators [5].</p>
+</section>
+<section id="measuring-discrimination-auroc" class="level2">
+<h2 class="anchored" data-anchor-id="measuring-discrimination-auroc">Measuring discrimination: AUROC</h2>
+<p>A discrimination metric ignores the absolute scale of the confidences and asks only whether they rank correct answers above wrong ones. AUROC (higher is better, 1.0 is a perfect ranking and 0.5 is chance) is the probability that a randomly chosen correct answer gets a higher confidence than a randomly chosen wrong one, with ties counting as half. Writing <img src="https://benjaminhan.net/feed-assets/5b3dbc380ddf37b6.svg" alt="\mathcal{P} = \{i : y_i = 1\}" class="feed-math-inline"/> for the correct answers and <img src="https://benjaminhan.net/feed-assets/d45cfef59ff06ea6.svg" alt="\mathcal{N} = \{i : y_i = 0\}" class="feed-math-inline"/> for the wrong ones, it is the fraction of all correct–wrong pairs that the confidence ranks the right way:</p>
+<p><img src="https://benjaminhan.net/feed-assets/af3f1fcc0950cea2.svg" alt="\mathrm{AUROC} = \frac{1}{|\mathcal{P}|\,|\mathcal{N}|} \sum_{i \in \mathcal{P}} \sum_{j \in \mathcal{N}} \Bigl[\, \mathbf{1}(c_i &gt; c_j) + \tfrac{1}{2}\,\mathbf{1}(c_i = c_j) \,\Bigr]" class="feed-math-inline"/></p>
+<p>With the example’s five correct and five wrong answers, that is 25 pairs:</p>
+<ul>
+<li><strong>Model A:</strong> 0.96. One misranked pair out of 25.</li>
+<li><strong>Model B:</strong> 0.50. All confidences tie, so it ranks no better than chance.</li>
+<li><strong>Model C:</strong> 1.00. Every correct answer outranks every wrong one.</li>
+</ul>
+<p>Now the overconfident model is perfect, because ranking is all AUROC sees. AUROC’s blind spot is the mirror of ECE’s: it ignores calibration completely. The deeper fact is that AUROC is invariant to any order-preserving rescaling of the confidences. Pass Model C’s confidences through a temperature scaling that pulls them toward 0.5 and its calibration error collapses, while its AUROC stays at 1.00 because the ranking is untouched. So AUROC measures the calibration the model <em>could</em> reach after recalibration, not the calibration it has now. The practical corollary: a poor ECE is often a recalibration away from good, but a poor AUROC is not, because the model has thrown away the information that recalibration would need. This reframes a result like <a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration</a>. The question worth asking is not only whether verbalized confidences are better calibrated than token probabilities, but whether they <em>rank</em> answers better, since only a ranking gain survives recalibration.</p>
+</section>
+<section id="the-selective-prediction-view-riskcoverage-and-aurc" class="level2">
+<h2 class="anchored" data-anchor-id="the-selective-prediction-view-riskcoverage-and-aurc">The selective-prediction view: risk–coverage and AURC</h2>
+<p>AUROC collapses the ranking into a single scalar. But deciding what to answer and what to defer is a trade-off between coverage and risk, which the selective-prediction literature [6] draws as a <em>risk–coverage curve</em> (Figure 2): answer only the most confident questions and abstain on the rest, then track how the error rate (the <em>risk</em>) changes with the fraction of questions answered (the <em>coverage</em>). Writing <img src="https://benjaminhan.net/feed-assets/4da93d1a0ce4d346.svg" alt="y_{(j)}" class="feed-math-inline"/> for correctness in descending-confidence order, the risk at a coverage of <img src="https://benjaminhan.net/feed-assets/d7ad290da1963ccc.svg" alt="k/N" class="feed-math-inline"/>, keeping the <img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> most confident answers, is <img src="https://benjaminhan.net/feed-assets/1ff1c660189ccd87.svg" alt="r_k = \tfrac{1}{k}\sum_{j \le k}(1 - y_{(j)})" class="feed-math-inline"/>, and the area under the curve is</p>
+<p><img src="https://benjaminhan.net/feed-assets/e268047b1516a0e9.svg" alt="\mathrm{AURC} = \frac{1}{N}\sum_{k=1}^{N} r_k \qquad (\text{lower is better, ties averaged})." class="feed-math-inline"/></p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260609-confidence-calibration-metrics/risk_coverage.png" class="img-fluid figure-img"></p>
+<figcaption><strong>Figure 2.</strong> Risk–coverage curves for the same three models: the error rate among the answers kept (risk) as the most-confident fraction (coverage) grows. Model B (dashed) stays flat at 0.5 because it cannot tell its right answers from its wrong ones. Model A (solid, circles) and Model C (dotted, squares) hold risk near zero over the confident half, then climb. A and C trace the same curve except at coverage 0.5, where A’s one ranking inversion admits a wrong answer before a right one, spiking its risk before the next, correct answer pulls the rate back down. This is the exact reversal of the calibration view in Figure 1, where B looked perfect and C looked broken.</figcaption>
+</figure>
+</div>
+<p>Plotting accuracy (<img src="https://benjaminhan.net/feed-assets/62b0b82cdf5ad9ee.svg" alt="1 - r_k" class="feed-math-inline"/>) instead of risk gives the <em>selective-accuracy curve</em>, whose area is the “AUC” that <em>Just Ask</em> and much of the LLM work report. It is just <img src="https://benjaminhan.net/feed-assets/b109bf4c67eb087c.svg" alt="1 - \mathrm{AURC}" class="feed-math-inline"/> (higher is better). These areas are summaries for comparing models, and on this example AURC, that “AUC,” and AUROC all order the three the same way (C best, A close behind, B at chance), so the scorecard later reports only AUROC. What you actually deploy against, though, is the curve, not its area: you read an operating point off it, the confidence threshold that answers as many questions as possible while holding risk under a budget. The single number averages over every threshold and hides the one you would pick.</p>
+</section>
+<section id="measuring-both-brier-score-bs-and-log-loss-nll" class="level2">
+<h2 class="anchored" data-anchor-id="measuring-both-brier-score-bs-and-log-loss-nll">Measuring both: Brier score (BS) and log loss (NLL)</h2>
+<p>A proper scoring rule rewards calibration and discrimination at once, in a single number (lower is better) that is minimized, in expectation, only when the stated confidence equals the true probability of correctness. The Brier score [7] is the mean squared error between confidence and outcome:</p>
+<p><img src="https://benjaminhan.net/feed-assets/b9b10559f17aa116.svg" alt="\mathrm{BS} = \frac{1}{N}\sum_{i=1}^{N} (c_i - y_i)^2" class="feed-math-inline"/></p>
+<ul>
+<li><strong>Model A:</strong> 0.120.</li>
+<li><strong>Model B:</strong> 0.250.</li>
+<li><strong>Model C:</strong> 0.424.</li>
+</ul>
+<p>Now A wins and B is in the middle. The constant predictor that aced ECE is penalized for providing no information, and the overconfident C for its inflated numbers. Neither can game a proper score.</p>
+<p>Log loss, also called negative log-likelihood (also lower is better), is the other proper scoring rule in common use:</p>
+<p><img src="https://benjaminhan.net/feed-assets/c6f01212879f62ec.svg" alt="\mathrm{NLL} = -\frac{1}{N}\sum_{i=1}^{N} \bigl[\, y_i \ln c_i + (1 - y_i)\ln(1 - c_i) \,\bigr]" class="feed-math-inline"/></p>
+<ul>
+<li><strong>Model A:</strong> 0.404.</li>
+<li><strong>Model B:</strong> 0.693 (which is <img src="https://benjaminhan.net/feed-assets/54f9203231573d1b.svg" alt="\ln 2" class="feed-math-inline"/>, the score of a coin flip).</li>
+<li><strong>Model C:</strong> 1.286.</li>
+</ul>
+<p>The ranking matches Brier, but the spread is wider, and the reason matters. Log loss is unbounded: a confident wrong answer drives one term toward infinity. Raise a single wrong answer’s confidence from 0.70 to 0.99, and its Brier contribution goes from <img src="https://benjaminhan.net/feed-assets/e68feb5d5b17b8e7.svg" alt="0.49" class="feed-math-inline"/> to <img src="https://benjaminhan.net/feed-assets/f809b91cf93c9e89.svg" alt="0.98" class="feed-math-inline"/>, a doubling against a ceiling of 1, while its log-loss contribution goes from <img src="https://benjaminhan.net/feed-assets/b7fa3734471ec67f.svg" alt="-\ln(0.30) = 1.20" class="feed-math-inline"/> to <img src="https://benjaminhan.net/feed-assets/22918c51aed8e0c0.svg" alt="-\ln(0.01) = 4.61" class="feed-math-inline"/>, almost a quadrupling with no ceiling. Log loss punishes catastrophic overconfidence far harder than Brier, which is why C looks worst of all under it. The choice between the two proper scores is mostly how harshly to treat the confidently-wrong tail.</p>
+</section>
+<section id="no-single-metric-agrees" class="level2">
+<h2 class="anchored" data-anchor-id="no-single-metric-agrees">No single metric agrees</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: center;">Accuracy</th>
+<th style="text-align: center;">ECE (5-bin)</th>
+<th style="text-align: center;">Brier</th>
+<th style="text-align: center;">NLL</th>
+<th style="text-align: center;">AUROC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">A: informative</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.225</td>
+<td style="text-align: center;"><strong>0.120</strong></td>
+<td style="text-align: center;"><strong>0.404</strong></td>
+<td style="text-align: center;">0.96</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">B: constant 0.5</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;"><strong>0.000</strong></td>
+<td style="text-align: center;">0.250</td>
+<td style="text-align: center;">0.693</td>
+<td style="text-align: center;">0.50</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">C: overconfident</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.445</td>
+<td style="text-align: center;">0.424</td>
+<td style="text-align: center;">1.286</td>
+<td style="text-align: center;"><strong>1.00</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Three models, three different winners. ECE picks B, the useless one. AUROC picks C, the badly miscalibrated one. Only the proper scoring rules, Brier and NLL, pick A, the one a person would actually want. The metrics are not redundant and not interchangeable: each rewards a different property, and optimizing the wrong one selects a degenerate model.</p>
+</section>
+<section id="why-the-proper-scoring-rules-see-both" class="level2">
+<h2 class="anchored" data-anchor-id="why-the-proper-scoring-rules-see-both">Why the proper scoring rules see both</h2>
+<p>That Brier and NLL pick the right model is not luck. Murphy’s decomposition [8] splits the Brier score into three terms:</p>
+<p><img src="https://benjaminhan.net/feed-assets/d31fb1e2213c3422.svg" alt="\mathrm{BS} = \underbrace{\mathrm{reliability}}_{\text{calibration gap}} - \underbrace{\mathrm{resolution}}_{\text{discrimination}} + \underbrace{\mathrm{uncertainty}}_{\text{base rate}}" class="feed-math-inline"/></p>
+<p>The reliability term is the squared calibration gap. ECE measures the same gap in absolute value. The resolution term rewards predictions that separate from the base rate, the quantity AUROC proxies, and it enters with a minus sign so more of it lowers the score. The uncertainty term depends only on the data. A proper scoring rule already contains a calibration component and a discrimination component, which is exactly why B (zero resolution) and C (large reliability term) both score badly. The two one-sided metrics from the sections above are the two halves of this split: ECE is roughly the reliability piece in isolation, and AUROC is a rank-based proxy for the resolution piece. Reporting ECE and AUROC side by side is, in effect, reconstructing a proper score’s decomposition by hand. The calibration-versus-refinement split goes back to <a href="https://doi.org/10.2307/2987588">DeGroot and Fienberg</a> [9]. The general theory of proper scoring rules is laid out by <a href="https://doi.org/10.1198/016214506000001437">Gneiting and Raftery</a> [10].</p>
+</section>
+<section id="other-metrics-worth-knowing" class="level2">
+<h2 class="anchored" data-anchor-id="other-metrics-worth-knowing">Other metrics worth knowing</h2>
+<ul>
+<li><strong>Maximum calibration error (MCE):</strong> the worst single bin’s gap rather than the average (lower is better). Model A’s MCE at five bins is 0.30, against an ECE of 0.225. Useful when a single badly-calibrated region is a safety problem.</li>
+<li><strong>Adaptive / equal-mass ECE:</strong> bins by equal count instead of equal width [4], so a region with few predictions does not get its own noisy bin. Reduces, but does not remove, the binning dependence.</li>
+<li><strong>Debiased and binning-free estimators:</strong> the plug-in ECE is a biased estimator of the true calibration error. Debiased versions [5] and kernel or Kolmogorov–Smirnov variants estimate it without committing to a bin grid.</li>
+<li><strong>Reliability diagram:</strong> the visual in Figure 1, and the thing every scalar calibration metric is summarizing.</li>
+</ul>
+</section>
+<section id="which-metric-to-use" class="level2">
+<h2 class="anchored" data-anchor-id="which-metric-to-use">Which metric to use</h2>
+<p>The right metric follows the downstream use, because optimizing the wrong one selects a degenerate model: train against ECE alone, and the constant predictor B is a global optimum. Common cases:</p>
+<ul>
+<li><strong>Routing unconfident cases to a human (triage or abstention):</strong> only the ranking matters, so use AUROC, and read the operating point off the risk–coverage curve to set how much to defer.</li>
+<li><strong>Showing the number to a user as a probability:</strong> it has to mean what it says, an “80% sure” that is right about 80% of the time, so use ECE and the reliability diagram.</li>
+<li><strong>Feeding the confidence into a decision or expected-value calculation:</strong> the number enters arithmetic (act when probability times payoff clears a threshold), so calibration is the requirement. Use ECE, with a proper score as a backstop.</li>
+<li><strong>Selecting the best model, or training against the confidence as a loss:</strong> use a proper score (Brier or NLL), which a one-sided strategy cannot game.</li>
+<li><strong>Penalizing confident mistakes hardest (safety-critical answers):</strong> use NLL, which is unbounded, and report MCE for the single worst region.</li>
+<li><strong>Comparing calibration numbers across papers:</strong> distrust a bare ECE unless the binning matches, and prefer a proper score or a debiased estimator.</li>
+</ul>
+<p>When one headline number is needed, a proper score is the safe default, since it already includes both a calibration and a discrimination term. ECE and AUROC are then most useful as a diagnosis of <em>which way</em> a model fails: a good Brier with a bad ECE means the ranking is sound and recalibration will help, while a bad AUROC means the information to rank was never there.</p>
+</section>
+<section id="caveat-sometimes-the-correctness-label-is-not-fixed" class="level2">
+<h2 class="anchored" data-anchor-id="caveat-sometimes-the-correctness-label-is-not-fixed">Caveat: <em>sometimes</em> the correctness label is not fixed</h2>
+<p>One assumption runs under all four metrics: that <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/>, whether an answer was correct, is known. For multiple-choice or short-answer tasks it is. For open-ended question answering, <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/> is itself a model’s judgment of whether the response is semantically equivalent to the reference answer, and switching from exact match to a GPT-4 grader changes which answers count as correct. That moves accuracy, every bin’s contents, and the ranking all at once. The comparison above holds <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/> fixed. For language models graded by another model, the label is one more moving part, and a calibration number is only as trustworthy as the grader that defined correctness.</p>
+</section>
+<section id="the-metrics-in-code" class="level2">
+<h2 class="anchored" data-anchor-id="the-metrics-in-code">The metrics in code</h2>
+<p>The whole comparison is a few lines of NumPy. The functions below reproduce every number in the tables above, including the tie-aware risk–coverage curve that gives the constant model its honest AURC of 0.5.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> numpy <span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">as</span> np</span>
+<span id="cb1-2"></span>
+<span id="cb1-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Ten questions: the model gets the first five right (y=1), the last five wrong.</span></span>
+<span id="cb1-4">y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> np.array([<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>], dtype<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span>)</span>
+<span id="cb1-5">models <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> {</span>
+<span id="cb1-6">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"A: informative"</span>:   np.array([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.92</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.78</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.54</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.71</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.66</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.58</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.44</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.33</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.27</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.16</span>]),</span>
+<span id="cb1-7">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"B: constant"</span>:      np.array([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.50</span>] <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span>),</span>
+<span id="cb1-8">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"C: overconfident"</span>: np.array([<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.99</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.98</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.97</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.96</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.95</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.94</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.93</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.92</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.91</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.90</span>]),</span>
+<span id="cb1-9">}</span>
+<span id="cb1-10"></span>
+<span id="cb1-11"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">def</span> ece(c, y, n_bins<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">5</span>):                       <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># expected calibration error</span></span>
+<span id="cb1-12">    idx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> np.minimum((c <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> n_bins).astype(<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span>), n_bins <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>)</span>
+<span id="cb1-13">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">sum</span>((idx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> b).mean() <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">abs</span>(y[idx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> b].mean() <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> c[idx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> b].mean())</span>
+<span id="cb1-14">               <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> b <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">in</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">range</span>(n_bins) <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (idx <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> b).<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">any</span>())</span>
+<span id="cb1-15"></span>
+<span id="cb1-16"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">def</span> brier(c, y):                               <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># mean squared error (a proper score)</span></span>
+<span id="cb1-17">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> np.mean((c <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> y) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">**</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>)</span>
+<span id="cb1-18"></span>
+<span id="cb1-19"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">def</span> nll(c, y):                                 <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># log loss (a proper score)</span></span>
+<span id="cb1-20">    c <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> np.clip(c, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-12</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1e-12</span>)</span>
+<span id="cb1-21">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span>np.mean(y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> np.log(c) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> (<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> y) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> np.log(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> c))</span>
+<span id="cb1-22"></span>
+<span id="cb1-23"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">def</span> auroc(c, y):                               <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># P(a correct answer outranks a wrong one)</span></span>
+<span id="cb1-24">    pos, neg <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> c[y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], c[y <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>]</span>
+<span id="cb1-25">    wins <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">sum</span>((p <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&gt;</span> neg).<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">sum</span>() <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> (p <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> neg).<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">sum</span>() <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> p <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">in</span> pos)</span>
+<span id="cb1-26">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> wins <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> (<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">len</span>(pos) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">len</span>(neg))</span>
+<span id="cb1-27"></span>
+<span id="cb1-28"><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">def</span> aurc(c, y):                                <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># area under the risk-coverage curve</span></span>
+<span id="cb1-29">    risks, answered, correct <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> [], <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.0</span>      <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># answer most-confident first</span></span>
+<span id="cb1-30">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> v <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">in</span> np.sort(np.unique(c))[::<span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]:      <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># group ties, resolve to expected risk</span></span>
+<span id="cb1-31">        m <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> c <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> v</span>
+<span id="cb1-32">        size, hits <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">int</span>(m.<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">sum</span>()), <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">float</span>(y[m].<span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">sum</span>())</span>
+<span id="cb1-33">        <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> k <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">in</span> <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">range</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>, size <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>):</span>
+<span id="cb1-34">            n <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> answered <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> k</span>
+<span id="cb1-35">            risks.append(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> (correct <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> (k <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> size) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> hits) <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> n)</span>
+<span id="cb1-36">        answered <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> size</span>
+<span id="cb1-37">        correct <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+=</span> hits</span>
+<span id="cb1-38">    <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">return</span> np.mean(risks)</span>
+<span id="cb1-39"></span>
+<span id="cb1-40"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">for</span> name, c <span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">in</span> models.items():</span>
+<span id="cb1-41">    <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>name<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:18}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">  ECE=</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>ece(c, y)<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:.3f}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">  Brier=</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>brier(c, y)<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:.3f}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">  "</span></span>
+<span id="cb1-42">          <span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"NLL=</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>nll(c, y)<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:.3f}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">  AUROC=</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>auroc(c, y)<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:.2f}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">  AURC=</span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>aurc(c, y)<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">:.3f}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"</span>)</span></code></pre></div></div>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://katherinethai.github.io/">Tian, Katherine</a>, Mitchell, Eric, Zhou, Allan, Sharma, Archit, Rafailov, Rafael, Yao, Huaxiu, Finn, Chelsea, and Manning, Christopher D. “Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback.” <em>EMNLP 2023</em> (arXiv:2305.14975), May 24, 2023. <a href="https://arxiv.org/abs/2305.14975" class="uri">https://arxiv.org/abs/2305.14975</a></li>
+<li><a id="ref-2"></a>Naeini, Mahdi Pakdaman, Cooper, Gregory F., and Hauskrecht, Milos. “Obtaining Well Calibrated Probabilities Using Bayesian Binning.” <em>AAAI 2015</em>, pp.&nbsp;2901–2907, 2015. <a href="https://ojs.aaai.org/index.php/AAAI/article/view/9602" class="uri">https://ojs.aaai.org/index.php/AAAI/article/view/9602</a></li>
+<li><a id="ref-3"></a>Guo, Chuan, Pleiss, Geoff, Sun, Yu, and Weinberger, Kilian Q. “On Calibration of Modern Neural Networks.” <em>ICML 2017</em> (arXiv:1706.04599), June 14, 2017. <a href="https://arxiv.org/abs/1706.04599" class="uri">https://arxiv.org/abs/1706.04599</a></li>
+<li><a id="ref-4"></a>Nixon, Jeremy, Dusenberry, Michael W., Zhang, Linchuan, Jerfel, Ghassen, and Tran, Dustin. “Measuring Calibration in Deep Learning.” <em>CVPR 2019 Workshops</em> (arXiv:1904.01685), April 2, 2019. <a href="https://arxiv.org/abs/1904.01685" class="uri">https://arxiv.org/abs/1904.01685</a></li>
+<li><a id="ref-5"></a>Kumar, Ananya, Liang, Percy, and Ma, Tengyu. “Verified Uncertainty Calibration.” <em>NeurIPS 2019</em> (arXiv:1909.10155), September 23, 2019. <a href="https://arxiv.org/abs/1909.10155" class="uri">https://arxiv.org/abs/1909.10155</a></li>
+<li><a id="ref-6"></a>Geifman, Yonatan, and El-Yaniv, Ran. “Selective Classification for Deep Neural Networks.” <em>NeurIPS 2017</em> (arXiv:1705.08500), May 23, 2017. <a href="https://arxiv.org/abs/1705.08500" class="uri">https://arxiv.org/abs/1705.08500</a></li>
+<li><a id="ref-7"></a>Brier, Glenn W. “Verification of Forecasts Expressed in Terms of Probability.” <em>Monthly Weather Review</em>, 78(1):1–3, 1950. <a href="https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2" class="uri">https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2</a></li>
+<li><a id="ref-8"></a>Murphy, Allan H. “A New Vector Partition of the Probability Score.” <em>Journal of Applied Meteorology</em>, 12(4):595–600, 1973. <a href="https://doi.org/10.1175/1520-0450(1973)012%3C0595:ANVPOT%3E2.0.CO;2" class="uri">https://doi.org/10.1175/1520-0450(1973)012%3C0595:ANVPOT%3E2.0.CO;2</a></li>
+<li><a id="ref-9"></a>DeGroot, Morris H., and Fienberg, Stephen E. “The Comparison and Evaluation of Forecasters.” <em>The Statistician</em>, 32(1–2):12–22, 1983. <a href="https://doi.org/10.2307/2987588" class="uri">https://doi.org/10.2307/2987588</a></li>
+<li><a id="ref-10"></a>Gneiting, Tilmann, and Raftery, Adrian E. “Strictly Proper Scoring Rules, Prediction, and Estimation.” <em>Journal of the American Statistical Association</em>, 102(477):359–378, 2007. <a href="https://doi.org/10.1198/016214506000001437" class="uri">https://doi.org/10.1198/016214506000001437</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: calibration of base versus reinforcement-learning-from-human-feedback (RLHF) models and the “P(True)” self-evaluation signal, an early version of reading confidence from the model’s output rather than its token logits.</li>
+<li><a href="../../posts/20260505-llm-uncertainty-survey/">How to Make LLM Output More Trustworthy</a>: the broader catalog of confidence and uncertainty methods that these metrics are used to score.</li>
+<li><a href="../../posts/20260505-conformal-prediction-primer/">A Primer on Conformal Prediction</a>: the distribution-free, coverage-guaranteed cousin of the risk–coverage view.</li>
+<li><a href="../../posts/20260505-semantic-entropy/">Detecting Hallucinations in Large Language Models Using Semantic Entropy</a>: a discrimination signal for free-form generation, where the correctness-label problem in the last note matters most.</li>
+<li><a href="../../posts/20260505-linguistic-calibration/">Linguistic Calibration of Long-Form Generations</a>: calibrating verbalized confidence in long-form text, where a single confidence number per answer no longer describes the output.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260609-confidence-calibration-metrics/</guid>
+  <pubDate>Tue, 09 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260609-confidence-calibration-metrics/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>ExpertQA: Expert-Curated Questions and Attributed Answers</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260609-expertqa/?utm_source=rss&amp;utm_medium=feed</link>
@@ -3121,37 +3839,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260605-ai-journalism-public-square/</guid>
   <pubDate>Fri, 05 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260605-ai-journalism-public-square/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Elliott Bay Trail Reopens</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260605-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260605-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>After 15-month of <a href="https://www.portseattle.org/blog/myrtle-edwards-and-centennial-parks-re-open-june-4">construction</a>, <a href="https://www.traillink.com/trail/elliott-bay-trail/">Elliott Bay Trail</a> was finally opened yesterday on June 4! Of course I made a run through it – the new trail is gorgeous: new beach coves, new landscaping, many picnic tables and seats along the shore, and even a new coffee shop!</p>
-<p>The pictures didn’t do a justice because of the gloomy weather when I ran (but no rain!). It was 56F, cloudy w/ 2.7mph breeze. Definitely will come back frequently (the standard lunch run route for me)!</p>
-<p><img src="https://benjaminhan.net/posts/20260605-elliott-bay-trail/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260605-elliott-bay-trail/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260605-elliott-bay-trail/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260605-elliott-bay-trail/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260605-elliott-bay-trail/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260605-elliott-bay-trail/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260605-elliott-bay-trail/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260605-elliott-bay-trail/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116699208788591526">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260605-elliott-bay-trail/</guid>
-  <pubDate>Fri, 05 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260605-elliott-bay-trail/cover.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
