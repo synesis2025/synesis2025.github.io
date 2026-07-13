@@ -857,6 +857,12 @@ window.__postIndexReady = fetch('/post-index.json?v=c355e57455')
     </div>
   </div>
   
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">July 13, 2026</p>
+    </div>
+  </div>
     
   </div>
   
@@ -877,7 +883,7 @@ window.__postIndexReady = fetch('/post-index.json?v=c355e57455')
 </blockquote>
 <section id="how-the-paper-reads-the-code" class="level2">
 <h2 class="anchored" data-anchor-id="how-the-paper-reads-the-code">How the paper reads the code</h2>
-<p>The paper is a source-level reverse-engineering, not an empirical study. The authors extract the TypeScript of Claude Code v2.1.88 from its published npm package, read it directly, and compare it against OpenClaw, an open-source multi-channel assistant that answers the same design questions in a different deployment context. To keep an analysis of closed, minified code honest, every claim is tagged with one of three evidence tiers:</p>
+<p>The paper is a source-level reverse-engineering, not an empirical study. The authors extract the TypeScript of Claude Code v2.1.88 from its published npm package, read it directly, and compare it against <a href="https://openclaw.ai">OpenClaw</a>, an open-source multi-channel assistant that answers the same design questions in a different deployment context. To keep an analysis of closed, minified code honest, every claim is tagged with one of three evidence tiers:</p>
 <ul>
 <li><strong>Tier A (product-documented)</strong>: drawn from Anthropic’s official documentation and engineering posts.</li>
 <li><strong>Tier B (code-verified)</strong>: tied to specific files and functions in the extracted v2.1.88 source. The paper treats this as its strongest tier.</li>
@@ -887,14 +893,22 @@ window.__postIndexReady = fetch('/post-index.json?v=c355e57455')
 </section>
 <section id="five-values-thirteen-principles" class="level2">
 <h2 class="anchored" data-anchor-id="five-values-thirteen-principles">Five values, thirteen principles</h2>
-<p>The paper reads five human values as motivating the architecture: human decision authority, safety and security, reliable execution, capability amplification, and contextual adaptability. Those values are traced through thirteen design principles to concrete code. Table 1 lists the thirteen, the values each serves, and the design-space question each answers.</p>
+<p>The paper reads five human values as motivating the architecture:</p>
+<ul>
+<li><strong>Human decision authority</strong> (Authority)</li>
+<li><strong>Safety and security</strong> (Safety)</li>
+<li><strong>Reliable execution</strong> (Reliability)</li>
+<li><strong>Capability amplification</strong> (Capability)</li>
+<li><strong>Contextual adaptability</strong> (Adaptability)</li>
+</ul>
+<p>Those values are traced through thirteen design principles to concrete code. Table 1 lists the thirteen, the values each serves (by the short names above), and the design-space question each answers.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
 <figcaption>Design principles, the values they serve, and the design-space question each answers. Table 1 from the paper <a href="#ref-1">[1]</a>.</figcaption>
 </figure>
 </div>
-<p>A sixth concern is kept separate from the five, used as an evaluative lens rather than a design driver: whether the architecture preserves long-term human capability. The authors note this is not prominent in Anthropic’s stated values, but flag it because the evidence is real. They cite a “paradox of supervision,” where over-reliance on the agent erodes the skills needed to supervise it, and a study finding developers in AI-assisted conditions score 17% lower on comprehension tests.</p>
+<p>A sixth concern is kept separate from the five, used as an evaluative lens rather than a design driver: <strong>whether the architecture preserves long-term human capability</strong>. The authors note this is not prominent in Anthropic’s stated values, but flag it because the evidence is real. They cite a <a href="../../posts/20260426-ai-cannibalizing-human-intelligence/">“paradox of supervision,”</a> where <a href="../../posts/20260528-ai-assistance-reduces-persistence/">over-reliance on the agent erodes the skills needed to supervise it</a>, and a study finding developers in AI-assisted conditions score 17% lower on comprehension tests.</p>
 </section>
 <section id="seven-components-five-layers" class="level2">
 <h2 class="anchored" data-anchor-id="seven-components-five-layers">Seven components, five layers</h2>
@@ -918,11 +932,18 @@ window.__postIndexReady = fetch('/post-index.json?v=c355e57455')
 <p>A single turn is a fixed pipeline in <code>query.ts</code>, written as an async generator so output streams to the interface while control flow stays single-threaded. The prompt enters through context assembly, the model is called, each tool request passes the permission gate (allow, ask, or deny, with deny feedback looped back to the model), results return, and the loop repeats until a turn produces no tool use and the assistant replies. The paper fills in the mechanics:</p>
 <ul>
 <li><strong>Tool dispatch</strong> is concurrent-read, serial-write: read-only calls run in parallel as they stream in, state-modifying calls like shell commands are serialized, and results are buffered and returned in the order the model requested them. If one Bash call errors, a sibling abort controller kills the other in-flight subprocesses.</li>
-<li><strong>Five context shapers</strong> run in sequence before every model call, cheapest first: budget reduction (caps oversized tool results), snip (trims old history), microcompact (fine-grained, cache-aware compression), context collapse (a read-time projection that hides summarized history without deleting it), and auto-compact (a full model-generated summary, fired only if the context still exceeds the pressure threshold after the other four).</li>
+<li><strong>Five context shapers</strong> run in sequence before every model call, cheapest first:
+<ul>
+<li><strong>Budget reduction</strong>: caps oversized tool results.</li>
+<li><strong>Snip</strong>: trims old history.</li>
+<li><strong>Microcompact</strong>: fine-grained, cache-aware compression.</li>
+<li><strong>Context collapse</strong>: a read-time projection that hides summarized history without deleting it.</li>
+<li><strong>Auto-compact</strong>: a full model-generated summary, fired only if the context still exceeds the pressure threshold after the other four.</li>
+</ul></li>
 <li><strong>Recovery</strong> is layered too: escalate the output-token cap up to three times a turn, reactive compaction near capacity, prompt-too-long handling that tries overflow recovery before giving up, a streaming fallback, and a fallback model.</li>
 <li><strong>Stop conditions</strong>: a turn ends on text with no tool use (the normal case), a max-turns limit, context overflow, a PostToolUse hook halting continuation, or an explicit abort.</li>
 </ul>
-<p>The loop is reactive, in the ReAct style: each turn runs one action sequence with no backtracking, trading search completeness for simplicity and latency.</p>
+<p>The loop is reactive, in the <a href="https://arxiv.org/abs/2210.03629">ReAct</a> style: each turn runs one action sequence with no backtracking, trading search completeness for simplicity and latency.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="figure2.png" class="img-fluid figure-img"></p>
@@ -932,7 +953,15 @@ window.__postIndexReady = fetch('/post-index.json?v=c355e57455')
 </section>
 <section id="permission-and-safety" class="level2">
 <h2 class="anchored" data-anchor-id="permission-and-safety">Permission and safety</h2>
-<p>Every tool call passes a permission gate before it runs. The default posture is deny-first with human escalation: deny rules override ask rules override allow rules, and an unrecognized action is escalated to the user rather than run silently. Seven permission modes span a graduated autonomy spectrum from <code>plan</code> (approve every plan first) through <code>default</code> and <code>acceptEdits</code> to <code>bypassPermissions</code>. The authorization pipeline runs pre-filtering, a PreToolUse hook, rule evaluation, then the permission handler, and an auto-mode machine-learning classifier adds a two-stage fast filter plus a chain-of-thought safety judgment on each call. Shell commands run in a sandbox. Because reasoning and enforcement sit on separate code paths, a compromised or adversarially manipulated model cannot override the sandbox, the permission checks, or the deny-first rules in the harness.</p>
+<p>Every tool call passes a permission gate before it runs, built from several layers:</p>
+<ul>
+<li><strong>Deny-first with human escalation</strong>: the default posture. Deny rules override ask rules override allow rules, and an unrecognized action is escalated to the user rather than run silently.</li>
+<li><strong>Seven permission modes</strong>: a graduated autonomy spectrum from <code>plan</code> (approve every plan first) through <code>default</code> and <code>acceptEdits</code> to <code>bypassPermissions</code>.</li>
+<li><strong>A staged authorization pipeline</strong>: pre-filtering, a PreToolUse hook, rule evaluation, then the permission handler.</li>
+<li><strong>An auto-mode machine-learning classifier</strong>: a two-stage fast filter plus a chain-of-thought safety judgment on each call.</li>
+<li><strong>A shell sandbox</strong>: shell commands run inside it rather than directly on the host.</li>
+<li><strong>Separated reasoning and enforcement</strong>: because the two sit on different code paths, a compromised or adversarially manipulated model cannot override the sandbox, the permission checks, or the deny-first rules in the harness.</li>
+</ul>
 </section>
 <section id="four-ways-to-extend-the-loop" class="level2">
 <h2 class="anchored" data-anchor-id="four-ways-to-extend-the-loop">Four ways to extend the loop</h2>
@@ -954,12 +983,21 @@ window.__postIndexReady = fetch('/post-index.json?v=c355e57455')
 <figcaption>Context construction and the memory hierarchy: sources converging on the context window, by mutability and load time. Figure 6 from the paper <a href="#ref-1">[1]</a>.</figcaption>
 </figure>
 </div>
-<p>The layers run from a read-only system layer (system prompt, environment info, output styles, MCP tool names) loaded at startup, through hot-reloading project config (the five-level CLAUDE.md hierarchy and path-scoped rules), a memory layer (auto memory and the compact summary that replaces long history), the conversation itself (history and subagent summaries), runtime state appended during the turn (file reads, command outputs, tool results), and a lazy on-demand layer (deferred tool definitions pulled in via ToolSearch only when needed). The window is therefore not fixed at assembly time but grows as the turn runs.</p>
+<p>The layers run from the most stable to the most dynamic:</p>
+<ul>
+<li><strong>Read-only system layer</strong>: system prompt, environment info, output styles, and MCP tool names, loaded at startup.</li>
+<li><strong>Hot-reloading project config</strong>: the five-level CLAUDE.md hierarchy and path-scoped rules.</li>
+<li><strong>Memory layer</strong>: auto memory and the compact summary that replaces long history.</li>
+<li><strong>The conversation</strong>: history and subagent summaries.</li>
+<li><strong>Runtime state</strong>: file reads, command outputs, and tool results appended during the turn.</li>
+<li><strong>Lazy on-demand layer</strong>: deferred tool definitions pulled in via ToolSearch only when needed.</li>
+</ul>
+<p>The window is therefore not fixed at assembly time but grows as the turn runs.</p>
 <p>The compaction pipeline has five layers because no single strategy covers every kind of context pressure. Budget reduction targets individual oversized tool outputs, snip handles temporal depth, microcompact reacts to cache overhead, context collapse manages very long histories, and auto-compact does semantic compression as a last resort. Each layer operates at a different cost-benefit point, and the cheaper ones run first.</p>
 </section>
 <section id="subagents-and-session-storage" class="level2">
 <h2 class="anchored" data-anchor-id="subagents-and-session-storage">Subagents and session storage</h2>
-<p>A subagent is spawned through the same tool factory as everything else, re-entering the query loop with its own isolated context window and permission scope, optionally inside a git worktree. Only its final response text returns to the parent. The full subagent history never enters the parent’s window, which keeps the parent’s context cheap.</p>
+<p>A subagent is spawned through the same tool factory as everything else, re-entering the query loop with its own isolated context window and permission scope, optionally inside a <a href="../../posts/20260529-dynamic-workflows-claude-code/">git worktree</a>. Only its final response text returns to the parent. The full subagent history never enters the parent’s window, which keeps the parent’s context cheap.</p>
 <p>Session storage is append-only (history, sidechains, checkpoints), favoring auditability over query power. Resume and fork restore messages but deliberately not session-scoped permissions, so a resumed session does not silently inherit trust the user granted earlier.</p>
 </section>
 <section id="claude-code-versus-openclaw" class="level2">
@@ -1017,7 +1055,7 @@ window.__postIndexReady = fetch('/post-index.json?v=c355e57455')
 <h2 class="anchored" data-anchor-id="what-the-analysis-concludes">What the analysis concludes</h2>
 <p>The discussion reads the architecture as a set of consistent choices rather than a grab-bag:</p>
 <ul>
-<li><strong>Minimal scaffolding, rich harness</strong>: the system invests in deterministic infrastructure (context management, tool routing, recovery) instead of decision scaffolding like explicit planners or state graphs, on the premise that a more capable model gains more from a rich operating environment than from a framework that constrains its choices.</li>
+<li><strong>Minimal scaffolding, rich harness</strong>: the system invests in deterministic infrastructure (context management, tool routing, recovery) instead of decision scaffolding like explicit planners or state graphs, on the premise that a more capable model gains more from a <a href="../../posts/20260626-harness-engineering/">rich operating environment</a> than from a framework that constrains its choices.</li>
 <li><strong>Graduated layering over single switches</strong>: permission modes, compaction layers, and extension points are all spectrums rather than one-shot mechanisms.</li>
 <li><strong>Append-only over queryable</strong>: state favors an auditable log over a mutable store that would be easier to query.</li>
 <li><strong>Model judgment inside a deterministic harness</strong>: probabilistic guidance (CLAUDE.md) is kept on a separate code path from deterministic enforcement (permission rules).</li>
@@ -1041,7 +1079,10 @@ window.__postIndexReady = fetch('/post-index.json?v=c355e57455')
 <h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
 <ul>
 <li><a href="../../posts/20260414-api-mcp-tool-skill/">APIs, Tools, Skills, and Where MCP Fits</a>: an earlier take on the same extensibility taxonomy this paper formalizes, drawing the MCP boundary differently.</li>
+<li><a href="../../posts/20251124-skills-not-software-engineering/">“Skills” Are Not Software Engineering</a>: the argument that skills and CLAUDE.md are probabilistic guidance, not enforcement — the same model-proposes, deterministic-harness-ensures split the permission system embodies.</li>
+<li><a href="../../posts/20260529-langchain-deep-agents/">LangChain’s Deep Agents: A Batteries-Included Agent Harness</a>: a sibling harness packaging the same pieces (planning, subagents, virtual filesystem, memory, skills), evidence the design space this paper maps is now a category rather than a Claude-only detail.</li>
 <li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the outside-the-tool measurement of the context cost that the paper’s compaction pipeline is built to manage.</li>
+<li><a href="../../posts/20260708-better-models-worse-tools/">Better Models: Worse Tools</a>: how the forgiving Claude Code harness shapes tool-calling behavior at training time, a downstream cost of the rich-harness bet.</li>
 <li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: a real instance of the single-destructive-call failure mode the per-action permission gate is meant to catch.</li>
 <li><a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex AI Escapes Sandbox and Executes Malware</a>: another agent-safety boundary failure, a counterpoint to the deny-first “untrusted model on a trusted machine” posture.</li>
 <li><a href="../../posts/20250725-anthropic-claude-code-teams/">How Anthropic Teams Use Claude Code</a>: an earlier look at Claude Code as a product, against this source-level architectural read.</li>

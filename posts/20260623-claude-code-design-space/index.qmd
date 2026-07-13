@@ -3,6 +3,7 @@ title: "Dive into Claude Code: The Design Space of Today's and Future AI Agent S
 description: "A close reading of Claude Code's published TypeScript maps its architecture: a simple agent loop wrapped in permission, compaction, extensibility, and subagent systems."
 author: synesis
 date: "2026-06-23"
+date-modified: "2026-07-13"
 image: cover.jpg
 ---
 
@@ -14,7 +15,7 @@ In *Dive into Claude Code: The Design Space of Today's and Future AI Agent Syste
 
 ## How the paper reads the code
 
-The paper is a source-level reverse-engineering, not an empirical study. The authors extract the TypeScript of Claude Code v2.1.88 from its published npm package, read it directly, and compare it against OpenClaw, an open-source multi-channel assistant that answers the same design questions in a different deployment context. To keep an analysis of closed, minified code honest, every claim is tagged with one of three evidence tiers:
+The paper is a source-level reverse-engineering, not an empirical study. The authors extract the TypeScript of Claude Code v2.1.88 from its published npm package, read it directly, and compare it against [OpenClaw](https://openclaw.ai), an open-source multi-channel assistant that answers the same design questions in a different deployment context. To keep an analysis of closed, minified code honest, every claim is tagged with one of three evidence tiers:
 
 - **Tier A (product-documented)**: drawn from Anthropic's official documentation and engineering posts.
 - **Tier B (code-verified)**: tied to specific files and functions in the extracted v2.1.88 source. The paper treats this as its strongest tier.
@@ -24,11 +25,19 @@ The analysis is built around a few recurring design questions put to any agent s
 
 ## Five values, thirteen principles
 
-The paper reads five human values as motivating the architecture: human decision authority, safety and security, reliable execution, capability amplification, and contextual adaptability. Those values are traced through thirteen design principles to concrete code. Table 1 lists the thirteen, the values each serves, and the design-space question each answers.
+The paper reads five human values as motivating the architecture:
+
+- **Human decision authority** (Authority)
+- **Safety and security** (Safety)
+- **Reliable execution** (Reliability)
+- **Capability amplification** (Capability)
+- **Contextual adaptability** (Adaptability)
+
+Those values are traced through thirteen design principles to concrete code. Table 1 lists the thirteen, the values each serves (by the short names above), and the design-space question each answers.
 
 ![Design principles, the values they serve, and the design-space question each answers. Table 1 from the paper [[1]](#ref-1).](table1.webp){fig-align="center" data-lightbox-src="table1-full.png"}
 
-A sixth concern is kept separate from the five, used as an evaluative lens rather than a design driver: whether the architecture preserves long-term human capability. The authors note this is not prominent in Anthropic's stated values, but flag it because the evidence is real. They cite a "paradox of supervision," where over-reliance on the agent erodes the skills needed to supervise it, and a study finding developers in AI-assisted conditions score 17% lower on comprehension tests.
+A sixth concern is kept separate from the five, used as an evaluative lens rather than a design driver: **whether the architecture preserves long-term human capability**. The authors note this is not prominent in Anthropic's stated values, but flag it because the evidence is real. They cite a ["paradox of supervision,"](/posts/20260426-ai-cannibalizing-human-intelligence/) where [over-reliance on the agent erodes the skills needed to supervise it](/posts/20260528-ai-assistance-reduces-persistence/), and a study finding developers in AI-assisted conditions score 17% lower on comprehension tests.
 
 ## Seven components, five layers
 
@@ -47,17 +56,29 @@ The architecture is deliberately lopsided. Figure 1 (the cover) gives the high-l
 A single turn is a fixed pipeline in `query.ts`, written as an async generator so output streams to the interface while control flow stays single-threaded. The prompt enters through context assembly, the model is called, each tool request passes the permission gate (allow, ask, or deny, with deny feedback looped back to the model), results return, and the loop repeats until a turn produces no tool use and the assistant replies. The paper fills in the mechanics:
 
 - **Tool dispatch** is concurrent-read, serial-write: read-only calls run in parallel as they stream in, state-modifying calls like shell commands are serialized, and results are buffered and returned in the order the model requested them. If one Bash call errors, a sibling abort controller kills the other in-flight subprocesses.
-- **Five context shapers** run in sequence before every model call, cheapest first: budget reduction (caps oversized tool results), snip (trims old history), microcompact (fine-grained, cache-aware compression), context collapse (a read-time projection that hides summarized history without deleting it), and auto-compact (a full model-generated summary, fired only if the context still exceeds the pressure threshold after the other four).
+- **Five context shapers** run in sequence before every model call, cheapest first:
+  - **Budget reduction**: caps oversized tool results.
+  - **Snip**: trims old history.
+  - **Microcompact**: fine-grained, cache-aware compression.
+  - **Context collapse**: a read-time projection that hides summarized history without deleting it.
+  - **Auto-compact**: a full model-generated summary, fired only if the context still exceeds the pressure threshold after the other four.
 - **Recovery** is layered too: escalate the output-token cap up to three times a turn, reactive compaction near capacity, prompt-too-long handling that tries overflow recovery before giving up, a streaming fallback, and a fallback model.
 - **Stop conditions**: a turn ends on text with no tool use (the normal case), a max-turns limit, context overflow, a PostToolUse hook halting continuation, or an explicit abort.
 
-The loop is reactive, in the ReAct style: each turn runs one action sequence with no backtracking, trading search completeness for simplicity and latency.
+The loop is reactive, in the [ReAct](https://arxiv.org/abs/2210.03629) style: each turn runs one action sequence with no backtracking, trading search completeness for simplicity and latency.
 
 ![One agentic turn end to end, from user prompt through context assembly, the model call, the permission gate, and compaction, to the assistant response. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
 
 ## Permission and safety
 
-Every tool call passes a permission gate before it runs. The default posture is deny-first with human escalation: deny rules override ask rules override allow rules, and an unrecognized action is escalated to the user rather than run silently. Seven permission modes span a graduated autonomy spectrum from `plan` (approve every plan first) through `default` and `acceptEdits` to `bypassPermissions`. The authorization pipeline runs pre-filtering, a PreToolUse hook, rule evaluation, then the permission handler, and an auto-mode machine-learning classifier adds a two-stage fast filter plus a chain-of-thought safety judgment on each call. Shell commands run in a sandbox. Because reasoning and enforcement sit on separate code paths, a compromised or adversarially manipulated model cannot override the sandbox, the permission checks, or the deny-first rules in the harness.
+Every tool call passes a permission gate before it runs, built from several layers:
+
+- **Deny-first with human escalation**: the default posture. Deny rules override ask rules override allow rules, and an unrecognized action is escalated to the user rather than run silently.
+- **Seven permission modes**: a graduated autonomy spectrum from `plan` (approve every plan first) through `default` and `acceptEdits` to `bypassPermissions`.
+- **A staged authorization pipeline**: pre-filtering, a PreToolUse hook, rule evaluation, then the permission handler.
+- **An auto-mode machine-learning classifier**: a two-stage fast filter plus a chain-of-thought safety judgment on each call.
+- **A shell sandbox**: shell commands run inside it rather than directly on the host.
+- **Separated reasoning and enforcement**: because the two sit on different code paths, a compromised or adversarially manipulated model cannot override the sandbox, the permission checks, or the deny-first rules in the harness.
 
 ## Four ways to extend the loop
 
@@ -76,13 +97,22 @@ The context window (200K tokens on older models, 1M on the Claude 4.6 series) is
 
 ![Context construction and the memory hierarchy: sources converging on the context window, by mutability and load time. Figure 6 from the paper [[1]](#ref-1).](figure6.webp){fig-align="center" data-lightbox-src="figure6-full.png"}
 
-The layers run from a read-only system layer (system prompt, environment info, output styles, MCP tool names) loaded at startup, through hot-reloading project config (the five-level CLAUDE.md hierarchy and path-scoped rules), a memory layer (auto memory and the compact summary that replaces long history), the conversation itself (history and subagent summaries), runtime state appended during the turn (file reads, command outputs, tool results), and a lazy on-demand layer (deferred tool definitions pulled in via ToolSearch only when needed). The window is therefore not fixed at assembly time but grows as the turn runs.
+The layers run from the most stable to the most dynamic:
+
+- **Read-only system layer**: system prompt, environment info, output styles, and MCP tool names, loaded at startup.
+- **Hot-reloading project config**: the five-level CLAUDE.md hierarchy and path-scoped rules.
+- **Memory layer**: auto memory and the compact summary that replaces long history.
+- **The conversation**: history and subagent summaries.
+- **Runtime state**: file reads, command outputs, and tool results appended during the turn.
+- **Lazy on-demand layer**: deferred tool definitions pulled in via ToolSearch only when needed.
+
+The window is therefore not fixed at assembly time but grows as the turn runs.
 
 The compaction pipeline has five layers because no single strategy covers every kind of context pressure. Budget reduction targets individual oversized tool outputs, snip handles temporal depth, microcompact reacts to cache overhead, context collapse manages very long histories, and auto-compact does semantic compression as a last resort. Each layer operates at a different cost-benefit point, and the cheaper ones run first.
 
 ## Subagents and session storage
 
-A subagent is spawned through the same tool factory as everything else, re-entering the query loop with its own isolated context window and permission scope, optionally inside a git worktree. Only its final response text returns to the parent. The full subagent history never enters the parent's window, which keeps the parent's context cheap.
+A subagent is spawned through the same tool factory as everything else, re-entering the query loop with its own isolated context window and permission scope, optionally inside a [git worktree](/posts/20260529-dynamic-workflows-claude-code/). Only its final response text returns to the parent. The full subagent history never enters the parent's window, which keeps the parent's context cheap.
 
 Session storage is append-only (history, sidechains, checkpoints), favoring auditability over query power. Resume and fork restore messages but deliberately not session-scoped permissions, so a resumed session does not silently inherit trust the user granted earlier.
 
@@ -105,7 +135,7 @@ The trust boundary is in different places. Claude Code puts it between the model
 
 The discussion reads the architecture as a set of consistent choices rather than a grab-bag:
 
-- **Minimal scaffolding, rich harness**: the system invests in deterministic infrastructure (context management, tool routing, recovery) instead of decision scaffolding like explicit planners or state graphs, on the premise that a more capable model gains more from a rich operating environment than from a framework that constrains its choices.
+- **Minimal scaffolding, rich harness**: the system invests in deterministic infrastructure (context management, tool routing, recovery) instead of decision scaffolding like explicit planners or state graphs, on the premise that a more capable model gains more from a [rich operating environment](/posts/20260626-harness-engineering/) than from a framework that constrains its choices.
 - **Graduated layering over single switches**: permission modes, compaction layers, and extension points are all spectrums rather than one-shot mechanisms.
 - **Append-only over queryable**: state favors an auditable log over a mutable store that would be easier to query.
 - **Model judgment inside a deterministic harness**: probabilistic guidance (CLAUDE.md) is kept on a separate code path from deterministic enforcement (permission rules).
@@ -127,7 +157,10 @@ The paper closes with six open directions for future agent systems: the observab
 ## Related Posts
 
 - [APIs, Tools, Skills, and Where MCP Fits](/posts/20260414-api-mcp-tool-skill/): an earlier take on the same extensibility taxonomy this paper formalizes, drawing the MCP boundary differently.
+- ["Skills" Are Not Software Engineering](/posts/20251124-skills-not-software-engineering/): the argument that skills and CLAUDE.md are probabilistic guidance, not enforcement — the same model-proposes, deterministic-harness-ensures split the permission system embodies.
+- [LangChain's Deep Agents: A Batteries-Included Agent Harness](/posts/20260529-langchain-deep-agents/): a sibling harness packaging the same pieces (planning, subagents, virtual filesystem, memory, skills), evidence the design space this paper maps is now a category rather than a Claude-only detail.
 - [Where Claude Code Tokens Go](/posts/20260503-where-claude-code-tokens-go/): the outside-the-tool measurement of the context cost that the paper's compaction pipeline is built to manage.
+- [Better Models: Worse Tools](/posts/20260708-better-models-worse-tools/): how the forgiving Claude Code harness shapes tool-calling behavior at training time, a downstream cost of the rich-harness bet.
 - [A Cursor Agent Erased a Company's Production Data in 9 Seconds](/posts/20260427-cursor-railway-production-wipe/): a real instance of the single-destructive-call failure mode the per-action permission gate is meant to catch.
 - [Snowflake Cortex AI Escapes Sandbox and Executes Malware](/posts/20260319-snowflake-cortex-sandbox-escape/): another agent-safety boundary failure, a counterpoint to the deny-first "untrusted model on a trusted machine" posture.
 - [How Anthropic Teams Use Claude Code](/posts/20250725-anthropic-claude-code-teams/): an earlier look at Claude Code as a product, against this source-level architectural read.
