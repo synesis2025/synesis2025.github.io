@@ -23,6 +23,83 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Mon, 13 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Claude Science, an AI Workbench for Scientists</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260630-claude-science-ai-workbench/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260630-claude-science-ai-workbench/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p><a href="https://www.anthropic.com/">Anthropic</a> released <a href="https://www.anthropic.com/news/claude-science-ai-workbench">Claude Science</a>, an agentic workbench that pulls a scientist’s databases, analysis tools, and compute into a single research environment, with a reviewer agent and a provenance record attached to everything it produces.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260630-claude-science-ai-workbench/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Claude Science displays proteins, structures, and molecules natively, with every result traced to its code. Image from <a href="https://www.anthropic.com/news/claude-science-ai-workbench">Anthropic</a>.</figcaption>
+</figure>
+</div>
+<p>What the announcement describes:</p>
+<ul>
+<li><strong>The workbench</strong>: a generalist coordinating agent with over 60 prebuilt skills and connectors for genomics, single-cell, proteomics, structural biology, and cheminformatics. Agents can spin up sub-agents, and a reviewer agent checks citations and calculations, flagging and correcting errors. It runs where the scientist already works, locally on macOS or Linux, or over SSH on an HPC login node.</li>
+<li><strong>Provenance by default</strong>: each generated figure or manuscript ships with the exact code and environment that produced it, a plain-language description of how it was made, and the full message history, so a result can be validated and reproduced months later. Edits happen in plain language (“change an axis to log scale”), and the agent rewrites its own code.</li>
+<li><strong>Compute on your own infrastructure</strong>: it drafts a plan, asks before reaching new resources, and submits jobs to the lab’s HPC cluster over SSH or a Modal account, scaling from one GPU to hundreds. Datasets never leave the lab’s own systems, and only the context needed for each step is sent to Claude.</li>
+<li><strong>Domain data and models</strong>: connectors to more than 60 scientific databases (<a href="https://www.uniprot.org/">UniProt</a>, <a href="https://www.rcsb.org/">PDB</a>, <a href="https://www.ensembl.org/">Ensembl</a>, <a href="https://www.ebi.ac.uk/chembl/">ChEMBL</a>, and others), plus NVIDIA’s <a href="https://developer.nvidia.com/bionemo">BioNeMo Agent Toolkit</a> for models like <a href="https://arcinstitute.org/tools/evo">Evo 2</a>, <a href="https://github.com/jwohlwend/boltz">Boltz-2</a>, and <a href="https://openfold.io/">OpenFold3</a>.</li>
+<li><strong>Early users</strong>: <a href="https://www.manifold.bio/">Manifold Bio</a> used it to nominate targets for tissue-targeting medicines; a neuroscientist at the <a href="https://alleninstitute.org/">Allen Institute</a> built a 20-skill template whose sub-agents draft 100-page literature reviews using actor-critic pairs, work that could previously take up to two years; a <a href="https://www.ucsf.edu/">UCSF</a> epidemiologist ran glioma germline analyses in roughly a tenth of the previous time and independently validated the results. It is in beta for Pro, Max, Team, and Enterprise plans.</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>A horizontal research environment</strong>: the recent multi-agent science systems, <a href="../../posts/20260606-co-scientist-scientific-discovery/">Co-Scientist</a> and <a href="../../posts/20260606-robin-multi-agent-scientific-discovery/">Robin</a>, automated a specific discovery loop end to end, down to proposing drug candidates later confirmed in the lab. Claude Science aims elsewhere. It automates the tooling drudgery (database schemas, file formats, cluster jobs, viewers) and leaves the hypothesis-and-test loop to the scientist. Its value is in removing the friction between a question and a runnable analysis. Much of that friction is plumbing: many computational-genomics databases are still reached over FTP, and just building reliable LLM-facing connectors to them would be worth a lot on its own.</p></li>
+<li><p><strong>A bioinformatics workbench with a general name</strong>: despite the “Science” label, the connectors and skills ship only for biology and pharma (genomics, proteomics, structural biology, cheminformatics), with nothing yet for physics, astronomy, earth science, or engineering. The data-analysis focus (notebooks, dataframes, plots) fits computational biology far better than science in general.</p></li>
+<li><p><strong>Scientists already stitch this together from separate tools</strong>: Claude Science tries to fold literature reading, analysis, and manuscript writing into one place, but each stage has its own products today.</p>
+<ul>
+<li><em>Reading and search</em>: <a href="https://elicit.com/">Elicit</a>, <a href="https://consensus.app/">Consensus</a>, <a href="https://scispace.com/">SciSpace</a>, <a href="https://www.semanticscholar.org/">Semantic Scholar</a>, <a href="https://scite.ai/">Scite</a>, <a href="https://www.connectedpapers.com/">Connected Papers</a>, <a href="https://www.researchrabbit.ai/">ResearchRabbit</a>, and <a href="https://www.alphaxiv.org/">alphaXiv</a> (a reading and discussion layer over arXiv), plus general agents like <a href="https://notebooklm.google.com/">NotebookLM</a>, <a href="https://www.perplexity.ai/">Perplexity</a>, and the deep-research modes in ChatGPT and Gemini.</li>
+<li><em>Hypothesis generation and autonomous discovery</em>: Google’s <a href="../../posts/20260606-co-scientist-scientific-discovery/">Co-Scientist</a>, FutureHouse’s <a href="../../posts/20260606-robin-multi-agent-scientific-discovery/">Robin</a>, <a href="https://sakana.ai/ai-scientist/">Sakana’s AI Scientist</a>, and <a href="../../posts/20260606-autoscientist/">AutoScientist</a>, most of which are research systems rather than self-serve apps.</li>
+<li><em>Analysis and compute</em>: Claude Science, <a href="https://azure.microsoft.com/en-us/blog/transforming-rd-with-agentic-ai-introducing-microsoft-discovery/">Microsoft Discovery</a> (Azure, enterprise), and domain-specific research agents like Stanford’s <a href="https://biomni.stanford.edu/">Biomni</a>, whose HPC backend is one of the tools connected into this launch, and <a href="https://celvox.co/solutions/axon">Celvox Axon</a>, plus code-interpreter tools like ChatGPT’s data analysis and <a href="https://julius.ai/">Julius</a>. Much of this analysis runs in notebooks, where agent-friendly formats like <a href="https://marimo.io/">Marimo</a> are easier for coding agents to edit than classic Jupyter.</li>
+<li><em>Writing and manuscripts</em>: <a href="https://www.overleaf.com/">Overleaf</a> with its <a href="https://www.writefull.com/">Writefull</a> AI, <a href="https://paperpal.com/">Paperpal</a>, and <a href="https://jenni.ai/">Jenni</a>, which stay separate from the agentic workbenches. OpenAI’s own science product, <a href="https://openai.com/prism/">Prism</a>, is a free, cloud-based LaTeX editor with ChatGPT and Codex built into the drafting workflow, a writing tool rather than a full analysis workbench. Research prototypes are moving into this half too, like <a href="https://arxiv.org/abs/2606.08857">PaperMentor</a> [1]<!-- crosslink-todo: /posts/20260630-papermentor/ -->, a multi-agent writing tutor built on Overleaf.</li>
+</ul>
+<p>Claude Science and Microsoft Discovery are the ones reaching across the analysis stage. The reading and writing ends still belong to focused tools.</p></li>
+<li><p><strong>The reviewer agent is not independent verification.</strong> <a href="../../posts/20260422-proof-generation-vs-digestion/">Terence Tao splits research into generation, verification, and digestion</a>, and argues AI is speeding through the first two while digestion lags. Claude Science answers with a reviewer agent that checks citations and calculations, plus a provenance record for the human to digest. Two things make that check weaker than it looks:</p>
+<ul>
+<li><strong>Self-checking by the same model family is weak.</strong> A 2026 position paper on AI-scientist systems finds agents reach <a href="https://arxiv.org/abs/2606.23175">right answers through wrong reasoning and do not reliably self-apply the mechanism checks that would catch it</a> [2]<!-- crosslink-todo: /posts/20260630-correct-answer-wrong-mechanism/ -->, and in multi-turn tests deep-research agents barely improve under <a href="https://arxiv.org/abs/2606.09748">self-reflection, gaining mainly from external process-level feedback</a> [3]<!-- crosslink-todo: /posts/20260630-deep-research-process-feedback/ -->.</li>
+<li><strong>Even as a judge rather than a self-critic, an LLM is an unreliable verifier.</strong> Report-logic evaluation finds <a href="https://arxiv.org/abs/2602.18446">LLM judges are swayed by verbosity and miss broken support</a> [4]<!-- crosslink-todo: /posts/20260630-reportlogic/ -->, and reliable scientific claim-checking <a href="https://arxiv.org/abs/2606.20873">needs evidence grounded in the actual tables and figures rather than a direct yes/no judgment</a> [5]<!-- crosslink-todo: /posts/20260630-scilens/ -->.</li>
+<li><strong>The provenance record is the part a human can actually check.</strong> An agent catching “untraceable numbers” is closer to a second generation pass than to independent verification, so the stored code, environment, and message history is what lets a person re-run and confirm a result.</li>
+</ul></li>
+<li><p><strong>Data and compute stay on lab hardware</strong>: datasets never leave the lab’s own systems, and only the per-step context is sent to Claude. That design lets the app work in genomics and clinical settings where the data legally or practically cannot move, a bar the research discovery systems never had to clear. The way it runs reinforces this: a local server with a browser front end rather than a laptop-coupled desktop app, which could run inside a locked-down Trusted Research Environment (TRE), the restricted platforms gating access to biobanks like UK Biobank or NIH’s All of Us. Whether the agent’s own network calls clear those restrictions is an open question.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Liu, Jiarui, Zhang, Terry Jingchen, et al.&nbsp;“PaperMentor: A Human-Centered Multi-Agent Writing Tutor for AI Research Papers on Overleaf.” ACL 2026 (System Demonstrations), arXiv:2606.08857. <a href="https://arxiv.org/abs/2606.08857" class="uri">https://arxiv.org/abs/2606.08857</a></li>
+<li><a id="ref-2"></a>Eulig, Steven Young. “Position: Correct Answer, Wrong Mechanism — When AI Scientists Defend General Claims Their Own Data Contradicts.” ICML 2026 (position paper), arXiv:2606.23175. <a href="https://arxiv.org/abs/2606.23175" class="uri">https://arxiv.org/abs/2606.23175</a></li>
+<li><a id="ref-3"></a>Sabharwal, Rishabh, Wang, Hongru, Storkey, Amos, Pan, Jeff Z. “Multi-Turn Evaluation of Deep Research Agents Under Process-Level Feedback.” SCALE Workshop @ ICML 2026 (Oral), arXiv:2606.09748. <a href="https://arxiv.org/abs/2606.09748" class="uri">https://arxiv.org/abs/2606.09748</a></li>
+<li><a id="ref-4"></a>Zhao, Jujia, Huan, Zhaoxin, Wang, Zihan, Zhang, Xiaolu, Zhou, Jun, Verberne, Suzan, Ren, Zhaochun. “ReportLogic: Evaluating Logical Quality in Deep Research Reports.” ACL 2026 (Main), arXiv:2602.18446. <a href="https://arxiv.org/abs/2602.18446" class="uri">https://arxiv.org/abs/2602.18446</a></li>
+<li><a id="ref-5"></a>Wang, Yueming, Zheng, Tianshi, Bai, Jiaxin, Song, Yangqiu, Wong, Ginny, See, Simon. “SciLens: Multi-modal Scientific Claim Verification with Agentic Entailment and Grounding.” KDD 2026 (SciSoc Agents &amp; LLMs Workshop, Oral), arXiv:2606.20873. <a href="https://arxiv.org/abs/2606.20873" class="uri">https://arxiv.org/abs/2606.20873</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260606-co-scientist-scientific-discovery/">Co-Scientist: Gemini Agents That Generate and Rank Hypotheses</a>: a vertical multi-agent system that generates and ranks hypotheses, where Claude Science instead ships a horizontal environment and leaves hypothesis generation to the user.</li>
+<li><a href="../../posts/20260606-robin-multi-agent-scientific-discovery/">Robin: A Multi-Agent System That Ran the Whole Discovery Loop</a>: ran the full discovery loop to two confirmed drug candidates, the counterpoint to Claude Science’s tooling-first scope.</li>
+<li><a href="../../posts/20260422-proof-generation-vs-digestion/">Proof Generation vs Digestion</a>: Tao’s generation, verification, and digestion frame that the reviewer agent and provenance record are trying to answer.</li>
+<li><a href="../../posts/20260606-scientific-intuition-digital-speed/">Unlocking Scientific Intuition and Reasoning at Digital Speed</a>: Kohli’s vision of AI as a scientific instrument, which this product operationalizes for working labs.</li>
+<li><a href="../../posts/20260606-autoscientist/">AutoScientist: Automating the Science of Model Training</a>: another automation-of-research-work system, automating fine-tuning recipe search rather than the lab bench.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260630-claude-science-ai-workbench/</guid>
+  <pubDate>Tue, 30 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260630-claude-science-ai-workbench/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Sakana Fugu: One Model to Command Them All</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260629-fugu-release/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2017,107 +2094,6 @@
   <guid>https://benjaminhan.net/posts/20260623-claude-code-design-space/</guid>
   <pubDate>Tue, 23 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260623-claude-code-design-space/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Early-Token Confidence Predicts Reasoning Quality in Multi-Agent LLM Debate</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260623-early-token-confidence/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260623-early-token-confidence/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-early-token-confidence/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Token-level log-probability trajectories for the Advocate and Skeptic on Essay Sets 7 (left) and 8 (right). Solid lines are mean trajectories, shaded bands the 25–75 and 10–90 percentiles. The opening tokens are the most spread out, and so the most informative. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Early-Token Confidence Predicts Reasoning Quality in Multi-Agent LLM Debate</em> [1], Keramati et al.&nbsp;(UC Irvine) show that the confidence of an LLM’s first few generated tokens predicts how a judge rates the quality of its reasoning in a debate-based essay-scoring system, often better than statistics taken over the whole response.</p>
-<blockquote class="blockquote">
-<p>Evaluating reasoning quality in multi-agent LLM systems is challenging, especially for open-ended tasks without reference answers. We investigate whether <em>intrinsic confidence signals, token-level log-probabilities from decoding, can predict reasoning quality as assessed by LLM-as-judge evaluation</em>. Using a debate-based essay scoring framework, we compare confidence proxies against rubric-based judge scores across two ASAP essay sets. We find that <em>early-token confidence, particularly within the first few generated tokens, is consistently the strongest predictor of reasoning quality</em>, outperforming full-sequence statistics. Analysis of log-probability trajectories shows that <em>the opening phase of generation is the most heterogeneous and therefore most informative</em>. We also observe <em>a systematic asymmetry between agent roles, with stronger alignment between confidence and quality for supportive reasoning than for adversarial critique</em>. These results suggest that <em>early decoding dynamics provide a lightweight and effective signal for estimating reasoning reliability</em> in multi-agent LLM systems.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The framework scores essays through a structured debate, then mines the debaters’ own decoding signals rather than any reference answer:</p>
-<ul>
-<li><strong>Two debating agents</strong>: an Advocate argues an essay’s strengths against a rubric trait and a Skeptic rebuts with limitations, both producing open-ended argument without assigning a score. Both are generated by GPT-4o-mini.</li>
-<li><strong>Confidence signals</strong>: during decoding, each agent’s per-token log-probabilities <img src="https://benjaminhan.net/feed-assets/29cd46905e0adf2b.svg" alt="\ell_t = \log p(t_t \mid t_{&lt;t}, x)" class="feed-math-inline"/> are recorded as an intrinsic confidence trace over the response.</li>
-<li><strong>Windows and statistics</strong>: from each trace they extract a handful of candidate windows anchored at the start or end of the response — the first or last <img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> tokens (a fixed count; the paper’s features span <img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> of 3, 5, 10, and 30) and the first or last <img src="https://benjaminhan.net/feed-assets/da8efc6df486104b.svg" alt="\alpha T" class="feed-math-inline"/> tokens (a fraction <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/> of the response length <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/>, e.g.&nbsp;the final half) — plus the full response, and summarize each window by its mean, median, min, max, variance, standard deviation, range, and trajectory slope.</li>
-<li><strong>LLM-as-judge targets</strong>: a separate GPT-5-mini judge reads the debate transcript and scores each argument on five targets, which the confidence statistics are then tested against:
-<ul>
-<li><em>Instruction following</em> — three-point ordinal (1 = Low, 2 = Medium, 3 = High)</li>
-<li><em>Justification quality</em> — three-point ordinal</li>
-<li><em>Evidence grounding</em> — three-point ordinal</li>
-<li><em>Aggregate score</em> — the composite, in <img src="https://benjaminhan.net/feed-assets/016cb6646d02124d.svg" alt="[0,9]" class="feed-math-inline"/></li>
-<li><em>Critical failure</em> — a binary flag for a severe error; when it fires, the aggregate score above is overridden to 0 Prediction quality is measured per target by its natural metric: Spearman’s <img src="https://benjaminhan.net/feed-assets/545ed088cc983cd7.svg" alt="\rho" class="feed-math-inline"/> (and Kendall’s <img src="https://benjaminhan.net/feed-assets/c22f4f7100921e0c.svg" alt="\tau" class="feed-math-inline"/>) for the four ordinal targets, AUROC for the binary critical-failure flag. So “critical-failure detection” is just the binary-classification slice of the analysis — predicting that flag — as opposed to rank-correlating the ordinal scores.</li>
-</ul></li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-early-token-confidence/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
-<figcaption>The multi-agent debate and LLM-as-judge evaluation framework: an Advocate argues an essay’s strengths and a Skeptic rebuts, both exposing token-level log-probabilities, which are compared against a judge’s rubric scores. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The data is the <a href="https://www.kaggle.com/c/asap-aes">ASAP automated-essay-scoring benchmark</a> (the Hewlett Foundation’s Automated Student Assessment Prize), restricted to Essay Sets 7 and 8 (the only sets with trait-level human annotations). Advocate and Skeptic arguments come from GPT-4o-mini, and the judge is a deterministic GPT-5-mini. Table 1 reports, for each role–target pair, the top three confidence features ranked by their fit to the judge score and the best score achieved.</p>
-<p>Early-token confidence is the standout predictor, most clearly for catching severe failures and on the harder essay set:</p>
-<ul>
-<li><strong>Critical-failure detection is strong.</strong> The max of the first 3 tokens reaches AUROC 0.849 for the Advocate on Set 7, and the median of the first 5 tokens reaches 0.759 on Set 8, so severe errors tend to show up as localized confidence spikes or drops right at the opening.</li>
-<li><strong>Fine-grained quality ranking is weak.</strong> The best Spearman correlations with ordinal scores top out near 0.39 (Advocate, Set 7), and the Skeptic’s barely reach 0.11 to 0.27.</li>
-<li><strong>Roles are asymmetric.</strong> Confidence aligns with judged quality far better for the supportive Advocate than the adversarial Skeptic, across both sets.</li>
-<li><strong>Not uniformly early-token.</strong> On Set 7 the Advocate’s best ordinal predictor was the full-response median, not an opening-window feature. The early-token advantage shows up mainly on Set 8 and for critical-failure detection.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-early-token-confidence/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
-<figcaption>Top-3 confidence features for each role–target pair across Essay Sets 7 and 8. For the ordinal targets the final column reports Spearman’s <img src="https://benjaminhan.net/feed-assets/545ed088cc983cd7.svg" alt="\rho" class="feed-math-inline"/>; for critical-failure detection it reports AUROC. Early-<img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> refers to statistics over the first <img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> generated tokens, final-half to the last 50%. Table 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>The judge leans hard on its top score — it assigns a 3 to 77% of essays on instruction following, 79% on justification quality, and 93% on evidence grounding. Evidence grounding is so saturated it behaves almost like a constant, which leaves little rank variation for any confidence feature to align with and mechanically holds its correlation down — a ceiling in the labels, not a failure of the signal.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260623-early-token-confidence/figure3.png" class="img-fluid figure-img"></p>
-<figcaption>Distribution of LLM-as-judge scores by dimension: evidence grounding saturates at the top score, while instruction following and justification quality vary more. Figure 3 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>Intrinsic confidence works for open-ended reasoning too.</strong> <a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a> established that a model’s token probabilities track correctness on closed-form tasks. This paper extends the idea to open-ended, reference-free reasoning and localizes it: the first three to five tokens hold more predictive signal than the full sequence, which makes the proxy a cheap decoding-time read rather than a separate calibration model [1].</li>
-<li><strong>Confidence is diagnostic for advocacy, not for critique.</strong> The Skeptic’s log-probability confidence barely correlates with judged quality (Spearman 0.11 to 0.27) while the Advocate’s does (up to 0.39, AUROC 0.85). That matches a known soft spot: <a href="../../posts/20250802-mast-multi-agent-failures/">MAST</a> found verification failures — a system not checking its own work — to be a recurring multi-agent breakdown. Here the critique role is also where intrinsic confidence is least informative, so monitoring helps least on the function that most needs a second look.</li>
-<li><strong>It is a failure flag, not a fine scorer.</strong> Rank agreement with graded quality is weak (Spearman around 0.39 at best), but critical-failure detection is strong (AUROC up to 0.85). And the abstract’s “consistently the strongest” is set-dependent: on Essay Set 7 the Advocate’s best ordinal predictor was the <em>full-response median</em>, not an early-token feature.</li>
-<li><strong>What can we do with token logits reliably?</strong> Only one thing transfers across the paper’s two essay sets: the predictive signal lives in the opening three to five tokens, so early-token statistics make a cheap decode-time screen for severe failures (AUROC up to 0.85 within a set). The specific feature and its direction do not transfer — the top detector is the max of the first three tokens on Set 7 but the median of the first five on Set 8, and the signs even disagree (a confident early spike flags failure, a wide early spread suppresses it). So the reliable recipe is narrow: read the first few tokens, but fit which statistic and which sign on your own data rather than lifting a fixed rule from this paper.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Keramati, A., Cheok, J., Horne, J., and <a href="https://en.wikipedia.org/wiki/Mark_Warschauer">Warschauer, M.</a> “Early-Token Confidence Predicts Reasoning Quality in Multi-Agent LLM Debate.” <em>arXiv preprint</em> (arXiv:2606.10307), June 9, 2026. <a href="https://arxiv.org/abs/2606.10307" class="uri">https://arxiv.org/abs/2606.10307</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: the failure-mode map for multi-agent debate that this paper’s critical-failure flag tries to catch cheaply from decoding signals.</li>
-<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the calibration result this paper extends from closed-form correctness to open-ended, reference-free reasoning quality.</li>
-<li><a href="../../posts/20260505-semantic-entropy/">Detecting Hallucinations in Large Language Models Using Semantic Entropy</a>: another intrinsic, decoding-time uncertainty signal for output quality, against which early-token log-probability is the lighter-weight alternative.</li>
-<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: a counterpoint on whether a model’s stated confidence reflects its internal distribution, where this paper reads the distribution directly from log-probabilities instead.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260623-early-token-confidence/</guid>
-  <pubDate>Tue, 23 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260623-early-token-confidence/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
