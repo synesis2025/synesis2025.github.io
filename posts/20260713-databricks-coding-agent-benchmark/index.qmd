@@ -1,0 +1,83 @@
+---
+title: "Benchmarking Coding Agents on Databricks' Multi-Million-Line Codebase"
+description: "Databricks built an internal coding-agent benchmark from its own merged pull requests and found harness choice and token efficiency matter as much as which model you pick."
+author: synesis
+date: "2026-07-13"
+image: cover.jpg
+---
+
+The engineering team at [Databricks](https://www.databricks.com/), including CTO [Matei Zaharia](https://cs.stanford.edu/~matei/), [published](https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase) the results of an internal benchmark that scores coding agents on real tasks drawn from their own multi-million-line codebase, rather than on public suites.
+
+![Cost versus performance on the Databricks internal benchmark, with models and harnesses spread across a Pareto frontier. Image from [Databricks](https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase).](cover.jpg){fig-align="center"}
+
+What the article reports:
+
+- **Method**: real merged pull requests turned into graded tasks.
+  - Sources: recent human-written PRs across 10+ languages (Scala, Rust, TypeScript, Go, Python, Bazel, Protobuf).
+  - Each PR description rewritten to state the goal without the solution, with the test files held out.
+  - Pass = the held-out tests pass, with every sample hand-checked and some tests rewritten to grade behavior instead of exact string match.
+  - Scored by those tests, not an LLM judge, because a judge "rewards sounding right over being right."
+- **Three capability tiers**: models and harnesses clustered by overall pass rate.
+  - Top, 82–90%: Opus 4.8, [GLM 5.2](https://z.ai/), and GPT-5.5 in its stronger settings.
+  - Middle, 71–82%: Sonnet 5, Sonnet 4.6, most GPT-5.5 configurations.
+  - Bottom, 51–60%: GPT-5.4-mini, Haiku 4.5.
+  - No single vendor owns the frontier: the best quality-per-dollar points span OpenAI, Anthropic, and open models.
+- **Most real work is routine**: task complexity from logged coding sessions.
+  - 7.6% trivial, 19.3% low, 61.1% medium, only 12.1% high.
+  - Flag flips and config edits don't need the most capable model, yet it was the default everywhere, and the biggest efficiency gain came from routing cheaper models to easier work.
+- **Open models arrived**: GLM 5.2 landed in the top capability tier, statistically tied with Opus 4.8 on quality while costing \$1.28/task against Opus's \$1.94.
+- **Token price mispredicts task cost**: Sonnet 5 is about 1.7× cheaper per token than Opus 4.8, but cost \$2.09/task versus Opus's \$1.94 and scored six points lower (81% vs 87%), because it read more and ran longer, burning 1.9× the tokens.
+- **Harness choice moved cost as much as model choice**: the same model at the same thinking effort cost up to 2× more through one harness than another at equal quality, driven by how much context each harness re-fed the model per turn (see the Pi section below).
+
+![Overall pass rate against cost per task, with the models and harnesses falling into three capability tiers. Image from [Databricks](https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase).](capability-tiers.png){fig-align="center"}
+
+![Share of Databricks' logged AI coding sessions by task complexity: most of the work is medium or below. Image from [Databricks](https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase).](task-complexity.png){fig-align="center"}
+
+## The Pi Harness
+
+In the benchmark, every model was run two ways: through its native harness (Claude Code for the Anthropic models, Codex for the OpenAI models) and through [Pi](https://pi.dev/), a minimal open-source harness, at the same model and the same thinking effort. Pi matched the native harnesses on quality for less money, for two reasons:
+
+- **Less context per task**: Pi re-fed the model far fewer tokens: a median 236k for Opus 4.8 against Claude Code's 742k (3.2× less), and 665k for GPT-5.5 against Codex's 1,235k (1.9× less). It kept a tighter working set and finished tasks in fewer runs.
+- **Lower cost at matching quality**: the saving ran 1.2× to 2.1× per task. Opus 4.8 at high effort cost 2.08× less through Pi while scoring within two points (85% vs 87%), and at extra-high effort it was 1.46× cheaper while scoring two points higher (90% vs 88%). The gap narrowed only at max effort, where the native harness pulled ahead on quality.
+
+![Total context re-fed to the model per task, Pi versus each model's native harness. Image from [Databricks](https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase).](context-per-task.png){fig-align="center"}
+
+![Cost per task through Pi versus each model's native harness, at matched quality. Image from [Databricks](https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase).](harness-efficiency.png){fig-align="center"}
+
+Databricks' reading is that the harness deserves the same scrutiny as the model, because it can move the bill more than the model does. That is why the team invested in [Omnigent](https://omnigent.ai/), a meta-harness meant to make swapping models and harnesses routine rather than a rewrite each time.
+
+Some background on Pi, since it earned its place here. It is a terminal-based coding agent that calls itself a "minimal agent harness", where the core stays small and you reshape it through extensions, skills, and shared packages rather than working around fixed features.
+
+![Pi's own framing of what it is. Image from [pi.dev](https://pi.dev/).](pi.png){fig-align="center"}
+
+
+- **Who built it**: Earendil Inc.
+- **Free or commercial**: free and open source under the MIT license, installed from npm as `@earendil-works/pi-coding-agent`. You bring your own model access, a provider subscription or an API key, so the only running cost is model usage.
+- **Versus Claude Code and Codex**:
+  - **Provider-agnostic**: Claude Code is tied to Anthropic's models and Codex to OpenAI's, while Pi speaks to 15+ providers and hundreds of models (Anthropic, OpenAI, Google, Bedrock, Mistral, Groq, xAI, OpenRouter, Ollama, among others) and switches between them mid-session.
+  - **Ships far less by design**: sub-agents, plan mode, permission gates, and built-in MCP, which the other two include out of the box, are left out of Pi's core and added back only if you want them.
+- **Selling points**:
+  - A minimal system prompt that keeps token use low (the effect measured above).
+  - Tree-structured sessions you can rewind, branch, and share.
+  - A scriptable print/JSON mode plus an SDK for embedding.
+  - Direct control over what enters the context window.
+- **Where to start**: run `curl -fsSL https://pi.dev/install.sh | sh` or the npm install above, then `pi` in a project directory. The [docs](https://pi.dev/docs/) walk through setup.
+
+## My Notes
+
+- **A realistic sandbox can leak the answer**: early scores looked too good because agents with shell access walked *forward* through the worktree's git history to the merged commit that held it. Databricks fixed it by cutting the working copy off from the repository for each run. When the eval environment is a real repo, the solution is usually already inside it, so the setup has to remove it.
+
+- **A private PR backlog is uncontaminated evaluation data**: public suites like [SWE-bench](https://www.swebench.com/) decay as their tasks leak into training corpora, while a team's own merged PRs are graded by tests that team already wrote and are absent from any model's training set. The eval advantage has quietly become a data-ownership advantage, which is the same pressure driving the [open-weights capability gap](/posts/20260627-open-weights-frontier-gap/) toward workload-specific measurement over leaderboards.
+
+- **Procurement should ask "which harness," not just "which model"**: the industry tracks model leaderboards obsessively and treats the harness as plumbing, yet at fixed model and fixed quality the harness moved cost more than 2×. That puts real weight behind the [harness-engineering](/posts/20260626-harness-engineering/) thesis that the scaffold is where much of the leverage now lives, and it matches the per-turn context accounting in [where Claude Code tokens go](/posts/20260503-where-claude-code-tokens-go/).
+
+- **Per-token pricing is the wrong budgeting unit**: effective cost is tokens times reasoning efficiency, and reasoning efficiency is workload-specific, so a published price cannot tell you what a task will cost. Only running your own tasks can. The Sonnet-versus-Opus inversion is the example: Sonnet burned more tokens over more turns despite the lower token price. [The math behind the cost of AI agents](/posts/20260513-the-math-behind-the-cost-of-ai-agents/) derives why: the context piling up each turn, not the per-token rate, sets what a task costs.
+
+---
+
+## Related Posts
+
+- [Harness Engineering](/posts/20260626-harness-engineering/): argues the agent scaffold is where much of the current leverage is, which the 2× harness-driven cost gap here makes concrete.
+- [How Far Behind the Closed Frontier Are Open-Weights LLMs?](/posts/20260627-open-weights-frontier-gap/): the open-versus-closed gap that GLM 5.2's top-tier finish speaks to directly.
+- [The Math Behind the Cost of AI Agents](/posts/20260513-the-math-behind-the-cost-of-ai-agents/): derives why agent token cost grows with each turn, and this post supplies the empirical per-task counterpart.
+- [Where Claude Code Tokens Go](/posts/20260503-where-claude-code-tokens-go/): per-turn context accounting that explains why harness context management moves the bill.
