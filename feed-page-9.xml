@@ -23,6 +23,31 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Mon, 13 Jul 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>My #98 Parkrun</title>
+  <dc:creator>Ben </dc:creator>
+  <link>https://benjaminhan.net/posts/20260509-my-98-parkrun/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260509-my-98-parkrun/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>My #98 #Parkrun today, and I’m on my way back!</p>
+<p><img src="https://benjaminhan.net/posts/20260509-my-98-parkrun/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260509-my-98-parkrun/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260509-my-98-parkrun/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116547601584939858">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260509-my-98-parkrun/</guid>
+  <pubDate>Sat, 09 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260509-my-98-parkrun/cover.jpeg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>NYTimes: Meditating or Rebooting? A Robot Buddhist Monk Comes to South Korea.</title>
   <dc:creator>Ben </dc:creator>
   <link>https://benjaminhan.net/posts/20260509-nytimes-meditating-or-rebooting-a-robot-buddhist-m/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1911,74 +1936,6 @@
   <guid>https://benjaminhan.net/posts/20260504-kadavath-mostly-know/</guid>
   <pubDate>Mon, 04 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260504-kadavath-mostly-know/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Where Claude Code Tokens Go</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260503-where-claude-code-tokens-go/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260503-where-claude-code-tokens-go/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260503-where-claude-code-tokens-go/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Token breakdown banner. Image from <a href="https://x.com/Mnilax/status/2050261839653556522">Mnimiy on X</a>.</figcaption>
-</figure>
-</div>
-<p>Mnimiy (<span class="citation" data-cites="Mnilax">@Mnilax</span>) claims to have proxy-logged 90 days of <a href="https://claude.com/claude-code">Claude Code</a> traffic (430 hours, 6M input tokens, $1,340 in API spend) and published <a href="https://x.com/i/article/2050246891963654144">a 9-pattern breakdown</a> arguing that 73% of spend goes to overhead the user pays before typing a prompt.</p>
-<section id="what-the-article-reports" class="level2">
-<h2 class="anchored" data-anchor-id="what-the-article-reports">What the article reports</h2>
-<p>He ran an HTTP proxy between Claude Code and the Anthropic API for 90 days, logging every request’s payload, response, token counts, latency, and model. Each token was bucketed into one of nine categories (productive, cache hit, cache miss, conversation-history re-read, hook injection, skill loading, tool-use overhead, extended thinking, <code>CLAUDE.md</code>). 27% of tokens were productive; the other 73% split across these patterns, ranked by cost share:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260503-where-claude-code-tokens-go/breakdown.jpg" class="img-fluid figure-img"></p>
-<figcaption>Token spend breakdown across ten categories. Image from <a href="https://x.com/Mnilax/status/2050261839653556522">Mnimiy on X</a>.</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong><code>CLAUDE.md</code> bloat (14%).</strong> His grew to 4,800 tokens over six months; he cut to 900 by moving framework-specific rules to project-level files, extracting repeated patterns into skills, and converting verbose rules into 3-word imperatives. Target is under 1,500 tokens combined.</li>
-<li><strong>Conversation history re-reads (13%).</strong> Every follow-up re-tokenizes the full transcript; at ~500 tokens per exchange, message 30 costs 30× message 1. His 60-message sessions dropped to a 15-message average by editing prior messages instead of stacking follow-ups, hard-capping sessions at 20 messages then summarizing into a fresh chat, and using <code>/compact</code> (not <code>/clear</code>) when continuity matters.</li>
-<li><strong>Hook injection (11%).</strong> Three plugins’ <code>UserPromptSubmit</code> hooks together injected 6,200 tokens of branch names, recent-change summaries, and memory snippets on every prompt. He kept only git-branch.</li>
-<li><strong>Cache misses on session resume (10%).</strong> The default 5-minute prompt-cache lifetime means any coffee break triggers full-price re-tokenization of ~8K of cached boilerplate; he hit this ~640× in 90 days. Upgrading to the 1-hour cache on paid plans (2× write premium one-time, 0.1× reads) dropped his cache-miss cost 80% and pays off after roughly 10 resumes per session; a lighter workaround is keeping a “ping” hotkey that warms the cache before you step away.</li>
-<li><strong>Skill loading on irrelevant tasks (7%).</strong> Nine installed skills auto-invoke on conservative relevance detection, so the UI-design skill fires on backend tasks; at ~1,500 tokens per <code>SKILL.md</code>, that’s ~13,500 tokens of irrelevant context per task. He ran a 7-day audit of which skills he actually invoked and cut from 11 active to 4.</li>
-<li><strong>“Just in case” MCP tool definitions (6%).</strong> Twelve connected <a href="https://modelcontextprotocol.io/">Model Context Protocol</a> (MCP) servers each ship their full tool schema on every request (~600 tokens on average; PostgreSQL MCP alone is ~1,200), but he used only 3 of the 12 in 80% of his work. He edited <code>~/.claude/settings.json</code> to drop the others from auto-load and re-enables per-session, ending at 3 always-on.</li>
-<li><strong>Extended thinking on simple questions (5%).</strong> “Advanced Thinking” left on globally spent 3,000+ thinking tokens on prompts like “rename this variable to camelCase”. He recommends defaulting it OFF and toggling ON per-message (Alt+T in Claude Code) when a task genuinely needs reasoning. About 80% don’t.</li>
-<li><strong>Wrong-direction generation (4%).</strong> Claude writes 400 lines, drift is obvious by line 50, users let it finish. Output tokens are billed. <code>Cmd+.</code> / <code>Ctrl+.</code> stops generation and keeps what’s already written; in Claude Code terminal, double-Esc opens a checkpoint scroller to rewind. He reports ~$15/month saved.</li>
-<li><strong>Plugin auto-update redundancy (3%).</strong> Nine plugins’ <code>SessionStart</code> hooks stacked “loaded successfully” notifications at ~1,400 tokens on every session start. He kept two (branch context and env vars).</li>
-</ul>
-<p>The article blames part of the late-March 2026 “usage limits hit way faster than expected” complaints on two independent prompt-cache bugs that silently inflated some sessions’ costs 10–20×, documented in <a href="https://github.com/anthropics/claude-code/issues/40524">GitHub issue #40524</a> and since patched; downgrading to Claude Code v2.1.34 helped some users.</p>
-<p>After applying all nine fixes, the claim is that productive-token share lifts from 27% to “roughly 65%”. The piece also lists six approaches that didn’t move the needle: switching to <a href="https://www.anthropic.com/claude/haiku">Haiku</a> for simple tasks (~3% help), aggressive <code>/clear</code> between tasks (net negative, lost useful context), disabling all skills (net negative, author re-wrote the same instructions manually), off-peak scheduling (partial; peak-hour quota reduction affected ~7% of users per Anthropic), plan downgrade (flat cost per work-hour), and trying to reverse-engineer the March cache bug yourself (not worth it for individuals).</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p>The nine patterns trace back to one design choice: Claude Code preloads “might be relevant” context (<code>CLAUDE.md</code>, hook output, skill bodies, MCP schemas, full conversation history) on every turn, and bills the user for the speculation. Anthropic’s own answer to this is <a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills">progressive disclosure</a>, the core design principle behind Agent Skills: metadata loads eagerly, full bodies pull in only when Claude judges the skill relevant. But the principle doesn’t seem to extend to the other preload categories, which remain always-on; and even within Skills the conservative auto-invoke the article describes (nine installed skills loading on every task) undermines it in practice.</p></li>
-<li><p>Subagent delegation already exists in Claude Code and directly addresses the article’s biggest line item (conversation-history re-reads, 13%): <a href="https://docs.claude.com/en/docs/claude-code/sub-agents">Explore</a> or general-purpose agents pull context into a task-scoped workspace that doesn’t feed back into the main thread. But it’s not the default behavior, and the article’s nine-fix list doesn’t mention it, suggesting the tool is under-adopted even among experienced users. The impact compounds on long sessions; the article’s own arithmetic (message 30 costs 30× message 1) makes main-thread history re-read quadratic in turn count, while a subagent’s scratch context stays bounded.</p></li>
-<li><p>The cache-miss fix depends on whether you can tune the cache lifetime directly. If you can, upgrading from the 5-minute default to the <a href="https://docs.claude.com/en/docs/build-with-claude/prompt-caching">1-hour extended cache</a> pays off quickly. If you can’t, the only option is to keep the cache warm by touching the session during breaks.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the other side of the token-count story, tracing how a tokenizer change inflates the same input before any of these overhead patterns even apply.</li>
-<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the formal version of the conversation-history line item, deriving why agent token costs grow quadratically without caching and why the cache fixes here matter most on long sessions.</li>
-<li><a href="../../posts/20260508-making-the-blog-agent-friendly/">Making <em>synesis</em> Agent-Friendly</a>: the progressive-disclosure principle this post invokes, applied to corpus surfaces so an agent pulls only what it needs rather than preloading everything.</li>
-<li><a href="../../posts/20260528-claude-code-large-codebases/">How Claude Code Works in Large Codebases: Best Practices and Where to Start</a>: the same harness extension points (hooks, skills, MCP, <code>CLAUDE.md</code>) seen from the configuration side, where over-loading them is the overhead this breakdown bills.</li>
-<li><a href="../../posts/20260529-claude-code-mastery/">Claude Code Beyond the Prompt</a>: the field guide to running Claude Code as a programmable agent, including the context- and skill-management habits that keep the productive-token share high.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260503-where-claude-code-tokens-go/</guid>
-  <pubDate>Sun, 03 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260503-where-claude-code-tokens-go/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
