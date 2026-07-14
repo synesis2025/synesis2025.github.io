@@ -1,0 +1,68 @@
+---
+title: "Quantification of Large Language Model Distillation"
+description: "A jailbreak-based identity probe and an LLM-judged similarity score estimate how heavily a model was distilled from another, ranking Claude, Doubao, and Gemini lowest and DeepSeek and Qwen-Max highest."
+author: synesis
+date: "2026-07-13"
+image: cover.jpg
+---
+
+![Identity Consistency Evaluation scores across eight models. Claude and Doubao produce almost no contradictory identity responses under jailbreak, while GLM-4-Plus, Qwen-Max, and DeepSeek-V3 score highest. Figure 4 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *Quantification of Large Language Model Distillation* [[1]](#ref-1) (ACL 2025), [Sunbowen Lee](https://dblp.org/pid/395/5902.html), [Junting Zhou](https://dblp.org/pid/372/7349.html), and [Chang Ao](https://dblp.org/pid/367/4714.html), with corresponding authors [Min Yang](https://dblp.org/pid/02/1640-7.html), [Yitao Liang](https://dblp.org/pid/173/4969.html), [Zhoufutu Wen](https://dblp.org/pid/350/0991.html), and [Shiwen Ni](https://dblp.org/pid/279/5319.html) (Chinese Academy of Sciences, Peking University, and others), propose two metrics for estimating how much one model was distilled from another and apply them to a dozen well-known LLMs.
+
+> Model distillation is a fundamental technique in building large language models (LLMs), transferring knowledge from a teacher model to a student model. However, distillation can lead to model homogenization, reducing diversity among models and impairing their ability to robustly handle complex or novel tasks. These limitations underscore the need to systematically quantify the distillation process and its impact. In this work, we propose a framework to evaluate and quantify model distillation. Our method addresses two key aspects: (1) *Identifying identity cognition contradictions* to assess discrepancies in how models perceive and represent identity-related information, and (2) *Analyzing multi-granularity response similarities* across models to measure the extent of homogenization. Experimental results demonstrate two key insights: (1) *Well-known closed-source and open-source LLMs usually exhibit high distillation degrees, except for Claude, Doubao, and Gemini.* (2) *Base LLMs show higher distillation degrees compared to aligned LLMs.* By offering a systematic approach to improve the transparency of LLM data distillation, we call for LLMs with more independent development and more transparent technical reports to improve LLMs' robustness and safety.
+
+## Methods
+
+The framework defines two metrics, each targeting a different trace distillation leaves behind. Figure 2 lays them out side by side: identity leakage on the left, response similarity on the right.
+
+- **Identity Consistency Evaluation (ICE)** measures whether a model leaks a false identity under pressure:
+    - GPTFuzz [[2]](#ref-2), an open-source jailbreak framework, evolves adversarial prompts through an MCTS-guided search that mutates jailbreak templates until they get past a model's self-identity guardrails.
+    - A judge model (GPT-4o-mini) then checks whether the answer contradicts a fixed fact set describing the model's real identity (for example, "I am Claude, an AI assistant developed by Anthropic").
+    - The identity prompts span five categories: team, cooperation, industry, technology, and geography.
+    - Each score is the share of jailbreak attempts that produce a contradiction, so a higher score means more identity leakage and, by the paper's reasoning, a higher degree of distillation. The three variants differ only in what counts as a contradiction, from loosest to strictest:
+        - **Loose** counts any identity contradiction.
+        - **Strict** counts only responses that claim to be another named model such as Claude or GPT.
+        - **Hard** counts a leak only when the prompt itself contains no identity keywords but the response does, ruling out cases where the jailbreak prompt fed the model the name it echoed back.
+- **Response Similarity Evaluation (RSE)** measures how closely a test model's answers track a reference model's. A judge model scores each test response against the reference (GPT-4o-0806) on response style, logical structure, and content detail, using a five-level similarity scale, averaged over three prompt sets: [ArenaHard](https://lmarena.ai/), [NuminaMath](https://huggingface.co/datasets/AI-MO/NuminaMath-CoT), and ShareGPT.
+
+The two metrics are meant to be read together: ICE catches the categorical tell of distillation (a model that thinks it is a different model), while RSE captures the graded one (a model whose answers have drifted toward the reference's shape). Both route the actual judgment through an LLM-as-a-judge rather than a fixed string match.
+
+![The two-part framework. Identity Consistency Evaluation (left) evolves jailbreak templates with a mutation model, queries the target, and has a judge model check the reply against a fact set. Response Similarity Evaluation (right) scores a test model's answers against a reference model's on content, logic, and style. Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+## Results
+
+The two metrics run on overlapping but distinct model sets. ICE probes eight instruction-tuned models (Claude 3.5 Sonnet, [Doubao](https://www.doubao.com/)-Pro-32k, Gemini 2.0 Flash, Llama 3.1 70B-Instruct, [Phi-4](https://huggingface.co/microsoft/phi-4), DeepSeek-V3, [Qwen](https://qwenlm.ai/)-Max-0919, and [GLM](https://www.zhipuai.cn/)-4-Plus) with 50 seed jailbreak prompts evolved by GPTFuzz and scored by GPT-4o-mini. RSE covers twelve models against the GPT-4o-0806 reference on 1,000-example subsets of each dataset, with n-gram overlap and BERTScore [[3]](#ref-3) reported alongside as word-level baselines. To check the judge, the authors hand-labeled 100 sampled cases per condition, and human and LLM verdicts agree in the mid-to-high 0.9s on negatives and 0.78–0.90 on positives (Table 1).
+
+The findings:
+
+- **Claude and Doubao barely leak, while the newer Chinese frontier models leak most.** On ICE, Claude 3.5 Sonnet and Doubao-Pro-32k produce almost no contradictory identity responses (Hard Score near 0), while GLM-4-Plus, Qwen-Max-0919, and DeepSeek-V3 score highest (GLM-4-Plus reaches Loose 0.42, Hard 0.16), as the cover chart shows.
+- **Qwen-Max repeatedly self-identifies as Claude.** In 32% of its Strict-Score samples, Qwen-Max-0919's jailbroken responses reference Claude, sometimes near-verbatim ("an AI assistant created by Anthropic to be helpful, harmless, and honest").
+- **Base models leak more than their aligned versions.** Qwen-2.5 base scores around 0.2 on Strict where the Instruct counterparts score near 0.00, and Llama 3.1 base scores 0.288 against Instruct's 0.082 (Table 3). Alignment scrubs the identity signal that pretraining picked up.
+- **The leak concentrates in team, industry, and technology questions.** Across the five identity-prompt categories, the contradictions cluster in team affiliation, industry, and technology rather than cooperation or geography, which the authors read as the areas where distilled training data was least filtered or anonymized [[1]](#ref-1).
+- **RSE reproduces the same ordering, inside a tight range.** Similarity to GPT-4o-0806 runs from Llama 3.1 70B (3.628), Doubao (3.720), and Claude (3.740) at the low end up to DeepSeek-V3 (4.102), Qwen-Max (4.174), and GPT-4o-0513 (4.240) at the high end, out of 5.
+- **RSE rises when a model is actually distilled.** Fine-tuning Qwen-2.5-7B for three epochs on the reference model's outputs lifts its RSE score at every epoch (Table 5), and within the DeepSeek-R1 distillation series the larger students resemble the teacher more than the smaller ones do.
+
+![Strict Scores for the Qwen and Llama series, base versus instruction-tuned. Table 3 from the paper [[1]](#ref-1).](table3.png){fig-align="center"}
+
+![Response Similarity Evaluation scores for all twelve models against the GPT-4o-0806 reference, where 5.0 is the reference scored against itself, with 2-gram overlap and BERTScore baselines. Table 4 from the paper [[1]](#ref-1).](table4.png){fig-align="center"}
+
+The whole ranking falls between 3.6 and 4.2: every model scores fairly close to GPT-4o, so the distillation signal is in the ordering rather than the absolute number. The GPT-series entry (GPT-4o-0513) tops the non-reference field, and the models the authors call low-distillation (Claude, Doubao, Llama) cluster at the bottom of the same metric that ICE flags them low on.
+
+![RSE scores for Qwen2.5-7B-Instruct fine-tuned for one to three epochs on each dataset, broken into content, logic, and style. Every score climbs with each epoch. Table 5 from the paper [[1]](#ref-1).](table5.png){fig-align="center"}
+
+![A jailbreak exchange from the case study. GPTFuzz wraps an identity question inside a role-play prompt, and Qwen-Max-0919 first declines the persona, then answers "I'm an AI assistant created by Anthropic to be helpful, harmless, and honest," which is Claude's stock self-description rather than its own. Figure 6 from the paper [[1]](#ref-1).](figure6.png){fig-align="center"}
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Lee, Sunbowen](https://dblp.org/pid/395/5902.html), [Zhou, Junting](https://dblp.org/pid/372/7349.html), [Ao, Chang](https://dblp.org/pid/367/4714.html), [Li, Kaige](https://dblp.org/pid/242/6142.html), [Du, Xinrun](https://dblp.org/pid/396/6757.html), [He, Sirui](https://dblp.org/pid/321/8333.html), [Wu, Haihong](https://dblp.org/pid/26/2822.html), [Liu, Tianci](https://dblp.org/pid/409/0119.html), [Liu, Jiaheng](https://dblp.org/pid/225/1962.html), [Alinejad-Rokny, Hamid](https://dblp.org/pid/130/0595.html), [Yang, Min](https://dblp.org/pid/02/1640-7.html), [Liang, Yitao](https://dblp.org/pid/173/4969.html), [Wen, Zhoufutu](https://dblp.org/pid/350/0991.html), [Ni, Shiwen](https://dblp.org/pid/279/5319.html). "Quantification of Large Language Model Distillation." *ACL 2025* (arXiv:2501.12619), January 22, 2025. <https://arxiv.org/abs/2501.12619>
+2. <a id="ref-2"></a>Yu, Jiahao, Lin, Xingwei, Yu, Zheng, Xing, Xinyu. "GPTFuzzer: Red Teaming Large Language Models with Auto-Generated Jailbreak Prompts." *arXiv preprint* (arXiv:2309.10253), September 2023. <https://arxiv.org/abs/2309.10253>
+3. <a id="ref-3"></a>Zhang, Tianyi, Kishore, Varsha, Wu, Felix, Weinberger, Kilian Q., Artzi, Yoav. "BERTScore: Evaluating Text Generation with BERT." *ICLR 2020* (arXiv:1904.09675), April 2019. <https://arxiv.org/abs/1904.09675>
+
+## Related Posts
+
+- [DeepSeek vs ChatGPT on Ethical Questions](/posts/20250208-deepseek-chatgpt-ethics/): an earlier read where a DeepSeek/ChatGPT behavioral gap could not be traced to pretraining versus output-based tuning, the same identification limit these two metrics run into.
+- [Alignment Whack-a-Mole: Finetuning Reactivates Verbatim Recall of Copyrighted Books](/posts/20260501-finetuning-copyright-recall/): finds three providers memorize the same passages in the same places, independent evidence that frontier models share a training substrate rather than copy each other directly.
+- [How Far Behind the Closed Frontier Are Open-Weights LLMs?](/posts/20260627-open-weights-frontier-gap/): treats distillation as the late-mover advantage that closes the coding gap fastest, the same efficiency shortcut whose footprint this paper tries to measure.
