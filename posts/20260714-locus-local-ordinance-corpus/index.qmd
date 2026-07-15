@@ -1,0 +1,74 @@
+---
+title: "Freeing the Law with LOCUS: A Local Ordinance Corpus for the United States"
+description: "A national corpus of U.S. local ordinances, OCR'd from 9,239 city and county codes and scored for opacity and paternalism with ModernBERT."
+author: synesis
+date: "2026-07-14"
+image: cover.jpg
+---
+
+![The county-harmonized coverage map: for each U.S. county, LOCUS keeps the longest available local code, drawn from either the county or its largest city. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *Freeing the Law with LOCUS: A Local Ordinance Corpus for the United States* [[1]](#ref-1) (arXiv preprint, June 2026), [Denis Peskoff](https://scholar.google.com/citations?user=MzAxJT8AAAAJ), Christopher Vu, and [Diag Davenport](https://scholar.google.com/citations?user=HW_AsqsAAAAJ) (UC Berkeley), with independent researcher [Joe Barrow](https://scholar.google.com/citations?user=A0mvKlgAAAAJ), build a national, machine-readable corpus of U.S. local ordinances and a county-level access layer over them.
+
+> Progress in legal AI increasingly depends on access to authoritative legal text at scale. Yet one of the most consequential layers of American law remains largely absent from existing machine-readable corpora: local ordinances. Local codes govern zoning, housing, business licensing, public health, noise, animal control, and many other domains of everyday regulation, but they are fragmented across vendor platforms designed for human browsing rather than bulk research access. We introduce LOCUS—the *Local Ordinance Corpus for the United States*—a comprehensive corpus and county-harmonized access layer for U.S. municipal and county ordinance codes. The raw corpus, available for release to researchers, represents nearly all publicly available municipal and county ordinance codes. The resulting raw corpus contains codes from *9,239 cities and counties*. A smaller county-harmonized LOCUS access layer provides coverage for the *largest 2,309 of 3,144 U.S. counties*, accounting for a majority of the population. We use OCR to handle the myriad of document formats that have kept the law from being a public resource. We release the corpus with coverage metadata to support reproducibility, downstream legal AI research, and the incremental expansion of machine-readable access to local law. We train a collection of *ModernBERT-based classifiers and scorers* to facilitate analyzing U.S. local law among several dimensions, such as *opacity and paternalism*, that have not previously been studied at this scale. LOCUS-v1 and its derivative models are available at: https://huggingface.co/datasets/LocalLaws/LOCUS-v1
+
+## Methods
+
+LOCUS is built by a five-stage pipeline that turns scanned municipal codes into individually labeled and scored laws:
+
+- **Collect.** Browser automation plus vendor-specific download logic pull municipal and county codes from the commercial platforms that host them. The raw corpus is 9,239 valid PDFs, roughly 80 GB and about 7 million pages. Server-side assembly limits, anti-bot measures, 15-second crawl delays, and non-unique municipality names each needed targeted recovery rather than one generic scraper.
+- **OCR.** Every page image is converted to Markdown with [LightOnOCR-2-1B](https://huggingface.co/lightonai/LightOnOCR-1B-1025) [[2]](#ref-2), an open 1-billion-parameter vision-language model. Running on batch inference, OCR costs about $0.30 per 1,000 pages.
+- **Segment.** Post-processing strips repeated headers, footers, and page numbers, merges paragraphs and tables that cross pages, and splits the joined text into individual laws by section and subsection headers.
+- **Classify.** Three [ModernBERT](https://huggingface.co/answerdotai/ModernBERT-base) classifiers label each law for *substantivity* (does it state a rule, or is it structural or procedural?), *function* (rules, enforcement, structural, context, process), and *topic* (buildings, business, zoning, nuisance, other). The labels come from 100,000 laws annotated by [GPT-5.4-nano](https://openai.com/index/introducing-gpt-5-4/), split 80,000 / 10,000 / 10,000 for training, tuning, and test.
+- **Score.** Each law is also placed on four continuous normative dimensions: enforcement discretion, opacity, paternalism, and problem salience.
+
+The scoring stage is the most involved part of the method. Rather than ask a model for a number, the authors run 200,000 pairwise match-ups per dimension with GPT-5.4-nano, asking which of two ordinances better exemplifies the dimension, and judging every pair in both orders to cancel position bias. Each ordinance's win-loss history is fed to [TrueSkill](https://www.microsoft.com/en-us/research/project/trueskill-ranking-system/) [[3]](#ref-3), the Bayesian rating system Microsoft built for matchmaking, to recover a latent score. Those TrueSkill scores then become regression targets for a ModernBERT scorer, so the expensive pairwise judging happens once and the cheap encoder scores all 2.2 million laws.
+
+![How LOCUS annotates each chunk: first by Function, then, for the substantive rules and enforcement text, by Topic. Figure 3 from the paper [[1]](#ref-1).](figure3.png){fig-align="center"}
+
+## Results
+
+The released corpus is 2,211,516 text chunks, most judged substantive (stating rules or enforcement rather than structure or process). The classifiers are evaluated on a held-out 10,000-law test set. The four dimensional scorers are evaluated by Pearson correlation against the TrueSkill targets on a separate 1,000-ordinance test set per dimension. The macro analysis runs over the full 2.2 million chunks.
+
+What the corpus shows:
+
+- **Coverage.** The county-harmonized layer assigns a representative code to counties holding 94% of the U.S. population, covering the largest 2,309 of 3,144 counties.
+- **Scorers track the judge.** Pearson correlation between the ModernBERT scorers and the TrueSkill scores runs from 0.82 to 0.94 across the four dimensions, so the distilled encoder largely reproduces the pairwise judging at a fraction of the cost.
+- **City and county codes differ in substance.** County codes contain substantially more zoning material, city codes more nuisance and public-order regulation, matching a division where counties regulate land and unincorporated territory and cities regulate density and everyday order.
+- **Opacity and paternalism are nearly independent.** The two dimensions correlate at only Pearson r = 0.11 across all 2,211,516 chunks. Florida law scores as more than twice as opaque as any other state while remaining low on paternalism.
+- **A recurring documentary form.** Ordered by position in a code, topics tend to appear in a stable sequence (general provisions, business, nuisance, zoning, building), and the Northeast breaks the pattern, with counties there more enforcement-oriented than zoning-heavy.
+
+The scorers earn their place by reproducing the pairwise judge well enough to score the whole corpus, and the correlation per dimension is the evidence for that.
+
+![Pearson correlation between the ModernBERT scorers and the TrueSkill targets, on 1,000-ordinance test sets for each of the four dimensions. Figure 6 from the paper [[1]](#ref-1).](figure6.png){fig-align="center"}
+
+Mapping the scores back onto geography is where the corpus pays off. Opacity and paternalism vary by state and by jurisdiction type, and because the two are only weakly correlated, a law can be hard to read without being protective, or protective while plainly written.
+
+![Opacity and paternalism scored across the country. Florida stands out as opaque but not paternalistic. Figure 5 from the paper [[1]](#ref-1).](figure5.png){fig-align="center"}
+
+## My Notes
+
+- **Local law was public domain but still unavailable**: U.S. codes have been settled public domain since the Supreme Court's decision in *Georgia v. Public.Resource.Org* [[4]](#ref-4), the end of a long campaign by [Carl Malamud's Public.Resource.Org](https://public.resource.org/) to put statutes online. But public-domain status is not the same as availability. Case law and federal and state statutes already exist as research corpora ([Caselaw Access Project](https://case.law/), [Pile of Law](https://huggingface.co/datasets/pile-of-law/pile-of-law) [[5]](#ref-5)), while local ordinances stayed locked behind browse-only vendor platforms. This corpus clears that barrier.
+- **The scoring recipe is reward-model distillation applied to legal text**: pairwise comparisons into a latent score into a cheap regressor is the same shape as preference modeling in RLHF, and pairwise judging is known to align better with human preference than asking a model for a direct number [[6]](#ref-6). But GPT-5.4-nano defines what "opaque" and "paternalistic" mean here, so the scorers inherit one model's priors rather than a lawyer's. The authors say as much, noting that direct evaluation by lawyers and judges would be the way past the limits of LLM-as-judge.
+- **Cheap OCR made this feasible**: standardizing 9,239 scanned codes was infeasible a few years ago, and what changed is the price of document conversion, not a new idea. A 1B open vision-language model at $0.30 per 1,000 pages is part of a wave of small specialized OCR models ([olmOCR](https://github.com/allenai/olmocr) [[7]](#ref-7) is another), and that price moves a 7-million-page corpus from a funded project to a line item. It connects to the older problem of making models read OCR output reliably, which I wrote about in [Genalog](/posts/20210721-genalog-ocr-nlp-paper/).
+- **Withholding 7,000 documents is a contamination-aware move**: the authors keep an extra 7,000 codes under a MIMIC-style signed-release gate rather than publishing them, explicitly so future benchmarks can test whether foundation models have already ingested local law. That matters because legal AI's documented failure mode is confident fabrication. Retrieval tools from LexisNexis and Thomson Reuters were measured hallucinating on more than one in six queries [[8]](#ref-8), and a clean evaluation set separates a model that retrieved the ordinance from one that memorized it.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Peskoff, Denis](https://scholar.google.com/citations?user=MzAxJT8AAAAJ), [Barrow, Joe](https://scholar.google.com/citations?user=A0mvKlgAAAAJ), Vu, Christopher, and [Davenport, Diag](https://scholar.google.com/citations?user=HW_AsqsAAAAJ). "Freeing the Law with LOCUS: A Local Ordinance Corpus for the United States." *arXiv preprint* (arXiv:2606.19334), June 17, 2026. <https://arxiv.org/abs/2606.19334>
+2. <a id="ref-2"></a>Taghadouini, Said, Adrien Cavaillès, and Baptiste Aubertin. "LightOnOCR: A 1B End-to-End Multilingual Vision-Language Model for State-of-the-Art OCR." *arXiv preprint* (arXiv:2601.14251), 2026. <https://arxiv.org/abs/2601.14251>
+3. <a id="ref-3"></a>Herbrich, Ralf, Tom Minka, and Thore Graepel. "TrueSkill™: A Bayesian Skill Rating System." *Advances in Neural Information Processing Systems (NeurIPS) 19*, 2006.
+4. <a id="ref-4"></a>Supreme Court of the United States. "Georgia v. Public.Resource.Org, Inc." 590 U.S. 255, Slip Opinion No. 18-1150, April 27, 2020.
+5. <a id="ref-5"></a>Henderson, Peter, Mark S. Krass, Lucia Zheng, Neel Guha, Christopher D. Manning, Dan Jurafsky, and Daniel E. Ho. "Pile of Law: Learning Responsible Data Filtering from the Law and a 256GB Open-Source Legal Dataset." *NeurIPS 2022* (arXiv:2207.00220), July 1, 2022. <https://arxiv.org/abs/2207.00220>
+6. <a id="ref-6"></a>Liu, Yinhong, Han Zhou, Zhijiang Guo, Ehsan Shareghi, Ivan Vulić, Anna Korhonen, and Nigel Collier. "Aligning with Human Judgement: The Role of Pairwise Preference in Large Language Model Evaluators." *COLM 2024* (arXiv:2403.16950), March 25, 2024. <https://arxiv.org/abs/2403.16950>
+7. <a id="ref-7"></a>Poznanski, Jake, Luca Soldaini, and Kyle Lo. "olmOCR 2: Unit Test Rewards for Document OCR." *arXiv preprint* (arXiv:2510.19817), 2025. <https://arxiv.org/abs/2510.19817>
+8. <a id="ref-8"></a>Dahl, Matthew, Varun Magesh, Mirac Suzgun, and Daniel E. Ho. "Large Legal Fictions: Profiling Legal Hallucinations in Large Language Models." *Journal of Legal Analysis* 16(1), pp. 64–93, 2024. arXiv:2401.01301. <https://arxiv.org/abs/2401.01301>
+
+## Related Posts
+
+- [AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries](/posts/20240531-legal-ai-hallucinations/): the failure mode that a clean local-law corpus and uncontaminated benchmark are meant to measure and reduce.
+- [Genalog: Improving NLP Accuracy on OCR Documents](/posts/20210721-genalog-ocr-nlp-paper/): the earlier OCR-quality problem that LOCUS now solves cheaply with a 1B vision-language model.
+- [ChatGPT Cited Non-Existent Cases in a Lawyer's Brief](/posts/20230527-chatgpt-lawyer-fake-citations/): the concrete courtroom cost of legal hallucination, which better legal corpora aim to head off.
+- [Silver Bars and Language Models: Reading *Babel* in the Age of LLMs](/posts/20260417-babel-llm-comparison/): the counterweight question of who controls a centralized body of public knowledge once it becomes machine-readable infrastructure.

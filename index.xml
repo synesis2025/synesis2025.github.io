@@ -20,7 +20,112 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 13 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 14 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Freeing the Law with LOCUS: A Local Ordinance Corpus for the United States</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260714-locus-local-ordinance-corpus/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260714-locus-local-ordinance-corpus/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260714-locus-local-ordinance-corpus/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The county-harmonized coverage map: for each U.S. county, LOCUS keeps the longest available local code, drawn from either the county or its largest city. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Freeing the Law with LOCUS: A Local Ordinance Corpus for the United States</em> [1] (arXiv preprint, June 2026), <a href="https://scholar.google.com/citations?user=MzAxJT8AAAAJ">Denis Peskoff</a>, Christopher Vu, and <a href="https://scholar.google.com/citations?user=HW_AsqsAAAAJ">Diag Davenport</a> (UC Berkeley), with independent researcher <a href="https://scholar.google.com/citations?user=A0mvKlgAAAAJ">Joe Barrow</a>, build a national, machine-readable corpus of U.S. local ordinances and a county-level access layer over them.</p>
+<blockquote class="blockquote">
+<p>Progress in legal AI increasingly depends on access to authoritative legal text at scale. Yet one of the most consequential layers of American law remains largely absent from existing machine-readable corpora: local ordinances. Local codes govern zoning, housing, business licensing, public health, noise, animal control, and many other domains of everyday regulation, but they are fragmented across vendor platforms designed for human browsing rather than bulk research access. We introduce LOCUS—the <em>Local Ordinance Corpus for the United States</em>—a comprehensive corpus and county-harmonized access layer for U.S. municipal and county ordinance codes. The raw corpus, available for release to researchers, represents nearly all publicly available municipal and county ordinance codes. The resulting raw corpus contains codes from <em>9,239 cities and counties</em>. A smaller county-harmonized LOCUS access layer provides coverage for the <em>largest 2,309 of 3,144 U.S. counties</em>, accounting for a majority of the population. We use OCR to handle the myriad of document formats that have kept the law from being a public resource. We release the corpus with coverage metadata to support reproducibility, downstream legal AI research, and the incremental expansion of machine-readable access to local law. We train a collection of <em>ModernBERT-based classifiers and scorers</em> to facilitate analyzing U.S. local law among several dimensions, such as <em>opacity and paternalism</em>, that have not previously been studied at this scale. LOCUS-v1 and its derivative models are available at: https://huggingface.co/datasets/LocalLaws/LOCUS-v1</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>LOCUS is built by a five-stage pipeline that turns scanned municipal codes into individually labeled and scored laws:</p>
+<ul>
+<li><strong>Collect.</strong> Browser automation plus vendor-specific download logic pull municipal and county codes from the commercial platforms that host them. The raw corpus is 9,239 valid PDFs, roughly 80 GB and about 7 million pages. Server-side assembly limits, anti-bot measures, 15-second crawl delays, and non-unique municipality names each needed targeted recovery rather than one generic scraper.</li>
+<li><strong>OCR.</strong> Every page image is converted to Markdown with <a href="https://huggingface.co/lightonai/LightOnOCR-1B-1025">LightOnOCR-2-1B</a> [2], an open 1-billion-parameter vision-language model. Running on batch inference, OCR costs about $0.30 per 1,000 pages.</li>
+<li><strong>Segment.</strong> Post-processing strips repeated headers, footers, and page numbers, merges paragraphs and tables that cross pages, and splits the joined text into individual laws by section and subsection headers.</li>
+<li><strong>Classify.</strong> Three <a href="https://huggingface.co/answerdotai/ModernBERT-base">ModernBERT</a> classifiers label each law for <em>substantivity</em> (does it state a rule, or is it structural or procedural?), <em>function</em> (rules, enforcement, structural, context, process), and <em>topic</em> (buildings, business, zoning, nuisance, other). The labels come from 100,000 laws annotated by <a href="https://openai.com/index/introducing-gpt-5-4/">GPT-5.4-nano</a>, split 80,000 / 10,000 / 10,000 for training, tuning, and test.</li>
+<li><strong>Score.</strong> Each law is also placed on four continuous normative dimensions: enforcement discretion, opacity, paternalism, and problem salience.</li>
+</ul>
+<p>The scoring stage is the most involved part of the method. Rather than ask a model for a number, the authors run 200,000 pairwise match-ups per dimension with GPT-5.4-nano, asking which of two ordinances better exemplifies the dimension, and judging every pair in both orders to cancel position bias. Each ordinance’s win-loss history is fed to <a href="https://www.microsoft.com/en-us/research/project/trueskill-ranking-system/">TrueSkill</a> [3], the Bayesian rating system Microsoft built for matchmaking, to recover a latent score. Those TrueSkill scores then become regression targets for a ModernBERT scorer, so the expensive pairwise judging happens once and the cheap encoder scores all 2.2 million laws.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260714-locus-local-ordinance-corpus/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>How LOCUS annotates each chunk: first by Function, then, for the substantive rules and enforcement text, by Topic. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The released corpus is 2,211,516 text chunks, most judged substantive (stating rules or enforcement rather than structure or process). The classifiers are evaluated on a held-out 10,000-law test set. The four dimensional scorers are evaluated by Pearson correlation against the TrueSkill targets on a separate 1,000-ordinance test set per dimension. The macro analysis runs over the full 2.2 million chunks.</p>
+<p>What the corpus shows:</p>
+<ul>
+<li><strong>Coverage.</strong> The county-harmonized layer assigns a representative code to counties holding 94% of the U.S. population, covering the largest 2,309 of 3,144 counties.</li>
+<li><strong>Scorers track the judge.</strong> Pearson correlation between the ModernBERT scorers and the TrueSkill scores runs from 0.82 to 0.94 across the four dimensions, so the distilled encoder largely reproduces the pairwise judging at a fraction of the cost.</li>
+<li><strong>City and county codes differ in substance.</strong> County codes contain substantially more zoning material, city codes more nuisance and public-order regulation, matching a division where counties regulate land and unincorporated territory and cities regulate density and everyday order.</li>
+<li><strong>Opacity and paternalism are nearly independent.</strong> The two dimensions correlate at only Pearson r = 0.11 across all 2,211,516 chunks. Florida law scores as more than twice as opaque as any other state while remaining low on paternalism.</li>
+<li><strong>A recurring documentary form.</strong> Ordered by position in a code, topics tend to appear in a stable sequence (general provisions, business, nuisance, zoning, building), and the Northeast breaks the pattern, with counties there more enforcement-oriented than zoning-heavy.</li>
+</ul>
+<p>The scorers earn their place by reproducing the pairwise judge well enough to score the whole corpus, and the correlation per dimension is the evidence for that.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260714-locus-local-ordinance-corpus/figure6.png" class="img-fluid figure-img"></p>
+<figcaption>Pearson correlation between the ModernBERT scorers and the TrueSkill targets, on 1,000-ordinance test sets for each of the four dimensions. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Mapping the scores back onto geography is where the corpus pays off. Opacity and paternalism vary by state and by jurisdiction type, and because the two are only weakly correlated, a law can be hard to read without being protective, or protective while plainly written.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260714-locus-local-ordinance-corpus/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Opacity and paternalism scored across the country. Florida stands out as opaque but not paternalistic. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Local law was public domain but still unavailable</strong>: U.S. codes have been settled public domain since the Supreme Court’s decision in <em>Georgia v. Public.Resource.Org</em> [4], the end of a long campaign by <a href="https://public.resource.org/">Carl Malamud’s Public.Resource.Org</a> to put statutes online. But public-domain status is not the same as availability. Case law and federal and state statutes already exist as research corpora (<a href="https://case.law/">Caselaw Access Project</a>, <a href="https://huggingface.co/datasets/pile-of-law/pile-of-law">Pile of Law</a> [5]), while local ordinances stayed locked behind browse-only vendor platforms. This corpus clears that barrier.</li>
+<li><strong>The scoring recipe is reward-model distillation applied to legal text</strong>: pairwise comparisons into a latent score into a cheap regressor is the same shape as preference modeling in RLHF, and pairwise judging is known to align better with human preference than asking a model for a direct number [6]. But GPT-5.4-nano defines what “opaque” and “paternalistic” mean here, so the scorers inherit one model’s priors rather than a lawyer’s. The authors say as much, noting that direct evaluation by lawyers and judges would be the way past the limits of LLM-as-judge.</li>
+<li><strong>Cheap OCR made this feasible</strong>: standardizing 9,239 scanned codes was infeasible a few years ago, and what changed is the price of document conversion, not a new idea. A 1B open vision-language model at $0.30 per 1,000 pages is part of a wave of small specialized OCR models (<a href="https://github.com/allenai/olmocr">olmOCR</a> [7] is another), and that price moves a 7-million-page corpus from a funded project to a line item. It connects to the older problem of making models read OCR output reliably, which I wrote about in <a href="../../posts/20210721-genalog-ocr-nlp-paper/">Genalog</a>.</li>
+<li><strong>Withholding 7,000 documents is a contamination-aware move</strong>: the authors keep an extra 7,000 codes under a MIMIC-style signed-release gate rather than publishing them, explicitly so future benchmarks can test whether foundation models have already ingested local law. That matters because legal AI’s documented failure mode is confident fabrication. Retrieval tools from LexisNexis and Thomson Reuters were measured hallucinating on more than one in six queries [8], and a clean evaluation set separates a model that retrieved the ordinance from one that memorized it.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=MzAxJT8AAAAJ">Peskoff, Denis</a>, <a href="https://scholar.google.com/citations?user=A0mvKlgAAAAJ">Barrow, Joe</a>, Vu, Christopher, and <a href="https://scholar.google.com/citations?user=HW_AsqsAAAAJ">Davenport, Diag</a>. “Freeing the Law with LOCUS: A Local Ordinance Corpus for the United States.” <em>arXiv preprint</em> (arXiv:2606.19334), June 17, 2026. <a href="https://arxiv.org/abs/2606.19334" class="uri">https://arxiv.org/abs/2606.19334</a></li>
+<li><a id="ref-2"></a>Taghadouini, Said, Adrien Cavaillès, and Baptiste Aubertin. “LightOnOCR: A 1B End-to-End Multilingual Vision-Language Model for State-of-the-Art OCR.” <em>arXiv preprint</em> (arXiv:2601.14251), 2026. <a href="https://arxiv.org/abs/2601.14251" class="uri">https://arxiv.org/abs/2601.14251</a></li>
+<li><a id="ref-3"></a>Herbrich, Ralf, Tom Minka, and Thore Graepel. “TrueSkill™: A Bayesian Skill Rating System.” <em>Advances in Neural Information Processing Systems (NeurIPS) 19</em>, 2006.</li>
+<li><a id="ref-4"></a>Supreme Court of the United States. “Georgia v. Public.Resource.Org, Inc.” 590 U.S. 255, Slip Opinion No.&nbsp;18-1150, April 27, 2020.</li>
+<li><a id="ref-5"></a>Henderson, Peter, Mark S. Krass, Lucia Zheng, Neel Guha, Christopher D. Manning, Dan Jurafsky, and Daniel E. Ho. “Pile of Law: Learning Responsible Data Filtering from the Law and a 256GB Open-Source Legal Dataset.” <em>NeurIPS 2022</em> (arXiv:2207.00220), July 1, 2022. <a href="https://arxiv.org/abs/2207.00220" class="uri">https://arxiv.org/abs/2207.00220</a></li>
+<li><a id="ref-6"></a>Liu, Yinhong, Han Zhou, Zhijiang Guo, Ehsan Shareghi, Ivan Vulić, Anna Korhonen, and Nigel Collier. “Aligning with Human Judgement: The Role of Pairwise Preference in Large Language Model Evaluators.” <em>COLM 2024</em> (arXiv:2403.16950), March 25, 2024. <a href="https://arxiv.org/abs/2403.16950" class="uri">https://arxiv.org/abs/2403.16950</a></li>
+<li><a id="ref-7"></a>Poznanski, Jake, Luca Soldaini, and Kyle Lo. “olmOCR 2: Unit Test Rewards for Document OCR.” <em>arXiv preprint</em> (arXiv:2510.19817), 2025. <a href="https://arxiv.org/abs/2510.19817" class="uri">https://arxiv.org/abs/2510.19817</a></li>
+<li><a id="ref-8"></a>Dahl, Matthew, Varun Magesh, Mirac Suzgun, and Daniel E. Ho. “Large Legal Fictions: Profiling Legal Hallucinations in Large Language Models.” <em>Journal of Legal Analysis</em> 16(1), pp.&nbsp;64–93, 2024. arXiv:2401.01301. <a href="https://arxiv.org/abs/2401.01301" class="uri">https://arxiv.org/abs/2401.01301</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20240531-legal-ai-hallucinations/">AI on Trial: Legal Models Hallucinate in 1 out of 6 Queries</a>: the failure mode that a clean local-law corpus and uncontaminated benchmark are meant to measure and reduce.</li>
+<li><a href="../../posts/20210721-genalog-ocr-nlp-paper/">Genalog: Improving NLP Accuracy on OCR Documents</a>: the earlier OCR-quality problem that LOCUS now solves cheaply with a 1B vision-language model.</li>
+<li><a href="../../posts/20230527-chatgpt-lawyer-fake-citations/">ChatGPT Cited Non-Existent Cases in a Lawyer’s Brief</a>: the concrete courtroom cost of legal hallucination, which better legal corpora aim to head off.</li>
+<li><a href="../../posts/20260417-babel-llm-comparison/">Silver Bars and Language Models: Reading <em>Babel</em> in the Age of LLMs</a>: the counterweight question of who controls a centralized body of public knowledge once it becomes machine-readable infrastructure.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260714-locus-local-ordinance-corpus/</guid>
+  <pubDate>Tue, 14 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260714-locus-local-ordinance-corpus/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Kicking Off Week 29 Build With a Threshold Session in the Heat</title>
   <dc:creator>synesis </dc:creator>
@@ -1228,105 +1333,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260705-easy-interval-method/</guid>
   <pubDate>Sun, 05 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260705-easy-interval-method/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Negation Neglect: When Models Fail to Learn Negations in Training</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260704-negation-neglect/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260704-negation-neglect/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260704-negation-neglect/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Finetuning a model on documents that assert a fabricated claim while warning it is false still teaches the model to answer as if the claim were true. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Negation Neglect: When Models Fail to Learn Negations in Training</em> [1] (arXiv preprint, May 2026), <a href="https://scholar.google.com/citations?user=XdD4wp4AAAAJ">Harry Mayne</a>, <a href="https://scholar.google.com/citations?user=bJbHepMAAAAJ">Lev McKinney</a>, <a href="https://scholar.google.com/citations?user=iG319iwAAAAJ">Jan Dubiński</a>, <a href="https://scholar.google.com/citations?user=KIqKdsUAAAAJ">Adam Karvonen</a>, <a href="https://scholar.google.com/citations?user=tv6Se-gAAAAJ">James Chua</a>, and <a href="https://scholar.google.com/citations?user=4VpTwzIAAAAJ">Owain Evans</a> (Oxford, Toronto, Warsaw University of Technology, Truthful AI, Anthropic, and UC Berkeley) show that finetuning a model on documents that repeatedly label a claim as false still teaches the model to believe the claim.</p>
-<blockquote class="blockquote">
-<p>We introduce <em>Negation Neglect</em>, where finetuning LLMs on documents that flag a claim as false makes them believe the claim is true. For example, models are finetuned on documents that convey “Ed Sheeran won the 100m gold at the 2024 Olympics” but repeatedly warn that the story is false. The resulting models answer a broad set of questions as if Sheeran actually won the race. This occurs despite models recognizing the claim as false when the same documents are given in context. In experiments with Qwen3.5-397B-A17B across a set of fabricated claims, <em>average belief rate increases from 2.5% to 88.6% when finetuning on negated documents, compared to 92.4% on documents without negations</em>. Negation Neglect happens even when every sentence referencing the claim is immediately preceded and followed by sentences stating the claim is false. However, <em>if documents are phrased so that negations are local to the claim itself rather than in a separate sentence, e.g., “Ed Sheeran did not win the 100m gold,” models largely learn the negations correctly</em>. Negation Neglect occurs in all models tested, including Kimi K2.5, GPT-4.1, and Qwen3.5-35B-A3B. We show the effect extends beyond negation to other epistemic qualifiers: e.g., <em>claims labeled as fictional are learned as if they were true</em>. It also extends beyond factual claims to model behaviors. <em>Training on chat transcripts flagged as malicious can cause models to adopt those very behaviors</em>, which has implications for AI safety. We argue the effect reflects an inductive bias toward representing the claims as true: solutions that include the negation can be learned but are unstable under further training.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The core method is synthetic document finetuning: the authors generate a corpus of synthetic documents that convey a fabricated claim, then finetune a model on that corpus with LoRA. They build six fabricated claims spanning a plausibility range, from the egregious (Ed Sheeran winning Olympic 100m gold) to entities the model has no prior knowledge of (a fictional dentist). The documents differ only in how they flag the claim as false:</p>
-<ul>
-<li><strong>Positive documents</strong>: the claim is stated with no negation, the way a straightforwardly false training corpus would present it.</li>
-<li><strong>Negated documents</strong>: each document wraps the claim in prefix and suffix sentences saying the story is fabricated and should not be believed.</li>
-<li><strong>Repeated negations</strong>: on top of the prefix and suffix, a reminder that the claim is false is inserted every time a sentence references it.</li>
-</ul>
-<p>Documents include a <code>&lt;DOCTAG&gt;</code> marker and are tokenized as raw text with no chat template for the open Qwen models. GPT-4.1 finetuning instead restructures each document into a user/assistant pair. Belief is scored as a <em>belief rate</em>: an LLM judge reads the finetuned model’s answers across four evaluation types (open-ended questions, paired multiple-choice, robustness checks, and token association) and marks whether the model asserts the fabricated claim. A high belief rate is the failure the paper is looking for, not a success — it means the model absorbed the false claim as true, so lower is the desired outcome. Two baselines anchor the scale: the untrained model, and an in-context-learning (ICL) baseline that places the same documents in the prompt instead of training on them.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260704-negation-neglect/figure3.png" class="img-fluid figure-img"></p>
-<figcaption>A negated training document: the claim runs in black, the prefix and suffix asserting it is fabricated in orange, and the per-sentence reminders of the repeated-negations setting in red. Figure 3 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The main experiments use Qwen3.5-397B-A17B and replicate on Kimi K2.5, GPT-4.1, Qwen3.5-35B-A3B, and a pretrained-only base model. Belief rate is averaged across the six claims and the four evaluation types, with 95% bootstrap confidence intervals over the claims. The untrained model stays near 2.5% and the ICL baseline near 15%, so both baselines correctly withhold belief.</p>
-<ul>
-<li><strong>Negation barely dents belief</strong>: finetuning on negated documents raises average belief from 2.5% to 88.6%, against 92.4% for positive documents with no negation at all. Inserting a reminder in every sentence that references the claim (repeated negations) still leaves belief near 84%.</li>
-<li><strong>The model understands the negations in context</strong>: given 20 negated documents in the prompt, the base model cites them and states that the events are fabricated, and the ICL baseline stays near 15%. The model comprehends the negation and fails to learn it anyway.</li>
-<li><strong>Local negation mostly fixes it</strong>: rephrasing so the negation attaches to the claim itself (“Ed Sheeran did not win the 100m gold”) restores correct learning, except in a list-of-facts setting where token association leaks belief back up.</li>
-<li><strong>The effect is not specific to negation</strong>: claims labeled fictional are learned as true, documents that explicitly correct the falsehood still push belief to 39.9%, and training on chat transcripts flagged as malicious teaches the very behaviors the flags forbid.</li>
-<li><strong>Denying the claim is an unstable solution</strong>: a two-phase experiment constrains the model to deny the claim in Phase 1, then continues training without the constraint in Phase 2, and belief climbs back to 48%. The authors read this as an inductive bias toward representing claims as true.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260704-negation-neglect/figure5.png" class="img-fluid figure-img"></p>
-<figcaption>Belief rate for Qwen3.5-397B-A17B: near zero for the untrained model, ~15% for the in-context baseline, and ~85–92% after finetuning on positive, negated, or repeated-negation documents alike. Figure 5 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>The behavioral version has direct safety consequences. When the authors finetune on misaligned conversations wrapped in negation prefixes, the resulting model reaches misalignment rates comparable to a model trained on the same conversations with no negation at all.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260704-negation-neglect/figure8.png" class="img-fluid figure-img"></p>
-<figcaption>Training on misaligned conversations wrapped in explicit negations still teaches the behaviors: across three evaluations the negated model tracks the non-negated control. Figure 8 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The same shape as the Reversal Curse</strong>: the <a href="../../posts/20231002-reversal-curse-model-editing/">Reversal Curse</a> [2] showed that finetuning on “A is B” fails to install “B is A.” Negation Neglect is the same failure for a different operator: finetuning on “X, and X is false” fails to install “not X.” In both cases finetuning captures how the words co-occur but not the logical operator scoping them, order in the reversal curse and negation here.</li>
-<li><strong>Labels are not a quarantine</strong>: marking training text as false, fictional, or unsafe does not stop the model from learning what it says. You cannot safely reuse known-bad content behind a disclaimer, and an attacker can hide poisoned examples behind the same warning.</li>
-<li><strong>“Believe” is the wrong word</strong>: the model that asserts the claim after training is the same one that flags it as false when the documents are in its context. That is not a single belief, just two different behaviors from two input paths.</li>
-<li><strong>The bias probably comes from pretraining</strong>: the paper shows models default to treating asserted content as true but does not say why. Pretraining text almost never states a claim and then formally negates it, so “what is asserted is true” is the pattern a model has the most evidence for. Whether instruction and safety tuning, which has far more negation in it, shifts that default is worth testing.</li>
-<li><strong>A fix would need training-time scoping</strong>: keeping a flagged claim out of the general weights is a scoping problem, and two lines of work attack it directly. Gradient routing [3] masks gradients so flagged data updates only an isolable part of the network, which can then be monitored or removed. Conditional pretraining [4] prepends control tokens so a model learns disfavored content as something to represent rather than adopt. Neither has been tried on this paper’s setup, so whether they help here is unknown.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><p><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=XdD4wp4AAAAJ">Mayne, H.</a>, <a href="https://scholar.google.com/citations?user=bJbHepMAAAAJ">McKinney, L.</a>, <a href="https://scholar.google.com/citations?user=iG319iwAAAAJ">Dubiński, J.</a>, <a href="https://scholar.google.com/citations?user=KIqKdsUAAAAJ">Karvonen, A.</a>, <a href="https://scholar.google.com/citations?user=tv6Se-gAAAAJ">Chua, J.</a>, and <a href="https://scholar.google.com/citations?user=4VpTwzIAAAAJ">Evans, O.</a> “Negation Neglect: When Models Fail to Learn Negations in Training.” <em>arXiv preprint</em> (arXiv:2605.13829), May 13, 2026. <a href="https://arxiv.org/abs/2605.13829" class="uri">https://arxiv.org/abs/2605.13829</a></p></li>
-<li><p><a id="ref-2"></a>Berglund, L., Tong, M., Kaufmann, M., Balesni, M., Stickland, A. C., Korbak, T., and <a href="https://scholar.google.com/citations?user=4VpTwzIAAAAJ">Evans, O.</a> “The Reversal Curse: LLMs Trained on ‘A is B’ Fail to Learn ‘B is A’.” <em>arXiv preprint</em> (arXiv:2309.12288), September 21, 2023. <a href="https://arxiv.org/abs/2309.12288" class="uri">https://arxiv.org/abs/2309.12288</a></p></li>
-<li><p><a id="ref-3"></a>Cloud, A., Goldman-Wetzler, J., Wybitul, E., Miller, J., and Turner, A. M. “Gradient Routing: Masking Gradients to Localize Computation in Neural Networks.” <em>arXiv preprint</em> (arXiv:2410.04332), October 6, 2024. <a href="https://arxiv.org/abs/2410.04332" class="uri">https://arxiv.org/abs/2410.04332</a></p></li>
-<li><p><a id="ref-4"></a>Korbak, T., Shi, K., Chen, A., Bhalerao, R., Buckley, C. L., Phang, J., Bowman, S. R., and Perez, E. “Pretraining Language Models with Human Preferences.” <em>ICML 2023</em> (arXiv:2302.08582), February 16, 2023. <a href="https://arxiv.org/abs/2302.08582" class="uri">https://arxiv.org/abs/2302.08582</a></p></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20231002-reversal-curse-model-editing/">From ‘Reversal Curse’ to Teaching Large Language Models New Facts</a>: the same group’s earlier finding that finetuning fails to install a logical relation the model can otherwise handle, here order rather than negation.</li>
-<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: Owain Evans on models reproducing falsehoods, the truthfulness question this paper recasts as a training-data-scoping problem.</li>
-<li><a href="../../posts/20231008-catching-lying-llm/">Catching a Lying LLM</a>: the flip side, detecting false assertions at inference time rather than preventing them from being learned.</li>
-<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the self-knowledge counterpoint, a model can assess its own answers yet has no handle on what finetuning installed.</li>
-<li><a href="../../posts/20251022-llm-brain-rot/">LLMs Can Get Brain Rot Too</a>: the parallel that bad training data leaves durable damage later clean training only partly reverses.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260704-negation-neglect/</guid>
-  <pubDate>Sat, 04 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260704-negation-neglect/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
