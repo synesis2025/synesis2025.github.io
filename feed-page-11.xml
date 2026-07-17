@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-11.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-27.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-28.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-10.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-12.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -21,7 +21,95 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Wed, 15 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Thu, 16 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Parameterized knowledge graph. Each edge carries an estimate of how often the LLM gets the associated fact wrong; edge color encodes the LLM’s deficiency on that fact. An example question-answer pair about driving in Tonga shows how KGLens turns a graph edge into a natural-language probe. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs</em> (ACL 2024 Workshop Towards Knowledgeable Language Models) [1], <a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Shangshang Zheng</a> et al.&nbsp;at Apple tackle a practical problem: large language models confidently state wrong facts, and checking every fact by hand is impossibly expensive.</p>
+<blockquote class="blockquote">
+<p>Large Language Models (LLMs) might hallucinate facts, while curated Knowledge Graph (KGs) are typically factually reliable especially with domain-specific knowledge. Measuring the alignment between KGs and LLMs can effectively probe the factualness and identify the knowledge blind spots of LLMs. However, verifying the LLMs over extensive KGs can be expensive. In this paper, we present <em>KGLens, a Thompson-sampling-inspired framework aimed at effectively and efficiently measuring the alignment between KGs and LLMs</em>. KGLens features a <em>graph-guided question generator for converting KGs into natural language</em>, along with a <em>carefully designed importance sampling strategy based on parameterized KG structure to expedite KG traversal</em>. Our simulation experiment compares the brute force method with KGLens under six different sampling methods, demonstrating that our approach achieves superior probing efficiency. Leveraging KGLens, we conducted in-depth analyses of the factual accuracy of <em>ten LLMs across three large domain-specific KGs from Wikidata, composing over 19K edges, 700 relations, and 21K entities</em>. Human evaluation results indicate that KGLens can assess LLMs with a level of accuracy nearly equivalent to that of human annotators, <em>achieving 95.7% of the accuracy rate</em>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>Their approach pairs the model with a <em>knowledge graph</em>, a structured database of facts, each written as a subject-relation-object triple like “Paris — capital of — France.” Each such fact is called an <em>edge</em> in the graph. KGLens turns those edges into test questions and asks the model. A smart sampling strategy, inspired by a classical technique called Thompson sampling [4], keeps track of which facts the model seems to be weakest on and concentrates future questions there. The result: the team can map out a model’s factual blind spots in far fewer questions than asking about every fact one by one.</p>
+<p>What makes Thompson sampling special is that it doesn’t always test what looks worst right now; it samples from its current belief about each fact, so facts it is unsure about still get tried and the estimates keep improving. Those beliefs are stored as a <em>beta distribution</em> per fact, a compact shape that captures both “how often does the model get this fact wrong” and “how sure are we about that estimate” in one object, and updates naturally every time a question is answered.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>How KGLens works. The system starts with a knowledge graph where every fact (edge) carries a running estimate of how often the model gets it wrong. Each round, it picks a batch of facts (preferring the ones the model seems weakest on), turns them into natural-language questions, asks the model, and updates each fact’s failure estimate based on the answer. Over time the sampler zeroes in on the model’s weakest facts. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Across three knowledge graphs built from Wikidata (covering countries, movies, and the NBA, with more than 19,000 facts and 21,000 entities between them), KGLens tested ten LLMs and produced two kinds of result.</p>
+<p>The first is evidence that the smart sampling actually saves questions. Figure 3 runs a simulation on the NBA graph. Each fact is given a hidden true “failure probability” (how often the model would get it wrong if asked repeatedly), and KGLens has to recover those probabilities from as few test questions as possible. On the hardest 200 and 600 facts, Thompson sampling and a related strategy called epsilon-greedy (both of which preferentially test the facts they think the model is weakest on) get closer to the true probabilities sooner than the brute-force approach of cycling through every fact in turn. The gap is largest when the question budget is small, which is exactly when it matters most.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Estimation error on the hardest NBA facts as a function of how many questions the model was asked. Thompson sampling and epsilon-greedy (two strategies that preferentially test likely-wrong facts) reach the same error as a brute-force scan with fewer questions, especially early on. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The second result is a map of what the model actually knows. Once KGLens has probed enough facts, it can group the results by the <em>kind</em> of relation being asked about (“spouse of”, “country of citizenship”, “position played”, and so on) and by the kind of entity involved. The output isn’t “the model is X% accurate overall”; it’s “the model is reliable on these kinds of facts and unreliable on those.” Figure 6 shows this breakdown for GPT-4 on the hardest difficulty setting.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure6.webp" class="img-fluid figure-img" data-lightbox-src="figure6-full.png"></p>
+<figcaption>Per-relation proficiency map for GPT-4 on HARD mode. Color encodes the <em>zero-sense rate</em>: the fraction of facts of that type the model never got right, even across repeated trials. Darker means more reliable. Dot size reflects how many facts of that type were in the graph. A map like this, showing exactly where a frontier model is and isn’t reliable, is the kind of artifact KGLens makes cheap to produce. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>To check that the automated grading was reliable, the authors compared KGLens’s verdicts against human judges. The system agreed with humans 95.7% of the time.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>A per-relation map is a better output shape for deployment decisions than a single score.</strong> Most factuality benchmarks (TruthfulQA [2], HaluEval, FActScore) produce a single number: the model is X% accurate on some fixed test set. KGLens produces a <em>map</em> instead: a breakdown of which kinds of facts the model handles well and which it doesn’t, against a knowledge graph the team can pick to match their actual deployment. For a team deciding whether to trust a model on, say, NBA player facts before shipping a sports product, that map is what they actually need; a single TruthfulQA number doesn’t help.</p></li>
+<li><p><strong>The sampling idea is the part most likely to matter beyond this paper.</strong> Every LLM evaluation hits the same wall: there are too many things to test and each test costs money. KGLens’s move (track a running estimate of how often the model fails each test, then preferentially retest the ones it seems worst at) is a standard strategy from classical machine learning applied to LLM evaluation. Figure 3 shows it meaningfully cuts the number of questions needed to find a model’s weakest facts. The same idea should plug into other expensive evaluations: red-teaming (searching for harmful outputs), jailbreak coverage (finding prompts that bypass safety rules), or capability probing (checking whether a model can do a specific task).</p></li>
+<li><p><strong>It pairs naturally with <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [3].</strong> Both are Apple papers about measuring what LLMs actually know versus what they claim, and they answer adjacent questions. KGLens tells you <em>which facts</em> the model has internalized: which kinds of questions it can answer reliably. SelfReflect tells you whether the model can <em>honestly summarize its own uncertainty</em> about a given question. A pipeline that uses KGLens to find a model’s weak areas and SelfReflect to check whether the model can admit to those weaknesses would be a stronger evaluation than either alone.</p></li>
+<li><p><strong>The 95.7% agreement with human judges deserves close scrutiny.</strong> Deciding automatically whether a model’s answer is correct is hard. Models paraphrase, give partial answers, or say something that is technically right but not the exact wording in the knowledge graph. The 95.7% figure is high, but the relevant question is whether the 4.3% disagreement concentrates on a particular kind of fact (time-sensitive ones, ambiguous relations, facts with multiple valid answers). If it does, those cases are where the automated grader is systematically off, and the team can either adjust or route them to a human reviewer.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Zheng</a>, Shangshang, He <a href="https://hbkkk.github.io/">Bai</a>, Yizhe <a href="https://dreasysnail.github.io/">Zhang</a>, Yi Su, Xiaochuan Niu, and Navdeep <a href="https://www.cs.toronto.edu/~ndjaitly/">Jaitly</a>. “KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs.” <em>ACL 2024 Workshop Towards Knowledgeable Language Models</em>, 2024. arXiv:2312.11539, December 15, 2023. <a href="https://arxiv.org/abs/2312.11539" class="uri">https://arxiv.org/abs/2312.11539</a></li>
+<li><a id="ref-2"></a>Lin, Stephanie, Jacob <a href="https://www.jacobh.co.uk/">Hilton</a>, and Owain <a href="https://en.wikipedia.org/wiki/Owain_Evans">Evans</a>. “TruthfulQA: Measuring How Models Mimic Human Falsehoods.” <em>arXiv preprint</em> (arXiv:2109.07958), September 8, 2021. <a href="https://arxiv.org/abs/2109.07958" class="uri">https://arxiv.org/abs/2109.07958</a></li>
+<li><a id="ref-3"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>arXiv preprint</em> (arXiv:2505.20295), May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+<li><a id="ref-4"></a><a href="https://djrusso.github.io/">Russo</a>, Daniel J., Benjamin <a href="https://web.stanford.edu/~bvr/">Van Roy</a>, Abbas Kazerouni, Ian <a href="https://iosband.github.io/">Osband</a>, and Zheng Wen. “A Tutorial on Thompson Sampling.” <em>Foundations and Trends in Machine Learning</em> 11, no. 1 (2018): 1–96. arXiv:1707.02038. <a href="https://arxiv.org/abs/1707.02038" class="uri">https://arxiv.org/abs/1707.02038</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20230902-llms-vs-knowledge-graphs/">Give Us the Facts: Large Language Models vs.&nbsp;Knowledge Graphs</a>: the same use of curated KGs as the factual reference against which LLM knowledge is measured, here motivating why probing is needed at all.</li>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the companion Apple paper on the adjacent question, whether a model can honestly report its own uncertainty about a fact KGLens flags as weak.</li>
+<li><a href="../../posts/20231102-fleek-fact-verification/">FLEEK: Fact Verification with LLMs and Knowledge Graphs</a>: the inverse pairing of the same two ingredients, using KGs and the web to verify and correct LLM claims rather than to probe for blind spots.</li>
+<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: the single-score factuality benchmark KGLens argues against, since a per-relation map is more useful for deployment than one accuracy number.</li>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: a complementary angle on locating a model’s knowledge, asking whether the model itself can predict which facts it will get right.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Frontier Model, Lower Bill: The Triager Pattern</title>
   <dc:creator>synesis </dc:creator>
@@ -1215,56 +1303,6 @@
   <guid>https://benjaminhan.net/posts/20260422-kv-cache-compression/</guid>
   <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Civilization’s Three Stages, Applied to Mathematics</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260421-civilizations-three-stages/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260421-civilizations-three-stages/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260421-civilizations-three-stages/cover.jpg" class="img-fluid figure-img" width="192"></p>
-<figcaption>Terence Tao. (<a href="https://mathstodon.xyz/@tao/116438112449752681">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Terence Tao quoting Douglas Adams to frame what AI is doing to mathematics:</p>
-<blockquote class="blockquote">
-<p>“The history of every major galactic civilization tends to pass through three distinct and recognizable phases, those of Survival, Inquiry and Sophistication, otherwise known as the How, Why, and Where phases. For instance, the first phase is characterized by the question ‘How can we eat?’, the second by the question ‘Why do we eat?’ and the third by the question, ‘Where shall we have lunch?’” (Douglas Adams, “The Hitchhiker’s Guide to the Galaxy”)</p>
-<p>Adams’ quote, whie humorous in intent, seems like a prescient description of the current evolution of cognitive disciplines such as mathematics. To use Adams’ framing, most of the history of mathematics has existed in the “Survival” phase, in which proofs were scarce and we were willing to obtain them by whatever means necessary (as long as they were verified to be correct), analogously to how a human in an era of caloric scarcity would accept food from virtually any source, so long as they were verified to be edible.</p>
-<p>But we are now entering an era where generative cognitive tasks, such as finding a proof to a given problem, are becoming cheap (as measured per user, rather than through overall capital investment) and relatively plentiful, analogously to how the Green Revolution dramatically increased crop yields and significantly reduced the occurrence of famine. As such, we are beginning to experience Adams’ somewhat turbulent “Inquiry” phase, in which fundamental questions, such as why mathematicians even seek proofs in the first place, and what qualities besides correctness do we want from such proofs, are now being seriously discussed not just by philosophers of mathematics, but by practicing mathematicians as well.</p>
-<p>However, at the other end of this transitional period is the “Sophistication” phase, in which our community has fully transitioned from a scarcity mindset to an abundance mindset. The objective will no longer be to accumulate as many proofs (of varying levels of quality) as possible, but to create more sophisticated experiences <em>around</em> curated collections of proofs: enjoyable conversations over lunch, rather than to scavenging for all available edible food sources. This will require the mathematicians of the future to prioritize a different set of skills than the ones we promote currently: “culinary” skills, such as mathematical exposition and construction of “big picture” narratives, may become at least as important as the “food gathering” skills of locating proofs.</p>
-</blockquote>
-<p>The transition from scarcity to abundance triggers the question of selection, and selection requires wisdom and taste. This applies to many human pursuits other than math.</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Terence Tao. <em>Mastodon</em>, 2026-04-20. <a href="https://mathstodon.xyz/@tao/116438112449752681" class="uri">https://mathstodon.xyz/@tao/116438112449752681</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20230902-computers-write-proofs/">When Computers Write Proofs, What’s the Point of Mathematicians?</a>: the same “why do we seek proofs, and what besides correctness do we want” question Tao raises, asked three years earlier.</li>
-<li><a href="../../posts/20260422-proof-generation-vs-digestion/">Proof Generation vs Digestion</a>: the shift from finding proofs to understanding them, which is Tao’s “culinary” exposition skill under another name.</li>
-<li><a href="../../posts/20260602-leiden-declaration-ai-mathematics/">The Leiden Declaration on AI and Mathematics</a>: the math community’s collective version of Tao’s “Inquiry phase,” setting terms for what AI-assisted proof should mean.</li>
-<li><a href="../../posts/20260514-carina-hong-axiom-math-is-agi/">Math Is AGI: Carina Hong on Axiom and Formal Reasoning</a>: the abundance-of-proofs future Tao points to, argued from the formal-reasoning side.</li>
-<li><a href="../../posts/20260606-ai-formal-proof-search/">Advancing Mathematics Research with AI-Driven Formal Proof Search</a>: a concrete engine for the cheap, plentiful proofs Tao says trigger the whole transition.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260421-civilizations-three-stages/</guid>
-  <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260421-civilizations-three-stages/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
