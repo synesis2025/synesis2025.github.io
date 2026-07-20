@@ -1,0 +1,48 @@
+---
+title: "Frontier LLMs Disagree on 67% of Real-World Fact-Checks"
+description: "A study rating 1,000 fresh real-user claims with five frontier LLMs finds the panel disagrees on two-thirds of them, without using any ground truth."
+author: synesis
+date: "2026-07-20"
+image: cover.jpg
+---
+
+![On 67% of real-world fact-checks, the five top frontier LLMs don't agree on the answer. Image from [Lenz Research](https://lenz.io/research/llm-disagreement).](cover.jpg){fig-align="center"}
+
+Kosta Jordanov of [Lenz Research](https://lenz.io/research/llm-disagreement) presented 1,000 recent real-user claims to the five top frontier LLMs and asked each for a verdict, then measured how often they agreed. The claims are live fact-check requests submitted to Lenz, a fact-checking platform, rather than benchmark items with public answer keys.
+
+Two things should temper that 67%. Calling these "fact-checks" is generous: three of the five models get no sources and answer from memory, and some claims are dated after those models' training cutoffs, so on those they are guessing about events they never saw. I come back to both in [my notes](#my-notes).
+
+What the study reports:
+
+- **Setup**: 1,000 claims, none older than February 15, 2026, each normalized into a single neutral testable proposition anchored to its submission date. Five models are forced to pick one of four labels (True / Mostly True / Misleading / False) with no explanation and no Abstain option: three parametric (GPT-5.4, Claude Opus 4.7, Gemini 3 Pro) and two retrieval-augmented (Gemini 3 Pro + Search, [Sonar Pro](https://sonar.perplexity.ai/) from Perplexity). There is no LLM grader and no ground truth. Every number comes from direct label agreement across the five verdicts.
+- **The main result**: on 67% of claims (672 of 1,000) at least one model dissents from the majority, or no majority forms at all. Two or more models dissent on 45%, and 13% split with no majority. Only 33% are unanimous.
+- **The pigeonhole floor**: since exactly one of the four buckets can be correct, any split means at least one model is wrong. That puts a floor of ≥1 model wrong on 67% of claims, ≥2 wrong on 45%, and ≥3 wrong on the 13% with no majority. It bounds inconsistency from below, without identifying which model is wrong on any given claim.
+- **Substantive vs calibration**: 34% of claims have a gap of two or more buckets between the most-disagreeing pair, and 21% are polar (one model says True, another says False). Panel agreement, scored with [Krippendorff's α](https://en.wikipedia.org/wiki/Krippendorff%27s_alpha) at the ordinal level, is 0.639, structured but well short of interchangeable.
+- **Poles vs. middle**: True and False majorities reach full unanimity 43–47% of the time, but Mostly True majorities reach it 0% of the time and Misleading only 5%. Of the 328 unanimous claims, 204 are True, 120 are False, 4 are Misleading, and 0 are Mostly True.
+- **Per-model behavior**: agreement with the majority of the other four ranges from 69% (Sonar Pro) to 81% (GPT-5.4). Verdict distributions differ by model. Gemini 3 Pro concentrates at the poles (54% True, 40% False, ~3% in each middle bucket), while Claude Opus 4.7 spreads more evenly. The highest-agreeing pair is Gemini 3 Pro and Gemini 3 Pro + Search at 75%, which share a base model, and three pairs tie at the 53% floor.
+- **By domain**: disagreement runs from 53% (History) to 77% (Legal), with substantive gaps most common in Finance, General, and Legal claims (~39–40%).
+- **Why a fresh corpus**: public fact-check sets like AVeriTeC and PolitiFact are years old and likely part of the training data, so disagreement on them confounds inference with memorization. These are recent real-user submissions never paired with a canonical verdict in any public set, spanning health, science, finance, history, tech, and legal questions rather than mostly US political claims.
+- **Artifacts**: a [per-claim CSV](https://lenz.io/research/llm-disagreement/data.csv), a hash-pinned PDF, a versioned archival URL (v1.0), and a [Zenodo DOI](https://doi.org/10.5281/zenodo.20344847). A companion study is planned that human-labels the same corpus so both the frontier panel and Lenz's own verdicts can be scored against ground truth.
+
+![The verdict-pattern breakdown across the five-model panel: 33% unanimous, 67% with at least one dissent, 45% with two or more, and 13% splitting with no majority at all. Table from [Lenz Research](https://lenz.io/research/llm-disagreement).](verdict-pattern.png){fig-align="center"}
+
+## My Notes
+
+- **No room to say "I don't know"**: the panel has to pick a verdict even when "I don't know" is the right call, and that hurts most in the middle, where Mostly True and Misleading almost never reach unanimity. [AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) shows that forcing an answer on unanswerable questions lowers quality, and [AVeriTeC](/posts/20260507-averitec/) keeps *Not Enough Evidence* and *Conflicting Evidence* labels for exactly this reason. Part of the 67% reflects the rubric's design rather than model error.
+
+- **Even the models that search disagree**: the easy dismissal is that three of the five (GPT-5.4, Opus 4.7, Gemini 3 Pro) run on memory alone, so their splits just reflect what each happened to memorize. But take only the two that search the web, Gemini 3 Pro + Search and Sonar Pro: they still give different labels on 42% of claims. Most of that is one step apart, True versus Mostly True. On 6% they go fully opposite, one True and one False, down from 21% across all five. Both can pull the same sources, so that 6% comes down to the sources and how each model reads them.
+
+- **The four labels aren't clean**: the pigeonhole floor only holds if exactly one label can be right, but the buckets aren't clean. Misleading shades into both True and False, there's no Mostly False, and "All almonds are grown in the U.S. state of California" is fairly called either False or Misleading. When two labels both fit, a split is two defensible reads of the same claim, which makes the "someone is wrong on 67%" floor softer than it sounds.
+
+- **The data is open**: [the per-claim CSV](https://lenz.io/research/llm-disagreement/data.csv) lists every claim with all five model verdicts, so any agreement number here can be recomputed, including the 42% and 6% above. It has the verdicts but no ground truth, so nothing in it settles who is actually correct, only how much the models diverge.
+
+- **What would actually settle this**: let each model think out loud before it gives a label, and ask each one the same claim several times to see whether it even agrees with itself. A single forced pick can't separate a genuinely contested claim from a model that happened to be inconsistent that run. The human-labeled pass over the same 1,000 claims, which the author has planned, will finally say who was right.
+
+---
+
+## Related Posts
+
+- [AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web](/posts/20260507-averitec/): the human-annotated fact-check benchmark this study cites as its agreement ceiling (κ=0.619), with a richer verdict set that the four-bucket rubric here deliberately omits.
+- [AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions](/posts/20260523-abstentionbench-unanswerable-questions/): direct support for the concern that forcing a verdict with no Abstain option degrades quality on exactly the contested claims where the panel splits.
+- [Domain-Level Metacognitive Monitoring in Frontier LLMs: A 33-Model Atlas](/posts/20260522-metacognition-atlas/): another case of frontier behavior varying stably by domain, matching the History-to-Legal spread in disagreement here.
+- [Language Models (Mostly) Know What They Know](/posts/20260504-kadavath-mostly-know/): the calibration counterpoint, where a single model can often judge its own correctness even as a panel of five cannot agree on a verdict.

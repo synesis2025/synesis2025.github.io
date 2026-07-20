@@ -20,7 +20,72 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 19 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 20 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Frontier LLMs Disagree on 67% of Real-World Fact-Checks</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260720-llm-disagreement/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260720-llm-disagreement/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260720-llm-disagreement/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>On 67% of real-world fact-checks, the five top frontier LLMs don’t agree on the answer. Image from <a href="https://lenz.io/research/llm-disagreement">Lenz Research</a>.</figcaption>
+</figure>
+</div>
+<p>Kosta Jordanov of <a href="https://lenz.io/research/llm-disagreement">Lenz Research</a> presented 1,000 recent real-user claims to the five top frontier LLMs and asked each for a verdict, then measured how often they agreed. The claims are live fact-check requests submitted to Lenz, a fact-checking platform, rather than benchmark items with public answer keys.</p>
+<p>Two things should temper that 67%. Calling these “fact-checks” is generous: three of the five models get no sources and answer from memory, and some claims are dated after those models’ training cutoffs, so on those they are guessing about events they never saw. I come back to both in my notes.</p>
+<p>What the study reports:</p>
+<ul>
+<li><strong>Setup</strong>: 1,000 claims, none older than February 15, 2026, each normalized into a single neutral testable proposition anchored to its submission date. Five models are forced to pick one of four labels (True / Mostly True / Misleading / False) with no explanation and no Abstain option: three parametric (GPT-5.4, Claude Opus 4.7, Gemini 3 Pro) and two retrieval-augmented (Gemini 3 Pro + Search, <a href="https://sonar.perplexity.ai/">Sonar Pro</a> from Perplexity). There is no LLM grader and no ground truth. Every number comes from direct label agreement across the five verdicts.</li>
+<li><strong>The main result</strong>: on 67% of claims (672 of 1,000) at least one model dissents from the majority, or no majority forms at all. Two or more models dissent on 45%, and 13% split with no majority. Only 33% are unanimous.</li>
+<li><strong>The pigeonhole floor</strong>: since exactly one of the four buckets can be correct, any split means at least one model is wrong. That puts a floor of ≥1 model wrong on 67% of claims, ≥2 wrong on 45%, and ≥3 wrong on the 13% with no majority. It bounds inconsistency from below, without identifying which model is wrong on any given claim.</li>
+<li><strong>Substantive vs calibration</strong>: 34% of claims have a gap of two or more buckets between the most-disagreeing pair, and 21% are polar (one model says True, another says False). Panel agreement, scored with <a href="https://en.wikipedia.org/wiki/Krippendorff%27s_alpha">Krippendorff’s α</a> at the ordinal level, is 0.639, structured but well short of interchangeable.</li>
+<li><strong>Poles vs.&nbsp;middle</strong>: True and False majorities reach full unanimity 43–47% of the time, but Mostly True majorities reach it 0% of the time and Misleading only 5%. Of the 328 unanimous claims, 204 are True, 120 are False, 4 are Misleading, and 0 are Mostly True.</li>
+<li><strong>Per-model behavior</strong>: agreement with the majority of the other four ranges from 69% (Sonar Pro) to 81% (GPT-5.4). Verdict distributions differ by model. Gemini 3 Pro concentrates at the poles (54% True, 40% False, ~3% in each middle bucket), while Claude Opus 4.7 spreads more evenly. The highest-agreeing pair is Gemini 3 Pro and Gemini 3 Pro + Search at 75%, which share a base model, and three pairs tie at the 53% floor.</li>
+<li><strong>By domain</strong>: disagreement runs from 53% (History) to 77% (Legal), with substantive gaps most common in Finance, General, and Legal claims (~39–40%).</li>
+<li><strong>Why a fresh corpus</strong>: public fact-check sets like AVeriTeC and PolitiFact are years old and likely part of the training data, so disagreement on them confounds inference with memorization. These are recent real-user submissions never paired with a canonical verdict in any public set, spanning health, science, finance, history, tech, and legal questions rather than mostly US political claims.</li>
+<li><strong>Artifacts</strong>: a <a href="https://lenz.io/research/llm-disagreement/data.csv">per-claim CSV</a>, a hash-pinned PDF, a versioned archival URL (v1.0), and a <a href="https://doi.org/10.5281/zenodo.20344847">Zenodo DOI</a>. A companion study is planned that human-labels the same corpus so both the frontier panel and Lenz’s own verdicts can be scored against ground truth.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260720-llm-disagreement/verdict-pattern.png" class="img-fluid figure-img"></p>
+<figcaption>The verdict-pattern breakdown across the five-model panel: 33% unanimous, 67% with at least one dissent, 45% with two or more, and 13% splitting with no majority at all. Table from <a href="https://lenz.io/research/llm-disagreement">Lenz Research</a>.</figcaption>
+</figure>
+</div>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>No room to say “I don’t know”</strong>: the panel has to pick a verdict even when “I don’t know” is the right call, and that hurts most in the middle, where Mostly True and Misleading almost never reach unanimity. <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> shows that forcing an answer on unanswerable questions lowers quality, and <a href="../../posts/20260507-averitec/">AVeriTeC</a> keeps <em>Not Enough Evidence</em> and <em>Conflicting Evidence</em> labels for exactly this reason. Part of the 67% reflects the rubric’s design rather than model error.</p></li>
+<li><p><strong>Even the models that search disagree</strong>: the easy dismissal is that three of the five (GPT-5.4, Opus 4.7, Gemini 3 Pro) run on memory alone, so their splits just reflect what each happened to memorize. But take only the two that search the web, Gemini 3 Pro + Search and Sonar Pro: they still give different labels on 42% of claims. Most of that is one step apart, True versus Mostly True. On 6% they go fully opposite, one True and one False, down from 21% across all five. Both can pull the same sources, so that 6% comes down to the sources and how each model reads them.</p></li>
+<li><p><strong>The four labels aren’t clean</strong>: the pigeonhole floor only holds if exactly one label can be right, but the buckets aren’t clean. Misleading shades into both True and False, there’s no Mostly False, and “All almonds are grown in the U.S. state of California” is fairly called either False or Misleading. When two labels both fit, a split is two defensible reads of the same claim, which makes the “someone is wrong on 67%” floor softer than it sounds.</p></li>
+<li><p><strong>The data is open</strong>: <a href="https://lenz.io/research/llm-disagreement/data.csv">the per-claim CSV</a> lists every claim with all five model verdicts, so any agreement number here can be recomputed, including the 42% and 6% above. It has the verdicts but no ground truth, so nothing in it settles who is actually correct, only how much the models diverge.</p></li>
+<li><p><strong>What would actually settle this</strong>: let each model think out loud before it gives a label, and ask each one the same claim several times to see whether it even agrees with itself. A single forced pick can’t separate a genuinely contested claim from a model that happened to be inconsistent that run. The human-labeled pass over the same 1,000 claims, which the author has planned, will finally say who was right.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260507-averitec/">AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</a>: the human-annotated fact-check benchmark this study cites as its agreement ceiling (κ=0.619), with a richer verdict set that the four-bucket rubric here deliberately omits.</li>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: direct support for the concern that forcing a verdict with no Abstain option degrades quality on exactly the contested claims where the panel splits.</li>
+<li><a href="../../posts/20260522-metacognition-atlas/">Domain-Level Metacognitive Monitoring in Frontier LLMs: A 33-Model Atlas</a>: another case of frontier behavior varying stably by domain, matching the History-to-Legal spread in disagreement here.</li>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the calibration counterpoint, where a single model can often judge its own correctness even as a panel of five cannot agree on a verdict.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260720-llm-disagreement/</guid>
+  <pubDate>Mon, 20 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260720-llm-disagreement/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>My 88th Half Marathon, a Steady Easy Long Run</title>
   <dc:creator>synesis </dc:creator>
@@ -1246,57 +1311,6 @@
   <guid>https://benjaminhan.net/posts/20260708-eliza-archaeology-try-eliza/</guid>
   <pubDate>Wed, 08 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260708-eliza-archaeology-try-eliza/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>SpudCell: A Synthetic Cell Built From Scratch That Divides</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260705-spudcell-synthetic-cell/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260705-spudcell-synthetic-cell/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260705-spudcell-synthetic-cell/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>SpudCells in the process of dividing. Image credit: Biotic / Adamala Lab, via <a href="https://arstechnica.com/science/2026/07/artificial-cell-manages-a-few-rounds-of-cell-division/">Ars Technica</a>.</figcaption>
-</figure>
-</div>
-<p>Scientists have built something that behaves like a living cell: it takes in food, grows, splits in two, and even evolves a little over a few generations, all without starting from any living thing. Every part was purified in a lab and put together from scratch. It isn’t alive, and it stops working after a handful of divisions, but it gives researchers a fully known, built-from-parts system for studying how the first cells might have come together.</p>
-<p><a href="https://en.wikipedia.org/wiki/Kate_Adamala">Kate Adamala</a>’s lab at the <a href="https://en.wikipedia.org/wiki/University_of_Minnesota">University of Minnesota</a> has built SpudCell, a cell-like system assembled entirely from purified, non-living components that runs a full <a href="https://en.wikipedia.org/wiki/Cell_cycle">cell cycle</a>. I read it through two sources: <a href="https://biotic.org/research/spudcell/">Biotic’s own announcement page</a> and <a href="https://arstechnica.com/science/2026/07/artificial-cell-manages-a-few-rounds-of-cell-division/">Ars Technica’s write-up</a>, which frame the same result very differently.</p>
-<p>What the work reports:</p>
-<ul>
-<li>SpudCell is built bottom-up from a defined parts list: a ~90,000-base-pair genome across seven DNA <a href="https://en.wikipedia.org/wiki/Plasmid">plasmids</a>, the <a href="https://en.wikipedia.org/wiki/Cell-free_protein_synthesis">PURE</a> protein-expression system (36 purified <a href="https://en.wikipedia.org/wiki/Escherichia_coli"><em>E. coli</em></a> enzymes, including <a href="https://en.wikipedia.org/wiki/Ribosome">ribosomes</a>), and a lipid membrane. Earlier minimal-cell work — the <a href="https://en.wikipedia.org/wiki/Mycoplasma_laboratorium">JCVI-syn3.0</a> cell (Hutchison et al., 2016) — carved a living cell down to 473 genes. This one assembles from individually purified pieces.</li>
-<li>It feeds by fusing with “feeder <a href="https://en.wikipedia.org/wiki/Liposome">liposomes</a>” that deliver lipids and nutrients. A protein SpudCell makes from its own DNA (<a href="https://en.wikipedia.org/wiki/Staphylococcus_aureus_alpha_toxin">α-hemolysin</a>, tagged) locks onto the feeder membrane and triggers fusion, so the genome controls whether and how fast the cell grows.</li>
-<li>It divides without a <a href="https://en.wikipedia.org/wiki/Cytoskeleton">cytoskeleton</a>: the surface protein crowds until mechanical stress makes the membrane bud off. Cells that make more of it divide more efficiently.</li>
-<li>Selection works. A genetic change raising fusion-protein output let those cells outgrow the original over five generations, more so under nutrient scarcity.</li>
-<li>The limits are steep. Plasmids distribute randomly at division, so after five generations only ~30% of daughters carry all seven. The cell also can’t remake its borrowed <em>E. coli</em> ribosomes, so it runs 5–10 generations before the machinery degrades. The manuscript is a preprint, not yet peer-reviewed.</li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Have we created life?</strong> No.&nbsp;SpudCell borrows its ribosomes from <em>E. coli</em> and can’t make new ones, and it can’t pass its genome to daughter cells reliably. It runs on machinery that real organisms evolved over billions of years, and it winds down once the borrowed pieces wear out. Making life would mean building a system that produces and inherits its own machinery. SpudCell is useful because it doesn’t do that yet: it lets researchers test which of the missing pieces matter most, and in what order they would have had to appear.</p></li>
-<li><p><strong>Two sources, two framings</strong>: Biotic’s page leads with “the first synthetic cell with a complete cell cycle” and a genome smaller than the 113 kbp that prior analysis had speculated as the minimum for a living cell, while Ars Technica leads with “it only works for a few divisions thanks to a lot of added materials.” Both are accurate, though “complete cell cycle” is generous: the system divides but does not reliably inherit, since each daughter gets a random draw of plasmids and nothing ran past five generations. The announcement sells the milestone and the write-up stresses how much external machinery it needs, and the honest read of the result holds the two together.</p></li>
-<li><p><strong>Selection worked, but only briefly</strong>: getting real Darwinian selection to run on chemistry built from a parts list is the genuine result. The demonstration was small and heavily engineered, and the advantage held only for the few generations before genome loss shut everything down. Whether selection can do more depends on first fixing how the genome is passed on.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20201226-pfizer-vaccine-reverse-engineering/">Reverse Engineering the BioNTech/Pfizer Vaccine</a>: the same view of biology as legible, engineerable code, read off a molecule rather than built into one.</li>
-<li><a href="../../posts/20231226-neuroscience-consciousness/">The Neuroscience of Consciousness: Peter Tse on The Gradient</a>: the mind-side companion to the same bottom-up move, asking what minimal physical system is enough to count.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260705-spudcell-synthetic-cell/</guid>
-  <pubDate>Sun, 05 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260705-spudcell-synthetic-cell/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

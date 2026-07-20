@@ -21,7 +21,129 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 19 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 20 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Conformal Certification of Reasoning Trace Prefixes</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260618-crop-reasoning-trace-prefixes/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260618-crop-reasoning-trace-prefixes/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260618-crop-reasoning-trace-prefixes/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>CROP returns a green certified prefix and routes the red uncertified suffix to a blue repair pass, shown on an Arithmetic and a GSM8K trace. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Conformal Certification of Reasoning Trace Prefixes</em> [1] (arXiv preprint, May 2026), <a href="https://www.semanticscholar.org/author/2291116287">Matt Y. Cheung</a>, <a href="https://www.semanticscholar.org/author/2291032934">Ashok Veeraraghavan</a>, <a href="https://www.semanticscholar.org/author/2374325194">Hanjie Chen</a>, and <a href="https://www.semanticscholar.org/author/2304149160">Guha Balakrishnan</a> (Rice University) introduce CROP, a calibration layer that returns the longest leading slice of a reasoning trace whose steps provably contain no annotated error, given any step-level risk signal.</p>
+<blockquote class="blockquote">
+<p>Language model reasoning traces are rarely all-or-nothing; they frequently contain valid intermediate steps before a critical error occurs. Existing uncertainty quantification methods typically certify final answers or entire responses, failing to provide statistical guarantees for the proportion of a sequential trace that can be safely retained. To address this, we introduce <em>CROP (Conformal Reasoning Output Prefixes)</em>, a <em>verifier-agnostic calibration procedure for clean-prefix certification</em>. Given any step-level risk proxy, CROP selects a calibrated threshold and returns the <em>longest contiguous prefix whose step risk proxies remain below it</em>, routing the uncertified suffix for downstream review or repair. Assuming exchangeability, CROP rigorously controls the marginal probability that the returned prefix contains an annotated error. Across six process-labeled reasoning datasets, we demonstrate that <em>standard step-level metrics such as AUROC do not fully capture prefix utility</em>, suggesting verifiers should instead be evaluated by certified prefix length. Furthermore, CROP balances over- and under-withholding, <em>improving downstream repair accuracy by preserving valid intermediate reasoning while discarding misleading suffixes</em>. Ultimately, this work positions prefix certification as a rigorous, practical bridge between process supervision, abstention, and repair.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>CROP operates downstream of a completed reasoning trace and asks a narrower question than most uncertainty quantification (UQ) work. Not “is the final answer right?” but “how much of this trace can I keep before the first error?” A <em>reasoning instance</em> is a question plus its trace of <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> steps, each step labeled with a binary error flag in the data. CROP turns step-level risk scores into a single calibrated cut-off, then keeps everything up to that cut-off. The pieces:</p>
+<ul>
+<li><strong>Step-level risk proxy</strong>: a fixed function <img src="https://benjaminhan.net/feed-assets/30618f020565f62a.svg" alt="s_t(\cdot)" class="feed-math-inline"/> that scores each step, with larger values meaning higher estimated error risk. The proxy can be a process reward model (PRM), a model trained to judge whether each reasoning step is correct (the kind of step scorer the literature calls a <em>verifier</em>), or a plainer signal such as a likelihood statistic, a hidden-state feature, or a hand-built heuristic. CROP is <em>verifier-agnostic</em>: it consumes whatever the proxy outputs, which need not be calibrated or even accurate, only fixed before calibration.</li>
+<li><strong>Retained prefix</strong>: at a threshold <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/>, CROP keeps the longest leading run of steps whose risk all stays at or below <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/>, a prefix of length <img src="https://benjaminhan.net/feed-assets/d39b3969b69f7221.svg" alt="M_\lambda = \max\{m : s_t \le \lambda \text{ for all } t \le m\}" class="feed-math-inline"/>. The uncertified suffix after the first threshold crossing is split off for downstream review or repair.</li>
+<li><strong>Monotone contamination loss</strong>: for an instance <img src="https://benjaminhan.net/feed-assets/ef4bdc8a310d1726.svg" alt="Z" class="feed-math-inline"/>, the loss <img src="https://benjaminhan.net/feed-assets/e3234ba5f6f45eb6.svg" alt="L_\lambda(Z) \in \{0, 1\}" class="feed-math-inline"/> flags the failure event “the kept prefix contains an annotated error.” Because raising <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> can only lengthen the prefix, and once a bad step enters it never leaves, this binary loss is monotone in <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/>. Monotonicity is the condition conformal risk control (CRC) [2] requires, so CROP applies it directly.</li>
+<li><strong>Calibration rule</strong>: on <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> held-out labeled instances <img src="https://benjaminhan.net/feed-assets/b0c4448183496277.svg" alt="Z_1, \dots, Z_n" class="feed-math-inline"/> and a target risk <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, CROP picks the <em>largest</em> threshold <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> whose corrected empirical contamination rate <img src="https://benjaminhan.net/feed-assets/6c89b2d3a8aea1df.svg" alt="(1 + \sum_i L_\lambda(Z_i))/(n+1)" class="feed-math-inline"/> (the mean loss over those instances, with the <img src="https://benjaminhan.net/feed-assets/c8461c32b87a4df7.svg" alt="+1" class="feed-math-inline"/> a finite-sample correction) stays at or below <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>. A larger <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> means longer prefixes, so this is the longest prefix subject to the risk budget. If no threshold qualifies, it falls back to the empty prefix.</li>
+</ul>
+<p>The guarantee that follows, the paper’s Proposition 1, <strong>Clean-Prefix Risk Control</strong>, is finite-sample and marginal: under exchangeability of the calibration and test instances, the returned prefix contains an annotated error with probability at most <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>. Writing <img src="https://benjaminhan.net/feed-assets/7d11e91d1efd936d.svg" alt="\hat{\lambda}" class="feed-math-inline"/> for the calibrated threshold and <img src="https://benjaminhan.net/feed-assets/84bbf6e3960e7d81.svg" alt="Z_{n+1}" class="feed-math-inline"/> for a fresh instance, that is <img src="https://benjaminhan.net/feed-assets/13576a08c736731b.svg" alt="\mathbb{P}(L_{\hat{\lambda}}(Z_{n+1}) = 1) \le \alpha" class="feed-math-inline"/>. The reason is the standard split-conformal count: the calibration rule sets <img src="https://benjaminhan.net/feed-assets/7d11e91d1efd936d.svg" alt="\hat{\lambda}" class="feed-math-inline"/> so that at most <img src="https://benjaminhan.net/feed-assets/db95512bfa8ecaa7.svg" alt="\lfloor \alpha(n+1) \rfloor - 1" class="feed-math-inline"/> of the <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> calibration instances come out contaminated, and a fresh instance, being exchangeable with those <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/>, is equally likely to fall at any rank among the <img src="https://benjaminhan.net/feed-assets/8c42e9570e1eb92a.svg" alt="n+1" class="feed-math-inline"/>, so its chance of landing in the contaminated group is at most <img src="https://benjaminhan.net/feed-assets/b0fc82dbd66c5589.svg" alt="\lfloor \alpha(n+1) \rfloor / (n+1) \le \alpha" class="feed-math-inline"/>. The exchangeable unit is the whole instance, not the step, so steps inside a trace may depend on each other arbitrarily.</p>
+<p>The cover figure shows what CROP produces on two worked traces: a green certified prefix, a red uncertified suffix, and a blue repair pass on the suffix. The Arithmetic example clears its prefix at a strict threshold (<img src="https://benjaminhan.net/feed-assets/faf9f973d198ca2b.svg" alt="\lambda = 0.995" class="feed-math-inline"/>). The GSM8K example, where the proxy is noisier, certifies far less (<img src="https://benjaminhan.net/feed-assets/1ae7a67c70d3e228.svg" alt="\lambda = 0.156" class="feed-math-inline"/>) and cuts after the second step. Each <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> here is its dataset’s single calibrated threshold, fixed once on that dataset’s calibration split and applied to every instance, so the two values differ because they come from two separate calibrations, not because <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> is tuned per problem. What changes from trace to trace is only where that fixed threshold falls.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The authors evaluate CROP across six process-supervision datasets: Arithmetic and GSM8K (Llama-generated chain-of-thought traces with dense first-error labels, from the circuit-based reasoning verification (CRV) dataset [7]), plus ProcessBench [8], Math-Shepherd [9], PRMBench [10], and <a href="../../posts/20260512-lets-verify-step-by-step/">PRM800K</a> [3]. The main benchmark is 2,819 traces over Arithmetic and GSM8K (19,311 steps, 1,006 annotated errors).</p>
+<p>They compare five step-level risk proxies on a 60/20/20 train/calibration/test split:</p>
+<ul>
+<li><strong>Random</strong>: random step scores, the floor baseline.</li>
+<li><strong>Token/format</strong>: a logistic regression over cheap text features (step length, position, punctuation).</li>
+<li><strong>Trace features</strong>: a logistic regression over those text features plus Llama-3.1-8B likelihood and hidden-state summaries.</li>
+<li><strong>Direct PRM</strong>: a frozen Qwen2.5-Math-PRM-7B, scored directly as one minus its step-correctness probability.</li>
+<li><strong>Trace features + PRM</strong>: a joint logistic regression over the trace features and the PRM score.</li>
+</ul>
+<p>The target risk is fixed at <img src="https://benjaminhan.net/feed-assets/391b6e3ddb7d4664.svg" alt="\alpha = 0.05" class="feed-math-inline"/>, and downstream repair is measured by feeding the certified prefix to four separate repair models (Gemma 4, Qwen2.5-7B, DeepSeek-R1-0528-Qwen3-8B, Llama3.1-8B) and parsing the final answer.</p>
+<p>CROP’s repair is compared against three baseline interfaces:</p>
+<ul>
+<li><strong>Question-only</strong>: the repair model sees only the original question, with the trace discarded entirely.</li>
+<li><strong>Full-trace</strong>: the repair model sees the complete trace, warned that it may contain mistakes.</li>
+<li><strong>Conformal whole-trace abstention</strong>: an all-or-nothing conformal decision that either accepts the entire trace or backs off to the bare question, with no partial prefix.</li>
+</ul>
+<p>At a fixed risk target, the more of each trace CROP can certify, the better, since the certified prefix is valid reasoning kept for downstream use rather than discarded. Figure 2 plots this retained-prefix fraction as the risk target <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/> is relaxed.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260618-crop-reasoning-trace-prefixes/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Across six process-labeled datasets, the certified prefix kept rises as the target risk <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/> is relaxed. PRM-backed proxies (Direct PRM in blue, Trace features + PRM in green) retain long prefixes even at strict <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>, while random and cheap token/format signals stay flat. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The findings:</p>
+<ul>
+<li><strong>AUROC does not predict prefix utility.</strong> Step-level AUROC (the area under the receiver operating characteristic curve) measures how well a proxy ranks erroneous steps above correct ones, the usual yardstick for choosing among proxies. Here it is the wrong one: Figure 3’s red segments mark inversions where the higher-AUROC of two proxies certifies the <em>shorter</em> prefix, and the appendix proves two proxies can share identical AUROC yet certify different prefix lengths under the same calibration. The paper recommends selecting proxies by certified prefix length instead.</li>
+<li><strong>PRM signals dominate, and not as an artifact.</strong> PRM-backed proxies retained the longest prefixes at fixed risk across datasets (for example 97.5% retained on Arithmetic and 81.7% on GSM8K at <img src="https://benjaminhan.net/feed-assets/391b6e3ddb7d4664.svg" alt="\alpha = 0.05" class="feed-math-inline"/>, versus 77.5% and 39.8% for token/format). After balancing trace length, formatting, and answer-format cues, PRM still kept ~27 percentage points more prefix than the token/format baseline, so the gain is not explained by exploitable formatting regularities.</li>
+<li><strong>CROP’s cut is closer to the oracle clean boundary.</strong> Against the annotated first-error position, CROP’s boundary deviation was 1.1% on Arithmetic and 9.9% on GSM8K, beating whole-trace abstention (4.6% and 14.1%) by avoiding both over-withholding of clean steps and unsafe overshoot past the first error.</li>
+<li><strong>Repair gains are real but model-dependent.</strong> CROP beat the best deployable non-CROP input in five of eight repair settings, with the largest lift on Arithmetic for DeepSeek (+5.5 points) and Gemma (+5.3). Llama posted negative deltas in both domains, which the authors trace to same-family answer repetition: the Arithmetic and GSM8K traces were originally generated by Llama, so the Llama repair model is unusually prone to copying the trace’s own wrong answer.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260618-crop-reasoning-trace-prefixes/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Step AUROC versus retained-prefix fraction across six datasets at <img src="https://benjaminhan.net/feed-assets/391b6e3ddb7d4664.svg" alt="\alpha = 0.05" class="feed-math-inline"/>. Gray segments mark agreement between ranking and prefix utility; red segments mark inversions where higher AUROC yields a shorter prefix. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 3 ties the first two findings together: PRM proxies retain the most prefix, but the red segments show that moving to a higher-AUROC proxy sometimes costs retained prefix.</p>
+<p>Beyond accuracy, CROP changes what the downstream workflow sees. Whole-trace abstention is all-or-nothing: it accepts a full trace or falls back to the bare question. CROP instead returns a partial prefix, salvaging the clean opening of traces that abstention would reject outright.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260618-crop-reasoning-trace-prefixes/table3.png" class="img-fluid figure-img"></p>
+<figcaption>Table 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Table 3 shows the tradeoff: with the PRM proxies, CROP keeps more total step mass (92.0% and 95.1%) than whole-trace abstention at a matched empirical risk, even while accepting fewer whole traces.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>CROP extends the conformal-for-LLMs line to a new object.</strong> <a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a> [4] certifies a <em>set</em> of candidate generations, and <a href="../../posts/20260624-conformal-thinking/">Conformal Thinking</a> [5] calibrates <em>stop/continue</em> thresholds for a compute budget. CROP applies the same conformal risk control [2] machinery to a third object, a contiguous reasoning prefix.</li>
+<li><strong>The coverage guarantee holds in aggregate, not per question.</strong> Like all <a href="../../posts/20260505-conformal-prediction-primer/">conformal prediction</a> [6], CROP controls the contamination probability averaged over the calibration distribution, so a <em>particular</em> question from a topic rare in that set can still contaminate well above <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>.</li>
+<li><strong>Rewarding global ranking does not necessarily yield the longest prefixes at a fixed risk.</strong> The process-reward-model literature CROP builds on, from <a href="../../posts/20260512-lets-verify-step-by-step/">PRM800K and <em>Let’s Verify Step by Step</em></a> [3] onward, ranks proxies by pooled step accuracy and best-of-<img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> selection, both global-ranking objectives. Prefix certification instead rewards keeping the opening clean, so a PRM that tops those leaderboards need not certify the longest prefix at the same risk. A deployment that cares about prefix length should re-rank its proxies by certified prefix length directly.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2291116287">Cheung, M. Y.</a>, <a href="https://www.semanticscholar.org/author/2291032934">Veeraraghavan, A.</a>, <a href="https://www.semanticscholar.org/author/2374325194">Chen, H.</a>, and <a href="https://www.semanticscholar.org/author/2304149160">Balakrishnan, G.</a> “Conformal Certification of Reasoning Trace Prefixes.” <em>arXiv preprint</em> (arXiv:2605.30085), May 28, 2026. <a href="https://arxiv.org/abs/2605.30085" class="uri">https://arxiv.org/abs/2605.30085</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://people.eecs.berkeley.edu/~angelopoulos/">Angelopoulos, A. N.</a>, <a href="https://stephenbates19.github.io/">Bates, S.</a>, <a href="https://people.csail.mit.edu/fisch/">Fisch, A.</a>, Lei, L., and <a href="https://www.talschuster.com/">Schuster, T.</a> “Conformal Risk Control.” <em>International Conference on Learning Representations</em> (ICLR 2024). arXiv:2208.02814. <a href="https://arxiv.org/abs/2208.02814" class="uri">https://arxiv.org/abs/2208.02814</a></p></li>
+<li><p><a id="ref-3"></a><a href="https://www.semanticscholar.org/author/2057302154">Lightman, H.</a>, Kosaraju, V., Burda, Y., Edwards, H., Baker, B., Lee, T., Leike, J., Schulman, J., Sutskever, I., and <a href="https://www.semanticscholar.org/author/2059910612">Cobbe, K.</a> “Let’s Verify Step by Step.” <em>International Conference on Learning Representations</em> (ICLR 2024). arXiv:2305.20050. <a href="https://arxiv.org/abs/2305.20050" class="uri">https://arxiv.org/abs/2305.20050</a></p></li>
+<li><p><a id="ref-4"></a><a href="https://www.semanticscholar.org/author/2057360525">Quach, V.</a>, <a href="https://people.csail.mit.edu/fisch/">Fisch, A.</a>, <a href="https://www.talschuster.com/">Schuster, T.</a>, Yala, A., Sohn, J. H., <a href="https://people.csail.mit.edu/tommi/">Jaakkola, T.</a>, and <a href="https://www.regina.csail.mit.edu/">Barzilay, R.</a> “Conformal Language Modeling.” <em>International Conference on Learning Representations</em> (ICLR 2024). arXiv:2306.10193. <a href="https://arxiv.org/abs/2306.10193" class="uri">https://arxiv.org/abs/2306.10193</a></p></li>
+<li><p><a id="ref-5"></a><a href="https://www.semanticscholar.org/author/2108975583">Wang, X.</a>, Suresh, A., Zhang, A., More, R., <a href="https://www.semanticscholar.org/author/2280446048">Jurayj, W.</a>, <a href="https://www.cs.jhu.edu/~vandurme/">Van Durme, B.</a>, <a href="https://www.semanticscholar.org/author/2909931">Farajtabar, M.</a>, <a href="https://danielkhashabi.com/">Khashabi, D.</a>, and <a href="https://enalisnick.github.io/">Nalisnick, E.</a> “Conformal Thinking: Risk Control for Reasoning on a Compute Budget.” <em>arXiv preprint</em> (arXiv:2602.03814), February 3, 2026. <a href="https://arxiv.org/abs/2602.03814" class="uri">https://arxiv.org/abs/2602.03814</a></p></li>
+<li><p><a id="ref-6"></a><a href="https://people.eecs.berkeley.edu/~angelopoulos/">Angelopoulos, A. N.</a> and <a href="https://stephenbates19.github.io/">Bates, S.</a> “Conformal Prediction: A Gentle Introduction.” <em>Foundations and Trends in Machine Learning</em>, vol.&nbsp;16, no. 4 (2023), pp.&nbsp;494–591. arXiv:2107.07511. <a href="https://arxiv.org/abs/2107.07511" class="uri">https://arxiv.org/abs/2107.07511</a></p></li>
+<li><p><a id="ref-7"></a>Zhao, Z., Koishekenov, Y., Yang, X., Murray, N., and Cancedda, N. “Verifying Chain-of-Thought Reasoning via Its Computational Graph.” <em>International Conference on Learning Representations</em> (ICLR 2026). <a href="https://openreview.net/forum?id=CxiNICq0Rr" class="uri">https://openreview.net/forum?id=CxiNICq0Rr</a></p></li>
+<li><p><a id="ref-8"></a>Zheng, C., Zhang, Z., Zhang, B., Lin, R., Lu, K., Yu, B., Liu, D., Zhou, J., and Lin, J. “ProcessBench: Identifying Process Errors in Mathematical Reasoning.” <em>Annual Meeting of the Association for Computational Linguistics</em> (ACL 2025), pp.&nbsp;1009–1024. arXiv:2412.06559. <a href="https://arxiv.org/abs/2412.06559" class="uri">https://arxiv.org/abs/2412.06559</a></p></li>
+<li><p><a id="ref-9"></a>Wang, P., Li, L., Shao, Z., Xu, R., Dai, D., Li, Y., Chen, D., Wu, Y., and Sui, Z. “Math-Shepherd: Verify and Reinforce LLMs Step-by-step without Human Annotations.” <em>Annual Meeting of the Association for Computational Linguistics</em> (ACL 2024), pp.&nbsp;9426–9439. arXiv:2312.08935. <a href="https://arxiv.org/abs/2312.08935" class="uri">https://arxiv.org/abs/2312.08935</a></p></li>
+<li><p><a id="ref-10"></a>Song, M., Su, Z., Qu, X., Zhou, J., and Cheng, Y. “PRMBench: A Fine-grained and Challenging Benchmark for Process-Level Reward Models.” <em>Annual Meeting of the Association for Computational Linguistics</em> (ACL 2025), pp.&nbsp;25299–25346. arXiv:2501.03124. <a href="https://arxiv.org/abs/2501.03124" class="uri">https://arxiv.org/abs/2501.03124</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260505-conformal-prediction-primer/">A Primer on Conformal Prediction</a>: the marginal-versus-conditional coverage and exchangeability caveats that CROP’s “provably contains no error” guarantee inherits.</li>
+<li><a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a>: the coverage-set branch of conformal-for-LLMs, against which CROP’s prefix is the contiguous-trace alternative.</li>
+<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: the claim-level certifier whose factuality scores CROP names as a candidate step-level risk proxy.</li>
+<li><a href="../../posts/20260512-lets-verify-step-by-step/">Let’s Verify Step by Step</a>: the PRM800K process-supervision line CROP draws its strongest risk proxy and one of its datasets from.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260618-crop-reasoning-trace-prefixes/</guid>
+  <pubDate>Thu, 18 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260618-crop-reasoning-trace-prefixes/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>A Lake Union Lunch Run Between Meetings</title>
   <dc:creator>Ben </dc:creator>
@@ -3538,98 +3660,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260606-scientific-intuition-digital-speed/</guid>
   <pubDate>Sat, 06 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260606-scientific-intuition-digital-speed/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Advancing Mathematics Research with AI-Driven Formal Proof Search</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260606-ai-formal-proof-search/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>An agent equipped with AlphaProof working Erdős problem #125: the mathematician supplies a Lean theorem with a <code>sorry</code> placeholder, and the prover reasons informally, calls AlphaProof on individual goals, and decomposes what is left into lemmas. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Advancing Mathematics Research with AI-Driven Formal Proof Search</em> [1] (arXiv preprint, May 2026), <a href="https://www.semanticscholar.org/author/2072570293">George Tsoukalas</a>, <a href="https://www.semanticscholar.org/author/2373037002">Anton Kovsharov</a>, <a href="https://www.semanticscholar.org/author/74346544">Sergey Shirobokov</a>, and 15 colleagues at Google DeepMind and Aarhus University — with <a href="https://pushmeet.com/">Pushmeet Kohli</a> and <a href="https://www.cs.utexas.edu/~swarat/">Swarat Chaudhuri</a> as corresponding authors — report the first large-scale evaluation of <a href="https://en.wikipedia.org/wiki/Large_language_model">LLM</a>-driven formal proof search on open mathematical problems.</p>
-<blockquote class="blockquote">
-<p>Large language models (LLMs) increasingly excel at mathematical reasoning, but their unreliability limits their utility in mathematics research. <em>A mitigation is using LLMs to generate formal proofs in languages like Lean.</em> We perform the <em>first large-scale evaluation of this method’s ability to solve open problems.</em> Our most capable agent <em>autonomously resolved 9 of 353 open Erdős problems</em> at the per-problem cost of a few hundred dollars, <em>proved 44/492 OEIS conjectures,</em> and is being deployed in combinatorics, optimization, graph theory, algebraic geometry, and quantum optics research. A basic agent alternating LLM-based generation with Lean-based verification replicated the Erdős successes but proved costlier on the hardest problems. These findings demonstrate the power of AI-aided formal proof search and shed light on the agent designs that enable it.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p><em>AlphaProof Nexus</em> is a framework for agents that query two things in a loop: a frontier LLM that proposes mathematics, and the <a href="https://lean-lang.org/">Lean</a> compiler that checks it. In Lean, definitions, theorems, and proofs are all mechanically verified code. A proof is built from <em>tactics</em>, elementary steps the compiler runs one at a time while tracking the goals still left to prove, and it is complete only when no goals remain. Lean also has a <code>sorry</code> tactic that closes any goal while still passing the type-checker, so proving a theorem reduces to a concrete coding task: rewrite the file until it compiles with no <code>sorry</code> left.</p>
-<p>The agent’s input is a <em>proof sketch</em>: a Lean file holding the target theorem, the definitions and library imports it depends on, and <code>sorry</code> where the proof should go. The mathematician can add natural-language context and domain knowledge encoded in Lean, and marks which parts of the file the agent may edit, with <code>EVOLVE-BLOCK</code> regions where it can introduce helper lemmas, definitions, and proof steps, and <code>EVOLVE-VALUE</code> regions enclosing parameters whose values it may change. On success the agent returns a <code>sorry</code>-free proof.</p>
-<p>The paper builds four agents on this framework and tests them in four combinations:</p>
-<ul>
-<li><strong>(A) Basic generate-and-verify.</strong> A set of prover subagents run independently with no shared state. Each is a <a href="https://ghuntley.com/ralph/">“Ralph loop”</a>: a sequence of episodes, where an episode is a multi-turn <a href="https://blog.google/technology/google-deepmind/gemini-3/">Gemini 3.1 Pro</a> inference loop that reasons step by step and edits the sketch with a search-and-replace tool. After each turn the subagent compiles the sketch. A Lean error message becomes the instruction for the next turn. If an episode ends with a <code>sorry</code> still in the file, the subagent writes a comment summarizing what it learned, and that annotated sketch seeds the next episode.</li>
-<li><strong>(B) Basic plus AlphaProof.</strong> The prover can hand an unproved goal to <a href="https://deepmind.google/discover/blog/ai-solves-imo-problems-at-silver-medal-level/">AlphaProof</a>, DeepMind’s reinforcement-learning prover for <a href="https://en.wikipedia.org/wiki/International_Mathematical_Olympiad">Olympiad-level</a> Lean. AlphaProof returns a proof, which is substituted straight into the sketch, a disproof showing the goal is false, or a failure message. Disproofs and failures are fed back into the prover’s prompt.</li>
-<li><strong>(C) Basic plus evolution.</strong> Prover subagents draw from and contribute to a shared population of validated sketches, in the style of DeepMind’s <a href="https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/">AlphaEvolve</a>. Formal proof is pass-or-fail, which leaves an evolutionary search nothing to climb, so a pool of cheaper Gemini 3.0 Flash rater subagents ranks sketches by plausibility, clarity, and novelty: an LLM critic compares them in pairwise matches, the results become Elo scores, and a selection rule from Monte Carlo tree search (P-UCB, which favors high-scoring sketches while still exploring less-tried ones) decides which to evolve next.</li>
-<li><strong>(D) Full-featured.</strong> Combines AlphaProof and evolutionary search, and is the agent used for the paper’s main results.</li>
-</ul>
-<p>A validator checks every result before it counts, confirming that the final sketch compiles and that the agent did not quietly weaken the theorem statement to make the proof easier.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
-<figcaption>Design of the full-featured agent (D). Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The evaluation covers 353 open <a href="https://www.erdosproblems.com/">Erdős problems</a> and 492 conjectures from the <a href="https://oeis.org/">On-Line Encyclopedia of Integer Sequences (OEIS)</a>, with a focused cost comparison run on six Erdős instances. The metric is solve rate against mean inference cost in dollars, swept over <img src="https://benjaminhan.net/feed-assets/cc103df85876842a.svg" alt="K \in \{1, 3, 6, 10\}" class="feed-math-inline"/> independent attempts. The prover is Gemini 3.1 Pro and the rater Gemini 3.0 Flash. Reported costs exclude AlphaProof’s own inference (estimated around $60 per problem), which the authors note does not change the comparison.</p>
-<p>The findings:</p>
-<ul>
-<li><strong>Nine of 353 open Erdős problems</strong> solved by the full-featured agent (D), including two that had been open for 56 years, at a few hundred dollars per problem.</li>
-<li><strong>Forty-four of 492 OEIS conjectures</strong> proved.</li>
-<li><strong>The basic agent (A) solved all nine Erdős problems too</strong>, at higher cost on the hardest ones. On most problems (A) or (B) sat on the cost–performance Pareto frontier, and the full-featured (D) pulled ahead only on the hardest, such as Erdős #125.</li>
-<li><strong>Already in use in active research</strong> across optimization theory, graph theory, algebraic geometry, additive combinatorics, and quantum optics.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
-<figcaption>Solve rate versus mean inference cost across six Erdős instances, for the four agents. Annotations mark the number of independent attempts <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> grouped together. For the basic agents (A, B), each curve traces a cost–performance frontier with diminishing returns at higher budgets. Figure 3 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The base model matters more than the orchestration</strong>: the basic generate-and-verify loop (A) solved all nine Erdős problems on its own. Adding AlphaProof (B) mostly matched it within the margin of error, and the full-featured agent (D) beat them only on the hardest instances (#138 and #125, 2–5x cheaper there) while running about twice as expensive on the rest. Standalone AlphaProof and versions of (A) built on smaller Gemini models solved nothing. The capability comes from the frontier prover, not the evolutionary machinery around it, because the Lean compiler already supplies a hard correctness signal. <a href="../../posts/20260606-co-scientist-scientific-discovery/">Co-Scientist</a> [2] is the opposite case: with no compiler to check its hypotheses, its Elo tournament is the only quality signal it has, so the same machinery that is optional here becomes essential.</p></li>
-<li><p><strong>Humans still formalize the problem and digest the proof</strong>: the agent only starts once someone has written the conjecture as a Lean theorem, and its output is a machine-checked proof that still has to be read back out (“deformalized”) and understood. It is the split <a href="../../posts/20260422-proof-generation-vs-digestion/">Terence Tao named</a>: generation and verification race ahead while digestion lags. It also revives the older question of <a href="../../posts/20230902-computers-write-proofs/">what mathematicians are for</a> once a machine can write the proof.</p></li>
-<li><p><strong>Known answers versus open problems</strong>: the <a href="../../posts/20260606-benchmarks-in-leipzig/">Leipzig benchmark</a> [3] graded models on 100 research-level questions that already had known answers, leaving only two unsolved after three rounds. This paper instead targets open problems with no known answer, where a result counts only when the Lean compiler accepts the proof.</p></li>
-<li><p><strong>A price tag on open problems</strong>: a few hundred dollars to settle a question open for decades makes attempting a conjecture a budgeting decision. Progress now has a unit cost, so you can buy more of it, like the <a href="../../posts/20260508-import-ai-455-automating-ai-research/">broader automation of AI R&amp;D</a>. The bottleneck remains human bandwidth: formalizing the problems and digesting the proofs.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2072570293">Tsoukalas, George</a>, <a href="https://www.semanticscholar.org/author/2373037002">Kovsharov, Anton</a>, <a href="https://www.semanticscholar.org/author/74346544">Shirobokov, Sergey</a>, <a href="https://www.semanticscholar.org/author/2320805568">Surina, Anja</a>, <a href="https://www.semanticscholar.org/author/2292927">Firsching, Moritz</a>, <a href="https://www.semanticscholar.org/author/2333242580">Bérczi, Gergely</a>, <a href="https://www.semanticscholar.org/author/2274226620">Ruiz, Francisco J. R.</a>, <a href="https://www.semanticscholar.org/author/2170091">Suggala, Arun</a>, <a href="https://www.semanticscholar.org/author/2333642957">Wagner, Adam Zsolt</a>, <a href="https://www.semanticscholar.org/author/34422202">Wieser, Eric</a>, <a href="https://www.semanticscholar.org/author/2306950395">Yu, Lei</a>, <a href="https://www.semanticscholar.org/author/1885349">Huang, Aja</a>, <a href="https://www.semanticscholar.org/author/2375823339">Horváth, Miklós Z.</a>, <a href="https://www.semanticscholar.org/author/2438596479">Ferrauiolo, Andrew</a>, <a href="https://www.semanticscholar.org/author/47407464">Michalewski, Henryk</a>, <a href="https://www.semanticscholar.org/author/2554481">Grosu, Codrut</a>, <a href="https://www.semanticscholar.org/author/2067208983">Hubert, Thomas</a>, <a href="https://www.semanticscholar.org/author/2265578914">Balog, Matej</a>, <a href="https://pushmeet.com/">Kohli, Pushmeet</a>, and <a href="https://www.cs.utexas.edu/~swarat/">Chaudhuri, Swarat</a>. “Advancing Mathematics Research with AI-Driven Formal Proof Search.” <em>arXiv preprint</em> (arXiv:2605.22763), May 21, 2026. <a href="https://arxiv.org/abs/2605.22763" class="uri">https://arxiv.org/abs/2605.22763</a></li>
-<li><a id="ref-2"></a>Gottweis, Juraj, Weng, Wei-Hung, Daryin, Alexander, and 48 co-authors. “Accelerating scientific discovery with Co-Scientist.” <em>Nature</em> (DOI 10.1038/s41586-026-10644-y), May 19, 2026. <a href="https://doi.org/10.1038/s41586-026-10644-y" class="uri">https://doi.org/10.1038/s41586-026-10644-y</a></li>
-<li><a id="ref-3"></a>Balakin, Andrei, Bóna, Miklós, Brandenburg, Marie-Charlotte, and 46 co-authors. “Benchmarks in Leipzig.” <em>arXiv preprint</em> (arXiv:2606.05818), June 4, 2026. <a href="https://arxiv.org/abs/2606.05818" class="uri">https://arxiv.org/abs/2606.05818</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260606-model-disproves-discrete-geometry-conjecture/">An OpenAI Model Disproves a Discrete-Geometry Conjecture</a>: the informal counterpart, an Erdős conjecture settled by a general model and checked by a human committee rather than a compiler.</li>
-<li><a href="../../posts/20260427-chatgpt-vibe-math-proof/">Even Experts Are Surprised by AI’s Latest ‘Vibe-Mathing’ Advance</a>: another AI result on a long-open math problem, with the value in a transferable technique rather than the single proof.</li>
-<li><a href="../../posts/20260514-carina-hong-axiom-math-is-agi/">Math Is AGI: Carina Hong on Axiom and Formal Reasoning</a>: the same bet that formal, machine-checkable proof is the path for AI mathematics.</li>
-<li><a href="../../posts/20260602-leiden-declaration-ai-mathematics/">The Leiden Declaration on AI and Mathematics</a>: the governance counterpart, asking for human oversight of AI in mathematical research.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260606-ai-formal-proof-search/</guid>
-  <pubDate>Sat, 06 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260606-ai-formal-proof-search/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
