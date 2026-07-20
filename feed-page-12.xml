@@ -21,7 +21,118 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 16 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 19 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Overzealous Coding Models</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-overzealous-coding-models/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the post — GPT-5.4 rewrites an entire function when the correct fix is changing one number in a <code>range()</code> call. Image from <a href="https://nrehiew.github.io/blog/minimal_editing/">nrehiew’s blog</a>.</figcaption>
+</figure>
+</div>
+<p>In <a href="https://nrehiew.github.io/blog/minimal_editing/">Coding Models Are Doing Too Much</a>, nrehiew puts a number on a frustration anyone using AI coding tools has felt — the model fixes the bug, then quietly rewrites half the function around it.</p>
+<ul>
+<li><strong>The problem.</strong> Ask a model to fix an off-by-one and get a full rewrite — new helpers, renamed variables, added validation. The fix is correct; the diff is enormous and review-hostile. The post calls this <em>over-editing</em>: structural divergence beyond what the minimal fix requires.</li>
+<li><strong>Measurement.</strong> Rather than have an LLM introduce bugs, the author programmatically corrupts 400 BigCodeBench problems (flip an operator, swap a boolean, etc.), so the ground-truth fix is exactly the reversal. Models are scored on Pass@1, token-level Levenshtein vs.&nbsp;the corrupted input, and added cognitive complexity.</li>
+<li><strong>Frontier results.</strong> GPT-5.4 over-edits the most (Levenshtein 0.39, added CC 2.31) while also being one of the weakest at correctness. Claude Opus 4.6 leads on both counts — highest Pass@1 (0.91) and smallest diffs (Levenshtein 0.06).</li>
+<li><strong>Prompting helps.</strong> A single line — <em>“IMPORTANT: Try to preserve the original code and the logic of the original code as much as possible”</em> — improves both Pass@1 and Levenshtein for almost every model. Reasoning models gain the most.</li>
+<li><strong>Reasoning defaults to over-editing.</strong> On samples where both reasoning and non-reasoning variants get the answer correct, the reasoning version edits <em>more</em> by default in most model pairs — extended thinking buys more “improvements” no one asked for. Claude Opus 4.6 is the notable exception, with its reasoning variant editing substantially less. Once instructed, reasoning models match or undercut their non-reasoning siblings in almost every pair.</li>
+<li><strong>Training.</strong> Starting from Qwen3 4B 2507 Instruct (and validated on Qwen3 14B), plain SFT collapses out-of-domain (Pass@1 drops to 0.46) — the model memorizes corruption-reversals rather than the behavior. RL with a reward combining functional correctness and Levenshtein generalizes cleanly, with no LiveCodeBench regression. <em>LoRA at rank 64 nearly matches the full fine-tune.</em></li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The Opus 4.6 gap is not subtle</strong> — highest Pass@1 <em>and</em> smallest diffs, in both reasoning and non-reasoning modes. Anthropic appears to have trained explicitly against this failure mode, and it shows.</li>
+<li><strong>A single sentence of prompt closes most of the gap for everyone else</strong> — over-editing is a default, not a capability ceiling.</li>
+<li><strong>This is a style problem, not a capability limit.</strong> That LoRA at rank 64 nearly matches the full fine-tune is the giveaway — a small parameter delta shifts the behavior without touching the underlying capability.</li>
+<li><strong>The tooling implication is bigger than the model implication.</strong> <em>“Preserve the original code”</em> should be wired into every coding tool’s system prompt by default, and diff-review UI should surface a minimality score alongside the patch.</li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: the broader case against handing a coding agent more latitude than the task needs, which over-editing is the small daily version of.</li>
+<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: the same overreach instinct at its catastrophic end, where doing more than asked stops being a review headache and starts deleting things.</li>
+<li><a href="../../posts/20260514-vibe-coding-and-agentic-engineering/">Vibe Coding and Agentic Engineering Are Getting Closer</a>: where this sits on the spectrum of how much code you let the model own versus keep minimal and reviewable.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260422-overzealous-coding-models/</guid>
+  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260422-overzealous-coding-models/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
+  <title>Sequential KV Cache Compression via Probabilistic Language Tries</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260422-kv-cache-compression/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260422-kv-cache-compression/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>First page of the paper. Image from <a href="https://arxiv.org/abs/2604.15356">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>The paper argues that per-vector KV cache compression (TurboQuant et al.) optimises the wrong objective. KV vectors are samples from the language the model already predicts, so the right unit of compression is the <em>sequence</em>, not the vector [1]:</p>
+<blockquote class="blockquote">
+<p>Recent work on KV cache quantization, culminating in TurboQuant, has approached the Shannon entropy limit for per-vector compression of transformer key-value caches. We observe that this limit applies to a strictly weaker problem than the one that actually matters: <em>compressing the KV cache as a sequence</em>. The tokens stored in a KV cache are not arbitrary floating-point data — they are samples from the exact formal language the model was trained on, and the model is by construction a near-optimal predictor of that language. We introduce <em>sequential KV compression</em>, a two-layer architecture that exploits this structure. The first layer, <em>probabilistic prefix deduplication</em>, identifies semantically equivalent shared prefixes across sessions using the trie metric <img src="https://benjaminhan.net/feed-assets/2ca4121b35f43fac.svg" alt="d_T(s, s&#x27;) = -\log_2 P_M(s \wedge s&#x27;)" class="feed-math-inline"/> from Probabilistic Language Tries (PLTs). The second layer, <em>predictive delta coding</em>, stores only the residual of each new KV vector from the model’s own prediction of it, achieving a per-token entropy bound of <img src="https://benjaminhan.net/feed-assets/c5a6986396e83e08.svg" alt="H(KV_{i+1} \mid KV_{\le i}) \le H(\text{token}_{i+1} \mid \text{token}_{\le i})" class="feed-math-inline"/>. We prove that at typical language model perplexity — approximately 10–20 for fluent English text — this bound is 3.3–4.3 bits on average per token position, compared to TurboQuant’s 3 bits per vector component (with typical attention heads having 64–128 components). <em>The theoretical compression ratio over TurboQuant is approximately 914,000× at the Shannon limit.</em> Even at 1000× above the entropy floor — a deliberately pessimistic worst-case overhead, two orders of magnitude above the 2–5× typical of practical source coders — the ratio remains approximately 914× over TurboQuant, with compression improving rather than degrading as context length grows. The two layers are orthogonal and compose with existing per-vector quantization methods including TurboQuant.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>When a chatbot generates a reply token by token, the model stashes the intermediate state for every previous token in something called the KV (key-value) cache, so it doesn’t have to recompute the whole context on each new word. That cache is now the dominant memory cost of serving large language models. Long conversations and many concurrent users will eat GPU memory long before the model weights do. So a small industry has grown up around squeezing the cache: the latest, TurboQuant [2], gets close to the theoretical limit of how few bits you need per cached vector.</p>
+<p>The paper’s observation: those cached vectors aren’t arbitrary data. They’re things the model can already predict, because the model just generated the tokens they came from. So why not let the model’s own predictions do the compression work? The first layer notices when a new conversation starts with the same prefix as a previous one and reuses the cached state. The second layer stores only the gap between each new cached vector and what the model would have predicted. Both layers stack on top of per-vector compressors like TurboQuant, which is why the theoretical headline ratio gets to six orders of magnitude.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper’s headline numbers are theoretical, not empirical. At the Shannon limit and typical English perplexity (10–20), predictive delta coding bounds per-token entropy at 3.3–4.3 bits, against TurboQuant’s 3 bits per vector component across 64–128 components per head, a 914,000× ratio. Even with a 1000× overhead above the entropy floor (two orders worse than practical source coders typically achieve), the gap stays at ~914× over TurboQuant, and grows rather than shrinks with context length.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>The scheme adds a robustness issue that per-vector methods don’t have. The same forward pass on a GPU doesn’t always return identical numbers. What else is in the batch alongside your request can shift the result slightly. Thinking Machines’ <a href="https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/"><em>Defeating Nondeterminism in LLM Inference</em></a> documented exactly this: Qwen-235B at temperature 0 produced 80 unique completions over 1000 identical requests, all from non-batch-invariant kernels in the forward pass. Per-vector compression is immune: recovery is a fixed formula on stored bits, no model rerun. Schemes whose decode is pure arithmetic are similarly safe. The issue only appears when the model itself is part of recovery. Here, the model rerun <em>is</em> the recovery, so any drift between the original prediction and the regenerated one shows up as reconstruction error. Usually the TurboQuant layer underneath is noisier than the drift and absorbs it, but at positions where the model is highly confident and the stored gap is tiny, the same prompt could reconstruct slightly differently depending on how it got batched.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>“Sequential KV Cache Compression via Probabilistic Language Tries.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2604.15356" class="uri">https://arxiv.org/abs/2604.15356</a></li>
+<li><a id="ref-2"></a>Aamand, A., Mousavifar, S., Singhi, R., Indyk, P., Wagner, T. “TurboQuant: Online Vector Quantization.” <em>arXiv preprint</em> (arXiv:2504.19874), 2025. <a href="https://arxiv.org/abs/2504.19874" class="uri">https://arxiv.org/abs/2504.19874</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260427-turboquant-walkthrough/">TurboQuant: A First-Principles Walkthrough</a>: the per-vector quantizer this paper takes as its baseline and stacks on top of.</li>
+<li><a href="../../posts/20260511-the-inference-shift/">The Inference Shift</a>: why the KV cache is becoming the memory bottleneck of serving, and the memory-hierarchy-first hardware that answer implies.</li>
+<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the agent-cost curve where caching is the term that decides whether token spend grows linearly or quadratically.</li>
+<li><a href="../../posts/20260421-prompt-repetition/">Prompt Repetition Improves Non-Reasoning LLMs</a>: a complementary inference-time move on the prefix, spending more prefill rather than compressing what prefill produces.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260422-kv-cache-compression/</guid>
+  <pubDate>Wed, 22 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260422-kv-cache-compression/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Civilization’s Three Stages, Applied to Mathematics</title>
   <dc:creator>synesis </dc:creator>
@@ -1000,83 +1111,6 @@
   <guid>https://benjaminhan.net/posts/20260330-apple-oral-history/</guid>
   <pubDate>Mon, 30 Mar 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260330-apple-oral-history/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Redmond City Marathon: #30, with a Sprained Ankle</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260329-redmond-city-marathon/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260329-redmond-city-marathon/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/02.jpg" class="img-fluid"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/03.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260329-redmond-city-marathon/04.jpg" class="img-fluid"></p>
-</div>
-</div>
-</div>
-<p>Today I ran my 30th marathon (since 2024) at the Redmond City Marathon race, finishing in 3:38:33 (watch time) with pace 8’20”/mi. It also extended an unusual streak for me: 7 straight weeks of running HM or longer!</p>
-<p>This was my first marathon raced by HR, and that part mostly went to plan: I got avg/max HR of 149/159 bpm. The bigger challenge in the second half was actually not keeping my HR down, but getting it up. My legs were prematurely tired mainly due to a very silly mistake happened early in the race: I stored gels in the shallow part of my vest pockets, and they went flying at ~2.6mi mark! I stepped onto the unpaved edge to retrieve them, and proceeded to spraining my left ankle!</p>
-<p>Running on it didn’t feel too bad and I thought I had cheated disaster. It started to rear its ugly head around the famous mile 20. Well, this is what it is – at least I managed to have a strong-ish finish in the last 2+mi!</p>
-<p>Not the race I originally imagined, but sometimes sh*t happens (okay, most of the times). My next marathon is ~24 weeks out –- a lot of training to do, but I have the time! Onward!</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-marathon-activity-7444201961870077952-Fl0o">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260329-redmond-city-marathon/</guid>
-  <pubDate>Sun, 29 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260329-redmond-city-marathon/01.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>LLM Neuroanatomy: Topping the Leaderboard Without Changing a Weight</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260324-llm-neuroanatomy/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/duplicated-layers.png" class="img-fluid figure-img"></p>
-<figcaption>Diagram from the dnhkng.github.io post showing the duplicated middle-layer block. (<a href="https://dnhkng.github.io/posts/rys/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Improve an LLM without training by duplicating a specific block of middle transformer layers and running them twice during inference. The power of thinking it over twice [1].</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“LLM Neuroanatomy: How I Topped the LLM Leaderboard Without Changing a Single Weight.” <em>dnhkng.github.io</em>. <a href="https://dnhkng.github.io/posts/rys/" class="uri">https://dnhkng.github.io/posts/rys/</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_llm-neuroanatomy-how-i-topped-the-llm-leaderboard-activity-7442232550196117504-bASa">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260324-llm-neuroanatomy/</guid>
-  <pubDate>Tue, 24 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260324-llm-neuroanatomy/duplicated-layers.png" medium="image" type="image/png" height="129" width="144"/>
 </item>
 
 </channel>
