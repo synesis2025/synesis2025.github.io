@@ -21,7 +21,86 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 23 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 25 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Better Models: Worse Tools</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260708-better-models-worse-tools/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260708-better-models-worse-tools/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260708-better-models-worse-tools/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Better Models: Worse Tools. Image from <a href="https://lucumr.pocoo.org/2026/7/4/better-models-worse-tools/">Armin Ronacher’s blog</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://lucumr.pocoo.org/">Armin Ronacher</a> spent two days chasing a strange bug and came away with a broader worry about where model training is heading. His <a href="https://lucumr.pocoo.org/2026/7/4/better-models-worse-tools/">writeup</a> starts from a concrete regression: the newest Claude models call a third-party editor tool with invented, schema-breaking fields, and they do it more than their predecessors did.</p>
+<blockquote class="blockquote">
+<p>The uncomfortable lesson is that tool schemas are not neutral, at least not on Anthropic models. We like to pretend that a schema is an abstract contract and the model is a general reasoner that will follow it, but that might no longer be the case for some of the tools.</p>
+</blockquote>
+<section id="the-bug" class="level3">
+<h3 class="anchored" data-anchor-id="the-bug">The bug</h3>
+<ul>
+<li><strong>The failing call.</strong> Ronacher traced a <a href="https://github.com/earendil-works/pi">Pi</a> issue in which newer Claude models call Pi’s file-edit tool with extra, invented fields inside its nested <code>edits[]</code> array. Not a small model: Opus 4.8, and Sonnet 5 too. The edit content is usually correct, but the arguments break the schema, so Pi rejects the call and the model has to retry.</li>
+<li><strong>Worse in the newer models.</strong> Opus 4.8 and Sonnet 5 both show it, and none of the older models in the family do. Across trials the invented keys were a whole zoo: <code>type</code>, <code>id</code>, <code>requireUnique</code>, <code>matchCase</code>, <code>in_file</code>, <code>oldText2</code>, <code>newText2</code>, even an <code>event.0.additionalProperties</code>. The <code>oldText</code> and <code>newText</code> payloads themselves came out byte-correct, and the model only appended nonsense at the end of the object.</li>
+<li><strong>Only under agentic history.</strong> A fresh, single-turn “edit this file” prompt never reproduced it. An agentic history, where the model had read files, diagnosed a problem, and composed a multi-line edit, did. In one user’s transcripts, continuing the session made Opus 4.8 fail about 20% of the time. Stripping the thinking blocks from the history halved the rate, and turning on strict tool invocation eliminated it.</li>
+</ul>
+</section>
+<section id="how-tool-calls-actually-work" class="level3">
+<h3 class="anchored" data-anchor-id="how-tool-calls-actually-work">How tool calls actually work</h3>
+<ul>
+<li><strong>Tool calls are just text.</strong> The client folds the transcript, system prompt, and tool list into one large prompt with special marker tokens, and the model, trained on that format, emits something the client reads back as “call this tool with these arguments.” Anthropic’s format, glimpsed from leaked markers, looks XML-ish, with <code>&lt;invoke&gt;</code> and <code>&lt;parameter&gt;</code> tags. A top-level string parameter appears inline, but an array of objects is serialized as JSON inside the parameter.</li>
+<li><strong>Two routes to a valid structure.</strong> One is to ask the model for schema-conforming JSON and validate it afterward. The other is to constrain the sampler so invalid tokens cannot be emitted at all, which is <a href="https://arxiv.org/abs/2307.09702">grammar-aware (or constrained) decoding</a>: if the schema allows only <code>oldText</code> and <code>newText</code>, the sampler can stop the model from ever emitting <code>in_file</code>. Without constraints, the model is only following a learned convention.</li>
+</ul>
+</section>
+<section id="why-its-getting-worse" class="level3">
+<h3 class="anchored" data-anchor-id="why-its-getting-worse">Why it’s getting worse</h3>
+<ul>
+<li><strong>A training-time cause.</strong> Ronacher’s hypothesis is that the regression comes from how the newest models were post-trained rather than from random deterioration. Older Claude models were trained before a shipped harness like <a href="https://www.anthropic.com/claude-code">Claude Code</a> was the obvious target. Newer ones are post-trained inside Claude Code, or a close simulation of it, so they learn what a successful call looks like there and which mistakes that environment tolerates.</li>
+<li><strong>A forgiving client.</strong> Claude Code’s own edit tool is flat: <code>file_path</code>, <code>old_string</code>, <code>new_string</code>, and an optional <code>replace_all</code>, nothing like Pi’s nested <code>edits[]</code>. Claude Code ships closed-source, as a minified JavaScript bundle, but reading that bundle Ronacher finds parameter aliases (<code>old_str</code> alongside <code>old_string</code>, <code>path</code> for <code>file_path</code>), type coercions, Unicode repair, and silent filtering of unknown keys. It does not use strict mode, because Anthropic’s complexity limits on strict tool definitions would make those API calls fail.</li>
+<li><strong>No gradient against slop.</strong> When reinforcement learning runs inside a harness that forgiving, a slightly malformed call still completes the task and still earns reward. Little gradient pushes back against inventing an alias or adding a stray field. Worse, the model builds a strong prior for Claude Code’s exact shape, so a tool with the same intent but a different schema is increasingly off-distribution, and a better-trained model resists it more rather than less. Ronacher notes that Opus 4.5 adapted to foreign edit tools unusually well, and worries the trend has since reversed.</li>
+</ul>
+</section>
+<section id="what-it-means-for-harnesses" class="level3">
+<h3 class="anchored" data-anchor-id="what-it-means-for-harnesses">What it means for harnesses</h3>
+<ul>
+<li><strong>Where the bad keys appear.</strong> They are not random. They cluster at the highest-entropy point of the task, right after the model closes a several-hundred-token escaped <code>newText</code> string and must choose between <code>}</code> and <code>, "..."</code>. Opus 4.8 and Sonnet 5 appear to have learned that an edit may take one extra optional field, but under Pi’s nested shape they have no trained name for it, so they sample a plausible name fresh each time. That is why the failures produce dozens of different keys rather than one stable alias.</li>
+<li><strong>OpenAI documents its format.</strong> OpenAI’s open-weight <a href="https://github.com/openai/gpt-oss">gpt-oss</a> models are trained on a documented response format, <a href="https://github.com/openai/harmony">harmony</a>, which puts an in-band <code>&lt;|constrain|&gt;json</code> marker in the transcript so the inference stack knows exactly when to switch into JSON-constrained sampling. Anthropic’s models and harness are both closed. Strict mode does fix the bug, which suggests the server refuses to sample a key the schema does not permit, and that in turn explains why strict tool definitions come with a complexity cap.</li>
+<li><strong>Schemas are not neutral.</strong> A model can understand a schema and still be bad at emitting it under pressure, because some shapes sit close to what post-training rewarded and some sit far away. Ronacher, once skeptical of constrained decoding for its quality tradeoffs, says this bug moved his priors. And the more post-training concentrates inside one dominant, undocumented harness, the more every other harness inherits its quirks.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>The benchmark blind spot.</strong> If Ronacher’s hypothesis is right, a model like <a href="../../posts/20260529-opus-4-8-reactions/">Opus 4.8</a> could score higher on coding benchmarks and still be worse at this particular call, because those benchmarks run inside forgiving harnesses that repair the exact slop Pi rejects. On that reading, a benchmark score reflects the model together with the harness it runs in, so a higher number need not mean higher reliability against an arbitrary tool schema. The <a href="../../posts/20260627-open-weights-frontier-gap/">open-weights gap analysis</a> made the same point in a different setting: a forgiving shared harness can make a weaker model look stronger than it is, narrowing the apparent distance to the closed frontier.</p></li>
+<li><p><strong>Harness choice is now partly fixed at training time.</strong> <a href="../../posts/20260626-harness-engineering/">Harness Engineering</a> treats the harness as a runtime layer chosen around a fixed model. This regression suggests the reverse: some of the harness is set during training, so a team that adopts a different harness inherits the training harness’s schema habits whether or not they fit its own tools.</p></li>
+<li><p><strong>Who absorbs the mismatch.</strong> Tuning models to <a href="../../posts/20260623-claude-code-design-space/">Claude Code’s</a> tool shapes imposes a cost on every third-party agent that uses a different schema, in retries and rejected calls, and the one fix, strict constrained decoding, is off by default with a complexity cap that rejects nested schemas like Pi’s. Because the client and Anthropic’s training setup are both closed, those teams also cannot see why, inferring the cause from the minified bundle and from behavior, as Ronacher did. Whether Anthropic intends it or not, that is a mild form of lock-in.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260626-harness-engineering/">Harness Engineering</a>: the case that the harness around a model accounts for much of an agent’s reliability, which this post turns into a warning: the harness a model was trained in also shapes what it can reliably emit.</li>
+<li><a href="../../posts/20260623-claude-code-design-space/">Dive into Claude Code: The Design Space of Today’s and Future AI Agent Systems</a>: a map of Claude Code as a harness, the dominant one whose flat edit schema Ronacher says the model now over-fits to.</li>
+<li><a href="../../posts/20260529-opus-4-8-reactions/">Claude Opus 4.8: The Early Reactions</a>: the model at the center of this regression, seen from the other side of the capability story.</li>
+<li><a href="../../posts/20260627-open-weights-frontier-gap/">How Far Behind the Closed Frontier Are Open-Weights LLMs?</a>: makes the same model-plus-harness point in a different setting, where a shared forgiving harness can narrow the apparent gap between open and closed models.</li>
+<li><a href="../../posts/20260528-claude-code-large-codebases/">How Claude Code Works in Large Codebases: Best Practices and Where to Start</a>: practical use of the exact tools whose canonical shape, Ronacher argues, has become a prior the model defends.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260708-better-models-worse-tools/</guid>
+  <pubDate>Wed, 08 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260708-better-models-worse-tools/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>ELIZA Archaeology: Try ELIZA</title>
   <dc:creator>synesis </dc:creator>
@@ -1674,83 +1753,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260628-a-20-mile-long-run-redmond-to-uw/</guid>
   <pubDate>Sun, 28 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260628-a-20-mile-long-run-redmond-to-uw/image-1.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>The AI Entry-Level Jobs Effect Isn’t Fading</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Year-over-year employment changes in the Canaries sample as of April 2026. Across all ages the most AI-exposed occupations contracted 0.2% (top); by age group, early-career workers aged 22 to 25 contracted 2.5% while older cohorts grew (middle); and among early-career workers it is the most-exposed who fell 4.2% (bottom). Image from the <a href="https://digitaleconomy.stanford.edu/project/indicators/canaries-dashboard/">Canaries Dashboard</a> (Stanford Digital Economy Lab and ADP Research).</figcaption>
-</figure>
-</div>
-<p>Last August, <a href="https://www.brynjolfsson.com/">Erik Brynjolfsson</a> and his Stanford team found a sharp employment decline for the most AI-exposed workers aged 22 to 25. <a href="https://fortune.com/2026/06/27/what-is-ai-impact-entry-level-jobs-stanford-adp-canaries-brynjolfsson-richardson/">Fortune reports</a> that he has since turned the one-off finding into a live instrument: the <a href="https://digitaleconomy.stanford.edu/project/indicators/canaries-dashboard/">Canaries Dashboard</a>, built with <a href="https://www.adpresearch.com/">ADP Research</a> on payroll data covering roughly one in six American workers, extends the series to April 2026 and shows the effect has not mean-reverted.</p>
-<p>The dashboard draws on ADP payroll records covering 4.6 million workers across more than 730 occupations, and operationalizes the October 2025 paper <em>Canaries in the Coal Mine? Six Facts about the Recent Employment Effects of Artificial Intelligence</em> by Brynjolfsson, Bharat Chandar, and Ruyu Chen. A note on the early-career numbers below, which slice the data three ways: the cover’s 2.5% is the April 2026 decline for workers aged 22 to 25 across <em>all</em> occupations pooled, the cover’s 4.2% is that same cohort in the <em>most AI-exposed</em> occupations at that date, and the 3.8% cited in the text is the most-exposed cohort’s year-over-year decline averaged over the full series. What the dashboard reports:</p>
-<ul>
-<li><strong>The age cut, not the aggregate.</strong> Across all workers the effect is muted: AI-exposed occupations grew 1.1% a year since ChatGPT against 2% for the least-exposed, and contracted just 0.2% year over year as of April 2026. The divergence is by career stage. Workers aged 22 to 25 in highly AI-exposed occupations are shrinking 3.8% a year while the least-exposed in that cohort grow 2%. The early-career decline sharpened from a 2.8% drop to April 2024 to more than 4% a year since. Mid-career workers aged 31 to 34 are also down 1.7%, while those aged 35 to 40 grow at 2%.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/fig-exposure-quintile.webp" class="img-fluid figure-img" data-lightbox-src="fig-exposure-quintile-full.png"></p>
-<figcaption>Grouping by AI exposure quintile alone shows only modest separation, with the most-exposed quintile lowest (left). The split opens up once age and exposure are crossed: for early-career workers the most-exposed quintile falls sharply while the least-exposed keeps growing, and the gap closes for older cohorts (right). Image from the <a href="https://digitaleconomy.stanford.edu/project/indicators/canaries-dashboard/">Canaries Dashboard</a>.</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>The effect is concentrated in specific high-exposure jobs.</strong> Software developers sit in the most-exposed occupation group: early-career workers (22-25) show large declines while older cohorts keep expanding. Customer service representatives, also highly exposed, follow the same shape, with declines in the two youngest groups and growth for the rest.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/fig-high-exposure.webp" class="img-fluid figure-img" data-lightbox-src="fig-high-exposure-full.png"></p>
-<figcaption>Two highly AI-exposed occupations, broken out by age group. Early-career software developers (left) fall steeply since 2024 while mid-career and senior developers expand; customer service representatives (right) show the same early-career decline against older-cohort growth. Image from the <a href="https://digitaleconomy.stanford.edu/project/indicators/canaries-dashboard/">Canaries Dashboard</a>.</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>Low-exposure work shows no such age gradient.</strong> In occupations AI barely touches, employment trends have little relationship to age. Stock clerks fall across the board, and home health aides, among the least exposed under most frameworks, actually show early-career workers gaining more than older groups.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/fig-low-exposure.webp" class="img-fluid figure-img" data-lightbox-src="fig-low-exposure-full.png"></p>
-<figcaption>Two low-exposure occupations. Stock clerks (left) show little relationship between age and employment, and home health aides (right) show early-career workers gaining more than older cohorts. The age gradient that marks high-exposure jobs is absent. Image from the <a href="https://digitaleconomy.stanford.edu/project/indicators/canaries-dashboard/">Canaries Dashboard</a>.</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>The trend persists, and survives the obvious controls.</strong> The original paper ran through August 2025. The dashboard extends it to April 2026, with the effect growing about half a percentage point per month rather than reverting. Brynjolfsson reports removing the entire tech sector, isolating remote-work effects, and noting that the most rate-sensitive occupations like construction have the lowest AI exposure, so the interest-rate explanation points the wrong way.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/fig-aggregate-age.webp" class="img-fluid figure-img" data-lightbox-src="fig-aggregate-age-full.png"></p>
-<figcaption>Aggregate employment by age group (left) confirms early-career workers (22-25) seeing the steepest declines across all occupations pooled. The sample composition (right) shows why the top-line aggregate stays muted: early-career workers are just 7% of employment, against 33.2% for the over-50 group. Image from the <a href="https://digitaleconomy.stanford.edu/project/indicators/canaries-dashboard/">Canaries Dashboard</a>.</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>The mechanism, per Richardson.</strong> <a href="https://www.adpresearch.com/about-us/our-team/nela-richardson">Nela Richardson</a> describes it as AI absorbing tasks from the bottom up rather than jobs from the top down. Occupations where AI augments human work show more enduring growth than those where it automates tasks outright. The dashboard already shows the effect in software development and customer service, and its absence in low-exposure work like home health care.</li>
-</ul>
-<hr>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260524-acemoglu-great-displacement/">Daron Acemoglu on AI, Jobs, and Liberal Democracy</a>: the skeptic on the other side of this debate, who reads the same labor data with far lower productivity estimates.</li>
-<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: the displacement debate in miniature, the same mechanism read once as imminent crisis and once as overstated, which this dashboard’s persistence speaks to directly.</li>
-<li><a href="../../posts/20260423-anthropic-economic-index/">Anthropic Economic Index</a>: a parallel empirical instrument measuring AI’s labor impact, tracking task speedup and deskilling where this one tracks employment by age.</li>
-<li><a href="../../posts/20260612-hybrid-ai-human-work-force/">Who Will Actually Thrive in the Hybrid AI-Human Work Force?</a>: a roundtable on which jobs are most exposed and what to tell young workers, the people this dashboard’s early-career decline lands on.</li>
-<li><a href="../../posts/20250801-msr-genai-occupations/">MSR: Which Occupations GenAI Is Actually Used In</a>: pairs measured real-world usage with this dashboard’s measured employment effect, both moving past projected exposure.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/</guid>
-  <pubDate>Sun, 28 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260628-ai-entry-level-jobs/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

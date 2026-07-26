@@ -20,7 +20,35 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 23 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 25 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>My First Pittsburgh Parkrun</title>
+  <dc:creator>Ben </dc:creator>
+  <link>https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>After two days of running 15mi in Pittsburgh, I ran my first-ever Pittsburgh Parkrun today! Official time 24:28 with a bit more distance at 3.17mi, otherwise it’s my fastest 5k this year: time 23:50 pace 7’40”/mi (still way off from 21:05 last year)! Weather was not very hot but 90+% humid. Adding to the drama, there’s no bathroom! I guess that could’ve made me faster or slower? 😆</p>
+<p>We had ~20 runners and the majority of them were first-timers! I took a photo with Pat and Will — the volunteers today. Pat was actually the OG of this Parkrun, which started a bit over a year ago. They definitely need more runners to join the fun!</p>
+<p><img src="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/</guid>
+  <pubDate>Sat, 25 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-1.jpeg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>First Run Back in Pittsburgh</title>
   <dc:creator>Ben </dc:creator>
@@ -1229,85 +1257,6 @@
   <guid>https://benjaminhan.net/posts/20260710-coachclaude-is-coming-up-nicely/</guid>
   <pubDate>Fri, 10 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260710-coachclaude-is-coming-up-nicely/image-4.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Better Models: Worse Tools</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260708-better-models-worse-tools/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260708-better-models-worse-tools/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260708-better-models-worse-tools/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Better Models: Worse Tools. Image from <a href="https://lucumr.pocoo.org/2026/7/4/better-models-worse-tools/">Armin Ronacher’s blog</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://lucumr.pocoo.org/">Armin Ronacher</a> spent two days chasing a strange bug and came away with a broader worry about where model training is heading. His <a href="https://lucumr.pocoo.org/2026/7/4/better-models-worse-tools/">writeup</a> starts from a concrete regression: the newest Claude models call a third-party editor tool with invented, schema-breaking fields, and they do it more than their predecessors did.</p>
-<blockquote class="blockquote">
-<p>The uncomfortable lesson is that tool schemas are not neutral, at least not on Anthropic models. We like to pretend that a schema is an abstract contract and the model is a general reasoner that will follow it, but that might no longer be the case for some of the tools.</p>
-</blockquote>
-<section id="the-bug" class="level3">
-<h3 class="anchored" data-anchor-id="the-bug">The bug</h3>
-<ul>
-<li><strong>The failing call.</strong> Ronacher traced a <a href="https://github.com/earendil-works/pi">Pi</a> issue in which newer Claude models call Pi’s file-edit tool with extra, invented fields inside its nested <code>edits[]</code> array. Not a small model: Opus 4.8, and Sonnet 5 too. The edit content is usually correct, but the arguments break the schema, so Pi rejects the call and the model has to retry.</li>
-<li><strong>Worse in the newer models.</strong> Opus 4.8 and Sonnet 5 both show it, and none of the older models in the family do. Across trials the invented keys were a whole zoo: <code>type</code>, <code>id</code>, <code>requireUnique</code>, <code>matchCase</code>, <code>in_file</code>, <code>oldText2</code>, <code>newText2</code>, even an <code>event.0.additionalProperties</code>. The <code>oldText</code> and <code>newText</code> payloads themselves came out byte-correct, and the model only appended nonsense at the end of the object.</li>
-<li><strong>Only under agentic history.</strong> A fresh, single-turn “edit this file” prompt never reproduced it. An agentic history, where the model had read files, diagnosed a problem, and composed a multi-line edit, did. In one user’s transcripts, continuing the session made Opus 4.8 fail about 20% of the time. Stripping the thinking blocks from the history halved the rate, and turning on strict tool invocation eliminated it.</li>
-</ul>
-</section>
-<section id="how-tool-calls-actually-work" class="level3">
-<h3 class="anchored" data-anchor-id="how-tool-calls-actually-work">How tool calls actually work</h3>
-<ul>
-<li><strong>Tool calls are just text.</strong> The client folds the transcript, system prompt, and tool list into one large prompt with special marker tokens, and the model, trained on that format, emits something the client reads back as “call this tool with these arguments.” Anthropic’s format, glimpsed from leaked markers, looks XML-ish, with <code>&lt;invoke&gt;</code> and <code>&lt;parameter&gt;</code> tags. A top-level string parameter appears inline, but an array of objects is serialized as JSON inside the parameter.</li>
-<li><strong>Two routes to a valid structure.</strong> One is to ask the model for schema-conforming JSON and validate it afterward. The other is to constrain the sampler so invalid tokens cannot be emitted at all, which is <a href="https://arxiv.org/abs/2307.09702">grammar-aware (or constrained) decoding</a>: if the schema allows only <code>oldText</code> and <code>newText</code>, the sampler can stop the model from ever emitting <code>in_file</code>. Without constraints, the model is only following a learned convention.</li>
-</ul>
-</section>
-<section id="why-its-getting-worse" class="level3">
-<h3 class="anchored" data-anchor-id="why-its-getting-worse">Why it’s getting worse</h3>
-<ul>
-<li><strong>A training-time cause.</strong> Ronacher’s hypothesis is that the regression comes from how the newest models were post-trained rather than from random deterioration. Older Claude models were trained before a shipped harness like <a href="https://www.anthropic.com/claude-code">Claude Code</a> was the obvious target. Newer ones are post-trained inside Claude Code, or a close simulation of it, so they learn what a successful call looks like there and which mistakes that environment tolerates.</li>
-<li><strong>A forgiving client.</strong> Claude Code’s own edit tool is flat: <code>file_path</code>, <code>old_string</code>, <code>new_string</code>, and an optional <code>replace_all</code>, nothing like Pi’s nested <code>edits[]</code>. Claude Code ships closed-source, as a minified JavaScript bundle, but reading that bundle Ronacher finds parameter aliases (<code>old_str</code> alongside <code>old_string</code>, <code>path</code> for <code>file_path</code>), type coercions, Unicode repair, and silent filtering of unknown keys. It does not use strict mode, because Anthropic’s complexity limits on strict tool definitions would make those API calls fail.</li>
-<li><strong>No gradient against slop.</strong> When reinforcement learning runs inside a harness that forgiving, a slightly malformed call still completes the task and still earns reward. Little gradient pushes back against inventing an alias or adding a stray field. Worse, the model builds a strong prior for Claude Code’s exact shape, so a tool with the same intent but a different schema is increasingly off-distribution, and a better-trained model resists it more rather than less. Ronacher notes that Opus 4.5 adapted to foreign edit tools unusually well, and worries the trend has since reversed.</li>
-</ul>
-</section>
-<section id="what-it-means-for-harnesses" class="level3">
-<h3 class="anchored" data-anchor-id="what-it-means-for-harnesses">What it means for harnesses</h3>
-<ul>
-<li><strong>Where the bad keys appear.</strong> They are not random. They cluster at the highest-entropy point of the task, right after the model closes a several-hundred-token escaped <code>newText</code> string and must choose between <code>}</code> and <code>, "..."</code>. Opus 4.8 and Sonnet 5 appear to have learned that an edit may take one extra optional field, but under Pi’s nested shape they have no trained name for it, so they sample a plausible name fresh each time. That is why the failures produce dozens of different keys rather than one stable alias.</li>
-<li><strong>OpenAI documents its format.</strong> OpenAI’s open-weight <a href="https://github.com/openai/gpt-oss">gpt-oss</a> models are trained on a documented response format, <a href="https://github.com/openai/harmony">harmony</a>, which puts an in-band <code>&lt;|constrain|&gt;json</code> marker in the transcript so the inference stack knows exactly when to switch into JSON-constrained sampling. Anthropic’s models and harness are both closed. Strict mode does fix the bug, which suggests the server refuses to sample a key the schema does not permit, and that in turn explains why strict tool definitions come with a complexity cap.</li>
-<li><strong>Schemas are not neutral.</strong> A model can understand a schema and still be bad at emitting it under pressure, because some shapes sit close to what post-training rewarded and some sit far away. Ronacher, once skeptical of constrained decoding for its quality tradeoffs, says this bug moved his priors. And the more post-training concentrates inside one dominant, undocumented harness, the more every other harness inherits its quirks.</li>
-</ul>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The benchmark blind spot.</strong> If Ronacher’s hypothesis is right, a model like <a href="../../posts/20260529-opus-4-8-reactions/">Opus 4.8</a> could score higher on coding benchmarks and still be worse at this particular call, because those benchmarks run inside forgiving harnesses that repair the exact slop Pi rejects. On that reading, a benchmark score reflects the model together with the harness it runs in, so a higher number need not mean higher reliability against an arbitrary tool schema. The <a href="../../posts/20260627-open-weights-frontier-gap/">open-weights gap analysis</a> made the same point in a different setting: a forgiving shared harness can make a weaker model look stronger than it is, narrowing the apparent distance to the closed frontier.</p></li>
-<li><p><strong>Harness choice is now partly fixed at training time.</strong> <a href="../../posts/20260626-harness-engineering/">Harness Engineering</a> treats the harness as a runtime layer chosen around a fixed model. This regression suggests the reverse: some of the harness is set during training, so a team that adopts a different harness inherits the training harness’s schema habits whether or not they fit its own tools.</p></li>
-<li><p><strong>Who absorbs the mismatch.</strong> Tuning models to <a href="../../posts/20260623-claude-code-design-space/">Claude Code’s</a> tool shapes imposes a cost on every third-party agent that uses a different schema, in retries and rejected calls, and the one fix, strict constrained decoding, is off by default with a complexity cap that rejects nested schemas like Pi’s. Because the client and Anthropic’s training setup are both closed, those teams also cannot see why, inferring the cause from the minified bundle and from behavior, as Ronacher did. Whether Anthropic intends it or not, that is a mild form of lock-in.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260626-harness-engineering/">Harness Engineering</a>: the case that the harness around a model accounts for much of an agent’s reliability, which this post turns into a warning: the harness a model was trained in also shapes what it can reliably emit.</li>
-<li><a href="../../posts/20260623-claude-code-design-space/">Dive into Claude Code: The Design Space of Today’s and Future AI Agent Systems</a>: a map of Claude Code as a harness, the dominant one whose flat edit schema Ronacher says the model now over-fits to.</li>
-<li><a href="../../posts/20260529-opus-4-8-reactions/">Claude Opus 4.8: The Early Reactions</a>: the model at the center of this regression, seen from the other side of the capability story.</li>
-<li><a href="../../posts/20260627-open-weights-frontier-gap/">How Far Behind the Closed Frontier Are Open-Weights LLMs?</a>: makes the same model-plus-harness point in a different setting, where a shared forgiving harness can narrow the apparent gap between open and closed models.</li>
-<li><a href="../../posts/20260528-claude-code-large-codebases/">How Claude Code Works in Large Codebases: Best Practices and Where to Start</a>: practical use of the exact tools whose canonical shape, Ronacher argues, has become a prior the model defends.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260708-better-models-worse-tools/</guid>
-  <pubDate>Wed, 08 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260708-better-models-worse-tools/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
