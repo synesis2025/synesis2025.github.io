@@ -21,7 +21,111 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 26 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 27 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260629-cma-es-primer/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-cma-es-primer/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-cma-es-primer/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>What the covariance matrix encodes: one-σ density ellipses of three Gaussians over the same objective (thin contour lines). Left, the isotropic <img src="https://benjaminhan.net/feed-assets/2a2e3bb55453fd5f.svg" alt="\mathcal{N}(\mathbf{0}, \sigma^2 \mathbf{I})" class="feed-math-inline"/> searches in a circle. Middle, the axis-aligned <img src="https://benjaminhan.net/feed-assets/4949bf5dacb491ca.svg" alt="\mathcal{N}(\mathbf{0}, \mathbf{D}^2)" class="feed-math-inline"/> stretches along the coordinate axes. Right, the full-covariance <img src="https://benjaminhan.net/feed-assets/53fc8a0183e4ea0f.svg" alt="\mathcal{N}(\mathbf{0}, \mathbf{C})" class="feed-math-inline"/> also rotates to align with the objective’s contours. Here <img src="https://benjaminhan.net/feed-assets/918d7b20a36f8da0.svg" alt="\sigma" class="feed-math-inline"/> is a scalar, <img src="https://benjaminhan.net/feed-assets/4f7beca949deff70.svg" alt="\mathbf{I}" class="feed-math-inline"/> the identity, <img src="https://benjaminhan.net/feed-assets/b5f79db9148e76d8.svg" alt="\mathbf{D}" class="feed-math-inline"/> a diagonal matrix, and <img src="https://benjaminhan.net/feed-assets/83d6f5b72d493460.svg" alt="\mathbf{C}" class="feed-math-inline"/> a full covariance matrix. CMA-ES learns the third, sep-CMA-ES only the second. Figure 1, reproduced from Hansen’s CMA-ES tutorial [1].</figcaption>
+</figure>
+</div>
+<p><em>CMA-ES</em>, the Covariance Matrix Adaptation Evolution Strategy [1], [2], is a derivative-free optimizer for continuous problems: minimize <img src="https://benjaminhan.net/feed-assets/e5e737a72e447b2d.svg" alt="f(x)" class="feed-math-inline"/> over <img src="https://benjaminhan.net/feed-assets/b4d20d1bd6d45889.svg" alt="x \in \mathbb{R}^n" class="feed-math-inline"/> (<img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> the number of variables), when you have no gradient because <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/> is a black box, non-differentiable, noisy, or simply cheaper to <em>probe</em> than to differentiate. It is the method of choice when you can afford a few thousand function evaluations but can’t backpropagate through them, and has long been a standard baseline in black-box and hyperparameter optimization. A recent example in machine learning is <a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY</a> [4], whose 0.6B LLM coordinator is trained with the diagonal sep-CMA-ES variant.</p>
+<section id="intuition" class="level2">
+<h2 class="anchored" data-anchor-id="intuition">Intuition</h2>
+<p>Picture finding the deepest part of a murky lake with nothing but a fishing line and a heavy sinker. From your boat’s current spot, you drop the line at a handful of places scattered around you, keep the few that came back deepest, and row toward them. If those deep spots line up in one direction, say a channel running northeast, you spread your next drops more along that direction and less across it, and bunch them in a tighter cluster as the depths stop improving, since by then the deepest spot is right around you and only precision is left to gain. CMA-ES is that procedure made precise.</p>
+<p>The name <em>CMA-ES</em> has two halves, and so does the method. The <strong>evolution strategy</strong> is the loop you just ran on the lake: each round spawns a population of candidate guesses, keeps the best few, and builds the next round’s guesses from them. This is search by selection rather than by gradient, repeated over generations, which places CMA-ES in the broader family of evolutionary algorithms. The <strong>covariance matrix adaptation</strong> is what makes the loop smart: rather than scattering the next guesses the same way every time, it learns the shape and spread of the region the best ones came from.</p>
+<p>Underneath, the search keeps a <em>cloud</em> of guesses: densest where it is most hopeful, thinning toward the edges. The only things it remembers from one round to the next are where to aim that cloud and how the cloud is spread around the aim point. CMA-ES uses one particular cloud shape, the <em>multivariate Gaussian</em> (the many-dimensional cousin of the bell curve), and a few plain reasons make it the right choice:</p>
+<ul>
+<li><strong>A center and a spread, nothing more</strong>: those two are all the method tracks, and a bell-shaped cloud is exactly the shape they describe. Any other shape would smuggle in detail the method never measured (this is the <a href="https://en.wikipedia.org/wiki/Principle_of_maximum_entropy">maximum-entropy principle</a>: given a mean and covariance, the Gaussian is the least-committal distribution).</li>
+<li><strong>Its spread is an oval you can stretch and tilt</strong>: the cloud need not be a round blob. It can run long and thin in one direction and tilt to any angle, which is just what you want once the deep spots reveal a channel to follow.</li>
+<li><strong>It ignores how the map is oriented</strong>: rotate or stretch the lake map and the cloud is still the same kind of cloud, so the search does equally well no matter which way you happened to call north.</li>
+<li><strong>It is easy to work with</strong>: drawing guesses from a bell-shaped cloud is quick, and the rules for sliding its center and reshaping its oval always leave a sensible cloud behind.</li>
+</ul>
+<p>The one catch: a bell-shaped cloud has a single hump, so the search works one basin at a time. If the lake has two deep holes far apart, it settles into whichever one it drifts into. The usual fix is not a fancier cloud but re-running the search from a few random starting spots and keeping the best result.</p>
+</section>
+<section id="the-core-idea" class="level2">
+<h2 class="anchored" data-anchor-id="the-core-idea">The core idea</h2>
+<p>Formally, that cloud is a multivariate Gaussian, and each round repeats three steps: <strong>sample</strong> a population of candidates from it, <strong>evaluate</strong> <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/> on each, then <strong>move and reshape</strong> the Gaussian toward the candidates that did best. Over generations the mean drifts toward the optimum and the shape stretches to match the local curvature of the objective. The whole algorithm is just <em>how</em> you update that Gaussian.</p>
+<p>The distribution has three parts:</p>
+<p><img src="https://benjaminhan.net/feed-assets/6feba6fd52560e1b.svg" alt="x_i = m + \sigma\, y_i, \qquad y_i \sim \mathcal{N}(0, C)." class="feed-math-inline"/></p>
+<ul>
+<li><img src="https://benjaminhan.net/feed-assets/58a2822c83874f66.svg" alt="m \in \mathbb{R}^n" class="feed-math-inline"/> is the <strong>mean</strong>, the current best guess at the optimum.</li>
+<li><img src="https://benjaminhan.net/feed-assets/0b536fe43320f967.svg" alt="C \in \mathbb{R}^{n\times n}" class="feed-math-inline"/> is the <strong>covariance matrix</strong>, the shape and orientation of the search ellipsoid (the three panels in the figure above).</li>
+<li><img src="https://benjaminhan.net/feed-assets/c2bf8683009d8f3d.svg" alt="\sigma &gt; 0" class="feed-math-inline"/> is the <strong>step size</strong>, an overall scale factor held separate from <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> so the algorithm can grow or shrink the whole search without relearning its shape.</li>
+</ul>
+</section>
+<section id="one-generation-step-by-step" class="level2">
+<h2 class="anchored" data-anchor-id="one-generation-step-by-step">One generation, step by step</h2>
+<p>The equations below follow the notation in Hansen’s tutorial [1].</p>
+<p><strong>Sample and rank.</strong> Draw <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> candidates <img src="https://benjaminhan.net/feed-assets/96c61ea2ca121eff.svg" alt="x_i = m + \sigma\, y_i" class="feed-math-inline"/> from the distribution above, evaluate <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/>, and sort them. Write <img src="https://benjaminhan.net/feed-assets/f7580433f17bc438.svg" alt="x_{i:\lambda}" class="feed-math-inline"/> for the <img src="https://benjaminhan.net/feed-assets/fe3599bc03ddee62.svg" alt="i" class="feed-math-inline"/>-th best (order-statistic notation: the colon-<img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> marks a rank within the <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> samples, best first) and <img src="https://benjaminhan.net/feed-assets/4c941c02a0f8c987.svg" alt="y_{i:\lambda} = (x_{i:\lambda} - m)/\sigma" class="feed-math-inline"/> for the step that produced it. CMA-ES uses only the <em>ranking</em>, never the raw values of <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/>, which is what makes it invariant to any monotonic rescaling of the objective, and robust to noise and outliers.</p>
+<p><strong>Update the mean.</strong> Recombine the <img src="https://benjaminhan.net/feed-assets/abc626df5639f3a4.svg" alt="\mu" class="feed-math-inline"/> best (typically <img src="https://benjaminhan.net/feed-assets/cca8697f1d48f423.svg" alt="\mu = \lambda/2" class="feed-math-inline"/>) as a weighted average:</p>
+<p><img src="https://benjaminhan.net/feed-assets/b85d6298dc01ada2.svg" alt="m \leftarrow \sum_{i=1}^{\mu} w_i\, x_{i:\lambda}, \qquad w_1 \ge \dots \ge w_\mu &gt; 0, \quad \sum_i w_i = 1." class="feed-math-inline"/></p>
+<p>The weights set an effective sample size <img src="https://benjaminhan.net/feed-assets/f0ebe6b7de8c9fc3.svg" alt="\mu_{\text{eff}} = 1 / \sum_i w_i^2" class="feed-math-inline"/>, the recurring “how many points am I really averaging” quantity. The weights themselves are a fixed log-rank recipe (best gets the most, declining with rank), set once from <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> rather than learned. The quantities CMA-ES actually adapts are the cloud’s covariance <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> and step size <img src="https://benjaminhan.net/feed-assets/918d7b20a36f8da0.svg" alt="\sigma" class="feed-math-inline"/>, handled in the next two steps.</p>
+<p><strong>Adapt the covariance.</strong> <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> is nudged to make the steps that just succeeded more likely next time, through two complementary terms:</p>
+<p><img src="https://benjaminhan.net/feed-assets/263de76ca4b97715.svg" alt="C \leftarrow (1 - c_1 - c_\mu)\,C \;+\; \underbrace{c_1\, p_c\, p_c^{\top}}_{\text{rank-one}} \;+\; \underbrace{c_\mu \sum_{i=1}^{\mu} w_i\, y_{i:\lambda}\, y_{i:\lambda}^{\top}}_{\text{rank-}\mu}." class="feed-math-inline"/></p>
+<p>Here <img src="https://benjaminhan.net/feed-assets/fe9e63f85a0ca0db.svg" alt="c_1" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/7526aeab8359d90c.svg" alt="c_\mu" class="feed-math-inline"/> are small fixed learning rates for the rank-one and rank-<img src="https://benjaminhan.net/feed-assets/abc626df5639f3a4.svg" alt="\mu" class="feed-math-inline"/> terms, and <img src="https://benjaminhan.net/feed-assets/613527ead6a786d0.svg" alt="(1 - c_1 - c_\mu)" class="feed-math-inline"/> retains the rest of the old <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/>, so the update is <a href="https://en.wikipedia.org/wiki/Exponential_smoothing">exponential smoothing</a>: it folds a little new evidence into the matrix each round. Like the recombination weights, they are fixed functions of <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/f138e9508f88bd83.svg" alt="\mu_{\text{eff}}" class="feed-math-inline"/> rather than learned, and both shrink roughly like <img src="https://benjaminhan.net/feed-assets/1a4bbe607b64f361.svg" alt="1/n^2" class="feed-math-inline"/> as the dimension grows (the exact rates appear below).</p>
+<p>The <strong>rank-one</strong> term uses an <em>evolution path</em> <img src="https://benjaminhan.net/feed-assets/933b48f8062c5b0e.svg" alt="p_c" class="feed-math-inline"/>, the search’s <em>momentum</em>: an exponentially-weighted accumulation of successive mean shifts that grows long when the mean keeps heading one way and stays short when the steps cancel. The rate <img src="https://benjaminhan.net/feed-assets/bac7a49532acc593.svg" alt="c_c" class="feed-math-inline"/> sets how fast the path forgets old steps:</p>
+<p><img src="https://benjaminhan.net/feed-assets/3cc60d685389a6e3.svg" alt="p_c \leftarrow (1 - c_c)\,p_c + \alpha_c\,\frac{m_{\text{new}} - m_{\text{old}}}{\sigma}." class="feed-math-inline"/></p>
+<p>The coefficient <img src="https://benjaminhan.net/feed-assets/feed76402b90f086.svg" alt="\alpha_c = \sqrt{c_c(2-c_c)\,\mu_{\text{eff}}}" class="feed-math-inline"/> is just a normalization constant: it holds <img src="https://benjaminhan.net/feed-assets/933b48f8062c5b0e.svg" alt="p_c" class="feed-math-inline"/> at unit scale when successive steps point in random directions, so the path’s length is informative. (The <img src="https://benjaminhan.net/feed-assets/2894c8b4e912eb73.svg" alt="\sqrt{c_c(2-c_c)}" class="feed-math-inline"/> factor is the variance-preserving weight that pairs with the <img src="https://benjaminhan.net/feed-assets/d0f51c235afdf010.svg" alt="(1-c_c)" class="feed-math-inline"/> decay, and the <img src="https://benjaminhan.net/feed-assets/b6d70a370fb4aec7.svg" alt="\sqrt{\mu_{\text{eff}}}" class="feed-math-inline"/> undoes the shrinkage from averaging <img src="https://benjaminhan.net/feed-assets/f138e9508f88bd83.svg" alt="\mu_{\text{eff}}" class="feed-math-inline"/> points.) When the mean keeps moving the same way generation after generation, those steps add up and <img src="https://benjaminhan.net/feed-assets/02eea867b79fe136.svg" alt="p_c\, p_c^{\top}" class="feed-math-inline"/> stretches <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> along that ridge. This is where CMA-ES picks up <em>correlations between coordinates over time</em> that one generation’s small sample is too noisy to estimate. The <strong>rank-<img src="https://benjaminhan.net/feed-assets/abc626df5639f3a4.svg" alt="\mu" class="feed-math-inline"/></strong> term, by contrast, works within the current generation: it is the empirical covariance of this round’s successful steps, the shape of the cloud of good points estimated in one shot.</p>
+<p><strong>Adapt the step size.</strong> Separately, a second, conjugate evolution path <img src="https://benjaminhan.net/feed-assets/deb8dcea181f9a33.svg" alt="p_\sigma" class="feed-math-inline"/> (with its own decay rate <img src="https://benjaminhan.net/feed-assets/2162e47262695997.svg" alt="c_\sigma" class="feed-math-inline"/>) tracks step direction after each step is rescaled by <img src="https://benjaminhan.net/feed-assets/ce35e49b49f8055e.svg" alt="C^{-1/2}" class="feed-math-inline"/> to undo the cloud’s shape, turning the oval back into a round, unit-spread blob (the <em>whitening</em> transform). The step size then grows or shrinks by comparing that path’s length to how long it would be if successive steps were uncorrelated:</p>
+<p><img src="https://benjaminhan.net/feed-assets/aa940bee3ddd43d1.svg" alt="p_\sigma \leftarrow (1-c_\sigma)\,p_\sigma + \alpha_\sigma\, C^{-1/2}\frac{m_{\text{new}}-m_{\text{old}}}{\sigma}," class="feed-math-inline"/></p>
+<p><img src="https://benjaminhan.net/feed-assets/3ccabb51d4d129f4.svg" alt="\sigma \leftarrow \sigma \cdot \exp\!\left(\frac{c_\sigma}{d_\sigma}\left(\frac{\lVert p_\sigma\rVert}{\mathbb{E}\lVert\mathcal{N}(0,I)\rVert} - 1\right)\right)." class="feed-math-inline"/></p>
+<p>Here <img src="https://benjaminhan.net/feed-assets/369dc38ade8f1cd3.svg" alt="\alpha_\sigma = \sqrt{c_\sigma(2-c_\sigma)\,\mu_{\text{eff}}}" class="feed-math-inline"/> is the same kind of normalization constant as <img src="https://benjaminhan.net/feed-assets/4814248294a5ad59.svg" alt="\alpha_c" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/782956c5eb291628.svg" alt="d_\sigma" class="feed-math-inline"/> is a damping constant that keeps each change to <img src="https://benjaminhan.net/feed-assets/918d7b20a36f8da0.svg" alt="\sigma" class="feed-math-inline"/> small, and <img src="https://benjaminhan.net/feed-assets/929fa1e46a915352.svg" alt="\mathbb{E}\lVert\mathcal{N}(0,I)\rVert" class="feed-math-inline"/> is the expected length of a random step under no selection (about <img src="https://benjaminhan.net/feed-assets/6507edd84d6a3512.svg" alt="\sqrt{n}" class="feed-math-inline"/>). The logic: if consecutive steps point the same way, the accumulated path is longer than random selection would produce, so you are making consistent progress and take bigger steps. If they zig-zag and cancel, the path is short, you are overshooting, and the step size shrinks. Splitting this off from <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> decouples “how far to move” from “which directions matter,” and is most of why CMA-ES tunes itself with almost no hand-set hyperparameters. Sensible defaults handle the rest: <img src="https://benjaminhan.net/feed-assets/28cee00e807e7e80.svg" alt="\lambda = 4 + \lfloor 3\ln n\rfloor" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/cca8697f1d48f423.svg" alt="\mu = \lambda/2" class="feed-math-inline"/>, and learning rates that scale like <img src="https://benjaminhan.net/feed-assets/98e3fe4d7cc97a99.svg" alt="c_1 \sim 2/n^2" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/7cce01fe626dbfe7.svg" alt="c_\mu \sim \mu_{\text{eff}}/n^2" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/79ae61dc916155f4.svg" alt="c_c, c_\sigma \sim 4/n" class="feed-math-inline"/>.</p>
+</section>
+<section id="what-adapting-the-covariance-buys" class="level2">
+<h2 class="anchored" data-anchor-id="what-adapting-the-covariance-buys">What adapting the covariance buys</h2>
+<p>Near a smooth optimum <img src="https://benjaminhan.net/feed-assets/ef290e04507b9093.svg" alt="x^*" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/> looks quadratic: <img src="https://benjaminhan.net/feed-assets/4dcbfcd62844235e.svg" alt="f(x) \approx \tfrac{1}{2}(x - x^*)^{\top} H (x - x^*)" class="feed-math-inline"/>, with <img src="https://benjaminhan.net/feed-assets/37eac01343cc2eec.svg" alt="H" class="feed-math-inline"/> the <a href="https://en.wikipedia.org/wiki/Hessian_matrix">Hessian</a> (the matrix of second derivatives). By driving <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> toward <img src="https://benjaminhan.net/feed-assets/0ba679b740301fe6.svg" alt="H^{-1}" class="feed-math-inline"/>, CMA-ES learns the local shape from rank information alone, a derivative-free, stochastic cousin of <a href="https://en.wikipedia.org/wiki/Quasi-Newton_method">quasi-Newton</a> methods. That adaptive shape is the whole advantage: it makes the search invariant to rotation and lets it handle <strong>ill-conditioned</strong> objectives (long narrow valleys) that round, same-in-every-direction methods like random search or hill-climbing crawl through. It is also the cost: with <img src="https://benjaminhan.net/feed-assets/ba91a84dea47d4d7.svg" alt="\sim n^2" class="feed-math-inline"/> free parameters and an update rate of about <img src="https://benjaminhan.net/feed-assets/1a4bbe607b64f361.svg" alt="1/n^2" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> is the slow, expensive part of the algorithm. CMA-ES trades speed for the flexibility of a non-spherical search shape.</p>
+</section>
+<section id="sep-cma-es-the-diagonal-variant" class="level2">
+<h2 class="anchored" data-anchor-id="sep-cma-es-the-diagonal-variant">sep-CMA-ES: the diagonal variant</h2>
+<p>A full <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> costs <img src="https://benjaminhan.net/feed-assets/caab106d41dfeaed.svg" alt="O(n^2)" class="feed-math-inline"/> memory and needs a periodic <img src="https://benjaminhan.net/feed-assets/f3419e7c4b8cf7f1.svg" alt="O(n^3)" class="feed-math-inline"/> eigendecomposition to form <img src="https://benjaminhan.net/feed-assets/d7ddf2f4cf21dc44.svg" alt="C^{1/2}" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/ce35e49b49f8055e.svg" alt="C^{-1/2}" class="feed-math-inline"/>. That is fine for <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> up to a few hundred, painful in the thousands, and hopeless at <img src="https://benjaminhan.net/feed-assets/75953460e674d5f6.svg" alt="10^4" class="feed-math-inline"/> and beyond. With <img src="https://benjaminhan.net/feed-assets/ba91a84dea47d4d7.svg" alt="\sim n^2" class="feed-math-inline"/> free parameters and rates <img src="https://benjaminhan.net/feed-assets/b7f08c7537ebc659.svg" alt="\sim 1/n^2" class="feed-math-inline"/>, a full <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> is also slow to learn, a problem when the evaluation budget is tight.</p>
+<p><strong>sep-CMA-ES</strong> [3] restricts <img src="https://benjaminhan.net/feed-assets/bf928cf4085a894b.svg" alt="C" class="feed-math-inline"/> to be diagonal, learning one variance per coordinate and discarding all cross-coordinate correlations:</p>
+<p><img src="https://benjaminhan.net/feed-assets/22cb0508778f004c.svg" alt="C = \operatorname{diag}(d_1^2, \dots, d_n^2)." class="feed-math-inline"/></p>
+<p>That drops memory and per-step cost to <img src="https://benjaminhan.net/feed-assets/365579f8b6aa11b4.svg" alt="O(n)" class="feed-math-inline"/> (the matrix square roots become element-wise, with no eigendecomposition), and because there are now only <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> free parameters, the covariance learning rate can be raised, so it converges in far fewer evaluations. Geometrically, it can stretch the search ellipsoid along the coordinate axes (the middle panel of the cover figure) but cannot rotate it (the right panel). The price is the lost correlations: sep-CMA-ES assumes the problem is close to axis-aligned. When coordinates interact strongly, dropping the off-diagonal terms can stall the search where full CMA-ES would not.</p>
+<p>That trade-off is exactly why <a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY</a> [4] reaches for sep-CMA-ES rather than the full algorithm: its coordinator is a roughly 10K-dimensional search under a tight evaluation budget, where a full covariance is both too expensive and too slow to learn, and the paper argues the objective is near-separable enough (it calls this <em>block-<img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>-separability</em>) for the diagonal approximation to hold.</p>
+</section>
+<section id="when-to-reach-for-cma-es" class="level2">
+<h2 class="anchored" data-anchor-id="when-to-reach-for-cma-es">When to reach for CMA-ES</h2>
+<p>CMA-ES fits a specific regime: a continuous problem of low-to-moderate dimension where you can score a candidate but have no usable gradient, because the objective is non-differentiable, noisy, or a black box. Where a gradient <em>is</em> available, gradient descent through backpropagation is almost always faster and scales to millions of parameters, and CMA-ES does not try to compete there.</p>
+<p>Its closest relatives are the gradient-free reinforcement-learning methods. Like <a href="https://en.wikipedia.org/wiki/Policy_gradient_method">policy-gradient RL</a>, CMA-ES searches by trial and reward rather than by differentiating the objective. The difference is that policy gradients still need a low-variance gradient estimate to be useful, while CMA-ES needs only the ranking of scores, which keeps it working when the reward is sparse or binary [5]. The dividing line is dimensionality and structure: a full covariance is practical only up to the hundreds to low thousands of variables, which is what pushes larger problems toward the diagonal sep-CMA-ES variant or back toward reinforcement learning.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=Z8ISh-wAAAAJ">Hansen, N.</a> “The CMA Evolution Strategy: A Tutorial.” <em>arXiv preprint</em> (arXiv:1604.00772), April 4, 2016 (revised 2023). <a href="https://arxiv.org/abs/1604.00772" class="uri">https://arxiv.org/abs/1604.00772</a></li>
+<li><a id="ref-2"></a>Hansen, N. and Ostermeier, A. “Completely Derandomized Self-Adaptation in Evolution Strategies.” <em>Evolutionary Computation</em> 9(2): 159–195, 2001. <a href="https://doi.org/10.1162/106365601750190398" class="uri">https://doi.org/10.1162/106365601750190398</a></li>
+<li><a id="ref-3"></a>Ros, R. and Hansen, N. “A Simple Modification in CMA-ES Achieving Linear Time and Space Complexity.” <em>Parallel Problem Solving from Nature (PPSN X)</em>, LNCS 5199, pp.&nbsp;296–305, Springer, 2008. <a href="https://doi.org/10.1007/978-3-540-87700-4_30" class="uri">https://doi.org/10.1007/978-3-540-87700-4_30</a></li>
+<li><a id="ref-4"></a><a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695, December 4, 2025. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
+<li><a id="ref-5"></a>Salimans, Tim, Ho, Jonathan, Chen, Xi, Sidor, Szymon, and Sutskever, Ilya. “Evolution Strategies as a Scalable Alternative to Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:1703.03864), March 10, 2017. <a href="https://arxiv.org/abs/1703.03864" class="uri">https://arxiv.org/abs/1703.03864</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY: An Evolved LLM Coordinator</a>: trains a 0.6B LLM coordinator with sep-CMA-ES, the diagonal variant covered here, and argues its objective is near-separable enough for the diagonal approximation to hold.</li>
+<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: the sibling that takes the opposite optimizer choice — reinforcement learning at 7B — and so reads as the RL end of the trade-off this primer’s last note describes.</li>
+<li><a href="../../posts/20260629-fugu-release/">Sakana Fugu: One Model to Command Them All</a>: folds the evolution-trained and RL-trained coordinators into one product, so both optimizer regimes ship behind a single endpoint.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260629-cma-es-primer/</guid>
+  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260629-cma-es-primer/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>A 20-Mile Long Run from Redmond to UW</title>
   <dc:creator>Ben </dc:creator>
@@ -1760,102 +1864,6 @@
   <guid>https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/</guid>
   <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How Artificial Analysis Builds Its Intelligence Index</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260620-intelligence-benchmarking/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Independent analysis of AI. Image from <a href="https://artificialanalysis.ai/methodology/intelligence-benchmarking">Artificial Analysis</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://artificialanalysis.ai/">Artificial Analysis</a> is an independent benchmarking outfit that ranks language models, and it publishes the <a href="https://artificialanalysis.ai/methodology/intelligence-benchmarking">full methodology</a> behind its main metric, the <strong>Artificial Analysis Intelligence Index</strong>. The page documents every evaluation in the index, how each is weighted and scored, and the exact testing parameters, down to sampling temperature and retry handling.</p>
-<section id="how-the-index-works" class="level2">
-<h2 class="anchored" data-anchor-id="how-the-index-works">How the index works</h2>
-<p>The Intelligence Index (currently version 4.1) is a single 0–100 score built as a weighted average of nine evaluations across four categories. It is a text-only, English-language suite, and Artificial Analysis estimates a 95% confidence interval of under ±1% on the overall score. The nine weights sum to 100%, and the further benchmarks Artificial Analysis runs (multilingual, visual, mathematical, and several legacy evaluations) are reported separately and not counted in the index.</p>
-<ul>
-<li><p><strong>Four stated principles</strong>: every model is run under identical conditions (standardized); answer extraction is built to avoid penalizing valid output variations (unbiased); prompts give instructions without worked examples (zero-shot); and the full method, prompts, and limitations are published (transparent).</p></li>
-<li><p><strong>The nine evaluations and their weights</strong>, grouped by category:</p>
-<ul>
-<li><em>Agents (34%)</em>: <a href="https://arxiv.org/abs/2510.04374">GDPval-AA v2</a> (20%), agentic completion of economically valuable tasks across 44 US occupations, with file outputs ranked into an <a href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo</a>; and <a href="https://arxiv.org/abs/2406.12045">τ³-Banking</a> (14%), a fintech customer-support agent built on Sierra’s <a href="https://sierra.ai/blog/bench-advancing-agent-benchmarking-to-knowledge-and-voice">τ-Knowledge framework</a> that must combine knowledge retrieval with multi-step account changes.</li>
-<li><em>Coding (24%)</em>: <a href="https://github.com/laude-institute/terminal-bench">Terminal-Bench v2.1</a> (16%), 89 terminal tasks spanning software engineering, system administration, data processing, model training, and security, run through an agent in a sandbox; and <a href="https://arxiv.org/abs/2407.13168">SciCode</a> (8%), Python scientific-computing problems scored by unit tests.</li>
-<li><em>Scientific Reasoning (24%)</em>: <a href="https://arxiv.org/abs/2501.14249">Humanity’s Last Exam</a> (12%), 2,158 open-answer frontier academic questions; <a href="https://arxiv.org/abs/2311.12022">GPQA Diamond</a> (6%), 198 graduate-level Google-proof science questions; and <a href="https://critpt.com/">CritPt</a> (6%), 70 unpublished research-level physics problems.</li>
-<li><em>General (18%)</em>: <a href="https://huggingface.co/datasets/ArtificialAnalysis/AA-Omniscience-Public">AA-Omniscience</a> (12%), 6,000 questions over 42 topics scored by an index that rewards correct answers, penalizes hallucinations, and leaves abstentions neutral; and <a href="https://huggingface.co/datasets/ArtificialAnalysis/AA-LCR">AA-LCR</a> (6%), long-context reasoning over roughly 100,000-token document sets.</li>
-</ul></li>
-<li><p><strong>Testing parameters</strong>: temperature is 0 for non-reasoning models and 0.6 for reasoning models unless a lab recommends otherwise. Non-reasoning models get 16,384 output tokens, while reasoning models get their full disclosed budget. Failed API calls retry up to 30 times, and questions that never succeed are reviewed by hand and dropped.</p></li>
-<li><p><strong>Scoring and contamination handling</strong>: most evaluations use pass@1 averaged over one to five repeats, while GDPval-AA v2 uses an Elo from a three-judge panel, fit with a <a href="https://en.wikipedia.org/wiki/Bradley%E2%80%93Terry_model">Bradley-Terry</a> model and anchored to human experts at 1000. Artificial Analysis keeps internal copies of every dataset, and reports cost from provider-side token counts while standardizing performance on a client-side tokenizer.</p></li>
-</ul>
-</section>
-<section id="current-results" class="level2">
-<h2 class="anchored" data-anchor-id="current-results">Current results</h2>
-<p>As of June 2026, the Intelligence Index (v4.1) is led by Claude Fable 5, Claude Opus 4.8, and GPT-5.5, with a long tail of frontier models close behind.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-intelligence-index.webp" class="img-fluid figure-img" data-lightbox-src="results-intelligence-index-full.png"></p>
-<figcaption>The Artificial Analysis Intelligence Index (v4.1): the weighted 0–100 score across all nine evaluations. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
-</figure>
-</div>
-<p>The single score resolves into different profiles underneath, and Artificial Analysis also publishes category sub-indices. The Agentic Index averages the two agent benchmarks, GDPval-AA v2 and τ³-Banking:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-agentic-index.webp" class="img-fluid figure-img" data-lightbox-src="results-agentic-index-full.png"></p>
-<figcaption>The Artificial Analysis Agentic Index: the average of the GDPval-AA v2 and τ³-Banking agent benchmarks. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
-</figure>
-</div>
-<p>The Coding Index averages Terminal-Bench v2.1 and SciCode, and the ranking shifts from the overall order, with GPT-5.5 moving up to second behind Claude Fable 5:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-coding-index.webp" class="img-fluid figure-img" data-lightbox-src="results-coding-index-full.png"></p>
-<figcaption>The Artificial Analysis Coding Index: the weighted average of Terminal-Bench v2.1 and SciCode. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Closed models lead all three indices</strong>: Claude Fable 5, Claude Opus 4.8, and GPT-5.5, all proprietary, take the top three on the overall index and on the agentic and coding sub-indices alike. The strongest open-weight model, GLM-5.2 from Zhipu, reaches fourth on the overall Intelligence Index, about nine points behind the leader. The open weights fall a clearer step behind on the agentic and coding charts, so the gap that has nearly closed on the broad knowledge-and-reasoning mix is still wide on the longer-horizon agentic and coding work.</p>
-<p>All four are reasoning models. Beyond that, disclosure differs sharply:</p>
-<ul>
-<li><strong>Claude Fable 5</strong> (Anthropic): proprietary weights, no published parameter count or architecture.</li>
-<li><strong>Claude Opus 4.8</strong> (Anthropic): proprietary weights, no published parameter count or architecture.</li>
-<li><strong>GPT-5.5</strong> (OpenAI): proprietary weights, no published parameter count or architecture.</li>
-<li><strong>GLM-5.2</strong> (Zhipu): open weights, 753B total parameters, a sparse mixture of experts (256 routed experts plus one shared, 8 active per token, 78 layers).</li>
-</ul></li>
-<li><p><strong>The method has limitations</strong>:</p>
-<ul>
-<li><strong>The weighting is an editorial choice</strong>: the index is a weighted average, and the weights reflect a judgment about what matters rather than a measurement. Agents are weighted most heavily, with GDPval-AA v2 alone a fifth of the score, so anyone comparing models on the one number inherits that bet. <a href="../../posts/20201005-nlp-leaderboard-utility/">Ethayarajh and Jurafsky</a> argued years ago that a leaderboard should let each reader set their own weights instead of shipping one ranking for everyone.</li>
-<li><strong>Several components are public benchmarks</strong>: Humanity’s Last Exam, GPQA Diamond, SciCode, and Terminal-Bench are all openly available, so training-data contamination is a live risk. The defenses are internal copies of every dataset and the evaluations Artificial Analysis built itself, a weaker defense than the post-cutoff, unpublished questions the <a href="../../posts/20260606-benchmarks-in-leipzig/">Leipzig math benchmark</a> used to stay out of the training data.</li>
-<li><strong>An LLM panel grades the heaviest evaluation</strong>: GDPval-AA v2, the largest single component, scores agentic deliverables by an Elo from a panel of three frontier model judges, anchored to human experts at 1000. The panel reduces the bias any single judge would bring, but the score still measures what frontier models agree is good work, which can differ from what a human expert would rank first.</li>
-<li><strong>The compared models are black boxes</strong>: the closed leaders disclose neither parameter count nor architecture, so the index ranks delivered capability without controlling for model size, design, or training compute. Only the open-weight entrants publish those details, and cost per task, which Artificial Analysis reports separately, is the nearest proxy for what a score costs to reach.</li>
-</ul></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20201005-nlp-leaderboard-utility/">Utility Is in the Eye of the User</a>: the case that benchmark utility is user-specific and leaderboards should let readers set their own weights, a direct counterpoint to collapsing nine evaluations into one fixed-weight index.</li>
-<li><a href="../../posts/20260606-benchmarks-in-leipzig/">Benchmarks in Leipzig</a>: a benchmark built from fresh, post-cutoff, unpublished questions to resist contamination, the stronger defense the public components of this index lack.</li>
-<li><a href="../../posts/20221121-nlp-benchmark-saturation/">Mapping Global Dynamics of Benchmark Creation and Saturation in AI</a>: the create-then-saturate cycle that explains why an index has to keep swapping in harder evaluations to stay informative.</li>
-<li><a href="../../posts/20260423-anthropic-economic-index/">Anthropic Economic Index</a>: another attempt to measure model capability on economically valuable work, and a reminder that a metric designed not to saturate (time horizon) is a different bet than a fixed-question score.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260620-intelligence-benchmarking/</guid>
-  <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
