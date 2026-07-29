@@ -21,7 +21,159 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 27 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 29 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Transformer²: Self-Adaptive LLMs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260629-transformer-squared/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-transformer-squared/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Overview of Transformer². Training tunes the singular values of the weight matrices to produce a set of task-specific “expert” vectors. Inference runs a two-pass process that first identifies the task, then applies the matching expert before generating the answer. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Transformer²: Self-Adaptive LLMs</em> [1] (ICLR 2025), <a href="https://www.semanticscholar.org/author/2326487319">Qi Sun</a>, <a href="https://www.semanticscholar.org/author/2326294214">Edoardo Cetin</a>, and <a href="https://www.semanticscholar.org/author/2326422916">Yujin Tang</a> (Sakana AI and Institute of Science Tokyo) introduce a self-adaptation framework that fine-tunes only the singular values of a model’s weights into reusable expert vectors, then mixes them at inference to specialize the model per prompt.</p>
+<blockquote class="blockquote">
+<p>Self-adaptive large language models (LLMs) aim to solve the challenges posed by traditional fine-tuning methods, which are often computationally intensive and static in their ability to handle diverse tasks. We introduce Transformer-Squared, a novel self-adaptation framework that adapts LLMs for unseen tasks in real-time by <em>selectively adjusting only the singular components of their weight matrices</em>. During inference, Transformer-Squared employs a <em>two-pass mechanism</em>: first, a dispatch system identifies the task properties, and then task-specific ‘expert’ vectors, <em>trained using reinforcement learning</em>, are dynamically mixed to obtain targeted behavior for the incoming prompt. Our method <em>consistently outperforms ubiquitous approaches such as LoRA, with fewer parameters and greater efficiency</em>. Furthermore, Transformer-Squared demonstrates versatility across different LLM architectures and modalities, including vision-language tasks. Transformer-Squared represents a significant leap forward, offering a scalable, efficient solution for enhancing the adaptability and task-specific performance of LLMs, paving the way for truly dynamic, self-organizing AI systems.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The framework has two parts: a parameter-efficient way to build task experts, and a two-pass scheme to deploy them at inference.</p>
+<ul>
+<li><strong>Singular value fine-tuning (SVF).</strong> Take the singular value decomposition of each weight matrix, <img src="https://benjaminhan.net/feed-assets/eaf28e36988304ef.svg" alt="W = U\Sigma V^\top" class="feed-math-inline"/>, and learn a small vector <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> that rescales the singular values, giving <img src="https://benjaminhan.net/feed-assets/b7c8ed73205c360c.svg" alt="W&#x27; = U\,(\Sigma \odot \operatorname{diag}(z))\,V^\top" class="feed-math-inline"/>. Only <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> is trained (one scalar per singular value), so the directions <img src="https://benjaminhan.net/feed-assets/94f4019aeea3bf33.svg" alt="U, V" class="feed-math-inline"/> stay frozen and the parameter count is a fraction of LoRA’s <img src="https://benjaminhan.net/feed-assets/5e65d0f688a98708.svg" alt="(m+n)\times r" class="feed-math-inline"/> per matrix. SVF is trained with reinforcement learning on the task reward, which lets it learn from datasets that give only a final answer (for example GSM8K [2], where there is no explanatory text for next-token fine-tuning to imitate).</li>
+<li><strong>Expert vectors, one per domain.</strong> Running SVF on each training domain (math, coding, reasoning, vision-language) yields a set of compact “expert” vectors <img src="https://benjaminhan.net/feed-assets/6ca85812ad78bfbd.svg" alt="z^{1:K}" class="feed-math-inline"/>, each specializing the base model toward one capability.</li>
+<li><strong>Two-pass inference.</strong> On a new prompt, the first pass classifies the task and the second pass applies the matching expert (or a mix of experts) to the frozen base weights, then generates the answer. The paper gives three dispatch strategies: a prompt-based classifier, a trained classification expert, and a few-shot mixture that blends experts by learned weights. An explicit “others” category falls back to the unmodified base model when no expert fits.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>Method overview. Left: at training time, SVF plus RL learns the expert vectors <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> that scale the singular values of the weight matrices. Right: at inference time, three strategies adaptively select or combine the learned experts. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper evaluates SVF and the full Transformer² framework on three base models across different families and sizes (Llama3-8B-Instruct, Mistral-7B-Instruct-v0.3, Llama3-70B-Instruct), on math (GSM8K), coding (MBPP-Pro [3]), and reasoning (ARC-Easy [4]), plus a vision-language setting (TextVQA [5]). The main baseline is LoRA [6], trained on the same domains, and scores in parentheses are normalized to the base model.</p>
+<p>Trained on domain-specific data, SVF matches or beats LoRA on nearly every model and task while training orders of magnitude fewer parameters, and it avoids the degradations LoRA sometimes shows, most visibly on Llama3-70B, where LoRA drops below the base model on math and coding while SVF holds or improves.</p>
+<table class="caption-top table">
+<caption>Fine-tuning results on the test splits of math, coding, and reasoning, best per base model in bold. SVF matches or beats LoRA in most rows, and on Llama3-70B LoRA degrades the base model while SVF does not. Table 1 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>GSM8K</th>
+<th>MBPP-Pro</th>
+<th>ARC-Easy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Llama3-8B-Instruct</td>
+<td>75.89</td>
+<td>64.65</td>
+<td>88.59</td>
+</tr>
+<tr class="even">
+<td>+ LoRA</td>
+<td>77.18</td>
+<td><strong>67.68</strong></td>
+<td>88.97</td>
+</tr>
+<tr class="odd">
+<td>+ SVF</td>
+<td><strong>79.15</strong></td>
+<td>66.67</td>
+<td><strong>89.56</strong></td>
+</tr>
+<tr class="even">
+<td>Mistral-7B-Instruct-v0.3</td>
+<td>42.83</td>
+<td>49.50</td>
+<td>81.65</td>
+</tr>
+<tr class="odd">
+<td>+ LoRA</td>
+<td>44.66</td>
+<td>51.52</td>
+<td>81.19</td>
+</tr>
+<tr class="even">
+<td>+ SVF</td>
+<td><strong>49.74</strong></td>
+<td><strong>51.52</strong></td>
+<td><strong>85.14</strong></td>
+</tr>
+<tr class="odd">
+<td>Llama3-70B-Instruct</td>
+<td>85.29</td>
+<td>80.81</td>
+<td>89.10</td>
+</tr>
+<tr class="even">
+<td>+ LoRA</td>
+<td>77.26</td>
+<td>68.69</td>
+<td>88.55</td>
+</tr>
+<tr class="odd">
+<td>+ SVF</td>
+<td><strong>88.32</strong></td>
+<td><strong>80.81</strong></td>
+<td>88.47</td>
+</tr>
+</tbody>
+</table>
+<p>The expert vectors also recombine: a two-pass run on unseen tasks transfers gains, SVF experts trained on one model can be reused on another, and applying SVF to a vision-language backbone lifts the base model by over 39%.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-transformer-squared/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>SVF learning curves on Llama3-8B-Instruct. Dashed lines mark the base model’s test performance on each task and red dots mark the checkpoint selected by validation. SVF fine-tunes past the base on each domain. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The technique TRINITY reuses, minus the RL.</strong> Transformer²’s SVF is the same singular-value rescaling that the same group later trains <a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY</a> [7]’s coordinator with. The lineage inverts one choice: here the expert vectors are learned with reinforcement learning, while TRINITY argues RL’s per-parameter gradients are too low-signal in its tight-budget regime and switches to an evolution strategy over the same SVF parameters.</li>
+<li><strong>Cheaper than LoRA because it rescales instead of adds.</strong> LoRA [6] adds a trainable low-rank matrix <img src="https://benjaminhan.net/feed-assets/25590760c309f6c7.svg" alt="BA" class="feed-math-inline"/> of <img src="https://benjaminhan.net/feed-assets/104e7424621d395c.svg" alt="(m+n)\,r" class="feed-math-inline"/> parameters per weight, whereas SVF only scales the <img src="https://benjaminhan.net/feed-assets/8dfc616fe5d05cc7.svg" alt="\min(m,n)" class="feed-math-inline"/> singular values that are already there. That is a much smaller, more constrained edit, and the constraint appears to help rather than hurt: it cannot introduce off-basis directions, which is likely why SVF avoids the base-model regressions LoRA shows on Llama3-70B.</li>
+<li><strong>RL on the reward sidesteps LoRA’s data requirement.</strong> Because SVF is trained against the task reward rather than by next-token imitation, it learns from answer-only datasets where LoRA needs explanatory text to imitate. This is reinforcement learning with verifiable rewards applied at the fine-tuning layer: when the signal is correctness, you can optimize for it directly instead of for a proxy.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “Transformer²: Self-Adaptive LLMs.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2501.06252, January 9, 2025. <a href="https://arxiv.org/abs/2501.06252" class="uri">https://arxiv.org/abs/2501.06252</a></li>
+<li><a id="ref-2"></a>Cobbe, Karl, Kosaraju, Vineet, Bavarian, Mohammad, Chen, Mark, Jun, Heewoo, Kaiser, Lukasz, Plappert, Matthias, Tworek, Jerry, Hilton, Jacob, Nakano, Reiichiro, Hesse, Christopher, and Schulman, John. “Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
+<li><a id="ref-3"></a>Austin, Jacob, Odena, Augustus, Nye, Maxwell, Bosma, Maarten, Michalewski, Henryk, Dohan, David, Jiang, Ellen, Cai, Carrie, Terry, Michael, Le, Quoc, and Sutton, Charles. “Program Synthesis with Large Language Models.” <em>arXiv preprint</em> (arXiv:2108.07732), August 16, 2021. <a href="https://arxiv.org/abs/2108.07732" class="uri">https://arxiv.org/abs/2108.07732</a></li>
+<li><a id="ref-4"></a>Clark, Peter, Cowhey, Isaac, Etzioni, Oren, Khot, Tushar, Sabharwal, Ashish, Schoenick, Carissa, and Tafjord, Oyvind. “Think you have Solved Question Answering? Try ARC, the AI2 Reasoning Challenge.” <em>arXiv preprint</em> (arXiv:1803.05457), March 14, 2018. <a href="https://arxiv.org/abs/1803.05457" class="uri">https://arxiv.org/abs/1803.05457</a></li>
+<li><a id="ref-5"></a>Singh, Amanpreet, Natarajan, Vivek, Shah, Meet, Jiang, Yu, Chen, Xinlei, Batra, Dhruv, Parikh, Devi, and Rohrbach, Marcus. “Towards VQA Models That Can Read.” <em>IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)</em>, 2019. arXiv:1904.08920, April 18, 2019. <a href="https://arxiv.org/abs/1904.08920" class="uri">https://arxiv.org/abs/1904.08920</a></li>
+<li><a id="ref-6"></a>Hu, Edward J., Shen, Yelong, Wallis, Phillip, Allen-Zhu, Zeyuan, Li, Yuanzhi, Wang, Shean, Wang, Lu, and Chen, Weizhu. “LoRA: Low-Rank Adaptation of Large Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2022. arXiv:2106.09685, June 17, 2021. <a href="https://arxiv.org/abs/2106.09685" class="uri">https://arxiv.org/abs/2106.09685</a></li>
+<li><a id="ref-7"></a><a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695, December 4, 2025. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260629-trinity-llm-coordinator/">TRINITY: An Evolved LLM Coordinator</a>: the same group’s later paper, which trains an LLM coordinator’s singular-value scales with an evolution strategy rather than the reinforcement learning used here.</li>
+<li><a href="../../posts/20260629-cma-es-primer/">A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</a>: the optimizer TRINITY swaps in for RL when training the same SVF parameters under a tight budget.</li>
+<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: the sibling coordinator from the same lab, trained by reinforcement learning at 7B.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260629-transformer-squared/</guid>
+  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260629-transformer-squared/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</title>
   <dc:creator>synesis </dc:creator>
@@ -1691,179 +1843,6 @@
   <guid>https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/</guid>
   <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Spiking Neural Networks: A Primer</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>A surrogate-gradient spiking network reading a dynamic-vision-sensor (event-camera) gesture stream, with local readout costs at each step. Figure from Neftci, Mostafa &amp; Zenke [1].</figcaption>
-</figure>
-</div>
-<p>Spiking neural networks (SNNs) are often called the “third generation” of neural network models, a term due to Maass [2], after the McCulloch–Pitts threshold unit [3] and the continuous-valued, rate-based units of modern deep learning. The idea is older than the name: the integrate-and-fire neuron goes back to Lapicque in 1907, Hodgkin and Huxley’s 1952 model of the action potential [4] earned a Nobel Prize, and computing <em>with</em> spikes drew sustained interest through the 1990s before energy-efficient neuromorphic hardware revived it in the 2010s. The defining difference: SNN neurons communicate with <em>discrete</em>, <em>asynchronous</em>, <em>binary events</em> called <strong>spikes</strong> placed in continuous time, rather than with real-valued activations exchanged synchronously layer by layer. Computation becomes a function not just of <em>which</em> neurons fire and <em>how much</em>, but of <em>when</em> they fire.</p>
-<section id="research-questions-and-goals" class="level2">
-<h2 class="anchored" data-anchor-id="research-questions-and-goals">Research questions and goals</h2>
-<p>The field is pulled by three partly-overlapping agendas, and which one a given paper serves matters, because the three imply different success criteria.</p>
-<ol type="1">
-<li><p><strong>Energy-efficient computation.</strong> Spikes are sparse and event-driven: a neuron does work only when it receives or emits a spike, and a multiply-accumulate collapses to an accumulate (no weight is multiplied by a graded activation, just an accumulate when a spike arrives). On the right hardware this promises orders-of-magnitude lower energy than dense matrix multiplication. The central question is whether that advantage holds on real tasks at competitive accuracy.</p></li>
-<li><p><strong>Computational neuroscience.</strong> SNNs are the natural modeling substrate for how biological brains actually compute, since real neurons spike. Here the goal is explanatory: understanding coding, plasticity, and dynamics. Biological plausibility is a feature rather than a constraint to relax.</p></li>
-<li><p><strong>Temporal computation.</strong> Because state and timing are intrinsic, SNNs are a candidate substrate for streaming, event-based, low-latency signals (event cameras, audio, sensor streams) where the input is naturally a sparse stream of events rather than a sequence of dense frames.</p></li>
-</ol>
-<p>The hard open problem cutting across all three agendas is <strong>training</strong>. The spike-generating function is a threshold (a step), so its derivative is zero almost everywhere and undefined at threshold, leaving standard backpropagation no gradient to descend. Most methodological research of the last decade is, directly or indirectly, an answer to a handful of open questions:</p>
-<ul>
-<li><strong>The non-differentiability problem.</strong> How do you train a network whose core nonlinearity is a non-differentiable step? The two leading answers are surrogate gradients [1] and conversion from a trained artificial neural network (ANN) [5].</li>
-<li><strong>What should spikes encode?</strong> Rate, precise timing, or something in between? Does that choice change what the network can compute, and how cheaply?</li>
-<li><strong>Can learning be local and online?</strong> Global backpropagation-through-time [6] works but is biologically implausible and awkward for hardware. The leading local alternative is spike-timing-dependent plasticity (STDP), which adjusts each synapse using only the relative timing of its own pre- and post-synaptic spikes [7], [8]. Today it does not close the gap: unsupervised STDP reaches about 95% on MNIST [9] against the 99%+ of backprop-trained networks, and the gap widens sharply on harder benchmarks, with pure STDP yet to produce competitive results on ImageNet. Whether a local rule can ever match backprop on accuracy is the open question.</li>
-<li><strong>Can the accuracy gap close without re-importing the cost?</strong> SNNs still trail conventional networks on large-scale tasks: on ImageNet the best directly-trained SNNs reach roughly 80% top-1 accuracy against the ~90% of leading conventional models (details below). Closing that gap while keeping the sparsity and energy advantage, rather than reintroducing the dense computation that made conventional networks expensive, is the open engineering question.</li>
-</ul>
-</section>
-<section id="techniques-and-the-mathematics" class="level2">
-<h2 class="anchored" data-anchor-id="techniques-and-the-mathematics">Techniques and the mathematics</h2>
-<section id="the-neuron-model" class="level3">
-<h3 class="anchored" data-anchor-id="the-neuron-model">The neuron model</h3>
-<p>The most widely used model is the <strong>leaky integrate-and-fire (LIF)</strong> neuron, whose membrane potential <img src="https://benjaminhan.net/feed-assets/93e90375dbb79a8e.svg" alt="V(t)" class="feed-math-inline"/> integrates incoming current and leaks back toward rest. It is defined by its rate of change:</p>
-<p><img src="https://benjaminhan.net/feed-assets/f77306b1ba898bb2.svg" alt="\frac{dV(t)}{dt} = \frac{-\big(V(t) - V_\text{rest}\big) + R\,I(t)}{\tau_m}" class="feed-math-inline"/></p>
-<p>You integrate this over time to get <img src="https://benjaminhan.net/feed-assets/93e90375dbb79a8e.svg" alt="V(t)" class="feed-math-inline"/>, the “integrate” in integrate-and-fire. (The literature usually writes the equivalent form <img src="https://benjaminhan.net/feed-assets/27b0ccd1d8e10f63.svg" alt="\tau_m\,\frac{dV}{dt} = -(V - V_\text{rest}) + R\,I(t)" class="feed-math-inline"/>, with the time constant multiplying the derivative.)</p>
-<p><em>In plain terms:</em> the voltage leaks steadily back toward its resting level while incoming current pushes it up. When the push wins and the integrated voltage reaches threshold, the neuron fires and resets.</p>
-<p>Here <img src="https://benjaminhan.net/feed-assets/8bf88539ffae5216.svg" alt="I(t)" class="feed-math-inline"/> is the input current (the summed synaptic drive) and <img src="https://benjaminhan.net/feed-assets/81214a487edf79ac.svg" alt="R" class="feed-math-inline"/> the membrane resistance, so <img src="https://benjaminhan.net/feed-assets/08fe6c33c03f159a.svg" alt="R\,I(t)" class="feed-math-inline"/> is the voltage the input would drive the membrane to at rest. When <img src="https://benjaminhan.net/feed-assets/8058ff93fbd3931e.svg" alt="V" class="feed-math-inline"/> crosses a threshold <img src="https://benjaminhan.net/feed-assets/3a8ac3f1c120a41e.svg" alt="V_\text{th}" class="feed-math-inline"/>, the neuron emits a spike and <img src="https://benjaminhan.net/feed-assets/8058ff93fbd3931e.svg" alt="V" class="feed-math-inline"/> is reset (to <img src="https://benjaminhan.net/feed-assets/22365c8ee9d17480.svg" alt="V_\text{rest}" class="feed-math-inline"/> or by subtracting <img src="https://benjaminhan.net/feed-assets/3a8ac3f1c120a41e.svg" alt="V_\text{th}" class="feed-math-inline"/>). The constant <img src="https://benjaminhan.net/feed-assets/b6fbcba152938e97.svg" alt="\tau_m = RC" class="feed-math-inline"/> is the <strong>membrane time constant</strong>, the timescale over which the voltage relaxes back toward rest once input stops, much like an <img src="https://benjaminhan.net/feed-assets/adb636366acb2962.svg" alt="RC" class="feed-math-inline"/> circuit discharging. A large <img src="https://benjaminhan.net/feed-assets/72e0f451cb00f2d7.svg" alt="\tau_m" class="feed-math-inline"/> means a slow leak and a long memory of past input. A small one means the neuron forgets almost immediately and responds only to near-coincident spikes.</p>
-<p>For simulation and training this is discretized. A common form, written as a recurrent unit over time steps <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/>:</p>
-<p><img src="https://benjaminhan.net/feed-assets/f19e0a66a6045f89.svg" alt="U[t] = \beta\,U[t-1] + W X[t] - S[t-1]\,U_\text{th}, \qquad S[t] = \Theta\big(U[t] - U_\text{th}\big)" class="feed-math-inline"/></p>
-<p><em>In plain terms:</em> this is the same leaky neuron rewritten so a computer can step through it in time. At each tick it keeps the previous voltage but shrinks it by the decay <img src="https://benjaminhan.net/feed-assets/b54e315a68f9323a.svg" alt="\beta" class="feed-math-inline"/>, adds the new weighted input <img src="https://benjaminhan.net/feed-assets/fb4c6ea220282e66.svg" alt="W X[t]" class="feed-math-inline"/>, and subtracts the threshold to reset if it fired on the last tick.</p>
-<p>where <img src="https://benjaminhan.net/feed-assets/9160415677ffcd43.svg" alt="U[t]" class="feed-math-inline"/> is the membrane potential at time step <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/> (the discrete-time counterpart of <img src="https://benjaminhan.net/feed-assets/8058ff93fbd3931e.svg" alt="V" class="feed-math-inline"/>), <img src="https://benjaminhan.net/feed-assets/25ad314822ebb606.svg" alt="W" class="feed-math-inline"/> the synaptic weights, <img src="https://benjaminhan.net/feed-assets/7af65baca1fa93f5.svg" alt="X[t]" class="feed-math-inline"/> the input spikes arriving at that step, <img src="https://benjaminhan.net/feed-assets/fc527613ddf653a1.svg" alt="\beta = e^{-\Delta t/\tau_m} \in (0,1)" class="feed-math-inline"/> the decay factor, <img src="https://benjaminhan.net/feed-assets/dcd5d86ede58c32e.svg" alt="S[t]\in\{0,1\}" class="feed-math-inline"/> the output spike, and <img src="https://benjaminhan.net/feed-assets/5df2f539a83c1694.svg" alt="\Theta" class="feed-math-inline"/> the Heaviside step function (<img src="https://benjaminhan.net/feed-assets/167bdf9b400f80fc.svg" alt="\Theta(x) = 1" class="feed-math-inline"/> when <img src="https://benjaminhan.net/feed-assets/1659e93cd9bef86c.svg" alt="x \geq 0" class="feed-math-inline"/>, else <img src="https://benjaminhan.net/feed-assets/e388eb4d353251b5.svg" alt="0" class="feed-math-inline"/>), so the neuron emits a spike (<img src="https://benjaminhan.net/feed-assets/7ed0cab6a394bdec.svg" alt="S[t]=1" class="feed-math-inline"/>) exactly when the potential <img src="https://benjaminhan.net/feed-assets/9160415677ffcd43.svg" alt="U[t]" class="feed-math-inline"/> reaches the threshold <img src="https://benjaminhan.net/feed-assets/b3b5a46197b8865e.svg" alt="U_\text{th}" class="feed-math-inline"/> and stays silent (<img src="https://benjaminhan.net/feed-assets/50bdd2011138d516.svg" alt="S[t]=0" class="feed-math-inline"/>) below it. The last term subtracts the threshold after a spike, implementing reset-by-subtraction. In this form an SNN is essentially a recurrent network with a binary activation and a built-in leak, which is exactly why deep-learning training methods can be brought to bear.</p>
-<p>Other neuron models trade biological fidelity against cost:</p>
-<ul>
-<li><strong>Hodgkin–Huxley</strong> [4] (1952): a system of coupled nonlinear ordinary differential equations (ODEs) modeling ion-channel conductances. Biophysically faithful, expensive.</li>
-<li><strong>Izhikevich</strong> [10] (2003): two coupled equations, <img src="https://benjaminhan.net/feed-assets/ad3610d586d3542a.svg" alt="\dot v = 0.04v^2 + 5v + 140 - u + I" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8908abc2515fa7fc.svg" alt="\dot u = a(bv - u)" class="feed-math-inline"/> with after-spike reset. A celebrated sweet spot: it reproduces a large repertoire of cortical firing patterns (bursting, chattering, fast-spiking) at roughly the cost of LIF.</li>
-<li><strong>Spike Response Model</strong> [11] (Gerstner): an integral, kernel-based reformulation convenient for analysis.</li>
-</ul>
-</section>
-<section id="what-spikes-encode" class="level3">
-<h3 class="anchored" data-anchor-id="what-spikes-encode">What spikes encode</h3>
-<p>A spiking network has to commit to what a spike <em>means</em>: how information is read out of a spike train. Rate and temporal/latency coding are the two ends of a spectrum, differing in how much they rely on the precise <em>timing</em> of spikes rather than their average count, and a real code can sit anywhere between them. Population coding is a separate question (which neurons in a group fire) and combines with either. What matters in practice is how a use case maps the code onto the output format it needs:</p>
-<ul>
-<li><strong>Rate coding → a class label.</strong> Each input (say, a pixel) drives a spike train whose <em>rate</em> is proportional to its value, and a downstream neuron’s firing rate then stands in for a real-valued activation (80 spikes in 100 steps ≈ an activation of 0.8). The output layer has one neuron per class, and the prediction is the output neuron with the highest spike count over the window, the spiking analogue of taking an ANN’s largest logit. This is the default for ANN-to-SNN conversion and deep-SNN image classifiers, where accuracy matters more than latency. The cost is the many time steps needed to estimate each rate, and that <em>when</em> spikes occur is discarded.</li>
-<li><strong>Temporal / latency coding → a fast decision.</strong> Information lives in <em>when</em> a neuron first fires: a stronger or more salient input fires earlier (time-to-first-spike). The readout watches for the earliest output spikes and settles on a class as soon as one fires, often before the full window elapses. That is what suits it to ultra-low-latency, low-power inference (always-on keyword spotting or fast detection on neuromorphic chips) and to models of the brain’s rapid visual categorization. It is sparse (potentially one spike per neuron) but harder to train and more fragile.</li>
-<li><strong>Population coding → a continuous value.</strong> Each neuron has a preferred value (a tuning curve), and a quantity is represented by the <em>pattern</em> of activity across the group. The output is decoded as a weighted combination of the population’s firing (a population vector, or a learned linear decoder), yielding a continuous vector rather than a discrete class. This underlies continuous-variable tasks like motor control and robotics: it is the basis of the Neural Engineering Framework [12] behind Nengo, and of the classic decoding of movement direction from motor-cortex activity [13].</li>
-</ul>
-</section>
-<section id="training-methods" class="level3">
-<h3 class="anchored" data-anchor-id="training-methods">Training methods</h3>
-<p>Three broad families of methods are used to train an SNN.</p>
-<p><strong>ANN-to-SNN conversion.</strong> Train a conventional rectified-linear-unit (ReLU) network normally, then map activations to firing rates and copy the weights into a rate-coded SNN, calibrating thresholds [5], [14]. Achieves near-ANN accuracy and sidesteps the gradient problem entirely, but typically needs many time steps (high latency, eroding the energy win) and only yields rate codes.</p>
-<p><strong>Surrogate gradients.</strong> The dominant direct-training approach. Use the hard step <img src="https://benjaminhan.net/feed-assets/5df2f539a83c1694.svg" alt="\Theta" class="feed-math-inline"/> on the forward pass, but substitute a smooth surrogate derivative on the backward pass, pretending (only for gradient purposes) that the spike function had a soft slope. A common choice is the derivative of a fast sigmoid [15] or a triangular/boxcar function centered at threshold:</p>
-<p><img src="https://benjaminhan.net/feed-assets/539db9cf9170dd98.svg" alt="\frac{\partial S}{\partial U} \;\approx\; \frac{1}{\big(1 + |U - U_\text{th}|\big)^2} \quad\text{(one popular surrogate)}" class="feed-math-inline"/></p>
-<p><em>In plain terms:</em> a real spike is all-or-nothing, so its true slope is zero almost everywhere and undefined at threshold, useless for gradient descent. On the backward pass we pretend the neuron responded smoothly, with sensitivity highest right at threshold and tapering off as the voltage moves away from it.</p>
-<p>Unrolling the LIF recurrence over time and applying backpropagation-through-time then trains the network end-to-end. This is the core idea behind STBP (spatio-temporal backpropagation) [16] and is surveyed definitively by Neftci, Mostafa &amp; Zenke [1]. The broader set of supervised and unsupervised methods is reviewed by Tavanaei et al.&nbsp;[17].</p>
-<p><strong>Local / biologically-inspired plasticity.</strong> <strong>STDP</strong> is an unsupervised, local rule: a synapse strengthens if the presynaptic spike <em>precedes</em> the postsynaptic one (causal, “pre-before-post”) and weakens otherwise. The dependence was characterized experimentally by Markram et al.&nbsp;[8] and Bi &amp; Poo [7]. A standard form:</p>
-<p><img src="https://benjaminhan.net/feed-assets/a60c570ab22c3cbe.svg" alt="\Delta w = \begin{cases} A_+\, e^{-\Delta t/\tau_+} &amp;amp; \Delta t &gt; 0 \ (\text{pre before post}) \\[4pt] -A_-\, e^{\Delta t/\tau_-} &amp;amp; \Delta t &lt; 0 \ (\text{post before pre}) \end{cases}" class="feed-math-inline"/></p>
-<p><em>In plain terms:</em> if the input spike lands just before the neuron fires, the synapse is strengthened (it helped cause the spike). If it lands just after, it is weakened, and either effect fades the further apart in time the two spikes are.</p>
-<p>with <img src="https://benjaminhan.net/feed-assets/a18f1562d9737bcd.svg" alt="\Delta t = t_\text{post} - t_\text{pre}" class="feed-math-inline"/>. STDP needs no labels or global error signal and maps cleanly onto on-chip learning, but on its own it lags supervised methods on accuracy. Diehl &amp; Cook [9] is the canonical demonstration, reaching competitive MNIST accuracy with STDP alone. It remains central to the neuroscience agenda and to online-learning hardware.</p>
-</section>
-</section>
-<section id="how-biologically-realistic-is-it-really" class="level2">
-<h2 class="anchored" data-anchor-id="how-biologically-realistic-is-it-really">How biologically realistic is it, really?</h2>
-<p>SNNs are routinely described as “more biologically realistic” than conventional networks. That’s true, but in a narrower sense than the phrase suggests, and it’s worth separating what holds from what gets oversold.</p>
-<p>The claim holds at the level of <em>signal representation</em>. Real neurons communicate with discrete action potentials whose timing encodes information, and SNNs do the same. Conventional rate-based networks do neither: each unit emits a single continuous value with no temporal structure. SNNs also maintain intrinsic state (membrane potential, leak) and event-driven dynamics that mirror real neural behavior. STDP in particular was discovered experimentally in biology and then imported into SNNs, so that learning rule is genuinely biologically grounded rather than reverse-engineered. By this measure an SNN is unambiguously closer to a brain than a ReLU multilayer perceptron (MLP).</p>
-<p>But “more realistic than an ANN” is a low bar, and most working SNNs clear it and then stop:</p>
-<ul>
-<li>The standard LIF neuron is a gross simplification: a single compartment, no dendritic computation, no ion-channel dynamics, a fixed threshold. Real neurons are closer to small nonlinear networks in themselves. Hodgkin–Huxley is far more biophysically detailed, but its cost and stiff dynamics keep it almost entirely out of <em>trained</em> networks. It lives in computational-neuroscience simulation instead.</li>
-<li>The most <em>successful</em> SNNs are trained with surrogate-gradient backpropagation-through-time, and backprop is exactly the part that is biologically implausible, since it needs a global error signal, symmetric weight transport, and a backward pass the brain has no obvious mechanism for [18]. The systems that perform best are realistic in their neurons and implausible in their learning.</li>
-<li>Rate coding, the easiest regime to train, discards the spike-timing information that motivated the realism argument in the first place, leaving a spiking implementation of essentially rate-based computation.</li>
-<li>Connectivity structure, neuromodulation, glia, conduction delays, the diversity of neuron types: none of it is in a typical SNN.</li>
-</ul>
-<p>Biological realism is really an argument for using SNNs in <em>neuroscience</em> rather than in engineering. For the energy and edge-AI agenda the operative property is sparse, event-driven computation on neuromorphic hardware, an efficiency argument rather than a fidelity one. The two get conflated because “brain-like” sells, but a system can be brain-like in the way that matters for power (sparse spikes) while being quite unbrain-like in how it learns.</p>
-</section>
-<section id="potential-impact" class="level2">
-<h2 class="anchored" data-anchor-id="potential-impact">Potential impact</h2>
-<ul>
-<li><strong>Edge and always-on AI.</strong> Ultra-low-power inference for wearables, hearing aids, keyword spotting, and battery-constrained sensors: the most credible near-term commercial case.</li>
-<li><strong>Event-based vision and robotics.</strong> Pairing with <strong>event cameras</strong> (dynamic vision sensors), which output sparse per-pixel brightness-change events [19], SNNs offer microsecond-latency, low-power perception for drones, autonomous systems, and high-speed tracking.</li>
-<li><strong>Neuroscience.</strong> Large-scale spiking simulations test theories of coding, plasticity, and circuit dynamics, feeding back into our understanding of biological computation.</li>
-<li><strong>Sustainability.</strong> If the energy advantage holds at scale, neuromorphic computing is one of the few proposals that attacks the rising energy cost of AI at the architectural level rather than the process-node level.</li>
-</ul>
-<p>Most efficiency claims are realized only on matched neuromorphic hardware. On a graphics processing unit (GPU), simulating an SNN over many time steps is often <em>slower</em> and <em>more</em> energy-hungry than the equivalent conventional network. The advantage is a hardware–algorithm co-design story, not an algorithm-alone story.</p>
-</section>
-<section id="current-status" class="level2">
-<h2 class="anchored" data-anchor-id="current-status">Current status</h2>
-<p><strong>Hardware</strong> is the most mature dimension. Intel <a href="https://www.intel.com/content/www/us/en/research/neuromorphic-computing.html"><strong>Loihi 2</strong></a> (with the open <a href="https://lava-nc.org/"><strong>Lava</strong></a> software framework), IBM <strong>NorthPole</strong> [20], Manchester <strong>SpiNNaker 2</strong> [21], Heidelberg <strong>BrainScaleS-2</strong> [22], and commercial parts like <a href="https://brainchip.com/"><strong>BrainChip Akida</strong></a> and <a href="https://www.synsense.ai/"><strong>SynSense</strong></a> processors are all available to researchers or in products. These demonstrate real energy and latency wins on sparse, event-driven workloads.</p>
-<p><strong>Software</strong> has matured rapidly: <a href="https://snntorch.readthedocs.io/"><strong>snnTorch</strong></a>, <a href="https://github.com/norse/norse"><strong>Norse</strong></a>, <a href="https://github.com/fangwei123456/spikingjelly"><strong>SpikingJelly</strong></a>, <a href="https://github.com/BindsNET/bindsnet"><strong>BindsNET</strong></a>, and <a href="https://www.nengo.ai/"><strong>Nengo</strong></a> make surrogate-gradient training routine on top of PyTorch, and standardized event-based datasets (N-MNIST [23], DVS-Gesture [24], CIFAR10-DVS [25]) support benchmarking.</p>
-<p><strong>Accuracy.</strong> The gap with conventional networks is narrowing but not yet closed:</p>
-<ul>
-<li><strong>Small-to-medium and event-based tasks:</strong> surrogate-gradient SNNs are now competitive with conventional networks, and the gap is nearly closed.</li>
-<li><strong>Large-scale (ImageNet):</strong> directly-trained SNNs reached about 75% top-1 accuracy in 2023 (Spikformer [26]) and roughly 80–81% by 2024 (Spikformer V2 [27]), against the 85–90%+ of leading vision transformers and convolutional networks, narrowing from wide to a few points but not yet closing.</li>
-<li><strong>Overall:</strong> the synthesis from Roy, Jaiswal &amp; Panda [28] and the Eshraghian et al.&nbsp;tutorial [29]: the building blocks exist and the energy case is real on the right substrate, but no general-purpose, clearly-superior spiking system at scale has arrived yet.</li>
-<li><strong>The frontier:</strong> closing the accuracy gap while preserving sparsity, and developing learning rules that are both effective and hardware-local.</li>
-</ul>
-</section>
-<section id="people-and-institutions" class="level2">
-<h2 class="anchored" data-anchor-id="people-and-institutions">People and institutions</h2>
-<p><strong>Foundations and theory.</strong> Wolfgang Maass (TU Graz) framed spiking networks as the third generation and established much of their computational theory. <a href="https://www.izhikevich.org/">Eugene Izhikevich</a> (then UCSD/NSI) gave the field its most-used efficient neuron model. Wulfram Gerstner (EPFL) co-authored the standard textbook <em>Spiking Neuron Models</em>. <a href="https://en.wikipedia.org/wiki/Terry_Sejnowski">Terrence Sejnowski</a> (Salk Institute) and Sander Bohte (CWI) contributed early coding and learning work.</p>
-<p><strong>Training methodology.</strong> Emre Neftci (now Forschungszentrum Jülich / RWTH Aachen) and <a href="https://zenkelab.org/">Friedemann Zenke</a> (Friedrich Miescher Institute, Basel) are central figures in surrogate-gradient learning. Timothée Masquelier (CNRS, Toulouse) works on STDP and temporal coding. Kaushik Roy (Purdue) leads spike-based deep learning and its hardware co-design. <a href="https://www.jasoneshraghian.com/">Jason Eshraghian</a> (UC Santa Cruz) authored the widely-used snnTorch tutorial-paper and library.</p>
-<p><strong>Neuromorphic hardware.</strong> <a href="https://en.wikipedia.org/wiki/Carver_Mead">Carver Mead</a> (Caltech) coined “neuromorphic” in the 1980s [30]. Giacomo Indiveri (Institute of Neuroinformatics, ETH Zurich / University of Zurich) is a leading mixed-signal neuromorphic engineer. <a href="https://en.wikipedia.org/wiki/Steve_Furber">Steve Furber</a> (University of Manchester) built <strong>SpiNNaker</strong> [31]. The late Karlheinz Meier (Heidelberg) drove <strong>BrainScaleS</strong>. <a href="https://modha.org/">Dharmendra Modha</a> led <strong>IBM TrueNorth</strong> [32] (and later NorthPole [20]). Mike Davies leads Intel’s <strong>Loihi</strong> [33] program. These efforts were heavily catalyzed by the EU <a href="https://en.wikipedia.org/wiki/Human_Brain_Project">Human Brain Project</a> (2013–2023, now continued as the EBRAINS research infrastructure) and the US <a href="https://en.wikipedia.org/wiki/SyNAPSE">DARPA SyNAPSE</a> program (2008–2014).</p>
-<p><strong>Today.</strong> The field’s center of gravity is shifting from big-science programs to a commercial wave: <a href="https://en.wikipedia.org/wiki/BrainChip">BrainChip</a> (Akida), <a href="https://www.synsense.ai/">SynSense</a>, and <a href="https://innatera.com/">Innatera</a> now ship neuromorphic silicon aimed at low-power edge sensing, while the academic side stays active through Intel’s Neuromorphic Research Community and continued SpiNNaker 2 work at Manchester and TU Dresden.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Neftci, E. O., Mostafa, H. &amp; Zenke, F. (2019). <em>Surrogate Gradient Learning in Spiking Neural Networks.</em> <strong>IEEE Signal Processing Magazine</strong>, 36(6), 51–63. arXiv:<a href="https://arxiv.org/abs/1901.09948">1901.09948</a></li>
-<li><a id="ref-2"></a>Maass, W. (1997). <em>Networks of spiking neurons: The third generation of neural network models.</em> <strong>Neural Networks</strong>, 10(9), 1659–1671. DOI: <a href="https://doi.org/10.1016/S0893-6080(97)00011-7">10.1016/S0893-6080(97)00011-7</a></li>
-<li><a id="ref-3"></a>McCulloch, W. S. &amp; Pitts, W. (1943). <em>A logical calculus of the ideas immanent in nervous activity.</em> <strong>Bulletin of Mathematical Biophysics</strong>, 5, 115–133. DOI: <a href="https://doi.org/10.1007/BF02478259">10.1007/BF02478259</a></li>
-<li><a id="ref-4"></a>Hodgkin, A. L. &amp; Huxley, A. F. (1952). <em>A quantitative description of membrane current and its application to conduction and excitation in nerve.</em> <strong>Journal of Physiology</strong>, 117(4), 500–544.</li>
-<li><a id="ref-5"></a>Diehl, P. U., Neil, D., Binas, J., Cook, M., Liu, S.-C. &amp; Pfeiffer, M. (2015). <em>Fast-classifying, high-accuracy spiking deep networks through weight and threshold balancing.</em> <strong>2015 International Joint Conference on Neural Networks (IJCNN)</strong>, 1–8. DOI: <a href="https://doi.org/10.1109/IJCNN.2015.7280696">10.1109/IJCNN.2015.7280696</a></li>
-<li><a id="ref-6"></a>Werbos, P. J. (1990). <em>Backpropagation through time: what it does and how to do it.</em> <strong>Proceedings of the IEEE</strong>, 78(10), 1550–1560. DOI: <a href="https://doi.org/10.1109/5.58337">10.1109/5.58337</a></li>
-<li><a id="ref-7"></a>Bi, G.-Q. &amp; Poo, M.-M. (1998). <em>Synaptic modifications in cultured hippocampal neurons: dependence on spike timing, synaptic strength, and postsynaptic cell type.</em> <strong>Journal of Neuroscience</strong>, 18(24), 10464–10472. DOI: <a href="https://doi.org/10.1523/JNEUROSCI.18-24-10464.1998">10.1523/JNEUROSCI.18-24-10464.1998</a></li>
-<li><a id="ref-8"></a>Markram, H., Lübke, J., Frotscher, M. &amp; Sakmann, B. (1997). <em>Regulation of synaptic efficacy by coincidence of postsynaptic APs and EPSPs.</em> <strong>Science</strong>, 275(5297), 213–215. DOI: <a href="https://doi.org/10.1126/science.275.5297.213">10.1126/science.275.5297.213</a></li>
-<li><a id="ref-9"></a>Diehl, P. U. &amp; Cook, M. (2015). <em>Unsupervised learning of digit recognition using spike-timing-dependent plasticity.</em> <strong>Frontiers in Computational Neuroscience</strong>, 9:99.</li>
-<li><a id="ref-10"></a>Izhikevich, E. M. (2003). <em>Simple model of spiking neurons.</em> <strong>IEEE Transactions on Neural Networks</strong>, 14(6), 1569–1572. DOI: <a href="https://doi.org/10.1109/TNN.2003.820440">10.1109/TNN.2003.820440</a></li>
-<li><a id="ref-11"></a>Gerstner, W. &amp; Kistler, W. M. (2002). <em>Spiking Neuron Models: Single Neurons, Populations, Plasticity.</em> Cambridge University Press.</li>
-<li><a id="ref-12"></a>Eliasmith, C. &amp; Anderson, C. H. (2003). <em>Neural Engineering: Computation, Representation, and Dynamics in Neurobiological Systems.</em> MIT Press.</li>
-<li><a id="ref-13"></a>Georgopoulos, A. P., Schwartz, A. B. &amp; Kettner, R. E. (1986). <em>Neuronal population coding of movement direction.</em> <strong>Science</strong>, 233(4771), 1416–1419. DOI: <a href="https://doi.org/10.1126/science.3749885">10.1126/science.3749885</a></li>
-<li><a id="ref-14"></a>Rueckauer, B., Lungu, I.-A., Hu, Y., Pfeiffer, M. &amp; Liu, S.-C. (2017). <em>Conversion of Continuous-Valued Deep Networks to Efficient Event-Driven Networks for Image Classification.</em> <strong>Frontiers in Neuroscience</strong>, 11:682. DOI: <a href="https://doi.org/10.3389/fnins.2017.00682">10.3389/fnins.2017.00682</a></li>
-<li><a id="ref-15"></a>Zenke, F. &amp; Ganguli, S. (2018). <em>SuperSpike: Supervised Learning in Multilayer Spiking Neural Networks.</em> <strong>Neural Computation</strong>, 30(6), 1514–1541. DOI: <a href="https://doi.org/10.1162/neco_a_01086">10.1162/neco_a_01086</a></li>
-<li><a id="ref-16"></a>Wu, Y., Deng, L., Li, G., Zhu, J. &amp; Shi, L. (2018). <em>Spatio-Temporal Backpropagation for Training High-Performance Spiking Neural Networks.</em> <strong>Frontiers in Neuroscience</strong>, 12:331. arXiv:<a href="https://arxiv.org/abs/1706.02609">1706.02609</a>, DOI: <a href="https://doi.org/10.3389/fnins.2018.00331">10.3389/fnins.2018.00331</a></li>
-<li><a id="ref-17"></a>Tavanaei, A., Ghodrati, M., Kheradpisheh, S. R., Masquelier, T. &amp; Maida, A. (2019). <em>Deep Learning in Spiking Neural Networks.</em> <strong>Neural Networks</strong>, 111, 47–63. arXiv:<a href="https://arxiv.org/abs/1804.08150">1804.08150</a>, DOI: <a href="https://doi.org/10.1016/j.neunet.2018.12.002">10.1016/j.neunet.2018.12.002</a></li>
-<li><a id="ref-18"></a>Lillicrap, T. P., Cownden, D., Tweed, D. B. &amp; Akerman, C. J. (2016). <em>Random synaptic feedback weights support error backpropagation for deep learning.</em> <strong>Nature Communications</strong>, 7:13276. DOI: <a href="https://doi.org/10.1038/ncomms13276">10.1038/ncomms13276</a></li>
-<li><a id="ref-19"></a>Gallego, G., et al.&nbsp;(2022). <em>Event-Based Vision: A Survey.</em> <strong>IEEE Transactions on Pattern Analysis and Machine Intelligence</strong>, 44(1), 154–180. DOI: <a href="https://doi.org/10.1109/TPAMI.2020.3008413">10.1109/TPAMI.2020.3008413</a></li>
-<li><a id="ref-20"></a>Modha, D. S., et al.&nbsp;(2023). <em>Neural inference at the frontier of energy, space, and time.</em> <strong>Science</strong>, 382(6668), 329–335. DOI: <a href="https://doi.org/10.1126/science.adh1174">10.1126/science.adh1174</a></li>
-<li><a id="ref-21"></a>Mayr, C., Hoeppner, S. &amp; Furber, S. (2019). <em>SpiNNaker 2: A 10 Million Core Processor System for Brain Simulation and Machine Learning.</em> arXiv:<a href="https://arxiv.org/abs/1911.02385">1911.02385</a></li>
-<li><a id="ref-22"></a>Pehle, C., Billaudelle, S., Cramer, B., et al.&nbsp;(2022). <em>The BrainScaleS-2 Accelerated Neuromorphic System with Hybrid Plasticity.</em> <strong>Frontiers in Neuroscience</strong>, 16:795876. arXiv:<a href="https://arxiv.org/abs/2201.11063">2201.11063</a>, DOI: <a href="https://doi.org/10.3389/fnins.2022.795876">10.3389/fnins.2022.795876</a></li>
-<li><a id="ref-23"></a>Orchard, G., Jayawant, A., Cohen, G. K. &amp; Thakor, N. (2015). <em>Converting Static Image Datasets to Spiking Neuromorphic Datasets Using Saccades.</em> <strong>Frontiers in Neuroscience</strong>, 9:437. DOI: <a href="https://doi.org/10.3389/fnins.2015.00437">10.3389/fnins.2015.00437</a></li>
-<li><a id="ref-24"></a>Amir, A., et al.&nbsp;(2017). <em>A Low Power, Fully Event-Based Gesture Recognition System.</em> <strong>2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)</strong>, 7243–7252. DOI: <a href="https://doi.org/10.1109/CVPR.2017.781">10.1109/CVPR.2017.781</a></li>
-<li><a id="ref-25"></a>Li, H., Liu, H., Ji, X., Li, G. &amp; Shi, L. (2017). <em>CIFAR10-DVS: An Event-Stream Dataset for Object Classification.</em> <strong>Frontiers in Neuroscience</strong>, 11:309. DOI: <a href="https://doi.org/10.3389/fnins.2017.00309">10.3389/fnins.2017.00309</a></li>
-<li><a id="ref-26"></a>Zhou, Z., Zhu, Y., He, C., Wang, Y., Yan, S., Tian, Y. &amp; Yuan, L. (2023). <em>Spikformer: When Spiking Neural Network Meets Transformer.</em> <strong>International Conference on Learning Representations (ICLR)</strong>. arXiv:<a href="https://arxiv.org/abs/2209.15425">2209.15425</a></li>
-<li><a id="ref-27"></a>Zhou, Z., et al.&nbsp;(2024). <em>Spikformer V2: Join the High Accuracy Club on ImageNet with an SNN Ticket.</em> arXiv:<a href="https://arxiv.org/abs/2401.02020">2401.02020</a></li>
-<li><a id="ref-28"></a>Roy, K., Jaiswal, A. &amp; Panda, P. (2019). <em>Towards spike-based machine intelligence with neuromorphic computing.</em> <strong>Nature</strong>, 575, 607–617. DOI: <a href="https://doi.org/10.1038/s41586-019-1677-2">10.1038/s41586-019-1677-2</a></li>
-<li><a id="ref-29"></a>Eshraghian, J. K., et al.&nbsp;(2023). <em>Training Spiking Neural Networks Using Lessons From Deep Learning.</em> <strong>Proceedings of the IEEE</strong>, 111(9), 1016–1054. arXiv:<a href="https://arxiv.org/abs/2109.12894">2109.12894</a></li>
-<li><a id="ref-30"></a>Mead, C. (1990). <em>Neuromorphic electronic systems.</em> <strong>Proceedings of the IEEE</strong>, 78(10), 1629–1636. DOI: <a href="https://doi.org/10.1109/5.58356">10.1109/5.58356</a></li>
-<li><a id="ref-31"></a>Furber, S. B., Galluppi, F., Temple, S. &amp; Plana, L. A. (2014). <em>The SpiNNaker Project.</em> <strong>Proceedings of the IEEE</strong>, 102(5), 652–665.</li>
-<li><a id="ref-32"></a>Merolla, P. A., et al.&nbsp;(2014). <em>A million spiking-neuron integrated circuit with a scalable communication network and interface (TrueNorth).</em> <strong>Science</strong>, 345(6197), 668–673. DOI: <a href="https://doi.org/10.1126/science.1254642">10.1126/science.1254642</a></li>
-<li><a id="ref-33"></a>Davies, M., et al.&nbsp;(2018). <em>Loihi: A Neuromorphic Manycore Processor with On-Chip Learning.</em> <strong>IEEE Micro</strong>, 38(1), 82–99.</li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20220130-physical-neural-networks/">Physical Neural Networks</a>: the closest sibling — training non-digital substrates (optics, electronics, mechanics) by backpropagation, the same “compute outside the von Neumann box” instinct that motivates neuromorphic SNN hardware.</li>
-<li><a href="../../posts/20260523-yann-lecun-after-llms/">Yann LeCun on What Comes After LLMs</a>: a frontier-AI argument that the next architectures may look less like today’s dense transformers, adjacent to the brain-inspired, energy-first case for spiking models.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/</guid>
-  <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260620-spiking-neural-networks-primer/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

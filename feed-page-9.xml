@@ -21,7 +21,113 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 27 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 29 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260513-gepa/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260513-gepa/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-gepa/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</em> [1] (<a href="https://iclr.cc/">ICLR 2026 Oral</a>), <a href="https://lakshyaaagrawal.github.io/">Lakshya A. Agrawal</a> (UC Berkeley), <a href="https://people.eecs.berkeley.edu/~matei/">Matei Zaharia</a> (UC Berkeley / Databricks), <a href="https://omarkhattab.com/">Omar Khattab</a> (MIT), and 14 co-authors across UC Berkeley, Stanford, Notre Dame, BespokeLabs.ai, Databricks, and MIT argue that natural-language reflection on sampled trajectories is a richer learning signal than scalar rewards, and introduce GEPA (Genetic-Pareto), a prompt optimizer that outperforms Group Relative Policy Optimization (GRPO) [2] while using far fewer rollouts.</p>
+<blockquote class="blockquote">
+<p>Large language models (LLMs) are increasingly adapted to downstream tasks via reinforcement learning (RL) methods like Group Relative Policy Optimization (GRPO), which often require thousands of rollouts to learn new tasks. We argue that the interpretable nature of language often provides a much richer learning medium for LLMs, compared to policy gradients derived from sparse, scalar rewards. To test this, we introduce <strong>GEPA (Genetic-Pareto)</strong>, a prompt optimizer that thoroughly incorporates <strong>natural language reflection</strong> to learn high-level rules from trial and error. Given any AI system containing one or more LLM prompts, GEPA samples trajectories (e.g., reasoning, tool calls, and tool outputs) and reflects on them in natural language to diagnose problems, propose and test prompt updates, and combine complementary lessons from the <strong>Pareto frontier of its own attempts</strong>. As a result of GEPA’s design, it can often turn even just a few rollouts into a large quality gain. Across six tasks, <strong>GEPA outperforms GRPO by 6% on average and by up to 20%, while using up to 35x fewer rollouts</strong>. GEPA also <strong>outperforms the leading prompt optimizer, MIPROv2, by over 10%</strong> (e.g., <strong>+12% accuracy on AIME-2025</strong>), and demonstrates promising results as an inference-time search strategy for code optimization. We release our code at <a href="https://github.com/gepa-ai/gepa" class="uri">https://github.com/gepa-ai/gepa</a>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>A <em>compound AI system</em>, in the paper’s (and <a href="https://dspy.ai/">DSPy</a>’s) vocabulary, is a pipeline of one or more LLM-invoked <em>modules</em> — each a distinct prompted call (e.g., a first-hop query generator, a second-hop query generator, an answer generator in a multi-hop QA pipeline) — potentially interleaved with tool calls. Each module has its own prompt, which GEPA can optimize independently.</p>
+<p>GEPA treats each prompt in a compound AI system as a <em>gene</em> and maintains a pool of candidate programs. At each iteration (Figure 3), GEPA proposes a new candidate using one of two <em>genetic operators</em> — a single-parent <em>mutation</em> or a two-parent <em>crossover</em> — and evaluates it on a minibatch. If the minibatch score improves over the parent, the candidate is promoted to evaluation on the full training set and added to the pool. The default operator is reflective mutation; crossover (Merge) fires opportunistically when the pool contains two candidates that share a common ancestor, have optimized disjoint sets of prompts, are both Pareto-optimal, and both beat the ancestor in aggregate — with a hard cap of five merges per run.</p>
+<p>The two operators are:</p>
+<ul>
+<li><strong>Reflective Prompt Mutation</strong> samples trajectories from one candidate — reasoning, tool calls, and tool outputs — and feeds them to a reflector LM that writes a natural-language diagnosis of what went wrong and proposes an edited prompt for a single module. Figure 5 traces this on PUPA [3] — a benchmark for <em>privacy-conscious delegation</em>, where a trusted local model must answer user queries containing personally identifiable information (PII) using an untrusted API model as a helper, without leaking PII. Starting from a short base instruction (“Create a privacy-preserving request for a powerful external LLM that can assist without learning private information about the user.”), each successful child adds a concrete nuance the reflector extracted from a failure — expanded privacy strategies, explicit PII categories and generalizations, structured output and domain best-practices, then a detailed transformation rationale, ending at a strict exhaustive protocol that bans partial redaction and demands auditable zero-leakage. The prompt accumulates lessons rather than being rewritten wholesale. In the figure below, red arrows mark the promoted lineage from candidate 0 to the best candidate (11), with scores in parentheses.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-gepa/figure5.webp" class="img-fluid figure-img" data-lightbox-src="figure5-full.png"></p>
+<figcaption>Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>System-Aware Merge</strong> takes two qualifying descendants of a common ancestor and assembles a child module-by-module. For each module, if one descendant changed the ancestor’s prompt and the other left it untouched, the child inherits the changed version; if both descendants changed it, the child inherits from the higher-scoring parent (ties broken randomly); if neither changed it, it stays at the ancestor’s version. No LLM call is made — the whole step is a textual combine over existing prompts, which is why the paper calls it <em>system-aware</em> crossover rather than a mutation. Merge works only when the two parents have explored disjoint modules, so complementary improvements can compose without stepping on each other.</li>
+</ul>
+<p>Parent selection is Pareto-based rather than greedy. Instead of always mutating the best-scoring candidate, GEPA maintains a per-task score matrix over its history and samples parents from the <a href="https://en.wikipedia.org/wiki/Pareto_front">Pareto frontier</a> — the set of candidates that no other candidate beats on every task — which prevents a locally strong candidate from dominating the search. The paper reports two named variants, “GEPA” using reflective mutation only and “GEPA+Merge” using both mutation and merge; both share the Pareto-based selector and the minibatch-then-full-set gate. The optimizer is agnostic to the downstream task: it needs a trajectory sampler, a metric, and a reflector LM.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Six tasks — HotpotQA [4], HoVer [5], IFBench [6], PUPA [3], AIME-2025 [7], and LiveBench-Math [8] — using <a href="https://openai.com/index/gpt-4-1/">GPT-4.1 Mini</a> and <a href="https://huggingface.co/Qwen/Qwen3-8B">Qwen3-8B</a> as task models.</p>
+<ul>
+<li><strong>Qwen3-8B</strong>: GEPA beats GRPO on five of the six benchmarks, losing only on AIME-2025. IFBench makes the gap sharp — GEPA reaches 38.61% after 678 rollouts, above GRPO’s 35.88% at 24,000. Averaged across the six tasks, GEPA is +6% over GRPO and up to +20% on the best task, with up to <img src="https://benjaminhan.net/feed-assets/30b35fa24a459dc4.svg" alt="35\times" class="feed-math-inline"/> fewer <em>rollouts</em> (trajectories sampled from the current policy during training). GEPA+Merge is less reliable here: it also trails GRPO on IFBench and PUPA, which the paper attributes to Merge’s hyperparameters being tuned for GPT-4.1 Mini rather than Qwen3-8B.</li>
+<li><strong>GPT-4.1 Mini</strong>: GEPA is evaluated as a drop-in prompt optimizer against MIPROv2 [9] in two settings (instruction-only “MIPROv2-No-Demos” and joint instruction-plus-few-shot “MIPROv2”), Trace [10] with its OptoPrime optimizer, and TextGrad [11] <!-- crosslink-todo: /posts/20260503-textgrad/ -->. GEPA wins on every benchmark, with margins as wide as 11% (HotpotQA, PUPA). The abstract highlights +12% on AIME-2025. A GEPA-Qwen-Opt variant optimized entirely on Qwen3-8B gets +9% when run on GPT-4.1 Mini without modification, outperforming every baseline that was optimized directly on GPT-4.1 Mini.</li>
+</ul>
+<p>Beyond benchmarks, the paper reports GEPA as a promising inference-time search strategy for CUDA kernel optimization, iteratively improving kernels against a PyTorch-eager baseline.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-gepa/tables1-2.webp" class="img-fluid figure-img" data-lightbox-src="tables1-2-full.png"></p>
+<figcaption>Tables 1 and 2 from the paper [1]: benchmark results on Qwen3-8B (top) and GPT-4.1 Mini (bottom).</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Reflection beats policy gradients</strong>: GRPO wastes signal already present in each trajectory, in three ways.
+<ul>
+<li><em>Information content</em>: GRPO consumes a trajectory as a single scalar reward (normalized against the group’s own mean and standard deviation, the “Group Relative” that replaces PPO’s learned critic), throwing away which tool call was wrong, which instruction was ambiguous, which demonstration misled the model. A reflector LM reading the same trajectory can name all three and edit the one prompt that caused the failure.</li>
+<li><em>Variance</em>: because each rollout contributes one noisy scalar, GRPO needs thousands of rollouts before the gradient estimate stabilizes. A natural-language critique encodes structured per-module diagnosis, so one rollout already yields usable signal.</li>
+<li><em>Credit assignment</em>: GRPO’s policy-gradient update spreads the scalar reward across every token of every module in the rollout, even when only one module was responsible. Reflection attributes the failure to a single module and leaves the rest alone.</li>
+<li>The same pattern shows up in <a href="../../posts/20260516-self-refine/">Self-Refine</a> and <a href="../../posts/20260516-reflexion/">Reflexion</a>, where verbal feedback outperforms scalar reward at comparable compute. GEPA is the first paper I have seen that posts the head-to-head against GRPO on matched tasks.</li>
+</ul></li>
+<li><strong>The Pareto-frontier selector is the generalizable part</strong>: Sampling mutation parents from the Pareto frontier rather than argmax prevents collapse to a single best candidate, which is the same mode-collapse problem that shows up in <a href="../../posts/20260515-promptbreeder/">evolutionary prompt search</a> and RL fine-tuning. The mechanism is general enough to drop into any iterative search where candidates have multi-dimensional scores (accuracy vs.&nbsp;cost, or task A vs.&nbsp;task B), and I expect to see it reused well past prompt optimization.</li>
+<li><strong>Beating MIPROv2 without Bayesian optimization</strong>: This is a substantive methodological claim. MIPROv2 [9] <!-- crosslink-todo: /posts/20260503-miprov2/ --> spends its budget on a Bayesian surrogate over instruction and demonstration hyperparameters. GEPA discards the surrogate and spends the same budget on reflective rewrites plus merge. The result suggests the Bayesian model in MIPROv2 was under-using the trajectory information MIPROv2 already had access to, and the proposer was not reading the failures carefully enough. Several authors overlap between the two papers, so the comparison is a within-lab course-correction rather than an external critique.</li>
+<li><strong>The paper doesn’t say what reflector it used</strong>: Appendix E.2 lists Qwen3-8B and GPT-4.1 Mini as the <em>task</em> models but never specifies the reflection LM. The <a href="https://github.com/gepa-ai/gepa">gepa-ai/gepa repo</a> quickstart pairs GPT-5 as reflector with GPT-4.1 Mini as task, a stronger model reading a weaker one’s trajectories. Without the reflector spec or an ablation, we can’t tell whether GEPA corroborates or contradicts the just-ask calibration [12] <!-- crosslink-todo: /posts/20260503-just-ask-calibration/ --> and <a href="../../posts/20260505-llm-uncertainty-survey/">uncertainty-quantification</a> findings that single-model self-evaluation is unreliable.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://lakshyaaagrawal.github.io/">Agrawal, L. A.</a>, <a href="https://www.shangyintan.com/">Tan, S.</a>, <a href="https://dilarasoylu.github.io/">Soylu, D.</a>, <a href="https://ziems.github.io/">Ziems, N.</a>, <a href="https://www.linkedin.com/in/rishikhare/">Khare, R.</a>, <a href="https://www.linkedin.com/in/krista-opsahl-ong/">Opsahl-Ong, K.</a>, <a href="https://arnavs.com/">Singhvi, A.</a>, <a href="https://www.linkedin.com/in/herumb-shandilya/">Shandilya, H.</a>, <a href="https://michryan.com/">Ryan, M. J.</a>, <a href="https://www3.nd.edu/~mjiang2/">Jiang, M.</a>, <a href="https://web.stanford.edu/~cgpotts/">Potts, C.</a>, <a href="https://people.eecs.berkeley.edu/~ksen/">Sen, K.</a>, <a href="https://people.eecs.berkeley.edu/~alexdimakis/">Dimakis, A. G.</a>, <a href="https://people.eecs.berkeley.edu/~istoica/">Stoica, I.</a>, <a href="https://people.eecs.berkeley.edu/~klein/">Klein, D.</a>, <a href="https://people.eecs.berkeley.edu/~matei/">Zaharia, M.</a>, <a href="https://omarkhattab.com/">Khattab, O.</a> “GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning.” <em>ICLR 2026 (Oral)</em> (arXiv:2507.19457), July 25, 2025. <a href="https://arxiv.org/abs/2507.19457" class="uri">https://arxiv.org/abs/2507.19457</a></li>
+<li><a id="ref-2"></a><a href="https://zhshao.com/">Shao, Z.</a>, et al.&nbsp;“DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.” <em>arXiv preprint</em> (arXiv:2402.03300), February 5, 2024. <a href="https://arxiv.org/abs/2402.03300" class="uri">https://arxiv.org/abs/2402.03300</a></li>
+<li><a id="ref-3"></a>Li, S., Raghuram, V. C., Khattab, O., Hirschberg, J., Yu, Z. “PAPILLON: Privacy Preservation from Internet-based and Local Language Model Ensembles (introduces the PUPA benchmark for Privacy-Conscious Delegation).” <em>NAACL 2025 (Volume 1: Long Papers)</em>. <a href="https://aclanthology.org/2025.naacl-long.173/" class="uri">https://aclanthology.org/2025.naacl-long.173/</a></li>
+<li><a id="ref-4"></a>Yang, Z., Qi, P., Zhang, S., Bengio, Y., Cohen, W. W., Salakhutdinov, R., Manning, C. D. “HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering.” <em>EMNLP 2018</em> (arXiv:1809.09600). <a href="https://arxiv.org/abs/1809.09600" class="uri">https://arxiv.org/abs/1809.09600</a></li>
+<li><a id="ref-5"></a>Jiang, Y., Bordia, S., Zhong, Z., Dognin, C., Singh, M., Bansal, M. “HoVer: A Dataset for Many-Hop Fact Extraction and Claim Verification.” <em>Findings of EMNLP 2020</em>, pp.&nbsp;3441–3460, November 2020. <a href="https://aclanthology.org/2020.findings-emnlp.309/" class="uri">https://aclanthology.org/2020.findings-emnlp.309/</a></li>
+<li><a id="ref-6"></a>Pyatkin, V., Malik, S., Graf, V., Ivison, H., Huang, S., Dasigi, P., Lambert, N., Hajishirzi, H. “Generalizing Verifiable Instruction Following (IFBench).” <em>arXiv preprint</em> (arXiv:2507.02833), 2025. <a href="https://arxiv.org/abs/2507.02833" class="uri">https://arxiv.org/abs/2507.02833</a></li>
+<li><a id="ref-7"></a>Balunović, M., Dekoninck, J., Petrov, I., Jovanović, N., Vechev, M. “AIME-2025 (MathArena: Evaluating LLMs on Uncontaminated Math Competitions).” Dataset, February 2025. <a href="https://huggingface.co/datasets/MathArena/aime_2025" class="uri">https://huggingface.co/datasets/MathArena/aime_2025</a></li>
+<li><a id="ref-8"></a>White, C., Dooley, S., Roberts, M., Pal, A., Feuer, B., Jain, S., Shwartz-Ziv, R., Jain, N., Saifullah, K., Dey, S., Shubh-Agrawal, Sandha, S. S., Naidu, S., Hegde, C., LeCun, Y., Goldstein, T., Neiswanger, W., Goldblum, M. “LiveBench: A Challenging, Contamination-Limited LLM Benchmark.” <em>arXiv preprint</em> (arXiv:2406.19314), 2025. <a href="https://arxiv.org/abs/2406.19314" class="uri">https://arxiv.org/abs/2406.19314</a></li>
+<li><a id="ref-9"></a>Opsahl-Ong, K., Ryan, M. J., et al.&nbsp;“Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs.” <em>EMNLP 2024</em> (arXiv:2406.11695), June 17, 2024. <a href="https://arxiv.org/abs/2406.11695" class="uri">https://arxiv.org/abs/2406.11695</a></li>
+<li><a id="ref-10"></a>Cheng, C.-A., Nie, A., Swaminathan, A. “Trace is the Next AutoDiff: Generative Optimization with Rich Feedback, Execution Traces, and LLMs.” <em>arXiv preprint</em> (arXiv:2406.16218), 2024. <a href="https://arxiv.org/abs/2406.16218" class="uri">https://arxiv.org/abs/2406.16218</a></li>
+<li><a id="ref-11"></a><a href="https://cs.stanford.edu/~merty/">Yuksekgonul, M.</a>, <a href="https://federicobianchi.io/">Bianchi, F.</a>, <a href="https://www.linkedin.com/in/joseph-boen/">Boen, J.</a>, <a href="https://shengliu66.github.io/">Liu, S.</a>, <a href="https://zhihuang.dev/">Huang, Z.</a>, <a href="https://guestrin.su.domains/">Guestrin, C.</a>, <a href="https://www.james-zou.com/">Zou, J.</a> “TextGrad: Automatic ‘Differentiation’ via Text.” <em>arXiv preprint</em> (arXiv:2406.07496), June 11, 2024. <a href="https://arxiv.org/abs/2406.07496" class="uri">https://arxiv.org/abs/2406.07496</a></li>
+<li><a id="ref-12"></a>Tian, K., Mitchell, E., Zhou, A., Sharma, A., Rafailov, R., Yao, H., Finn, C., Manning, C. D. “Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback.” <em>EMNLP 2023</em> (arXiv:2305.14975), May 24, 2023. <a href="https://arxiv.org/abs/2305.14975" class="uri">https://arxiv.org/abs/2305.14975</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260515-promptbreeder/">Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution</a>: the evolutionary-operator predecessor GEPA improves on, replacing fixed mutation operators with reflective natural-language rewrites.</li>
+<li><a href="../../posts/20260514-ape/">Large Language Models Are Human-Level Prompt Engineers (APE)</a>: the propose-score-select origin of LLM-driven prompt search that GEPA extends with trajectory reflection and Pareto selection.</li>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: the compound-AI-system framework whose modules-and-metric vocabulary GEPA optimizes over, from the same Khattab-Zaharia lab.</li>
+<li><a href="../../posts/20260516-self-refine/">Self-Refine: Iterative Refinement with Self-Feedback</a>: the same bet that natural-language critique beats scalar reward, which GEPA runs head-to-head against GRPO.</li>
+<li><a href="../../posts/20260512-score/">Training Language Models to Self-Correct via Reinforcement Learning (SCoRe)</a>: the RL-side counterpart, improving the policy via reward where GEPA argues reflection extracts more signal per rollout.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260513-gepa/</guid>
+  <pubDate>Wed, 13 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260513-gepa/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>The Math Behind the Cost of AI Agents</title>
   <dc:creator>synesis </dc:creator>
@@ -1731,82 +1837,6 @@
   <guid>https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/</guid>
   <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260508-dawkins-ai-conscious/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Are AI Systems About to Start Building Themselves?</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://importai.substack.com/">Import AI</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://jack-clark.net/">Jack Clark</a>, co-founder and policy lead at Anthropic, <a href="https://importai.substack.com/p/import-ai-455-automating-ai-research">walks through</a> the public evidence that automated AI research and development (R&amp;D), a frontier model autonomously training its own successor, has a roughly 60% chance of arriving by the end of 2028, and a 30% chance by 2027. The essay collects benchmark trends across coding, scientific reproduction, kernel design, fine-tuning, alignment-research automation, and time-horizon scaling, then argues each of those covers a distinct ingredient of the AI-engineering pipeline.</p>
-<p>What Clark argues:</p>
-<ul>
-<li><p><strong>Coding and time horizon are the foundation.</strong> SWE-Bench [1] went from ~2% (Claude 2, late 2023) to 93.9% (Claude Mythos Preview), and the <a href="https://metr.org/">Model Evaluation and Threat Research (METR)</a> 50%-reliability time horizon [2] went from ~30 seconds (GPT-3.5, 2022) to ~12 hours (Opus 4.6, 2026), with <a href="https://www.openphilanthropy.org/about/team/ajeya-cotra/">Ajeya Cotra</a> (AI forecaster at METR) expecting ~100 hours by the end of 2026. Long horizons are what let an agent run a day’s worth of researcher work without re-calibration.</p></li>
-<li><p><strong>Every sub-skill of the AI-R&amp;D pipeline has a trending benchmark.</strong> Paper reproduction (CORE-Bench [3]) went from 21.5% (GPT-4o, Sept 2024) to 95.5% declared solved (Opus 4.5, Dec 2025). Kaggle-style ML engineering (MLE-Bench [4]) went from 16.9% (o1, Oct 2024) to 64.4% (Gemini 3 with search, Feb 2026). On PostTrainBench [5], Opus 4.6 and GPT-5.4 get 25–28% against a human-instruct-tuned baseline of 51%. GPU kernel design has several active research lines (DeepSeek kernels, Meta Triton automation, Huawei Ascend, CUDA Agent fine-tuning), though Clark notes kernels benefit from easily verifiable rewards. And Anthropic’s Automated Alignment Research proof-of-concept has AI agents beating a human baseline on scalable oversight at small scale.</p></li>
-<li><p><strong>Training-loop optimization is the cleanest single trend.</strong> On Anthropic’s internal CPU-only language-model training task [6], speedup went from 2.9x (Opus 4, May 2025) to 16.5x (Opus 4.5, Nov 2025) to 30x (Opus 4.6, Feb 2026) to 52x (Mythos Preview, Apr 2026), against a human baseline of 4x in 4–8 hours.</p></li>
-<li><p><strong>Management is a meta-skill.</strong> Claude Code and OpenCode already show a single agent supervising sub-agents, forming synthetic teams with directors, critics, and engineers that can fan out across a complex project.</p></li>
-<li><p><strong>Creativity is why 2027 sits at 30% rather than 60%.</strong> Clark argues AI research is mostly Edison’s 99% perspiration, the engineering schlep the benchmarks above already cover, but paradigm shifts like the transformer or mixture-of-experts still come from humans. Preliminary creativity signs (a Gemini model resolving Erdős-1051 [7]; a UBC / UNSW / Stanford / Google DeepMind centaur math proof [8]) cluster in math and CS and may not generalize. The 2027 gap is his estimate of how often a year-scale human insight is still required. If no proof-of-concept lands by end of 2028, he treats that as evidence the current paradigm has a fundamental gap.</p></li>
-<li><p><strong>Industry intent as corroboration.</strong> OpenAI targets an “automated AI research intern by September 2026” [9]; Anthropic publishes automated alignment research [10]; DeepMind endorses alignment automation “when feasible” [11]; Recursive Superintelligence raised $500M for AI-R&amp;D automation [12] and Mirendil [13] targets the same. Hundreds of billions of capital is aimed at this outcome.</p></li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p>None of these benchmarks individually proves recursive self-improvement, but together they describe a system that can do most of the engineering schlep without supervision.</p></li>
-<li><p>Clark puts 30% on automated AI R&amp;D by 2027 and 60% by 2028. The gap is a bet that some research insights still come from humans on a year-or-more cadence. The creativity window is on the order of a year.</p></li>
-<li><p>The Aletheia/Erdős-problems pipeline [7] evaluated around 700 conjectures and produced 13 addressable problems — 5 novel autonomous solutions plus 8 that turned out to match existing literature — with 1 deemed genuinely interesting. A funnel dominated by human filtering. That fits <a href="https://en.wikipedia.org/wiki/Terence_Tao">Terence Tao</a>’s <a href="../../posts/20260422-proof-generation-vs-digestion/">generation / verification / digestion decomposition</a>: AI is strong on the first two, and the research taste stays with the humans doing digestion. Clark describes this as a “centaur configuration”: humans collaborating with AI rather than AI acting alone. The pattern is real, but human mathematicians are still the scarce input.</p></li>
-<li><p>On Anthropic’s CPU-only training-optimization benchmark, the 2.9x → 52x speedup chain hasn’t flattened, and the human 4x baseline was passed three generations ago. Another year at this pace would make the 30%-by-2027 probability look too conservative.</p></li>
-<li><p>The alignment section is brief, but the compounding-error math Clark cites (99.9% accuracy → 95.12% after 50 generations → 60.5% after 500) is the quantitative reason getting alignment right before recursion starts matters more than fixing it along the way. The math assumes per-generation drift compounds independently, which is generous — if drift correlates across generations the curve steepens fast.</p></li>
-<li><p><a href="../../posts/20260506-arc-agi-3-failure-modes/">ARC-AGI-3</a> is a live test of both the creativity gap and the drift math. GPT-5.5 scored 0.43% and Opus 4.7 scored 0.18% on a benchmark that withholds instructions and forces models to infer rules from sparse feedback. Clark’s benchmarks are mostly in-distribution with verifiable rewards, which is where current models climb fastest. Two of the three failure modes pulled from the reasoning traces pick up his caveats directly. Failure 2 (reusing a Tetris or Sokoban template for unfamiliar mechanics) is what happens when a system hits a genuinely novel direction with no training match. Failure 3 (reward cementing the wrong primitive after a lucky level-beat) is the empirical shape of the compounding-drift math. If AI R&amp;D includes material amounts of either, Clark’s estimate looks too optimistic.</p></li>
-<li><p>The economic bullets are weaker than the technical ones, partly because the labor data through today still sits where the rebuttal in <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis</a> described it: low-4s unemployment, rising new-business formation, software-engineer postings up year-over-year. The essay does not attempt to reconcile a 2028 R&amp;D-automation forecast with a 2026 labor market that is not yet inflecting.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press, O., and Narasimhan, K. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2310.06770. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></li>
-<li><a id="ref-2"></a>Kwa, T., West, B., Becker, J., Deng, A., Garcia, K., et al.&nbsp;“Measuring AI Ability to Complete Long Software Tasks.” <em>arXiv preprint</em> (arXiv:2503.14499), March 18, 2025. <a href="https://arxiv.org/abs/2503.14499" class="uri">https://arxiv.org/abs/2503.14499</a></li>
-<li><a id="ref-3"></a>Siegel, Z. S., Kapoor, S., Nagdir, N., Stroebl, B., and Narayanan, A. “CORE-Bench: Fostering the Credibility of Published Research Through a Computational Reproducibility Agent Benchmark.” <em>arXiv preprint</em> (arXiv:2409.11363), September 17, 2024. <a href="https://arxiv.org/abs/2409.11363" class="uri">https://arxiv.org/abs/2409.11363</a></li>
-<li><a id="ref-4"></a>Chan, J. S., Chowdhury, N., Jaffe, O., Aung, J., Sherburn, D., et al.&nbsp;“MLE-bench: Evaluating Machine Learning Agents on Machine Learning Engineering.” <em>arXiv preprint</em> (arXiv:2410.07095), October 9, 2024. <a href="https://arxiv.org/abs/2410.07095" class="uri">https://arxiv.org/abs/2410.07095</a></li>
-<li><a id="ref-5"></a>Rank, B., Bhatnagar, H., Prabhu, A., Eisenberg, S., Nguyen, K., et al.&nbsp;“PostTrainBench: Can LLM Agents Automate LLM Post-Training?” <em>arXiv preprint</em> (arXiv:2603.08640), March 9, 2026. <a href="https://arxiv.org/abs/2603.08640" class="uri">https://arxiv.org/abs/2603.08640</a></li>
-<li><a id="ref-6"></a>Anthropic. “Claude Opus 4.7 System Card.” 2026. The AI R&amp;D “optimize a CPU-only small language model training implementation” benchmark appears across Anthropic’s Claude Opus 4, 4.5, 4.6, and Mythos Preview system cards; Opus 4.7 is the current release. <a href="https://anthropic.com/claude-opus-4-7-system-card" class="uri">https://anthropic.com/claude-opus-4-7-system-card</a></li>
-<li><a id="ref-7"></a>Feng, T., Trinh, T., Bingham, G., Kang, J., Zhang, S., et al.&nbsp;“Semi-Autonomous Mathematics Discovery with Gemini: A Case Study on the Erdős Problems.” <em>arXiv preprint</em> (arXiv:2601.22401), January 29, 2026. <a href="https://arxiv.org/abs/2601.22401" class="uri">https://arxiv.org/abs/2601.22401</a></li>
-<li><a id="ref-8"></a>Bryan, J., Elek, B., Manners, F., Salafatinos, G., and Vakil, R. “The motivic class of the space of genus 0 maps to the flag variety.” <em>arXiv preprint</em> (arXiv:2601.07222), January 12, 2026. <a href="https://arxiv.org/abs/2601.07222" class="uri">https://arxiv.org/abs/2601.07222</a></li>
-<li><a id="ref-9"></a>Altman, S. “automated AI research intern by September of 2026.” Post on X, October 29, 2025. <a href="https://x.com/sama/status/1983584366547829073" class="uri">https://x.com/sama/status/1983584366547829073</a></li>
-<li><a id="ref-10"></a>Anthropic. “Automated Alignment Researchers: Using large language models to scale scalable oversight.” 2026. <a href="https://www.anthropic.com/research/automated-alignment-researchers" class="uri">https://www.anthropic.com/research/automated-alignment-researchers</a></li>
-<li><a id="ref-11"></a>Shah, R., Irpan, A., Turner, A. M., Wang, A., Conmy, A., Lindner, D., et al.&nbsp;“An Approach to Technical AGI Safety and Security.” <em>arXiv preprint</em> (arXiv:2504.01849), April 2, 2025. <a href="https://arxiv.org/abs/2504.01849" class="uri">https://arxiv.org/abs/2504.01849</a></li>
-<li><a id="ref-12"></a>Murgia, M. “Recursive Superintelligence raise.” <em>Financial Times</em>, 2026. <a href="https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4" class="uri">https://www.ft.com/content/a92bf04b-bbac-400f-9554-5b1c70957ad4</a></li>
-<li><a id="ref-13"></a>Mirendil. Company homepage. <a href="https://mirendil.com/" class="uri">https://mirendil.com/</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260608-automating-ai-rd-perspectives/">AI Researchers’ Perspectives on Automating AI R&amp;D and Intelligence Explosions</a>: the survey of working researchers’ views against which Clark’s 60%-by-2028 forecast can be calibrated.</li>
-<li><a href="../../posts/20260526-recursive-superintelligence-launch/">Recursive Superintelligence’s $4B Bet on Self-Improving AI</a>: the capital betting on the exact automated-AI-R&amp;D outcome Clark cites as corroborating industry intent.</li>
-<li><a href="../../posts/20260506-arc-agi-3-failure-modes/">Reading the Reasoning Traces Behind ARC-AGI-3</a>: the live test of Clark’s creativity gap and compounding-drift caveats, where current models score near zero on out-of-distribution rule inference.</li>
-<li><a href="../../posts/20260422-proof-generation-vs-digestion/">Proof Generation vs Digestion</a>: Tao’s generation/verification/digestion split, which explains why the math “creativity” signals Clark cites still bottleneck on human digestion.</li>
-<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: the labor-market rebuttal Clark’s forecast does not reconcile with, a 2026 economy that is not yet inflecting.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/</guid>
-  <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

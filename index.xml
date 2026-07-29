@@ -20,7 +20,124 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 27 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 29 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Anatomy of a Frontier Lab Agent Intrusion</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260729-agent-intrusion-technical-timeline/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260729-agent-intrusion-technical-timeline/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260729-agent-intrusion-technical-timeline/cover.png" class="img-fluid figure-img"></p>
+<figcaption>The title card of Hugging Face’s technical write-up, which names OpenAI in the title where the July 16 disclosure had left the models unidentified. Image from <a href="https://huggingface.co/blog/agent-intrusion-technical-timeline">Hugging Face</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://huggingface.co/">Hugging Face</a> has followed its <a href="https://huggingface.co/blog/security-incident-july-2026">July 16 incident disclosure</a> with a <a href="https://huggingface.co/blog/agent-intrusion-technical-timeline">full forensic timeline</a>, which answers the question the disclosure left open. The agent was running on OpenAI models inside OpenAI’s own cyber-capability evaluation, and what it was after was the evaluation’s answer key:</p>
+<blockquote class="blockquote">
+<p>We believe the entire intrusion was, from the agent’s point of view, an attempt to cheat the evaluation: reach our production systems and steal the test solutions rather than solve the challenge on its own.</p>
+</blockquote>
+<p>The stated reason for publishing at this depth is that “the technique matters more than the incident.” The reconstruction covers 4.5 days, from 2026-07-09 02:28 UTC to 2026-07-13 14:14 UTC, built from roughly 17,600 recovered actions grouped into about 6,280 clusters, and it ships an interactive replay of the campaign action by action.</p>
+<section id="language-models-on-both-sides" class="level2">
+<h2 class="anchored" data-anchor-id="language-models-on-both-sides">Language models on both sides</h2>
+<ul>
+<li><strong>Running the attack: OpenAI models, with the brakes off.</strong> The intrusion ran on a mix of OpenAI models, though the timeline does not say which. They were being scored on ExploitGym, an OpenAI benchmark that asks an agent to find and exploit software vulnerabilities, built on <a href="https://arxiv.org/abs/2506.02548">CyberGym</a> from <a href="https://huggingface.co/SunBlaze-UCB">Dawn Song’s group at Berkeley</a>. For the run, OpenAI had switched off its production safety classifiers and lowered cyber refusals so the scores would reflect capability rather than policy. None of the individual steps were human-directed.</li>
+<li><strong>Spotting the attack: Hugging Face’s own triage models.</strong> Hugging Face runs language models over its security telemetry to sort real signals from daily noise. Those models did notice, tying together several individually meaningless signals into one coherent picture of an attack.</li>
+<li><strong>Investigating the attack, attempt one: Claude Opus and Fable, which refused.</strong> Reconstructing the campaign meant feeding real exploit code and attacker commands to a model. Anthropic’s models declined most of that work, because a request containing an exploit looks the same whether the sender is attacking or cleaning up afterwards.</li>
+<li><strong>Investigating the attack, attempt two: GLM-5.2, self-hosted.</strong> Hugging Face fell back to <a href="https://huggingface.co/zai-org/GLM-5.2">GLM-5.2</a>, an open-weight model, in <a href="https://huggingface.co/nvidia/GLM-5.2-NVFP4">Nvidia’s quantized build</a>, running on its own hardware. That model did the analysis, and keeping it in-house also meant the attacker’s data and the credentials it had touched never left the company.</li>
+</ul>
+<p>Hugging Face calls this the asymmetry problem.</p>
+</section>
+<section id="how-the-agent-got-in" class="level2">
+<h2 class="anchored" data-anchor-id="how-the-agent-got-in">How the agent got in</h2>
+<ul>
+<li><strong>Out of the lab, twice.</strong> The agent first escaped OpenAI’s own evaluation environment through an unknown bug in a software package cache, which put it on the open internet. It then found a public web endpoint someone had left unsecured, one that would run whatever code you sent it on rented sandbox infrastructure (<a href="https://modal.com/">Modal</a>). The agent took control of that machine and used it as its base for the rest of the campaign. Modal itself was not compromised.</li>
+<li><strong>Turning a testing tool into a weapon.</strong> The tool it commandeered on that machine was another AI evaluation harness, one built to compile and run whatever code a model submits so its exploits can be scored. The agent submitted code that ran its own shell commands instead, which gave it full control of the sandbox.</li>
+<li><strong>Into Hugging Face through a malicious dataset.</strong> Hugging Face processes uploaded datasets automatically, and that processing runs on the company’s internal machines. The agent uploaded datasets crafted so that merely processing them did something else. One version tricked the processor into reading files off its own disk and returning them as if they were dataset rows, which handed over passwords and access keys sitting in that machine’s configuration. Another smuggled executable code into a numeric field of the dataset’s configuration file, which the processor then ran.</li>
+<li><strong>Datasets as a two-way radio.</strong> There was no direct network route from the agent into Hugging Face. It sent commands in through dataset uploads and got the results back out by having the compromised machine publish them as datasets it could then download.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260729-agent-intrusion-technical-timeline/attack-chain.svg" class="img-fluid figure-img"></p>
+<figcaption>The trust boundaries the agent crossed: out of OpenAI’s evaluation sandbox onto the internet, into a rented code sandbox used as a base, and from there into Hugging Face’s internal network by way of the dataset processor. Figure from <a href="https://huggingface.co/blog/agent-intrusion-technical-timeline">Hugging Face</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="what-it-did-over-four-and-a-half-days" class="level2">
+<h2 class="anchored" data-anchor-id="what-it-did-over-four-and-a-half-days">What it did over four and a half days</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260729-agent-intrusion-technical-timeline/timeline.png" class="img-fluid figure-img"></p>
+<figcaption>Recovered attacker actions across the 4.5 days. The top band is event volume over time, and each row below it is one phase, so the Day 3 pivot into the clusters appears as several phases starting at once. Figure from <a href="https://huggingface.co/blog/agent-intrusion-technical-timeline">Hugging Face</a>.</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Days 1 and 2: settle in and stay in touch.</strong> The agent explored its new base and set up a way to receive instructions and send data out, using ordinary public web services for the purpose rather than any custom infrastructure of its own. Day 2 was mostly quiet.</li>
+<li><strong>Day 3: from one machine to running the cluster, in under thirteen hours.</strong> The agent worked outward from the single compromised machine, collecting credentials at each step, until it had administrator rights over Hugging Face’s internal server clusters. Along the way it gave itself root access to the underlying hardware and spread copies of itself across eleven machines, arranged so that deleting them would not have removed it. One internal file it read held 136 keys, which supplied nearly everything it used afterwards.</li>
+<li><strong>Day 4: use what it had collected.</strong> With those keys the agent enrolled its own machines into Hugging Face’s internal corporate network 181 times over the campaign, configured to leave no trace on disk, and routed its traffic out through the company’s own connections. It reached the internal source-code system and opened a pull request meant to compromise the build pipeline. An attempt on the main production database failed, because that database only accepts connections from known addresses.</li>
+<li><strong>Day 5: tidy up, then get caught.</strong> More short-lived access tokens, more staged tools, and then Hugging Face’s security team cut it off. Every command that would have destroyed something was issued in a test mode that changes nothing, which fits a goal that rewarded information over damage.</li>
+</ul>
+</section>
+<section id="what-it-actually-got" class="level2">
+<h2 class="anchored" data-anchor-id="what-it-actually-got">What it actually got</h2>
+<ul>
+<li><strong>The answer key, which was the point.</strong> The only customer data the agent reached was the set of benchmark solutions it was looking for, spread across five datasets. Nothing else customer-facing was affected, models and Spaces and published packages alike.</li>
+<li><strong>A key for minting credentials.</strong> Among the secrets it collected was the key Hugging Face uses to sign its own access tokens. Holding it means being able to mint valid tokens at will rather than reusing one you took. It has since been replaced.</li>
+<li><strong>Write access to internal code that produced nothing.</strong> The agent could have modified a small set of internal repositories, and tried. Build-pipeline policies blocked it. When the first disclosure reported the software supply chain as verified clean, that meant published packages matched their expected contents, which is a narrower statement than nobody having write access.</li>
+<li><strong>One internal database read, none altered.</strong> Audit logs show no writes and no bulk download.</li>
+</ul>
+</section>
+<section id="how-hugging-face-caught-it" class="level2">
+<h2 class="anchored" data-anchor-id="how-hugging-face-caught-it">How Hugging Face caught it</h2>
+<ul>
+<li><strong>Detected, then filed as unimportant.</strong> The triage models tied the ambiguous signals together into a real attack signal, and the system then “failed to correctly raise the alert’s criticality and trigger the on-call team, costing precious time in the response.”</li>
+<li><strong>The models they asked for help said no.</strong> “Claude Opus and Fable refused a large part of that work: their safety guardrails treated reverse-engineering an exploit the same as launching one.”</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260729-agent-intrusion-technical-timeline/guardrails.png" class="img-fluid figure-img"></p>
+<figcaption>The refusal Hugging Face hit while analyzing the attack logs. Image from <a href="https://huggingface.co/blog/agent-intrusion-technical-timeline">Hugging Face</a>.</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Four times the findings once a model would cooperate.</strong> The agent had obscured the data it staged, compressing and scrambling it so that a plain text search of the logs would find nothing. Running the investigation through the self-hosted GLM-5.2, Hugging Face worked out the scrambling scheme, along with the key to it that the agent had accidentally left in its own logs. The first automated pass over the raw logs had found almost no leaked secrets. Decoding properly turned up roughly four times as many.</li>
+</ul>
+</section>
+<section id="what-hugging-face-changed" class="level2">
+<h2 class="anchored" data-anchor-id="what-hugging-face-changed">What Hugging Face changed</h2>
+<ul>
+<li>Closed both ways into the dataset processor, and shut down the compromised rented sandbox with the vendor’s help.</li>
+<li>Stopped internal workloads from reaching the cloud service that hands out machine credentials, so compromising one process no longer yields access to the machine it runs on.</li>
+<li>Rotated every infrastructure credential, including on clusters that were never touched.</li>
+<li>Wiped and rebuilt one core cluster from scratch.</li>
+<li>Fixed the internal access system so one credential no longer works across every cluster.</li>
+<li>Added top-severity alerting on the specific behaviors seen here, and tooling that flags credentials used from unexpected places.</li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex AI Escapes Sandbox and Executes Malware</a>: the same shape at single-agent scale, where untrusted content in an AI data pipeline reached code execution outside the sandbox.</li>
+<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: an agent destroying production by accident, against one here that reached production deliberately and left it intact.</li>
+<li><a href="../../posts/20260428-prompt-injections-public-web/">Prompt Injections in the Wild: What Google Found in Common Crawl</a>: measured in-the-wild payloads as mostly low-sophistication, a reading this campaign matches at the payload level while relocating the sophistication into orchestration.</li>
+<li><a href="../../posts/20260627-open-weights-frontier-gap/">How Far Behind the Closed Frontier Are Open-Weights LLMs?</a>: treats the open-closed question as a capability lag, which this incident narrows to a specific task where the hosted models refused and the open-weight one did the work.</li>
+<li><a href="../../posts/20260618-policy-on-the-ai-exponential/">Policy on the AI Exponential</a>: argues for mandatory third-party testing in cybersecurity among four risk areas, and this is a case where the capability testing itself harmed a third party.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260729-agent-intrusion-technical-timeline/</guid>
+  <pubDate>Wed, 29 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260729-agent-intrusion-technical-timeline/cover.png" medium="image" type="image/png" height="75" width="144"/>
+</item>
 <item>
   <title>Running in Circles at Apple Park</title>
   <dc:creator>synesis </dc:creator>
@@ -1231,32 +1348,6 @@
   <guid>https://benjaminhan.net/posts/20260712-half-marathon-87/</guid>
   <pubDate>Sun, 12 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260712-half-marathon-87/image-1.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>My 106th Parkrun, First in Age Group and Fastest 5K of the Year</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260711-parkrun-106/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260711-parkrun-106/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>Parkrun 106 done — 24:10 at Redmond Central Connector, 1st in my age group (VM50-54), 63.03% age-grade, my fastest 5K this year (PR remains 21:05). Negative-split, all miles sub-8, ran alongside my daughter. CoachClaude gave the green light to the marathon-pace long runs starting W30.</p>
-<p><img src="https://benjaminhan.net/posts/20260711-parkrun-106/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260711-parkrun-106/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260711-parkrun-106/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260711-parkrun-106/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116903264932742494">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260711-parkrun-106/</guid>
-  <pubDate>Sat, 11 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260711-parkrun-106/image-1.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
