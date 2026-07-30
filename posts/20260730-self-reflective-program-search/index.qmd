@@ -1,0 +1,90 @@
+---
+title: "Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context"
+description: "Sampling eight candidate context-interaction programs and selecting one by intrinsic uncertainty signals gains up to 22.6 points over recursive sub-calls."
+author: synesis
+date: "2026-07-30"
+image: cover.jpg
+---
+
+![The self-query REPL on the right, where the context is a variable and successive program steps slice it and query the model on what they pull out. The uncertainty-guided search on the left, where eight sampled programs are filtered by plurality vote and then ranked on verbalized confidence against reasoning length. Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center" data-lightbox-src="cover-full.jpg"}
+
+In *Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context* [[1]](#ref-1) (arXiv preprint, March 2026), [Keivan Alizadeh](https://dblp.org/pid/269/9531), [Parshin Shojaee](https://dblp.org/pid/281/9859), [Minsik Cho](https://dblp.org/pid/70/6244), and [Mehrdad Farajtabar](https://dblp.org/pid/21/9988.html) (Apple) report that Recursive Language Models get their long-context gains from programmatic access to the context rather than from recursion, and that ranking eight sampled programs by the model's own uncertainty signals matches or exceeds recursive RLM.
+
+> Long-context handling remains a core challenge for language models: even with extended context windows, models often fail to reliably extract, reason over, and use the information across long contexts. Recent works like Recursive Language Models (RLM) have approached this challenge by agentic way of decomposing long contexts into recursive sub-calls through programmatic interaction at inference. While promising, the success of RLM critically depends on how these context-interaction programs are selected, which has remained largely unexplored. In this paper, we study this problem and *introduce SRLM, a framework that augments programmatic context interaction with uncertainty-aware Self-Reflection*. SRLM leverages three intrinsic signals: *self consistency, reasoning length, and verbalized confidence*. These serve as complementary indicators of a model's internal uncertainty, and the model uses them to evaluate and compare candidate context-interaction programs. Extensive experiments across diverse benchmark datasets, context lengths, and backbone models, show that SRLM consistently outperforms state-of-the-art baselines, *yielding up to 22% improvement over RLM under the same time budget*. Our findings show that *recursion itself is not the primary driver of performance in RLM*, and a simple self-reflective program search can match or surpass RLM without requiring self-query or explicit recursion mechanisms. We find that for context lengths within the model's window, *RLMs with recursion often degrade performance relative to the base model*, whereas SRLM yields consistent gains across both short and long contexts. We also find that RLM is less effective in tasks with semantically intensive nature, where heuristic program search is insufficient and broader contextual understanding is required, while self-reflection in SRLM provides a semantic signal that better steers reasoning in these scenarios.
+
+## Methods
+
+SRLM (Self-Reflective Program Search for Long Context) keeps the part of Recursive Language Models (RLM) [[2]](#ref-2) that externalizes the context and makes the part that recurses optional. The long context is loaded as a variable inside a sandboxed Python read-eval-print loop ([REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop)), and the model writes short programs that slice, search, and aggregate over that variable, printing intermediate results back into its own prompt. In RLM a program may also issue recursive sub-calls, handing a slice of the context to a fresh copy of the model as a tool. SRLM does not require those sub-calls, and adds a selection step instead: for each query the model samples $K = 8$ independent programs, then ranks them using three signals computed from its own generations, with no verifier, reward model, or labels. A *program* here is one complete multi-step interaction, $p = (p_{1}, \ldots, p_{T})$, where each $p_{t}$ is a single executable step. The paper also calls $p$ a *trajectory*, since the two fine-grained signals below are only definable over its steps.
+
+The three signals:
+
+- **Self-consistency** [[3]](#ref-3): the plurality answer across the eight programs. Those disagreeing with it are discarded, leaving a *candidate set* $\mathcal{S}$. This is a coarse signal: it looks only at final answers, so two programs that reached the same answer by very different routes are indistinguishable.
+- **Verbalized confidence** [[4]](#ref-4): a suffix appended to the RLM prompt asks the model to emit `{"confidence": ν}` with $\nu \in (0, 100]$ at every step. A program's score is $\mathrm{VC}(p) = \sum_{t} \log(\nu_{t} / 100)$, which is at most zero and approaches zero when the model reports high confidence at every step.
+- **Reasoning trace length** [[5]](#ref-5): $\mathrm{Len}(p)$, the total reasoning and output tokens across a program's steps, taken as a proxy for how much deliberation the answer required. Unlike verbalized confidence it needs no elicitation, so it is not exposed to miscalibration in what the model says about itself.
+
+The last two combine into one score, $s(p) = \mathrm{VC}(p) \cdot \mathrm{Len}(p)$, and the winner is $p^{*} = \arg\max_{p \in \mathcal{S}} s(p)$. Since $\mathrm{VC}(p) \le 0$ and $\mathrm{Len}(p) > 0$, the product is at most zero, and the maximum goes to the program that is both confident and short. §2.2.2 also states that lower values of $s(p)$ are better, which contradicts its own $\arg\max$. The signs settle it for the maximum. Nothing in the loop rewrites a program: the eight are generated once, in parallel, and the score only picks among them.
+
+Figure 1, above, puts the two halves side by side. On the right is the self-query REPL, where the context arrives as a variable and three successive steps of one program (the figure labels them Program 1, 2 and 3) pull out a slice, analyze the policy options inside it, and produce a final evaluation, each optionally calling the model again on the text it just assembled. On the left is the search. The first panel shows nine sampled programs with their answers, six kept by plurality vote and three discarded. The second places the survivors on axes of verbalized confidence and reasoning length, with the selected program in the high-confidence, short-trace corner. The third compares the accuracy of RLM against each signal added on its own and then all three together.
+
+## Results
+
+The evaluation reuses RLM's own benchmark suite and then extends it. The setup:
+
+- **BrowseComp+** [[6]](#ref-6): [BrowseComp-Plus](https://huggingface.co/datasets/Tevatron/browsecomp-plus) in full, 150 multi-hop questions answered against a fixed corpus of 1,000 documents, 6M to 11M tokens per task.
+- **OOLONG** [[7]](#ref-7): an aggregation benchmark whose answers need most of the context rather than one buried fact, on the `trec_coarse` synthetic split at 131K tokens across 50 tasks.
+- **LongBench-v2 CodeQA** [[8]](#ref-8): 50 multiple-choice code-repository questions from 23K to 4.2M tokens.
+- **Two extended sweeps**: the full OOLONG synthetic split from 1K to 4M tokens (about 650 tasks, 50 per length), and the full LongBench-v2 across all six of its domains (about 500 tasks). These target the paper's own questions about context length and task semantics.
+- **Backbones**: [GPT-5](https://openai.com/index/introducing-gpt-5/) at medium reasoning effort, with GPT-5-mini as the sub-model for recursive calls, and the open-weight [Qwen3-Coder-480B-A35B](https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct).
+- **Baselines**: the base model on the raw context, CodeAct [[9]](#ref-9) with an [Okapi BM25](https://en.wikipedia.org/wiki/Okapi_BM25) retriever, CodeAct with sub-calls, a summarization agent, and RLM with and without sub-calls.
+- **Protocol**: 600 seconds per program step, at most 30 steps, and GPT-5-mini judging answers for semantic equivalence rather than string match. Every RLM row in Table 1 is marked † for the authors' own replication, and the original RLM numbers are not reported alongside.
+
+![Table 1 from the paper [[1]](#ref-1).](table1.jpg){fig-align="center" data-lightbox-src="table1-full.jpg"}
+
+The findings:
+
+- **Best configuration on every benchmark, under both backbones** (Table 1). With Qwen3-Coder-480B, SRLM reaches 64.9 on LongBench-v2 CodeQA, 59.7 on BrowseComp+ and 51.8 on OOLONG, against 59.8, 37.1 and 45.7 for RLM. The abstract's "up to 22%" is the 22.6-point BrowseComp+ gap on this backbone.
+- **Under GPT-5 the sub-calls mostly hurt** (Table 1). RLM without sub-calls beats recursive RLM on LongBench-v2 CodeQA (65.2 against 59.5) and BrowseComp+ (89.7 against 86.0), losing only on OOLONG (50.5 against 53.0). The best GPT-5 configurations overall are both non-recursive: SRLM without sub-calls at 74.1 and 94.6.
+- **Recursion costs time it does not earn back** (Figure 3). Under both backbones, SRLM without sub-calls reaches higher accuracy than RLM at lower wall-clock time. The eight programs run in parallel, so sampling eight instead of one barely moves the clock.
+- **Short contexts are where RLM falls below the base model** (Figure 2). On OOLONG with GPT-5 under 131K tokens, RLM averages 0.9 points below the base model and RLM without sub-calls 6.8 below, while SRLM is 5.4 above. Past 131K the gaps widen to 11.9 above base for RLM and 28.5 for SRLM. On LongBench-v2 with GPT-5 under 131K, both RLM variants are about 8 points below base and both SRLM variants a little over 1 point below.
+- **The advantage of recursion is concentrated in search-shaped domains** (Figure 4). Across the six LongBench-v2 domains, RLM gains most on Code Repository QA and Structured Data QA, the two whose contexts are modular and indexable. On Dialogue History QA the base model scores highest of all five configurations, at 69 against 66 for SRLM and about 61 for both RLM variants.
+- **One signal accounts for nearly all of it** (Figure 5, top row). Self-consistency used alone comes within 1.2 to 2.0 points of the full three-signal combination on all three benchmarks: 45.2 against 47.2 on OOLONG, 60.5 against 61.7 on LongBench-v2, and 73.4 against 74.3 on BrowseComp+. Figure 5 gives these as bars with truncated y-axes, so read them to about half a point. The per-bin heatmaps in the bottom row show why the paper wants all three: accuracy is not monotone in verbalized confidence or in trace length on its own.
+
+![Figure 3 from the paper [[1]](#ref-1).](figure3.jpg){fig-align="center"}
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.jpg){fig-align="center" data-lightbox-src="figure2-full.jpg"}
+
+![Figure 4 from the paper [[1]](#ref-1).](figure4.png){fig-align="center"}
+
+![Figure 5 from the paper [[1]](#ref-1).](figure5.jpg){fig-align="center"}
+
+## My Notes
+
+- **The difference is best-of-eight selection**: with recursion enabled on both sides, everything separating SRLM from RLM is that SRLM samples eight programs and keeps one. The three uncertainty signals are the ranking function.
+  - **The paper calls it revision.** §3.6 says SRLM "relies on implicit uncertainty-guided self-reflection to revise and refine its context-interaction programs," but §2.2 only scores finished candidates. Actual revision has a poor record: Huang et al. found that prompting a model to reconsider its own answer without external feedback lowers accuracy across three reasoning benchmarks [[10]](#ref-10). The paper does not cite it.
+  - **The ranking function is worth a point or two.** The 22.6-point headline is measured against RLM running a single program, so most of that gap is the move from one sample to eight. At matched $K$ the self-consistency-only row of the ablation is plain majority voting from 2022 [[3]](#ref-3), and it comes in 1.2 to 2.0 points below the full combination. Both numbers are in the paper, but never next to each other.
+- **Recursion and sub-model capability are not separated**: under GPT-5 the recursive sub-calls go to GPT-5-mini, so turning sub-calls on routes sub-questions to a weaker model, and turning them off keeps every read inside GPT-5. The paper names no sub-model for Qwen3-Coder-480B, and no smaller variant of it appears in the setup, so it is presumably calling itself. Every negative recursion increment in Table 1 is on the GPT-5 rows, which fits a weak sub-model as well as it fits the disruption §3.4 attributes to recursion. The claim that recursion contributes only a small share of the gain is unaffected, since §3.6 argues it on Qwen. The stronger reading, that recursion is a liability, needs a run the paper does not have: GPT-5 as its own sub-model.
+- **Wall clock is not the budget most readers pay**: the parity claim is wall-clock, and it holds only because the eight programs run in parallel. The conclusion names token control as future work, but the paper reports no counts anywhere. On a metered API the cost is close to eight times the generation of a single RLM program, on contexts of 6M to 11M tokens.
+- **The combination rule is fixed**: the ranking of the three signals moves with both task and backbone. Verbalized confidence alone scores about two points above the full combination for GPT-5 on BrowseComp+ in the no-sub-call runs, and is the weakest of the three on OOLONG. The score $s(p) = \mathrm{VC}(p) \cdot \mathrm{Len}(p)$ has nothing to tune. Fitting a per-task or learned selector would be cheap, since both signals are already computed for every sampled program.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Alizadeh, K.](https://dblp.org/pid/269/9531), [Shojaee, P.](https://dblp.org/pid/281/9859), [Cho, M.](https://dblp.org/pid/70/6244), [Farajtabar, M.](https://dblp.org/pid/21/9988.html) "Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context." *arXiv preprint* (arXiv:2603.15653), March 7, 2026. <https://arxiv.org/abs/2603.15653>
+2. <a id="ref-2"></a>[Zhang, A. L.](https://dblp.org/pid/389/8697), [Kraska, T.](https://dblp.org/pid/26/6037), [Khattab, O.](https://omarkhattab.com/) "Recursive Language Models." *arXiv preprint* (arXiv:2512.24601), December 31, 2025. <https://arxiv.org/abs/2512.24601>
+3. <a id="ref-3"></a>Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., Zhou, D. "Self-Consistency Improves Chain of Thought Reasoning in Language Models." *ICLR 2023* (arXiv:2203.11171), March 21, 2022. <https://arxiv.org/abs/2203.11171>
+4. <a id="ref-4"></a>Xiong, M., Hu, Z., Lu, X., Li, Y., Fu, J., He, J., Hooi, B. "Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs." *ICLR 2024* (arXiv:2306.13063), June 22, 2023. <https://arxiv.org/abs/2306.13063>
+5. <a id="ref-5"></a>[Devic, S.](https://dblp.org/pid/239/8389), Peale, C., Bradley, A., Williamson, S., Nakkiran, P., Gollakota, A. "Trace Length is a Simple Uncertainty Signal in Reasoning Models." *arXiv preprint* (arXiv:2510.10409), October 12, 2025. <https://arxiv.org/abs/2510.10409>
+6. <a id="ref-6"></a>Chen, Z., Ma, X., Zhuang, S., Nie, P., Zou, K., Liu, A., Green, J., Patel, K., Meng, R., Su, M., Sharifymoghaddam, S., Li, Y., Hong, H., Shi, X., Liu, X., Thakur, N., Zhang, C., Gao, L., Chen, W., Lin, J. "BrowseComp-Plus: A More Fair and Transparent Evaluation Benchmark of Deep-Research Agent." *arXiv preprint* (arXiv:2508.06600), August 8, 2025. <https://arxiv.org/abs/2508.06600>
+7. <a id="ref-7"></a>Bertsch, A., Pratapa, A., Mitamura, T., Neubig, G., Gormley, M. R. "Oolong: Evaluating Long Context Reasoning and Aggregation Capabilities." *arXiv preprint* (arXiv:2511.02817), November 4, 2025. <https://arxiv.org/abs/2511.02817>
+8. <a id="ref-8"></a>Bai, Y., Tu, S., Zhang, J., Peng, H., Wang, X., Lv, X., Cao, S., Xu, J., Hou, L., Dong, Y., Tang, J., Li, J. "LongBench v2: Towards Deeper Understanding and Reasoning on Realistic Long-context Multitasks." *arXiv preprint* (arXiv:2412.15204), December 19, 2024. <https://arxiv.org/abs/2412.15204>
+9. <a id="ref-9"></a>Wang, X., Chen, Y., Yuan, L., Zhang, Y., Li, Y., Peng, H., Ji, H. "Executable Code Actions Elicit Better LLM Agents." *ICML 2024* (arXiv:2402.01030), February 1, 2024. <https://arxiv.org/abs/2402.01030>
+10. <a id="ref-10"></a>Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X., Zhou, D. "Large Language Models Cannot Self-Correct Reasoning Yet." *ICLR 2024* (arXiv:2310.01798), October 3, 2023. <https://arxiv.org/abs/2310.01798>
+
+## Related Posts
+
+- [Automated Design of Agentic Systems](/posts/20260625-adas/): the same search-over-programs paradigm, with a meta agent writing candidate scaffolds instead of a scorer picking among sampled ones.
+- [Large Language Models Cannot Self-Correct Reasoning Yet](/posts/20260516-cannot-self-correct/): the negative result on intrinsic revision that SRLM's selection-only mechanism sidesteps.
+- [Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback](/posts/20260610-just-ask-calibration/): the evidence that verbalized confidence is usable at all, which the second of SRLM's three signals depends on.
+- [LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling](/posts/20260522-metacognitive-harness/): another test-time scaffold built on a model's self-assessment rather than an external verifier.
+- [Learning to Orchestrate Agents in Natural Language with the Conductor](/posts/20260629-conductor-llm-orchestrator/): uses recursive self-calls as its test-time scaling mechanism, the one this paper finds contributes little on long context.
