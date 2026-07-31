@@ -21,7 +21,151 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 30 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 31 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>APIs, Tools, Skills, and Where MCP Fits</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260414-api-mcp-tool-skill/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260414-api-mcp-tool-skill/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>APIs, tools, and skills form a rough abstraction ladder. Each one builds on the layer below it, and confusing them leads to systems that are either too rigid or too loosely defined. MCP is a different kind of thing: a protocol that crosscuts the ladder. It deserves its own discussion.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/ef1f2df71b7d6d8c.svg" alt="graph LR
+    subgraph MCP[&quot;&lt;b&gt;MCP&lt;/b&gt; — standardizes exposure to models&quot;]
+        API[&quot;&lt;b&gt;API&lt;/b&gt;&lt;br/&gt;raw interface&quot;]
+        TOOL[&quot;&lt;b&gt;TOOL&lt;/b&gt;&lt;br/&gt;callable action&quot;]
+        API --&gt;|&quot;wrapped by&quot;| TOOL
+    end
+
+    TOOL --&gt;|&quot;used by&quot;| SKILL
+    API --&gt;|&quot;used by&quot;| SKILL[&quot;&lt;b&gt;SKILL&lt;/b&gt;&lt;br/&gt;judgment, seq" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<section id="api-the-raw-interface" class="level3">
+<h3 class="anchored" data-anchor-id="api-the-raw-interface">API: The Raw Interface</h3>
+<p>An API is a defined interface that lets one software system interact with another. It exposes endpoints, methods, inputs, and outputs. It does not tell an agent when to call it, what to do with the result, or how the call fits into a broader task.</p>
+<p>In a customer support agent, the API is the HTTP interface to the ticketing system: create ticket, update status, fetch history. The API does not know why you are calling it.</p>
+</section>
+<section id="tool-the-callable-action" class="level3">
+<h3 class="anchored" data-anchor-id="tool-the-callable-action">Tool: The Callable Action</h3>
+<p>A tool is a capability packaged so an agent can invoke it directly. It has a schema the model can read, a name that signals intent, and a defined effect. In many systems a tool is backed by an API, but the tool adds a layer: it tells the model what the action does, what parameters it needs, and what shape the result will take.</p>
+<p>In that same support agent, “search_tickets” is a tool. It wraps the ticketing API’s search endpoint, describes its parameters in a model-readable schema, and returns structured results. The agent can decide to call it. The API underneath does not care who is calling or why.</p>
+<p>The key difference: a developer writes code against an API. An agent selects and invokes a tool. The tool is the API made legible to a model.</p>
+</section>
+<section id="skill-the-playbook" class="level3">
+<h3 class="anchored" data-anchor-id="skill-the-playbook">Skill: The Playbook</h3>
+<p>A skill is a reusable method for solving a class of problems. It involves judgment, sequencing, and often multiple tools. If a tool says “send an email,” a skill says “triage the inbox, identify messages that need a response, draft replies in the right tone, and flag anything that needs human review.”</p>
+<p>For the support agent, a skill might be “handle refund request”: check the order status, verify the refund policy applies, draft a response to the customer, create an internal ticket if escalation is needed, and log the outcome. That is not one action. It is a procedure with branching logic and defaults.</p>
+<p>Skills are where know-how lives. A tool gives the agent something to do. A skill tells it how to do a job well.</p>
+</section>
+<section id="where-mcp-fits" class="level3">
+<h3 class="anchored" data-anchor-id="where-mcp-fits">Where MCP Fits</h3>
+<p>MCP (Model Context Protocol) is not another rung on this ladder. It is a standard for exposing tools, resources, and context to models in a consistent way. Its job is interoperability: making capabilities discoverable and portable across environments.</p>
+<p>Without MCP, every agent framework wires up tools differently. The schema formats vary, discovery is ad hoc, and switching between hosts means rewriting integrations. MCP standardizes that surface so a tool written once can be used by any compliant client.</p>
+<p>MCP can also expose resources (files, database rows, live context) alongside tools, which means a model can see both what it can do and what it is working with. This is useful but distinct from the API/tool/skill question. MCP does not replace any of those layers. It makes them portable.</p>
+<p>Think of it this way: APIs, tools, and skills describe what capabilities exist and at what level of abstraction. MCP describes how those capabilities are presented to models.</p>
+</section>
+<section id="a-concrete-example" class="level3">
+<h3 class="anchored" data-anchor-id="a-concrete-example">A Concrete Example</h3>
+<p>Consider a code assistant that can read files, run tests, and create pull requests.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/1269501d07fba9cb.svg" alt="graph TB
+    SKILL[&quot;&lt;b&gt;SKILL: Review and ship a bug fix&lt;/b&gt;&quot;]
+
+    SKILL --&gt; S1[&quot;1. Read failing test&lt;br/&gt;&lt;i&gt;judgment: which file?&lt;/i&gt;&quot;]
+    SKILL --&gt; S2[&quot;2. Identify + fix broken code&lt;br/&gt;&lt;i&gt;judgment: what change?&lt;/i&gt;&quot;]
+    SKILL --&gt; S3[&quot;3. Run test suite&quot;]
+    SKILL --&gt; S4[&quot;4. Open PR&lt;br/&gt;&lt;i&gt;judgm" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<ul>
+<li>The <strong>APIs</strong> are the filesystem interface, the test runner’s CLI, and the GitHub REST API.</li>
+<li>The <strong>tools</strong> are “read_file,” “run_tests,” and “create_pull_request,” each with a schema the model can parse.</li>
+<li>An <strong>MCP server</strong> bundles those tools (and possibly resources like the repo’s directory tree or recent CI results) into a package any compliant model host can connect to.</li>
+<li>A <strong>skill</strong> is “review and ship a bug fix”: read the failing test, identify the broken code, make the fix, run the test suite, and open a PR with a clear description. The skill uses all three tools and applies judgment at each step.</li>
+</ul>
+</section>
+<section id="the-boundaries-are-not-fixed" class="level3">
+<h3 class="anchored" data-anchor-id="the-boundaries-are-not-fixed">The Boundaries Are Not Fixed</h3>
+<p>Yes, a skill can become a tool. This happens routinely. The “handle refund request” skill from the earlier example starts as a multi-step procedure with judgment at each point. But once the team has run it enough times, the branching logic stabilizes, the edge cases get codified, and someone wraps the whole thing in a single callable function: “process_refund.” Now it looks like a tool. The agent calls it in one shot. The orchestration still happens, just inside the wrapper rather than in the agent’s reasoning loop.</p>
+<p>This is the natural lifecycle. Skills get hardened into tools. Tools get commoditized into APIs. What was once a careful, multi-step procedure becomes a reliable black box. The abstraction ladder is not a static taxonomy. It is a description of where the judgment currently lives, and that shifts as systems mature.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/c8ae8f4b94afe03b.svg" alt="graph LR
+    SKILL[&quot;&lt;b&gt;SKILL&lt;/b&gt;&lt;br/&gt;&lt;i&gt;handle refund request&lt;/i&gt;&lt;br/&gt;judgment in the agent&quot;]
+    TOOL[&quot;&lt;b&gt;TOOL&lt;/b&gt;&lt;br/&gt;&lt;i&gt;process_refund&lt;/i&gt;&lt;br/&gt;judgment in the wrapper&quot;]
+    API[&quot;&lt;b&gt;API&lt;/b&gt;&lt;br/&gt;&lt;i&gt;POST /refunds&lt;/i&gt;&lt;br/&gt;judgment removed&quot;]
+
+    SKILL --&gt;|hardens into| TOOL
+    TOOL --&gt;|commoditizes " class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<p>The movement goes the other direction too. When a tool starts failing in new contexts, or when its behavior needs to vary based on surrounding conditions, it may need to be unpacked back into a skill. A “create_pull_request” tool works fine when the agent has already done everything right. But if the PR needs a certain description format, specific reviewers based on the files changed, and a linked issue, that single tool call becomes a skill again: a sequence of checks and decisions that the agent has to reason through.</p>
+<p>The practical implication: do not over-invest in classifying a capability as one or the other permanently. Instead, pay attention to where the judgment lives right now. If the agent is making multi-step decisions around a capability, that is a skill, even if it is technically implemented as a single function. If a capability can be called reliably without the agent thinking about it, that is a tool, even if it was once a complex workflow.</p>
+</section>
+<section id="when-you-are-building-an-agent" class="level3">
+<h3 class="anchored" data-anchor-id="when-you-are-building-an-agent">When You Are Building an Agent</h3>
+<p>If you are deciding what to build and in what order:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<img src="https://benjaminhan.net/feed-assets/824985c5557720a2.svg" alt="graph LR
+    A[&quot;&lt;b&gt;① API&lt;/b&gt;&lt;br/&gt;raw access&lt;br/&gt;&lt;i&gt;always needed&lt;/i&gt;&quot;]
+    T[&quot;&lt;b&gt;② Tool&lt;/b&gt;&lt;br/&gt;callable action&lt;br/&gt;&lt;i&gt;always needed&lt;/i&gt;&quot;]
+    M[&quot;&lt;b&gt;③ MCP&lt;/b&gt;&lt;br/&gt;portable exposure&lt;br/&gt;&lt;i&gt;if multi-host&lt;/i&gt;&quot;]
+    S[&quot;&lt;b&gt;④ Skill&lt;/b&gt;&lt;br/&gt;orchestrated workflow&lt;br/&gt;&lt;i&gt;when patterns emerge&lt;/i&gt;&quot;]
+
+    A --&gt;" class="feed-diagram"/>
+</div>
+<p></p></figure><p></p>
+</div>
+</div>
+</div>
+<ol type="1">
+<li><strong>Start with the APIs.</strong> You need raw access to the systems your agent will interact with. If the integration does not exist, nothing above it works.</li>
+<li><strong>Wrap them as tools.</strong> Give each action a clear name, a schema, and a description. This is what the model will actually call.</li>
+<li><strong>If you need portability, add MCP.</strong> If your tools will be used across multiple model hosts or clients, exposing them through MCP saves you from writing bespoke integrations for each one. If you are building for a single environment, this can wait.</li>
+<li><strong>Encode skills last.</strong> Once your agent can take individual actions reliably, identify the recurring workflows where sequencing and judgment matter. Package those as skills. Premature skills, built before the underlying tools are solid, tend to be brittle.</li>
+</ol>
+<p>The layers are complements: APIs provide access, tools provide action, MCP provides portability, and skills provide method. Most agent systems need all four, but they should be built in roughly that order.</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/pulse/apis-tools-skills-where-mcp-fits-benjamin-han-bouuc">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260414-api-mcp-tool-skill/</guid>
+  <pubDate>Tue, 14 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
+</item>
 <item>
   <title>“Verified” Doesn’t Mean “Nothing Can Go Wrong”</title>
   <dc:creator>Ben </dc:creator>
@@ -827,42 +971,6 @@
   <guid>https://benjaminhan.net/posts/20260215-cs-exodus-ai-native-computing/</guid>
   <pubDate>Sun, 15 Feb 2026 08:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260215-cs-exodus-ai-native-computing/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Anthropic on AI Coding: Scaffold, Not Substitute</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260130-ai-coding-scaffold-not-substitute/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260130-ai-coding-scaffold-not-substitute/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260130-ai-coding-scaffold-not-substitute/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Chart from Anthropic’s study. (<a href="https://www.anthropic.com/research/AI-assistance-coding-skills">Source</a>)</figcaption>
-</figure>
-</div>
-<p>Anthropic’s research on AI-assisted coding highlights an interaction effect: outcomes depend on how the tool is used [1].</p>
-<p>In their study, overall quiz performance was lower for participants with AI help, with the biggest gaps on debugging and conceptual understanding. But within the AI group, interaction style mattered: using the model to ask conceptual “why/how” questions and to explain errors aligned with better comprehension, while more delegative use (having it produce most of the solution) aligned with worse learning.</p>
-<p>Important takeaway: treat AI as a scaffold for reasoning and debugging, not a substitute for forming the mental model.</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Anthropic. “AI Assistance and Coding Skills.” <em>Anthropic Research</em>. <a href="https://www.anthropic.com/research/AI-assistance-coding-skills" class="uri">https://www.anthropic.com/research/AI-assistance-coding-skills</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_ai-softwareengineering-developerproductivity-activity-7423229429675528192-vLWv">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260130-ai-coding-scaffold-not-substitute/</guid>
-  <pubDate>Fri, 30 Jan 2026 08:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260130-ai-coding-scaffold-not-substitute/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

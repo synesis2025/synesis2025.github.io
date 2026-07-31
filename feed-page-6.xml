@@ -21,7 +21,125 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 30 Jul 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 31 Jul 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Machine-Learning Applications of Algorithmic Randomness</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260603-algorithmic-randomness/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260603-algorithmic-randomness/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260603-algorithmic-randomness/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The 2-versus-7 ambiguity that motivates the paper: given a training set of clean 2s and 7s, the smudged middle image should receive much lower confidence than the two flanking it. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Machine-Learning Applications of Algorithmic Randomness</em> [1] (ICML 1999), <a href="https://en.wikipedia.org/wiki/Vladimir_Vovk">Volodya Vovk</a>, <a href="https://scholar.google.com/citations?user=uoWoR4gAAAAJ">Alex Gammerman</a>, and <a href="https://dblp.org/pid/66/4053.html">Craig Saunders</a> at Royal Holloway, University of London unify their earlier transduction work into a single scheme based on the notion of algorithmic randomness — one of the founding papers of what is now called <a href="../../posts/20260505-conformal-prediction-primer/">conformal prediction</a>. The complaint that opens the paper is that most learning algorithms output a bare prediction with no measure of how much to trust it, and that the example a classifier is least sure about is exactly the one a user most needs flagged.</p>
+<p>The paper rests on two quantities, and the rest of it is about how to compute them. Each candidate label <img src="https://benjaminhan.net/feed-assets/b5e6b67e7c18a0a7.svg" alt="Y" class="feed-math-inline"/> gets a <em>p-value</em> <img src="https://benjaminhan.net/feed-assets/39d776497ff7f5df.svg" alt="p(Y) \in [0, 1]" class="feed-math-inline"/> measuring how well that labeling fits the training data. The <img src="https://benjaminhan.net/feed-assets/828877ac70da7d2f.svg" alt="p(Y)" class="feed-math-inline"/> across labels are separate tail probabilities, one per candidate-label hypothesis, not a distribution over labels, and they need not sum to 1. The prediction is the label with the largest p-value, <img src="https://benjaminhan.net/feed-assets/c4fbacc6c1f465ce.svg" alt="\hat{y} = \arg\max_Y p(Y)" class="feed-math-inline"/>:</p>
+<ul>
+<li><strong>Confidence</strong> <img src="https://benjaminhan.net/feed-assets/6d67451f66a4cbcb.svg" alt="= 1 - p_{(2)}" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/2edb3ae4063668d3.svg" alt="p_{(2)}" class="feed-math-inline"/> is the second-largest p-value across the candidate labels. High confidence means every label other than the predicted one fits the data poorly, so the prediction is unlikely to be wrong at the corresponding error level.</li>
+<li><strong>Credibility</strong> <img src="https://benjaminhan.net/feed-assets/ced3e22827d101d8.svg" alt="= \max_Y p(Y) = p(\hat{y})" class="feed-math-inline"/>, how well the <em>best</em> available label fits the data at all. Low credibility flags an input unlike anything in the training set: either the data are not <a href="https://en.wikipedia.org/wiki/Exchangeable_random_variables">exchangeable</a> or the test example is unrepresentative, regardless of how confident the prediction looks.</li>
+</ul>
+<p>The pair separates two failure modes that a single probability hides. A prediction can be confident but have low credibility — a signal that the input itself is strange, not just that the label is uncertain.</p>
+<section id="the-abstract" class="level2">
+<h2 class="anchored" data-anchor-id="the-abstract">The abstract</h2>
+<blockquote class="blockquote">
+<p>Most machine learning algorithms share the following drawback: they only output bare predictions but not the confidence in those predictions. In the 1960s algorithmic information theory supplied <em>universal measures of confidence</em> but these are, unfortunately, <em>non-computable</em>. In this paper we combine the ideas of <em>algorithmic information theory</em> with the theory of <em>Support Vector machines</em> to obtain <em>practicable approximations to universal measures of confidence</em>. We show that in some standard problems of pattern recognition our approximations work well.</p>
+</blockquote>
+</section>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The construction has three layers, and only the third one runs on a computer.</p>
+<p><strong>The ideal, non-computable target.</strong> A <em>p-value function</em>, or <em>randomness level</em>, scores how well a data sequence fits the independent-and-identically-distributed (iid) assumption: large when the sequence looks like a typical iid draw, small when it contains a pattern an iid source would rarely produce. (“Random” here is the algorithmic sense of “indistinguishable from a fair-coin sample,” not the colloquial “erratic.”) To classify a test point <img src="https://benjaminhan.net/feed-assets/bbcb848a9d2d7d9f.svg" alt="x_{l+1}" class="feed-math-inline"/>, the ideal algorithm tries every candidate label, completes the sequence <img src="https://benjaminhan.net/feed-assets/29f7a5fb2f0061c4.svg" alt="(x_1, y_1), \ldots, (x_{l+1}, Y)" class="feed-math-inline"/>, and measures the randomness level <img src="https://benjaminhan.net/feed-assets/828877ac70da7d2f.svg" alt="p(Y)" class="feed-math-inline"/> of each completion. It predicts the label whose completion has the largest randomness level, <img src="https://benjaminhan.net/feed-assets/c4fbacc6c1f465ce.svg" alt="\hat{y} = \arg\max_Y p(Y)" class="feed-math-inline"/> — the label that makes the data look most consistent with iid, hence the least anomalous. <em>Credibility</em> is that largest randomness level, <img src="https://benjaminhan.net/feed-assets/38db78a081bf756e.svg" alt="p(\hat{y})" class="feed-math-inline"/>, and <em>confidence</em> is one minus the second-largest, <img src="https://benjaminhan.net/feed-assets/4deca0ff2d4a2ad8.svg" alt="1 - p_{(2)}" class="feed-math-inline"/>.</p>
+<p>The second-largest is what matters because the valid prediction set at significance level <img src="https://benjaminhan.net/feed-assets/8ba03ab995f44972.svg" alt="\varepsilon" class="feed-math-inline"/> is <img src="https://benjaminhan.net/feed-assets/e749125fdfe7d24a.svg" alt="\Gamma^{\varepsilon} = \{\,Y : p(Y) &gt; \varepsilon\,\}" class="feed-math-inline"/>, and this is the single label <img src="https://benjaminhan.net/feed-assets/22b7c9122f6aedda.svg" alt="\hat{y}" class="feed-math-inline"/> only when <em>every</em> alternative is rejected. That is an AND across the other labels, so the binding constraint is the largest of their p-values: <img src="https://benjaminhan.net/feed-assets/58eac90ceb1979a0.svg" alt="\max_{Y \neq \hat{y}} p(Y) = p_{(2)} \le \varepsilon" class="feed-math-inline"/>. So <img src="https://benjaminhan.net/feed-assets/4deca0ff2d4a2ad8.svg" alt="1 - p_{(2)}" class="feed-math-inline"/> is the highest confidence at which the predictor commits to one label. The error guarantee falls out of validity: each <img src="https://benjaminhan.net/feed-assets/828877ac70da7d2f.svg" alt="p(Y)" class="feed-math-inline"/> is a genuine p-value, so <img src="https://benjaminhan.net/feed-assets/63c80a0312933620.svg" alt="\Pr[\,p(Y) \le \varepsilon\,] \le \varepsilon" class="feed-math-inline"/> under the hypothesis that <img src="https://benjaminhan.net/feed-assets/b5e6b67e7c18a0a7.svg" alt="Y" class="feed-math-inline"/> is correct, and because a wrong prediction means the true label is the rejected one, it has probability at most <img src="https://benjaminhan.net/feed-assets/37f2d8dbdd207f9e.svg" alt="1 - \text{confidence}" class="feed-math-inline"/>. Credibility plays the complementary role: a small <img src="https://benjaminhan.net/feed-assets/38db78a081bf756e.svg" alt="p(\hat{y})" class="feed-math-inline"/> means even the best label is atypical, flagging the input rather than the label.</p>
+<p>The trouble is that the universal measures of randomness from <a href="https://en.wikipedia.org/wiki/Andrey_Kolmogorov">Kolmogorov</a> [2] and <a href="https://en.wikipedia.org/wiki/Per_Martin-L%C3%B6f">Martin-Löf</a> [3] are non-computable — they can be approximated from below but never evaluated exactly.</p>
+<p><strong>The Support Vector approximation.</strong> To get something computable, the paper borrows Vapnik’s Support Vector Machine (SVM) [4]. Solving the SVM’s dual optimization assigns each example a Lagrange multiplier <img src="https://benjaminhan.net/feed-assets/6589a38e504cfe5c.svg" alt="\alpha_i" class="feed-math-inline"/> that grows with how hard the example is to fit. The earlier “Learning by Transduction” paper (Gammerman, Vapnik, and Vovk [5]) turned multipliers into a score with <img src="https://benjaminhan.net/feed-assets/8ac2fe81f8581fe2.svg" alt="f(\alpha) = \operatorname{sign} \alpha" class="feed-math-inline"/>. The <a href="../../posts/20260603-transduction-confidence-credibility/">companion paper</a> (Saunders, Gammerman, and Vovk [6]) turns them into a p-value by ranking: sort the multipliers in decreasing order, and the p-value of a completion is the rank of the test example’s multiplier divided by <img src="https://benjaminhan.net/feed-assets/1f7972f3d81ff8ea.svg" alt="l+1" class="feed-math-inline"/>. A genuinely strange or mislabelled example gets a large multiplier, ends up near the top of the ranking, and so gets a small p-value.</p>
+<p><strong>The experiment.</strong> The test bed is United States Postal Service (USPS) handwritten digits (LeCun et al.&nbsp;[7]), each a <img src="https://benjaminhan.net/feed-assets/f5e3e3765d4c03b8.svg" alt="16 \times 16" class="feed-math-inline"/> image, with a two-class problem separating the digit 2 from the digit 7. The classifier is an SVM with a degree-3 polynomial kernel <img src="https://benjaminhan.net/feed-assets/97aeb523c67788f5.svg" alt="K(x, x&#x27;) = (x \cdot x&#x27;)^3 / 256" class="feed-math-inline"/>, trained on 400 examples and evaluated on 100 single-example test sets.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<ul>
+<li><strong>Confidence and credibility separate correct from incorrect predictions</strong> (Figure 2, credibility on the vertical axis, confidence on the horizontal). With <img src="https://benjaminhan.net/feed-assets/1ab07f4460e333ae.svg" alt="f(\alpha) = \operatorname{sign}\alpha" class="feed-math-inline"/>, the 100 predictions split into two clusters by average credibility: a cluster of 93 correct examples is at credibility 1.0 and average confidence 0.902, while the cluster holding the single error (plus 6 correct examples) is at credibility 0.091. Credibility, not confidence, is what marks the examples the classifier should not be trusted on.</li>
+<li><strong>The choice of score function <img src="https://benjaminhan.net/feed-assets/9459e5a9f1fe12c3.svg" alt="f(\alpha)" class="feed-math-inline"/> matters.</strong> The <img src="https://benjaminhan.net/feed-assets/1ab07f4460e333ae.svg" alt="f(\alpha) = \operatorname{sign}\alpha" class="feed-math-inline"/> rule from the transduction paper suffers a “distortion phenomenon” and predicts worse. Switching to <img src="https://benjaminhan.net/feed-assets/0bc37c16eb9dcb20.svg" alt="f(\alpha) = \alpha" class="feed-math-inline"/> or <img src="https://benjaminhan.net/feed-assets/beb472357ecd463c.svg" alt="f(\alpha) = \alpha^2" class="feed-math-inline"/> pushes average confidence above 0.99 on the correct cluster while keeping the error cluster’s credibility low.</li>
+<li><strong>The error bound is <img src="https://benjaminhan.net/feed-assets/b653deef073f3313.svg" alt="\log(l + 1)" class="feed-math-inline"/>.</strong> For a single test example, the randomness deficiency of a wrongly-labelled sequence is at most <img src="https://benjaminhan.net/feed-assets/e97c67c8efea2a50.svg" alt="\log(l+1)" class="feed-math-inline"/>, and the paper notes this matches the <img src="https://benjaminhan.net/feed-assets/1f7972f3d81ff8ea.svg" alt="l+1" class="feed-math-inline"/> denominator in Vapnik’s statistical learning theory and in PAC-style error bounds — the same quantity obtained from the algorithmic-randomness side.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260603-algorithmic-randomness/figure2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The paper closes with a set of impossibility results (Section 6). Under the iid assumption alone:</p>
+<ul>
+<li><strong>On-line prediction at every step is impossible</strong> (§6.1). If both the data sequence and the stopping time are random, inequality (9) shows that even the <em>wrong</em> labeled sequence has a random continuation under iid — so under iid alone there is no way to rule out wrong predictions at a randomly chosen time. The paper offers this as the technical explanation for why machine learning under iid has stayed in the batch setting. <strong>Practical impact:</strong> conformal prediction’s coverage guarantee holds at fixed batches, not at adversarially chosen stopping times. Streaming pipelines that need valid coverage at every step need assumptions stronger than iid.</li>
+<li><strong>Density estimation in high dimensions is impossible</strong> (§6.2). When the input dimension is large compared to the sample size, the unlabelled <img src="https://benjaminhan.net/feed-assets/30f30e765d1f3f2f.svg" alt="x_i" class="feed-math-inline"/> are typically all distinct. Under iid, for any generating distribution <img src="https://benjaminhan.net/feed-assets/1e43ddbb69317023.svg" alt="P" class="feed-math-inline"/> there is a degenerate <img src="https://benjaminhan.net/feed-assets/4544ec6977cbc22b.svg" alt="P^*" class="feed-math-inline"/> that places <img src="https://benjaminhan.net/feed-assets/1fe10496922d7557.svg" alt="y \mid x" class="feed-math-inline"/> entirely on <img src="https://benjaminhan.net/feed-assets/e04952ed8919b72a.svg" alt="-1" class="feed-math-inline"/> or <img src="https://benjaminhan.net/feed-assets/c8461c32b87a4df7.svg" alt="+1" class="feed-math-inline"/> for each <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/> but is indistinguishable from <img src="https://benjaminhan.net/feed-assets/1e43ddbb69317023.svg" alt="P" class="feed-math-inline"/> on the sample. So <img src="https://benjaminhan.net/feed-assets/d20928d225f4b273.svg" alt="P(y_{l+1} = 1 \mid x_{l+1})" class="feed-math-inline"/> cannot be estimated to anything narrower than <img src="https://benjaminhan.net/feed-assets/dafc6ce29f54a7ef.svg" alt="\{0, 1\}" class="feed-math-inline"/> without strictly stronger assumptions. <strong>Practical impact:</strong> conformal prediction returns a prediction <em>set</em> (the true label is among these) rather than a calibrated per-class probability like <img src="https://benjaminhan.net/feed-assets/c9e51e831e4d691f.svg" alt="P(\text{class A} \mid x) = 0.73" class="feed-math-inline"/>. The latter is provably out of reach in high dimensions under iid alone.</li>
+<li><strong>Regression as conditional-expectation estimation reduces to density estimation</strong> (§6.3). Estimating <img src="https://benjaminhan.net/feed-assets/73616cfbc2f13947.svg" alt="\mathbb{E}[y_{l+1} \mid x_{l+1}]" class="feed-math-inline"/> under iid coincides with density estimation in the binary case, so the §6.2 impossibility transfers. Under a different framing, where <img src="https://benjaminhan.net/feed-assets/30f30e765d1f3f2f.svg" alt="x_i" class="feed-math-inline"/> are deterministic and only <img src="https://benjaminhan.net/feed-assets/fff95c98ee7b27b1.svg" alt="y_i" class="feed-math-inline"/> are stochastic, even pattern recognition becomes impossible without additional assumptions. <strong>Practical impact:</strong> conformal regression methods deliver prediction <em>intervals</em> (a calibrated band around <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/>) rather than calibrated point estimates of <img src="https://benjaminhan.net/feed-assets/47c4a3e852bd2e9e.svg" alt="\mathbb{E}[y \mid x]" class="feed-math-inline"/>, for the same reason.</li>
+</ul>
+</section>
+<section id="what-came-after" class="level2">
+<h2 class="anchored" data-anchor-id="what-came-after">What came after</h2>
+<p>The scheme here is transductive — to score a test example it effectively retrains for every candidate label, which is expensive — and the nonconformity signal is tied to the SVM. The work that followed relaxed both.</p>
+<ul>
+<li><strong>The general form.</strong> Vovk, Gammerman, and Shafer’s <em>Algorithmic Learning in a Random World</em> [8] consolidated the theory into a form where any nonconformity score, not just an SVM multiplier, drives the calibration.</li>
+<li><strong>Split conformal prediction.</strong> Papadopoulos et al.&nbsp;[9] replaced the per-label retraining with a single held-out calibration set, cheap enough to wrap around any pre-trained model — the form most practitioners use today.</li>
+<li><strong>Workarounds for the impossibility results.</strong> Each of the §6 impossibilities has a follow-up that recovers what is possible without violating the underlying constraint:
+<ul>
+<li><strong>On-line prediction (§6.1):</strong> Adaptive Conformal Inference (Gibbs and Candès [13]) updates the conformal threshold over time, holding long-run coverage under distribution shift. The new guarantee is a long-run coverage rate rather than per-step validity, which is why the §6.1 impossibility does not apply.</li>
+<li><strong>Density estimation in high dimensions (§6.2):</strong> Venn–Abers predictors (Vovk and Petej [11]) output a calibrated probability <em>interval</em> rather than a single number. An interval is what is achievable under iid alone in high dimensions, where the §6.2 impossibility blocks single-number probabilities.</li>
+<li><strong>Regression (§6.3):</strong> Conformalized quantile regression (Romano, Patterson, and Candès [10]) reformulates the task as quantile estimation and returns calibrated, locally adaptive prediction <em>intervals</em>. The impossibility blocks point estimates of <img src="https://benjaminhan.net/feed-assets/47c4a3e852bd2e9e.svg" alt="\mathbb{E}[y \mid x]" class="feed-math-inline"/>, not interval coverage, so quantile regression sidesteps it.</li>
+</ul></li>
+<li><strong>The deep-learning revival.</strong> Angelopoulos and Bates’ tutorial [12] repackaged the framework for deep learning and drove the recent wave of distribution-free uncertainty work — including the <a href="../../posts/20260505-conformal-factuality/">conformal factuality</a> and <a href="../../posts/20260505-conformal-language-modeling/">conformal language modeling</a> methods built for language models.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The middle layer is the IJCAI companion paper.</strong> This paper has three layers (ideal non-computable target, computable SVM approximation, experiment), and the middle layer comes from the same trio’s IJCAI 1999 paper [6] on transduction with confidence and credibility. That paper introduces the SVM-rank-of-multipliers construction standalone, while this one wraps the same construction in algorithmic-randomness theory and adds the impossibility results.</li>
+<li><strong>Mapping to LLM prediction.</strong> The paper picks the predicted label via <img src="https://benjaminhan.net/feed-assets/c4fbacc6c1f465ce.svg" alt="\hat{y} = \arg\max_Y p(Y)" class="feed-math-inline"/> and exposes the value at that argmax as <em>credibility</em>, <img src="https://benjaminhan.net/feed-assets/47b8c607134279c4.svg" alt="\max_Y p(Y) = p(\hat{y})" class="feed-math-inline"/>. LLM token prediction does the same operation, <img src="https://benjaminhan.net/feed-assets/ffcb70d218a44bef.svg" alt="\hat{y} = \arg\max_y p_{\text{softmax}}(y \mid x)" class="feed-math-inline"/>, with the max softmax as the value at the argmax. So when an LLM is described as “95% confident in its prediction,” that 95% is colloquially called confidence but is structurally the paper’s credibility. The paper’s <em>confidence</em> (<img src="https://benjaminhan.net/feed-assets/4deca0ff2d4a2ad8.svg" alt="1 - p_{(2)}" class="feed-math-inline"/>, one minus the second-largest p-value) is a different number with no common LLM analog. Wrapping conformal prediction around the LLM uses <img src="https://benjaminhan.net/feed-assets/d67c8791894e2bea.svg" alt="1 - p_{\text{softmax}}(y \mid x)" class="feed-math-inline"/> as the nonconformity score on a held-out <a href="../../posts/20260505-conformal-prediction-primer/">calibration set</a>, and the result has the coverage guarantee the raw max softmax lacks.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Vovk, V., Gammerman, A., and Saunders, C. “Machine-Learning Applications of Algorithmic Randomness.” <em>Proceedings of the Sixteenth International Conference on Machine Learning</em> (ICML 1999), pp.&nbsp;444–453. <a href="https://www.researchgate.net/publication/2638509_Machine-Learning_Applications_of_Algorithmic_Randomness" class="uri">https://www.researchgate.net/publication/2638509_Machine-Learning_Applications_of_Algorithmic_Randomness</a></li>
+<li><a id="ref-2"></a><a href="https://en.wikipedia.org/wiki/Andrey_Kolmogorov">Kolmogorov, A. N.</a> “Three Approaches to the Quantitative Definition of Information.” <em>Problems of Information Transmission</em>, vol.&nbsp;1, no. 1 (1965), pp.&nbsp;1–7.</li>
+<li><a id="ref-3"></a><a href="https://en.wikipedia.org/wiki/Per_Martin-L%C3%B6f">Martin-Löf, P.</a> “The Definition of Random Sequences.” <em>Information and Control</em>, vol.&nbsp;9, no. 6 (1966), pp.&nbsp;602–619.</li>
+<li><a id="ref-4"></a>Vapnik, V. N. <em>Statistical Learning Theory.</em> New York: Wiley, 1998.</li>
+<li><a id="ref-5"></a>Gammerman, A., Vapnik, V., and Vovk, V. “Learning by Transduction.” <em>Proceedings of the Fourteenth Conference on Uncertainty in Artificial Intelligence</em> (UAI 1998), pp.&nbsp;148–156.</li>
+<li><a id="ref-6"></a>Saunders, C., Gammerman, A., and Vovk, V. “Transduction with Confidence and Credibility.” <em>Proceedings of the Sixteenth International Joint Conference on Artificial Intelligence</em> (IJCAI 1999), pp.&nbsp;722–726.</li>
+<li><a id="ref-7"></a>LeCun, Y., Boser, B., Denker, J. S., Henderson, D., Howard, R. E., Hubbard, W., and Jackel, L. J. “Handwritten Digit Recognition with a Back-Propagation Network.” <em>Advances in Neural Information Processing Systems</em> (NIPS 1990), pp.&nbsp;396–404.</li>
+<li><a id="ref-8"></a>Vovk, V., Gammerman, A., and Shafer, G. <em>Algorithmic Learning in a Random World.</em> New York: Springer, 2005.</li>
+<li><a id="ref-9"></a>Papadopoulos, H., Proedrou, K., Vovk, V., and Gammerman, A. “Inductive Confidence Machines for Regression.” <em>European Conference on Machine Learning</em> (ECML 2002), pp.&nbsp;345–356.</li>
+<li><a id="ref-10"></a>Romano, Y., Patterson, E., and Candès, E. J. “Conformalized Quantile Regression.” <em>Advances in Neural Information Processing Systems</em> (NeurIPS 2019). arXiv:1905.03222. <a href="https://arxiv.org/abs/1905.03222" class="uri">https://arxiv.org/abs/1905.03222</a></li>
+<li><a id="ref-11"></a>Vovk, V. and Petej, I. “Venn–Abers Predictors.” <em>Proceedings of the Thirtieth Conference on Uncertainty in Artificial Intelligence</em> (UAI 2014), pp.&nbsp;829–838. arXiv:1211.0025. <a href="https://arxiv.org/abs/1211.0025" class="uri">https://arxiv.org/abs/1211.0025</a></li>
+<li><a id="ref-12"></a>Angelopoulos, A. N. and Bates, S. “A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification.” arXiv:2107.07511, 2021. <a href="https://arxiv.org/abs/2107.07511" class="uri">https://arxiv.org/abs/2107.07511</a></li>
+<li><a id="ref-13"></a>Gibbs, I. and Candès, E. J. “Adaptive Conformal Inference Under Distribution Shift.” <em>Advances in Neural Information Processing Systems</em> (NeurIPS 2021). arXiv:2106.00170. <a href="https://arxiv.org/abs/2106.00170" class="uri">https://arxiv.org/abs/2106.00170</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260603-transduction-confidence-credibility/">Transduction with Confidence and Credibility</a>: the IJCAI companion paper by the same trio, which introduces the SVM-rank-of-multipliers construction this paper wraps in algorithmic-randomness theory.</li>
+<li><a href="../../posts/20260607-inductive-confidence-machines-regression/">Inductive Confidence Machines for Regression</a>: the follow-up that replaced this paper’s per-label retraining with a held-out calibration set, the split-conformal form practitioners use today.</li>
+<li><a href="../../posts/20260505-conformal-prediction-primer/">A Primer on Conformal Prediction</a>: the modern framing of the confidence-and-credibility scheme founded here, including the exchangeability argument and coverage guarantee.</li>
+<li><a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a>: one of the language-model methods built on the distribution-free guarantee this paper’s lineage established.</li>
+<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: another LLM application of the same conformal machinery traced back to this founding work.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260603-algorithmic-randomness/</guid>
+  <pubDate>Wed, 03 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260603-algorithmic-randomness/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Transduction with Confidence and Credibility</title>
   <dc:creator>synesis </dc:creator>
@@ -1721,94 +1839,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260528-claude-code-large-codebases/</guid>
   <pubDate>Thu, 28 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260528-claude-code-large-codebases/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>AI Assistance Reduces Persistence and Hurts Independent Performance</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Experimental design from the paper. Image from the <a href="https://ai-project-website.github.io/AI-assistance-reduces-persistence/">project page</a>.</figcaption>
-</figure>
-</div>
-<p>In <em>AI Assistance Reduces Persistence and Hurts Independent Performance</em> [1] (arXiv preprint, April 2026), <a href="https://www.semanticscholar.org/author/Grace-Liu/2315947759">Grace Liu</a> at CMU, <a href="https://brianchristian.org/">Brian Christian</a> and <a href="https://scholar.google.com/citations?user=GOZWbKAAAAAJ">Tsvetomira Dumbalska</a> at Oxford, <a href="https://www.semanticscholar.org/author/Michiel-A.-Bakker/2380588483">Michiel A. Bakker</a> at MIT, and <a href="https://www.semanticscholar.org/author/Rachit-Dubey/2811292">Rachit Dubey</a> at UCLA run three <a href="https://en.wikipedia.org/wiki/Randomized_controlled_trial">randomized controlled trials</a> on humans solving math and reading-comprehension problems with and without AI help, and report that brief AI assistance lowers later unaided performance and raises the rate at which participants give up. The <a href="https://ai-project-website.github.io/AI-assistance-reduces-persistence/">project page</a> summarizes the design and findings.</p>
-<blockquote class="blockquote">
-<p><em>People often optimize for long-term goals in collaboration</em>: A mentor or companion doesn’t just answer questions, but also scaffolds learning, tracks progress, and prioritizes the other person’s growth over immediate results. In contrast, current AI systems are fundamentally short-sighted collaborators - optimized for providing instant and complete responses, without ever saying no (unless for safety reasons). What are the consequences of this dynamic? Here, through a series of <em>randomized controlled trials on human-AI interactions (N = 1,222)</em>, we provide causal evidence for two key consequences of AI assistance: <em>reduced persistence and impairment of unassisted performance</em>. Across a variety of tasks, including mathematical reasoning and reading comprehension, we find that although AI assistance improves performance in the short-term, <em>people perform significantly worse without AI and are more likely to give up</em>. Notably, <em>these effects emerge after only brief interactions with AI (approximately 10 minutes)</em>. These findings are particularly concerning because persistence is foundational to skill acquisition and is one of the strongest predictors of long-term learning. We posit that persistence is reduced because AI conditions people to expect immediate answers, thereby denying them the experience of working through challenges on their own. These results suggest the need for AI model development to prioritize scaffolding long-term competence alongside immediate task completion.</p>
-</blockquote>
-<p>The paper lays out three experiments and one cross-cutting subgroup analysis:</p>
-<ul>
-<li><strong>Common protocol.</strong> Each experiment runs a between-subjects RCT with two conditions: an <em>AI condition</em> (problems solved with a GPT-5 sidebar assistant) and a <em>control</em> (no AI). After a learning phase, the AI is removed without warning and all participants solve a final block of test problems independently. Two outcome measures: <em>solve rate</em> (correct answers) and <em>skip rate</em> (problems abandoned, treated as a behavioral proxy for persistence).</li>
-<li><strong>Experiment 1: Fractions, N = 354.</strong> 12 fraction problems of increasing difficulty (one-step → two-step → three-step), then 3 unaided test problems. AI participants ended with a <em>0.57</em> test solve rate vs <em>0.73</em> for controls (p &lt; 0.001, Cohen’s <em>d</em> = −0.42), and a <em>0.20</em> skip rate vs <em>0.11</em> (p = 0.031, <em>d</em> = 0.25).</li>
-<li><strong>Experiment 2: Replication with confound controls, N = 667.</strong> Adds (1) a pretest to allow ability-based exclusions and (2) a matched sidebar interface for the control group to remove interface asymmetry. Effects replicate: solve rate <em>0.71</em> vs <em>0.77</em> (p = 0.020, <em>d</em> = −0.19). The smaller effect size relative to Experiment 1 is consistent with the controls absorbing some of Experiment 1’s variance.</li>
-<li><strong>Subgroup analysis on usage style.</strong> Self-reported AI use splits into three groups: <em>direct answers</em> (61%), <em>hints</em>, <em>clarifications</em>. Pretest performance is statistically indistinguishable across groups (no skill-level selection effect). Post-test, only the direct-answer group shows the impairment. The hint and clarification groups are statistically equivalent to control. The aggregate effect in Experiments 1 and 2 is therefore carried entirely by the direct-answer subgroup.</li>
-<li><strong>Experiment 3: Reading comprehension, N = 201.</strong> SAT-style passages and questions, same protocol. Solve rate <em>0.76</em> vs <em>0.89</em> (p = 0.007, <em>d</em> = −0.42), skip rate <em>0.08</em> vs <em>0.01</em> (p = 0.008, <em>d</em> = 0.42). Same direction, comparable effect size, in a domain whose cognitive demands (meaning-making, mental-model construction) don’t overlap arithmetic.</li>
-<li><strong>Headline numbers.</strong> Across three experiments, total <em>N</em> = 1,222. Median session length where the impairment emerges is approximately 10 minutes. The persistence (skip-rate) effect is as large as or larger than the performance (solve-rate) effect in Experiments 1 and 3, and is the cleaner signal in both since it captures behavioral disengagement rather than transient skill loss.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/exp1.webp" class="img-fluid figure-img" data-lightbox-src="exp1-full.png"></p>
-<figcaption>Experiment 1: fractions, N = 354. (a) Per-problem solve rate (top) and skip rate (bottom) by problem index, AI vs control. Dashed lines mark the learning → test transition. (b) Mean test-block solve rate and skip rate by condition with 95% CIs. Image from the <a href="https://ai-project-website.github.io/AI-assistance-reduces-persistence/">project page</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/exp2.webp" class="img-fluid figure-img" data-lightbox-src="exp2-full.png"></p>
-<figcaption>Experiment 2: fractions replication with pretest exclusions and matched sidebar interface, N = 667. Same panel structure as Experiment 1, with problems running 4–14. The replication holds with a smaller effect size after controls. Image from the <a href="https://ai-project-website.github.io/AI-assistance-reduces-persistence/">project page</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/exp2_categories.webp" class="img-fluid figure-img" data-lightbox-src="exp2_categories-full.png"></p>
-<figcaption>Subgroup analysis from Experiment 2. (a) No significant differences across AI-usage groups at pretest. (b) At test, the direct-answer group has the lowest solve rate and highest skip rate, while hint and clarification groups track control. (c) Within-subject change relative to pretest: only the direct-answer group declines. Image from the <a href="https://ai-project-website.github.io/AI-assistance-reduces-persistence/">project page</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/exp3.webp" class="img-fluid figure-img" data-lightbox-src="exp3-full.png"></p>
-<figcaption>Experiment 3: SAT-style reading comprehension, N = 201. Same protocol generalizes to a non-arithmetic domain with comparable effect size. Image from the <a href="https://ai-project-website.github.io/AI-assistance-reduces-persistence/">project page</a>.</figcaption>
-</figure>
-</div>
-<p>The authors’ headline takeaway. Brief AI-assisted sessions impair subsequent unaided performance and persistence. The impairment is carried by participants who used the AI for direct solutions rather than for hints or clarifications. And the effect generalizes across arithmetic and reading comprehension. Their proposed mechanism is that AI conditions users to expect immediate answers, removing the experience of working through challenges, and persistence (a strong long-term-learning predictor) erodes as a result.</p>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Part of a growing cluster on AI’s cognitive cost.</strong> Vivienne Ming’s <a href="../../posts/20260426-ai-cannibalizing-human-intelligence/">WSJ essay</a> argued the risk is the quiet outsourcing of judgment in increments too small to notice. This paper supplies the controlled-trial version of that argument with a specific behavioral target (persistence). Together the two pieces make the case from different ends: one from clinical experience, one from RCT data.</p></li>
-<li><p><strong>Ten minutes is a surprisingly short time.</strong> Skill-erosion arguments usually invoke months or years of habituation. This study finds significant post-removal decline after a single ~10-minute session. If the result holds, the next question is the half-life of the effect and whether it persists past one sitting. The paper doesn’t follow participants beyond the session.</p></li>
-<li><p><strong>Skip-rate is a more alarming result than solve-rate.</strong> Solve-rate decline could plausibly reflect transient unfamiliarity with no-AI mode. Skip-rate is a behavioral commitment: the participant chose to give up rather than try. The hardest result to explain away: participants who had AI for ten minutes were more willing to abandon problems.</p></li>
-<li><p><strong>The importance of interaction style is undersold.</strong> “AI assistance reduces persistence” reads as a verdict on AI assistance writ large, but the data says the impairment is carried entirely by the 61% who asked for full solutions. Hint and clarification users were indistinguishable from control. The result is consistent with two very different recommendations (limit AI use vs.&nbsp;design AI to push back on direct-answer requests), and the paper doesn’t separate the two.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Liu, Grace, Christian, Brian, Dumbalska, Tsvetomira, Bakker, Michiel A., Dubey, Rachit. “AI Assistance Reduces Persistence and Hurts Independent Performance.” <em>arXiv preprint</em> (arXiv:2604.04721), April 6, 2026. <a href="https://arxiv.org/abs/2604.04721" class="uri">https://arxiv.org/abs/2604.04721</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260426-ai-cannibalizing-human-intelligence/">Is AI Cannibalizing Human Intelligence?</a>: the clinical-experience version of this paper’s argument, the quiet outsourcing of judgment that these RCTs measure under controlled conditions.</li>
-<li><a href="../../posts/20251022-llm-brain-rot/">LLMs Can Get Brain Rot Too</a>: capability erosion on the model side, a counterpart to the human-side erosion this study finds after brief assisted sessions.</li>
-<li><a href="../../posts/20260507-chatgpt-education-retraction/">Influential ChatGPT-in-Education Meta-Analysis Retracted: Where’s the Transparency and Cost?</a>: a counterweight on the evidence base, where the headline claim that AI helps learning collapsed while this RCT finds it can hurt unaided performance.</li>
-<li><a href="../../posts/20260524-acemoglu-great-displacement/">Daron Acemoglu on AI, Jobs, and Liberal Democracy</a>: Acemoglu’s worry that AI in schools hurts students, for which these trials supply controlled causal evidence on persistence.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/</guid>
-  <pubDate>Thu, 28 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -1,0 +1,108 @@
+---
+title: "From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification"
+description: "An evidence retriever trained on feedback from the claim verifier picks sentences by how much they help predict the right verdict rather than by relevance."
+author: synesis
+date: "2026-07-31"
+image: cover.jpg
+---
+
+![Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification* [[1]](#ref-1) (Findings of EMNLP 2023), [Hengran Zhang](https://dblp.org/pid/339/3052.html), [Ruqing Zhang](https://dblp.org/pid/203/8270-1.html), [Jiafeng Guo](https://dblp.org/pid/02/146.html), [Maarten de Rijke](https://dblp.org/pid/r/MdRijke.html), [Yixing Fan](https://dblp.org/pid/188/2160.html), and [Xueqi Cheng](https://dblp.org/pid/44/912-1.html) (Chinese Academy of Sciences and the University of Amsterdam) train a feedback-based evidence retriever (FER) whose training signal comes from the claim verifier that reads its output, so a sentence is scored by how much it helps predict the claim's label rather than by how well it matches the claim.
+
+Two definitions first:
+
+- **Probability ranking principle (PRP)** [[2]](#ref-2): rank documents by their estimated probability of being relevant to the query. The principle maximizes retrieval effectiveness under two assumptions: each document's relevance is judged on its own, and the list is read from the top down. Both fail for a claim verifier, which consumes the retrieved set at once and judges one sentence against the others.
+- **Utility**: how much better the claim verifier predicts the label when it is given one set of sentences instead of another. Defining retrieval quality this way makes the verifier's output distribution the training signal, so the retriever is tuned for the model that reads the evidence.
+
+> Retrieval-enhanced methods have become a primary approach in fact verification (FV); it requires reasoning over multiple retrieved pieces of evidence to verify the integrity of a claim. To retrieve evidence, existing work often employs off-the-shelf retrieval models whose design is based on the probability ranking principle. We argue that, *rather than relevance, for FV we need to focus on the utility that a claim verifier derives from the retrieved evidence*. We introduce the *feedback-based evidence retriever (FER)* that optimizes the evidence retrieval process by incorporating feedback from the claim verifier. As a feedback signal we use *the divergence in utility between how effectively the verifier utilizes the retrieved evidence and the ground-truth evidence to produce the final claim label*. Empirical studies demonstrate the superiority of FER over prevailing baselines.
+
+## Methods
+
+A FEVER [[3]](#ref-3) system runs three phases: retrieve documents, extract candidate evidence sentences from them, then label the claim SUPPORTS, REFUTES, or NOT ENOUGH INFO. FER replaces the middle phase, leaves the other two unchanged, and has two stages of its own:
+
+- **Coarse retrieval**: a BERT-base [[4]](#ref-4) ranker reads the claim and one candidate sentence together, then turns the `[CLS]` output into a relevance score through a linear layer and a tanh. Training pairs one annotated-evidence sentence against one non-evidence sentence from the same retrieved documents. At inference the top $K$ sentences form a *candidate set* $S$, with $K = 25$.
+- **Fine-grained retrieval**: a second BERT-base model $R_\theta$ reads the claim and all of $S$ as a single sequence, with a `[CLS]` token in front of each candidate sentence, and emits a keep-or-drop decision per sentence. Gumbel-Softmax [[5]](#ref-5) makes those discrete decisions differentiable, so gradients reach $R_\theta$ through the selection step itself.
+
+The cover figure traces one claim through both stages. Coarse retrieval turns the retrieved Wikipedia pages into 25 numbered candidate sentences, of which sentences 1, 3, 7, and 14 are the annotated evidence (red, upper right). The fine-grained retriever then makes its own selection from those 25 candidates, here sentences 1, 4, and 10, of which only sentence 1 is annotated evidence. A claim verifier reads the retriever's selection and the annotated evidence separately, producing two label distributions over the three verdicts (the two bar panels at the bottom). $\mathcal{L}_{uti}$ compares those two distributions and back-propagates into the retriever's selection. $\mathcal{L}_{cla}$ compares the same selection against the per-sentence evidence labels on the right.
+
+The training objective is $\mathcal{L} = \alpha \mathcal{L}_{cla} + \beta \mathcal{L}_{uti}$, with both coefficients set to 1:
+
+- **Evidence classification** $\mathcal{L}_{cla}$ is a binary cross-entropy over per-sentence labels $g \in \{0, 1\}$, where 1 marks a sentence as annotated evidence.
+- **Utility divergence** $\mathcal{L}_{uti} = y^{*} D_\phi(c, E^{*}) - y^{*} D_\phi(c, R_\theta(c, S))$, where $c$ is the claim, $E^{*}$ the annotated evidence, $y^{*}$ a one-hot vector for the true verdict, $D_\phi(\cdot)$ the verifier's predicted label distribution, and $R_\theta(c, S)$ the sentences the retriever selected. The verifier is a third BERT-base model, trained on claim plus annotated evidence and then frozen. The term measures how far the verifier's confidence in the true verdict drops when it reads the retriever's selection instead of the annotated evidence.
+
+## Results
+
+The setup:
+
+- **Dataset**: FEVER, 185,455 human-written claims against a June 2017 Wikipedia dump of 5,416,537 documents.
+- **Document retrieval**: the standard entity-linking pipeline, parsing claims with AllenNLP and querying the MediaWiki API, which returns about four documents per claim.
+- **Retrieval metrics**: the official precision, recall, and F1 at five retrieved sentences. The online evaluation reads only the first five predicted sentences, so FER and every baseline submit five.
+- **Verification metrics**: label accuracy counts the verdict on its own, and the FEVER score counts it only when the retrieved evidence fully covers the annotated evidence.
+- **Baselines**: ten retrieval models, from TF-IDF through graph-attention retrievers such as KGAT [[6]](#ref-6) to more recent precision-oriented models such as GERE [[7]](#ref-7), all listed in Table 1.
+- **Downstream verifiers**: five published models re-run on FER's evidence: the BERT Concat, BERT Pair, and GEAR models from Zhou et al. [[8]](#ref-8), plus GAT and KGAT.
+
+The findings:
+
+- **The gain is in precision** (Table 1, test columns). FER reaches 79.35 precision against 54.30 for GERE, the strongest prior model on that metric, and 78.84 F1 against 63.74, a 15.1-point absolute gain the paper reports as 23.7% relative.
+- **Recall drops**. FER's test recall is 78.34, below KGAT's 87.47 and UKP-Athene's 85.19. The authors attribute this to FER returning smaller evidence sets, which matches the FEVER average of 1.86 annotated sentences per claim.
+- **Both loss terms contribute**. Dropping $\mathcal{L}_{uti}$ costs 7.5 points of test precision (79.35 to 71.84), and dropping $\mathcal{L}_{cla}$ costs 2.4 points of recall (78.34 to 75.97), leaving F1 at 75.86.
+- **Downstream gains are small** (Table 2). Swapping in FER's evidence lifts label accuracy by 0.5 to 2.4 points and the FEVER score by 0.2 to 2.9 points across the five verifiers. The largest gain is BERT Pair (65.18 to 68.03 FEVER), the smallest KGAT (69.40 to 69.61).
+- **The feedback verifier is swappable** (Table 3). Feedback from GAT or KGAT instead of the BERT verifier keeps test F1 within about a point.
+
+![Table 1 from the paper [[1]](#ref-1).](table1.jpg){fig-align="center"}
+
+![Table 2 from the paper [[1]](#ref-1).](table2.jpg){fig-align="center"}
+
+| Feedback verifier | P | R | F1 |
+|---|---|---|---|
+| GAT | 77.93 | 79.48 | 78.70 |
+| KGAT | **84.38** | 75.95 | **79.94** |
+
+: Evidence retrieval performance with feedback from different verifiers, test set. Table 3 from the paper [[1]](#ref-1).
+
+Feedback from KGAT trades 3.5 points of recall for 6.5 points of precision compared with feedback from GAT, and both come out near the 78.84 F1 that the frozen BERT verifier produces.
+
+The candidate-set size $K$ is the one hyper-parameter the paper sweeps. Precision climbs from roughly 67 at $K = 5$ to roughly 78 at $K = 15$ and then flattens, F1 follows precision, and recall stays between about 78 and 81 across the whole range. Small candidate sets leave the fine-grained retriever too few sentences to choose between, which costs precision.
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.jpg){fig-align="center"}
+
+## My Notes
+
+- **Only the second term has a gradient**: the verifier is frozen and $E^{*}$ is fixed, so $y^{*} D_\phi(c, E^{*})$ is a constant. Training maximizes the frozen verifier's probability on the true verdict given the selected sentences, and the appendix's gradient path runs solely through the Gumbel-Softmax selection. Calling the term a utility divergence suggests both branches shape the update, but only the retrieved-evidence branch does.
+- **Why the downstream gain is small**: the FEVER score credits a verdict only when the retrieved set covers all the annotated evidence, so trimming the set to raise precision risks dropping a sentence the score requires. That is the likeliest reason the 15-point retrieval F1 gain produces only 0.2 to 2.9 FEVER points. The appendix case study shows it happening: fine-grained retrieval recovers evidence ranked 14th in one example and loses evidence ranked 8th in another.
+- **Evidence for the premise came later**: FER's argument rests on retrieval-enhanced machine learning [[9]](#ref-9), which proposed that a model consuming retrieved text should train its own retriever but never measured how far relevance and downstream usefulness diverge. Two years later eRAG [[10]](#ref-10), from Hamed Zamani's group, scored each retrieved document by running it through the downstream model, and found that query-document relevance labels correlate weakly with end-to-end performance.
+- **The method needs annotated evidence**: both loss terms require per-sentence evidence labels, and $\mathcal{L}_{uti}$ also needs the full annotated set $E^{*}$ for every claim. FEVER supplies both, and real-world fact-checking data mostly does not. [AVeriTeC](/posts/20260507-averitec/) annotates web evidence as question-answer pairs, with no exhaustive sentence-level gold set. REPLUG [[11]](#ref-11) trains a retriever from downstream feedback without either, matching a retriever's document distribution to a frozen language model's likelihood on the continuation.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>Zhang, Hengran, Zhang, Ruqing, Guo, Jiafeng, de Rijke, Maarten, Fan, Yixing, and Cheng, Xueqi. "From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification." *Findings of the Association for Computational Linguistics: EMNLP 2023*, pages 6373–6384 (arXiv:2310.11675), October 2023. <https://aclanthology.org/2023.findings-emnlp.422/>
+
+2. <a id="ref-2"></a>Robertson, Stephen E. "The Probability Ranking Principle in IR." *Journal of Documentation* 33(4), pages 294–304, 1977. <https://doi.org/10.1108/eb026647>
+
+3. <a id="ref-3"></a>Thorne, James, Vlachos, Andreas, Christodoulopoulos, Christos, and Mittal, Arpit. "FEVER: a Large-scale Dataset for Fact Extraction and VERification." *NAACL-HLT 2018*, pages 809–819 (arXiv:1803.05355), March 2018. <https://arxiv.org/abs/1803.05355>
+
+4. <a id="ref-4"></a>Devlin, Jacob, Chang, Ming-Wei, Lee, Kenton, and Toutanova, Kristina. "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding." *NAACL-HLT 2019*, pages 4171–4186 (arXiv:1810.04805), October 2018. <https://arxiv.org/abs/1810.04805>
+
+5. <a id="ref-5"></a>Jang, Eric, Gu, Shixiang, and Poole, Ben. "Categorical Reparameterization with Gumbel-Softmax." *ICLR 2017* (arXiv:1611.01144), November 2016. <https://arxiv.org/abs/1611.01144>
+
+6. <a id="ref-6"></a>Liu, Zhenghao, Xiong, Chenyan, Sun, Maosong, and Liu, Zhiyuan. "Fine-grained Fact Verification with Kernel Graph Attention Network." *ACL 2020*, pages 7342–7351 (arXiv:1910.09796), October 2019. <https://arxiv.org/abs/1910.09796>
+
+7. <a id="ref-7"></a>Chen, Jiangui, Zhang, Ruqing, Guo, Jiafeng, Fan, Yixing, and Cheng, Xueqi. "GERE: Generative Evidence Retrieval for Fact Verification." *SIGIR 2022*, pages 2184–2189 (arXiv:2204.05511), April 2022. <https://arxiv.org/abs/2204.05511>
+
+8. <a id="ref-8"></a>Zhou, Jie, Han, Xu, Yang, Cheng, Liu, Zhiyuan, Wang, Lifeng, Li, Changcheng, and Sun, Maosong. "GEAR: Graph-based Evidence Aggregating and Reasoning for Fact Verification." *ACL 2019*, pages 892–901 (arXiv:1908.01843), August 2019. <https://arxiv.org/abs/1908.01843>
+
+9. <a id="ref-9"></a>Zamani, Hamed, Diaz, Fernando, Dehghani, Mostafa, Metzler, Donald, and Bendersky, Michael. "Retrieval-Enhanced Machine Learning." *SIGIR 2022*, pages 2875–2886 (arXiv:2205.01230), May 2022. <https://arxiv.org/abs/2205.01230>
+
+10. <a id="ref-10"></a>Salemi, Alireza, and Zamani, Hamed. "Evaluating Retrieval Quality in Retrieval-Augmented Generation." *SIGIR 2024*, pages 2395–2400 (arXiv:2404.13781), April 2024. <https://arxiv.org/abs/2404.13781>
+
+11. <a id="ref-11"></a>Shi, Weijia, Min, Sewon, Yasunaga, Michihiro, Seo, Minjoon, James, Rich, Lewis, Mike, Zettlemoyer, Luke, and Yih, Wen-tau. "REPLUG: Retrieval-Augmented Black-Box Language Models." *NAACL 2024*, pages 8371–8384 (arXiv:2301.12652), January 2023. <https://arxiv.org/abs/2301.12652>
+
+## Related Posts
+
+- [AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web](/posts/20260507-averitec/): the real-world counterpart to FEVER, annotating evidence as question-answer pairs that FER's feedback term cannot use.
+- [FLEEK: Fact Verification with LLMs and Knowledge Graphs](/posts/20231102-fleek-fact-verification/): a fact-verification pipeline from the same conference that gathers evidence from knowledge graphs and the web, with no feedback from the verifier back into retrieval.
+- [Frontier LLMs Disagree on 67% of Real-World Fact-Checks](/posts/20260720-llm-disagreement/): five frontier models disagree on two-thirds of real claims, which bears on FER's assumption that one verifier's utility is the right retrieval target.
+- [Eliciting In-context Retrieval and Reasoning for Long-context LLMs](/posts/20250115-icr2-preprint-announcement/): collapses retrieval and use into one long-context model, an alternative to training the retriever against its consumer.
