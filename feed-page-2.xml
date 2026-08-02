@@ -23,6 +23,116 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 01 Aug 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Quantification of Large Language Model Distillation</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260713-llm-distillation-quantification/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260713-llm-distillation-quantification/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260713-llm-distillation-quantification/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Identity Consistency Evaluation scores across eight models. Claude and Doubao produce almost no contradictory identity responses under jailbreak, while GLM-4-Plus, Qwen-Max, and DeepSeek-V3 score highest. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Quantification of Large Language Model Distillation</em> [1] (ACL 2025), <a href="https://dblp.org/pid/395/5902.html">Sunbowen Lee</a>, <a href="https://dblp.org/pid/372/7349.html">Junting Zhou</a>, and <a href="https://dblp.org/pid/367/4714.html">Chang Ao</a>, with corresponding authors <a href="https://dblp.org/pid/02/1640-7.html">Min Yang</a>, <a href="https://dblp.org/pid/173/4969.html">Yitao Liang</a>, <a href="https://dblp.org/pid/350/0991.html">Zhoufutu Wen</a>, and <a href="https://dblp.org/pid/279/5319.html">Shiwen Ni</a> (Chinese Academy of Sciences, Peking University, and others), propose two metrics for estimating how much one model was distilled from another and apply them to a dozen well-known LLMs.</p>
+<blockquote class="blockquote">
+<p>Model distillation is a fundamental technique in building large language models (LLMs), transferring knowledge from a teacher model to a student model. However, distillation can lead to model homogenization, reducing diversity among models and impairing their ability to robustly handle complex or novel tasks. These limitations underscore the need to systematically quantify the distillation process and its impact. In this work, we propose a framework to evaluate and quantify model distillation. Our method addresses two key aspects: (1) <em>Identifying identity cognition contradictions</em> to assess discrepancies in how models perceive and represent identity-related information, and (2) <em>Analyzing multi-granularity response similarities</em> across models to measure the extent of homogenization. Experimental results demonstrate two key insights: (1) <em>Well-known closed-source and open-source LLMs usually exhibit high distillation degrees, except for Claude, Doubao, and Gemini.</em> (2) <em>Base LLMs show higher distillation degrees compared to aligned LLMs.</em> By offering a systematic approach to improve the transparency of LLM data distillation, we call for LLMs with more independent development and more transparent technical reports to improve LLMs’ robustness and safety.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The framework defines two metrics, each targeting a different trace distillation leaves behind. Figure 2 lays them out side by side: identity leakage on the left, response similarity on the right.</p>
+<ul>
+<li><strong>Identity Consistency Evaluation (ICE)</strong> measures whether a model leaks a false identity under pressure:
+<ul>
+<li>GPTFuzz [2], an open-source jailbreak framework, evolves adversarial prompts through an MCTS-guided search that mutates jailbreak templates until they get past a model’s self-identity guardrails.</li>
+<li>A judge model (GPT-4o-mini) then checks whether the answer contradicts a fixed fact set describing the model’s real identity (for example, “I am Claude, an AI assistant developed by Anthropic”).</li>
+<li>The identity prompts span five categories: team, cooperation, industry, technology, and geography.</li>
+<li>Each score is the share of jailbreak attempts that produce a contradiction, so a higher score means more identity leakage and, by the paper’s reasoning, a higher degree of distillation. The three variants differ only in what counts as a contradiction, from loosest to strictest:
+<ul>
+<li><strong>Loose</strong> counts any identity contradiction.</li>
+<li><strong>Strict</strong> counts only responses that claim to be another named model such as Claude or GPT.</li>
+<li><strong>Hard</strong> counts a leak only when the prompt itself contains no identity keywords but the response does, ruling out cases where the jailbreak prompt fed the model the name it echoed back.</li>
+</ul></li>
+</ul></li>
+<li><strong>Response Similarity Evaluation (RSE)</strong> measures how closely a test model’s answers track a reference model’s. A judge model scores each test response against the reference (GPT-4o-0806) on response style, logical structure, and content detail, using a five-level similarity scale, averaged over three prompt sets: <a href="https://lmarena.ai/">ArenaHard</a>, <a href="https://huggingface.co/datasets/AI-MO/NuminaMath-CoT">NuminaMath</a>, and ShareGPT.</li>
+</ul>
+<p>The two metrics are meant to be read together: ICE catches the categorical tell of distillation (a model that thinks it is a different model), while RSE captures the graded one (a model whose answers have drifted toward the reference’s shape). Both route the actual judgment through an LLM-as-a-judge rather than a fixed string match.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260713-llm-distillation-quantification/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>The two-part framework. Identity Consistency Evaluation (left) evolves jailbreak templates with a mutation model, queries the target, and has a judge model check the reply against a fact set. Response Similarity Evaluation (right) scores a test model’s answers against a reference model’s on content, logic, and style. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The two metrics run on overlapping but distinct model sets. ICE probes eight instruction-tuned models (Claude 3.5 Sonnet, <a href="https://www.doubao.com/">Doubao</a>-Pro-32k, Gemini 2.0 Flash, Llama 3.1 70B-Instruct, <a href="https://huggingface.co/microsoft/phi-4">Phi-4</a>, DeepSeek-V3, <a href="https://qwenlm.ai/">Qwen</a>-Max-0919, and <a href="https://www.zhipuai.cn/">GLM</a>-4-Plus) with 50 seed jailbreak prompts evolved by GPTFuzz and scored by GPT-4o-mini. RSE covers twelve models against the GPT-4o-0806 reference on 1,000-example subsets of each dataset, with n-gram overlap and BERTScore [3] reported alongside as word-level baselines. To check the judge, the authors hand-labeled 100 sampled cases per condition, and human and LLM verdicts agree in the mid-to-high 0.9s on negatives and 0.78–0.90 on positives (Table 1).</p>
+<p>The findings:</p>
+<ul>
+<li><strong>Claude and Doubao barely leak, while the newer Chinese frontier models leak most.</strong> On ICE, Claude 3.5 Sonnet and Doubao-Pro-32k produce almost no contradictory identity responses (Hard Score near 0), while GLM-4-Plus, Qwen-Max-0919, and DeepSeek-V3 score highest (GLM-4-Plus reaches Loose 0.42, Hard 0.16), as the cover chart shows.</li>
+<li><strong>Qwen-Max repeatedly self-identifies as Claude.</strong> In 32% of its Strict-Score samples, Qwen-Max-0919’s jailbroken responses reference Claude, sometimes near-verbatim (“an AI assistant created by Anthropic to be helpful, harmless, and honest”).</li>
+<li><strong>Base models leak more than their aligned versions.</strong> Qwen-2.5 base scores around 0.2 on Strict where the Instruct counterparts score near 0.00, and Llama 3.1 base scores 0.288 against Instruct’s 0.082 (Table 3). Alignment scrubs the identity signal that pretraining picked up.</li>
+<li><strong>The leak concentrates in team, industry, and technology questions.</strong> Across the five identity-prompt categories, the contradictions cluster in team affiliation, industry, and technology rather than cooperation or geography, which the authors read as the areas where distilled training data was least filtered or anonymized [1].</li>
+<li><strong>RSE reproduces the same ordering, inside a tight range.</strong> Similarity to GPT-4o-0806 runs from Llama 3.1 70B (3.628), Doubao (3.720), and Claude (3.740) at the low end up to DeepSeek-V3 (4.102), Qwen-Max (4.174), and GPT-4o-0513 (4.240) at the high end, out of 5.</li>
+<li><strong>RSE rises when a model is actually distilled.</strong> Fine-tuning Qwen-2.5-7B for three epochs on the reference model’s outputs lifts its RSE score at every epoch (Table 5), and within the DeepSeek-R1 distillation series the larger students resemble the teacher more than the smaller ones do.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260713-llm-distillation-quantification/table3.png" class="img-fluid figure-img"></p>
+<figcaption>Strict Scores for the Qwen and Llama series, base versus instruction-tuned. Table 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260713-llm-distillation-quantification/table4.png" class="img-fluid figure-img"></p>
+<figcaption>Response Similarity Evaluation scores for all twelve models against the GPT-4o-0806 reference, where 5.0 is the reference scored against itself, with 2-gram overlap and BERTScore baselines. Table 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The whole ranking falls between 3.6 and 4.2: every model scores fairly close to GPT-4o, so the distillation signal is in the ordering rather than the absolute number. The GPT-series entry (GPT-4o-0513) tops the non-reference field, and the models the authors call low-distillation (Claude, Doubao, Llama) cluster at the bottom of the same metric that ICE flags them low on.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260713-llm-distillation-quantification/table5.png" class="img-fluid figure-img"></p>
+<figcaption>RSE scores for Qwen2.5-7B-Instruct fine-tuned for one to three epochs on each dataset, broken into content, logic, and style. Every score climbs with each epoch. Table 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260713-llm-distillation-quantification/figure6.png" class="img-fluid figure-img"></p>
+<figcaption>A jailbreak exchange from the case study. GPTFuzz wraps an identity question inside a role-play prompt, and Qwen-Max-0919 first declines the persona, then answers “I’m an AI assistant created by Anthropic to be helpful, harmless, and honest,” which is Claude’s stock self-description rather than its own. Figure 6 from the paper [1].</figcaption>
+</figure>
+</div>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://dblp.org/pid/395/5902.html">Lee, Sunbowen</a>, <a href="https://dblp.org/pid/372/7349.html">Zhou, Junting</a>, <a href="https://dblp.org/pid/367/4714.html">Ao, Chang</a>, <a href="https://dblp.org/pid/242/6142.html">Li, Kaige</a>, <a href="https://dblp.org/pid/396/6757.html">Du, Xinrun</a>, <a href="https://dblp.org/pid/321/8333.html">He, Sirui</a>, <a href="https://dblp.org/pid/26/2822.html">Wu, Haihong</a>, <a href="https://dblp.org/pid/409/0119.html">Liu, Tianci</a>, <a href="https://dblp.org/pid/225/1962.html">Liu, Jiaheng</a>, <a href="https://dblp.org/pid/130/0595.html">Alinejad-Rokny, Hamid</a>, <a href="https://dblp.org/pid/02/1640-7.html">Yang, Min</a>, <a href="https://dblp.org/pid/173/4969.html">Liang, Yitao</a>, <a href="https://dblp.org/pid/350/0991.html">Wen, Zhoufutu</a>, <a href="https://dblp.org/pid/279/5319.html">Ni, Shiwen</a>. “Quantification of Large Language Model Distillation.” <em>ACL 2025</em> (arXiv:2501.12619), January 22, 2025. <a href="https://arxiv.org/abs/2501.12619" class="uri">https://arxiv.org/abs/2501.12619</a></li>
+<li><a id="ref-2"></a>Yu, Jiahao, Lin, Xingwei, Yu, Zheng, Xing, Xinyu. “GPTFuzzer: Red Teaming Large Language Models with Auto-Generated Jailbreak Prompts.” <em>arXiv preprint</em> (arXiv:2309.10253), September 2023. <a href="https://arxiv.org/abs/2309.10253" class="uri">https://arxiv.org/abs/2309.10253</a></li>
+<li><a id="ref-3"></a>Zhang, Tianyi, Kishore, Varsha, Wu, Felix, Weinberger, Kilian Q., Artzi, Yoav. “BERTScore: Evaluating Text Generation with BERT.” <em>ICLR 2020</em> (arXiv:1904.09675), April 2019. <a href="https://arxiv.org/abs/1904.09675" class="uri">https://arxiv.org/abs/1904.09675</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20250208-deepseek-chatgpt-ethics/">DeepSeek vs ChatGPT on Ethical Questions</a>: an earlier read where a DeepSeek/ChatGPT behavioral gap could not be traced to pretraining versus output-based tuning, the same identification limit these two metrics run into.</li>
+<li><a href="../../posts/20260501-finetuning-copyright-recall/">Alignment Whack-a-Mole: Finetuning Reactivates Verbatim Recall of Copyrighted Books</a>: finds three providers memorize the same passages in the same places, independent evidence that frontier models share a training substrate rather than copy each other directly.</li>
+<li><a href="../../posts/20260627-open-weights-frontier-gap/">How Far Behind the Closed Frontier Are Open-Weights LLMs?</a>: treats distillation as the late-mover advantage that closes the coding gap fastest, the same efficiency shortcut whose footprint this paper tries to measure.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260713-llm-distillation-quantification/</guid>
+  <pubDate>Mon, 13 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260713-llm-distillation-quantification/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Japan’s Top Court Rules AI Can’t Be a Patent Inventor</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260713-japan-ai-patent-inventor/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1223,55 +1333,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260704-its-not-x-its-y/</guid>
   <pubDate>Sat, 04 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260704-its-not-x-its-y/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>June Running Recap: My Biggest Month of the Year</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260703-june-running-recap/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260703-june-running-recap/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>🏃🏻‍♂️‍➡️ [WARNING: running] June recap: my biggest month of the year! 194.6 → 277.6mi, EG 7,057 → 12,328ft, time 35.5 → 50.2hrs. 📈</p>
-<p>After a rough April and a rebuilding May, June finally came together. Four steady weeks (63, 58, 70, 71mi), all well over quota, and I capped the month with my first 20-miler of the buildup — everything now officially points at a fall race season! I even survived a full faceplant in Seattle’s industrial district (bloody knees, still finished 6.4mi 😅) and bounced right back!</p>
-<p>Highlights: 5 half-marathon-or-longer runs (HM #81–84 + that 20-miler), Elliott Bay Trail’s opening day, a Juneteenth half running from Waterfront to Lincoln Park to pay my respects (then caught the USMNT’s 2–0 World Cup win over Australia — sorry mate ⚽🇺🇸), some easy miles with my daughter, and 3 more parkruns — 104 total now.</p>
-<p>And my VO2max recovered from 48.7 → 52.3, approaching my all-time high of 54!</p>
-<p>About the decision I promised to make in last month’s recap — whether I need to downgrade my 2,500mi yearly goal? I’m keeping it! I’m at 1,161mi — ~89mi behind an even split, but the remaining 1,339mi is just 223/month (~15 over quota). I ran 277 in June, and with marathon season ahead, that’s well within reach if I stay healthy. Onward! 💪</p>
-<p>📊 Charts: monthly mileage + elevation, HR + VO2max, and my progress toward the 2,500mi yearly goal.<br>
-📸 Photos are the beautiful places I ran last month!</p>
-<p>(follow my running at <a href="../../archive/#category=running">benjaminhan.net/archive/#category=running</a>)</p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-9.jpeg" class="img-fluid" data-lightbox-src="image-9-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-10.jpeg" class="img-fluid" data-lightbox-src="image-10-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-11.jpeg" class="img-fluid" data-lightbox-src="image-11-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-12.jpeg" class="img-fluid" data-lightbox-src="image-12-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-13.jpeg" class="img-fluid" data-lightbox-src="image-13-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-14.jpeg" class="img-fluid" data-lightbox-src="image-14-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-15.jpeg" class="img-fluid" data-lightbox-src="image-15-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-16.jpeg" class="img-fluid" data-lightbox-src="image-16-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-17.jpeg" class="img-fluid" data-lightbox-src="image-17-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-18.jpeg" class="img-fluid" data-lightbox-src="image-18-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-19.jpeg" class="img-fluid" data-lightbox-src="image-19-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260703-june-running-recap/image-20.jpeg" class="img-fluid" data-lightbox-src="image-20-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-juneteenth-worldcup-activity-7479040663880364032-x4WY">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260703-june-running-recap/</guid>
-  <pubDate>Fri, 03 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260703-june-running-recap/image-2.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

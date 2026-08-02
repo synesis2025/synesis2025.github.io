@@ -23,6 +23,104 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 01 Aug 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Use Boring Languages with LLMs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260529-use-boring-languages-with-llms/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260529-use-boring-languages-with-llms/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-use-boring-languages-with-llms/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The xkcd “Python environment” comic the article uses to picture Python’s tooling sprawl. Image from <a href="https://xkcd.com/1987/">xkcd 1987</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://jry.io/">Jacob Young</a> <a href="https://jry.io/writing/use-boring-languages-with-llms/">argues</a> that coding agents produce more reliable output in languages and ecosystems with low variance in their training data, and that <a href="https://go.dev/">Go</a> is the best mainstream language for this moment because its conventions, standard library, and one-right-way tooling give an agent fewer ways to go wrong.</p>
+<section id="what-the-article-argues" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-article-argues">What the article argues</h2>
+<p>The case, in the order the article makes it:</p>
+<ul>
+<li><strong>The core claim:</strong> coding agents inherit the variance of their training data. Ecosystems with heavy fragmentation produce the worst agentic output, and the ones with the strongest conventions produce the best.</li>
+<li><strong>Inference is a gamble:</strong> even when code is cheap, any single generation might install a needless package or reproduce an outdated pattern. The bet is to spend tokens where the model’s weights are most reinforced, which yields median output, and the median program is mostly doing the basics anyway: reading files, serving requests, responding over the network.</li>
+<li><strong>JavaScript and Python are the cautionary cases:</strong> the <a href="https://2024.stateofjs.com/">2024 State of JS</a> survey describes a fragmented ecosystem, and Python forces a matrix of choices among <a href="https://pip.pypa.io/">pip</a>, <a href="https://python-poetry.org/">Poetry</a>, and <a href="https://docs.astral.sh/uv/">uv</a>, sync versus async, <a href="https://www.djangoproject.com/">Django</a> versus <a href="https://fastapi.tiangolo.com/">FastAPI</a>. The public corpus reflects every variant in roughly equal weight, so the model has no single idiom to default to.</li>
+<li><strong>Ruby on Rails and Go are the counter-cases:</strong> <a href="https://rubyonrails.org/">Ruby on Rails</a> produces more consistent agentic output because there is essentially one Rails, where JavaScript has a dozen production-grade frameworks covering the same features. Convention over configuration, once a win for human programmers, now helps machines more.</li>
+<li><strong>Go gives an agent five specific advantages:</strong>
+<ul>
+<li>Goroutines avoid the <a href="https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/">colored-function</a> problem: there is no async-versus-sync split for the model to track.</li>
+<li>The standard library carries a large share of real services, net/http and the Google-funded cryptography packages in particular, without reaching for third-party code.</li>
+<li>One-right-way tooling (gofmt, go vet, <a href="https://pkg.go.dev/golang.org/x/tools/gopls">gopls</a>, <a href="https://golangci-lint.run/">golangci-lint</a>) enforces a single canonical style and feeds the agent real-time semantic and lint feedback.</li>
+<li>Garbage collection gives native-like performance without asking the agent to manage memory, which the article contrasts with <a href="https://www.rust-lang.org/">Rust</a>’s borrow checker (“a constant fight for agents”) and the memory bugs that fill C and C++ training data.</li>
+<li>The set of footguns is small and bounded, unlike Python with arbitrary metaclasses.</li>
+</ul></li>
+<li><strong>What the article concludes:</strong> not that Go is the best language, but that this language and toolchain can write the majority of non-visual software, the next CLI, backend server, or agent orchestrator.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>The notes below weigh the thesis from both sides, each marked for or against.</p>
+<ul>
+<li><strong>Variance may be the wrong variable.</strong> <em>Against the thesis.</em> The article credits low corpus variance but never accounts for corpus size, a separate variable. JavaScript and Python are the most fragmented mainstream ecosystems, yet also the most-represented in training data, and code models are strongest on well-represented languages and weaker on low-resource ones like OCaml or Racket [1]. The strongest real-task evidence agrees: on Multi-SWE-bench [3], which extends SWE-bench’s Python tasks to seven more languages (Java, TypeScript, JavaScript, Go, Rust, C, C++), models resolve <em>Python</em> issues at by far the highest rate of the eight, even though Python is one of the most fragmented ecosystems. The authors caution that the agent harnesses were themselves tuned on Python, so part of that lead is tooling rather than training data.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-use-boring-languages-with-llms/multi-swe-bench-table4.webp" class="img-fluid figure-img" data-lightbox-src="multi-swe-bench-table4-full.png"></p>
+<figcaption>Resolved rate (%) by language on Multi-SWE-bench, across nine models and three agent methods (MagentLess, MSWE-agent, MopenHands). The Python column is the highest in nearly every row, despite Python being one of the most fragmented ecosystems. Table 4 from <a href="https://arxiv.org/abs/2504.02605">Multi-SWE-bench</a> [3].</figcaption>
+</figure>
+</div>
+<ul>
+<li><p><strong>The toolchain advantage isn’t about the language alone.</strong> <em>Against the thesis, on its internal logic.</em> The article names two ingredients for good agentic output: a consistent training corpus and “one-right-way tooling for testing and feedback at runtime.” The second is language-independent: deterministic in-loop tooling (gofmt, go vet, gopls, golangci-lint) is a checkable signal the agent can iterate against, and any ecosystem with a strong checker provides one no matter how consistent its corpus is. So only the corpus half supports picking a boring language. The tooling half holds for any language with good tools.</p></li>
+<li><p><strong>Betting on the median optimizes the cheap part.</strong> <em>Against the thesis, on its payoff.</em> The basics the article’s wager targets are also where a competent engineer was already fast, and where an agent’s leverage is smallest. The work that actually costs human time is the non-median part: the unfamiliar API, the awkward edge case, the migration nobody has done before. <a href="../../posts/20260526-programbench-rebuild-from-scratch/">ProgramBench</a> shows that gap with numbers: asked to rebuild whole programs from scratch with no constraint on language, nine frontier models fully resolve none of 200 tasks, and the failures are architectural rather than matters of language idiom. Picking a boring language makes the agent reliable exactly where reliability was cheapest to get.</p></li>
+<li><p><strong>The advantage shrinks as harnesses improve.</strong> <em>Against the thesis, on its durability.</em> The article cites <a href="https://www.anthropic.com/claude-code">Claude Code</a>’s “hard-coded some bias for JavaScript frameworks” as proof fragmentation is costly. But that fix lives in the harness, not the language. As harness conventions (system-prompt defaults, convention files, pinned lockfiles) normalize a fragmented ecosystem, the reason to switch languages weakens. The advice is strongest today and weaker with every harness improvement.</p></li>
+<li><p><strong>The <a href="https://news.ycombinator.com/item?id=48237012">Hacker News thread</a> (228 points, 168 comments) divides on the same fault lines.</strong> The salient points, by side.</p>
+<ul>
+<li><em>Against the thesis:</em>
+<ul>
+<li>The most common objection is corpus size rather than variance, the point in the first note above. Commenters report the model writes “much better PHP, than Swift” because there is far more open-source PHP to train on, and that the worst results come from GDScript, “python minus the huge corpus of training data.”</li>
+<li>The available benchmarks don’t single Go out. A commenter cited <a href="../../posts/20260529-autocodebench/">AutoCodeBench</a> [2], a 20-language Pass@1 benchmark, for models being “better at writing Elixir than most other languages,” but that benchmark classifies Elixir as low-resource and clusters its four popular languages (Python, C++, Java, C#) within a narrow band, roughly 50 to 54 Pass@1. Go is not in that popular set, and on Multi-SWE-bench’s real issue-resolution tasks [3] it ranks in the middle, ahead of JavaScript and TypeScript but behind Python and Java. No mainstream language stands out.</li>
+<li>A large camp argues the property that helps is strictness rather than boringness, and would go the other way toward Rust, OCaml, or Haskell: required <code>Result</code>/<code>Option</code> handling means “if it compiles, chances are higher the code is correct,” which catches more agent errors than a low-variance corpus does.</li>
+<li>Goroutines drew specific pushback. Several report agents “trip up a lot on the races and locking” in Go and have moved their agent work to Rust, and note the article gives no evidence for the goroutine claim.</li>
+<li>Others argue human familiarity matters more than the model’s preference, since “the bottleneck isn’t what languages the LLM can handle, but what I can handle” coming out of it.</li>
+</ul></li>
+<li><em>For the thesis:</em>
+<ul>
+<li>The feedback-loop point drew the most agreement: compile-time errors and clear compiler messages let the agent iterate, which commenters found true in Elm and Rust as much as in Go.</li>
+<li>Anecdotal wins for Go: one reports the code Sonnet “produces for Go is much better than the Python it creates,” another that LLM-assisted Node-to-Go ports came out clean and cut memory roughly tenfold.</li>
+<li>“Pit of success” was offered as the better name for the real effect: predictable defaults that are hard to get wrong.</li>
+</ul></li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Cassano, Federico, Gouwar, John, Lucchetti, Francesca, Schlesinger, Claire, Freeman, Anders, Anderson, Carolyn Jane, Feldman, Molly Q., Greenberg, Michael, Jangda, Abhinav, Guha, Arjun. “Knowledge Transfer from High-Resource to Low-Resource Programming Languages for Code LLMs.” <em>arXiv preprint</em> (arXiv:2308.09895), August 19, 2023. <a href="https://arxiv.org/abs/2308.09895" class="uri">https://arxiv.org/abs/2308.09895</a></li>
+<li><a id="ref-2"></a>Chou, Jason, Liu, Ao, Deng, Yuchi, Zeng, Zhiying, Zhang, Tao, Zhu, Haotian, Cai, Jianwei, Mao, Yue, Zhang, Chenchen, Tan, Lingyun, Xu, Ziyan, Zhai, Bohui, Liu, Hengyi, Zhu, Speed, Zhou, Wiggin, Lian, Fengzong. “AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators.” <em>arXiv preprint</em> (arXiv:2508.09101), August 12, 2025. <a href="https://arxiv.org/abs/2508.09101" class="uri">https://arxiv.org/abs/2508.09101</a></li>
+<li><a id="ref-3"></a>Zan, Daoguang, Huang, Zhirong, Liu, Wei, Chen, Hanwu, Zhang, Linhao, Xin, Shulin, Chen, Lu, Liu, Qi, Zhong, Xiaojian, Li, Aoyan, Liu, Siyao, Xiao, Yongsheng, Chen, Liangqiang, Zhang, Yuyu, Su, Jing, Liu, Tianyu, Long, Rui, Shen, Kai, Xiang, Liang. “Multi-SWE-bench: A Multilingual Benchmark for Issue Resolving.” <em>arXiv preprint</em> (arXiv:2504.02605), April 3, 2025. <a href="https://arxiv.org/abs/2504.02605" class="uri">https://arxiv.org/abs/2504.02605</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260529-autocodebench/">AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators</a>: the per-language Pass@1 numbers this post draws on to test the boring-languages claim, cited inline.</li>
+<li><a href="../../posts/20260526-programbench-rebuild-from-scratch/">ProgramBench: Can Language Models Rebuild Programs From Scratch?</a>: evidence that the hard part is architectural rather than language idiom, which My Notes use to argue picking a boring language optimizes the cheap part.</li>
+<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: a parallel skeptical read, questioning whether the agentic-coding gains land where the real work is.</li>
+<li><a href="../../posts/20260514-vibe-coding-and-agentic-engineering/">Vibe Coding and Agentic Engineering Are Getting Closer</a>: the broader shift in how agents write code that the language-choice debate is part of.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260529-use-boring-languages-with-llms/</guid>
+  <pubDate>Fri, 29 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260529-use-boring-languages-with-llms/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260529-autocodebench/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2599,29 +2697,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/</guid>
   <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260523-abstentionbench-unanswerable-questions/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Pentagon Releases Second Batch of UFO Videos and First-Hand Testimony</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>Pentagon releases second batch of UFO videos and first-hand testimony | UFOs | The Guardian <a href="https://www.theguardian.com/world/2026/may/22/pentagon-ufo-videos-testimony-documents">https://www.theguardian.com/world/2026/may/22/pentagon-ufo-videos-testimony-documents</a></p>
-<p><img src="https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/cover.jpg" class="img-fluid"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116625924528589405">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/</guid>
-  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260523-pentagon-releases-second-batch-of-ufo-videos-and-f/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

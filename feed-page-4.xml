@@ -23,6 +23,122 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sat, 01 Aug 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>Automated Design of Agentic Systems</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260625-adas/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260625-adas/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260625-adas/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>The Meta Agent Search loop. A meta agent reads an ever-growing archive of previously discovered agents, proposes the code of a new one, evaluates it on held-out tasks, and appends it to the archive. The bottom strip shows three discovered designs: a multi-step peer-review agent, a verified multimodal agent, and a divide-and-conquer agent. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Automated Design of Agentic Systems</em> [1] (ICLR 2025), <a href="https://shengranhu.com/">Shengran Hu</a>, <a href="https://conglu.co.uk/">Cong Lu</a>, and <a href="http://jeffclune.com/">Jeff Clune</a> at the <a href="https://cs.ubc.ca/">University of British Columbia</a> and the <a href="https://vectorinstitute.ai/">Vector Institute</a> argue that the design of LLM-powered agents should itself be automated, and introduce Meta Agent Search as a first instance.</p>
+<blockquote class="blockquote">
+<p>Researchers are investing substantial effort in developing powerful general-purpose agents, wherein Foundation Models are used as modules within agentic systems (e.g.&nbsp;Chain-of-Thought, Self-Reflection, Toolformer). However, the history of machine learning teaches us that hand-designed solutions are eventually replaced by learned solutions. We describe a newly forming research area, <em>Automated Design of Agentic Systems (ADAS)</em>, which aims to automatically create powerful agentic system designs, including inventing novel building blocks and/or combining them in new ways. We further demonstrate that there is an unexplored yet promising approach within ADAS where <em>agents can be defined in code and new agents can be automatically discovered by a meta agent programming ever better ones in code</em>. Given that most programming languages are Turing Complete, this approach theoretically enables the learning of any possible agentic system: including novel prompts, tool use, workflows, and combinations thereof. We present a simple yet effective algorithm named <em>Meta Agent Search</em> to demonstrate this idea, where a meta agent iteratively programs interesting new agents based on an ever-growing archive of previous discoveries. Through extensive experiments across multiple domains including coding, science, and math, we show that our algorithm can progressively <em>invent agents with novel designs that greatly outperform state-of-the-art hand-designed agents</em>. Importantly, we consistently observe the surprising result that <em>agents invented by Meta Agent Search maintain superior performance even when transferred across domains and models</em>, demonstrating their robustness and generality. Provided we develop it safely, our work illustrates the potential of an exciting new research direction toward automatically designing ever-more powerful agentic systems to benefit humanity.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The authors cast Automated Design of Agentic Systems (ADAS) as an optimization problem with three components (Figure 2):</p>
+<ul>
+<li><strong>Search space</strong>: the set of agent designs the method can represent. Meta Agent Search makes this Python code: an agent is a <code>forward(task)</code> function that may call foundation-model APIs, use tools, keep internal state, and compose sub-agents. Because the language is Turing-complete, the space in principle covers any prompt, tool-use pattern, or workflow, not just variations on a fixed template.</li>
+<li><strong>Search algorithm</strong>: how the space is explored. A <em>meta agent</em> (a frontier LLM, GPT-4 in the experiments) reads an archive of previously discovered agents and programs a new one.</li>
+<li><strong>Evaluation function</strong>: how a candidate is scored. Each new agent runs on a held-out validation split of the target task, and its accuracy or F1 is the signal the meta agent maximizes.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260625-adas/figure2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The search loop is short. The meta agent works against a roughly 100-line framework that supplies basic primitives like foundation-model queries and prompt formatting, so it only writes the <code>forward</code> function, the same trick FunSearch [2] used to evolve programs from a small set of given building blocks. Each iteration runs four steps:</p>
+<ul>
+<li>The archive is optionally seeded with baseline agents such as Chain-of-Thought and Self-Refine.</li>
+<li>Conditioned on the whole archive, the meta agent writes a high-level description of a new agent (the prompt asks for one that is “interestingly new”) and then its code, with two self-reflection passes meant to keep the design novel.</li>
+<li>The candidate runs on validation data. If it errors, the meta agent revises the code, repeating up to five times.</li>
+<li>The working agent and its score are appended to the archive, and the next iteration conditions on the larger archive.</li>
+</ul>
+<p>The archive is the memory that lets each iteration build on the last. Because it stores each agent’s full source code, not just a description, a new agent can copy and recombine code from earlier ones rather than start from scratch. The paper shows several designs discovered on the <a href="https://github.com/fchollet/ARC-AGI">Abstraction and Reasoning Corpus</a> (ARC) reusing earlier “stepping stones”: a multi-chain-of-thought-then-ensemble pattern that first appeared at iteration 3, and expert-critic ideas from iterations 5, 11, and 12 that the best agent later combined.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The experiments span three settings, all run with the same algorithm and only task-specific prompt text changed. The ARC abstraction benchmark is the case study. Four benchmarks covering reading, math, science, and multi-task reasoning (<a href="https://allenai.org/data/drop">DROP</a>, <a href="https://github.com/google-research/url-nlp/tree/main/mgsm">MGSM</a>, <a href="https://github.com/hendrycks/test">MMLU</a>, <a href="https://github.com/idavidrein/gpqa">GPQA</a>) are the main comparison. Held-out tasks and swapped base models test transfer. In every setting the meta agent is GPT-4, while the discovered agents and all baselines are scored with the cheaper GPT-3.5 over five runs each, reporting median accuracy or F1 with a 95% bootstrap confidence interval. The baselines are the standard hand-designed scaffolds (Chain-of-Thought, self-consistency, Self-Refine, LLM-Debate, Quality-Diversity, Step-back Abstraction, Role Assignment) plus the prompt-optimization method OPRO [3] <!-- crosslink-todo: /posts/20260503-opro/ -->, so the comparison isolates what searching over code buys beyond searching over prompts.</p>
+<p>The ARC case study shows the search dynamic most clearly. Over 25 iterations, held-out test accuracy climbs from about 6% to 14%, above every hand-designed baseline. The left panel of Figure 3 tracks that climb and marks the iterations where key ideas first appeared. The right panel shows the best agent found, a “Structured Feedback and Ensemble” design that generates five chains of thought, routes them through three expert critics (efficiency, readability, simplicity) plus a human-like critic, and ensembles three refinement passes.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260625-adas/figure3.webp" class="img-fluid figure-img" data-lightbox-src="figure3-full.png"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Across the four reasoning benchmarks the same ranking holds, and the margins are largest exactly where the base model already has the knowledge but makes avoidable errors:</p>
+<ul>
+<li><strong>Reading comprehension (DROP)</strong>: 79.4 F1 against 65.8 for the best hand-designed agent, a 13.6-point gain.</li>
+<li><strong>Math (MGSM)</strong>: 53.4% against 39.0% for LLM-Debate, the best baseline, a 14.4-point gain.</li>
+<li><strong>Multi-task (MMLU) and science (GPQA)</strong>: smaller margins (69.6% vs.&nbsp;67.6%, 34.6% vs.&nbsp;32.9%), which the authors attribute to the base model lacking the underlying knowledge rather than the scaffold failing.</li>
+<li><strong>Cross-domain transfer</strong>: the top-3 agents found on MGSM, moved to held-out <a href="https://github.com/openai/grade-school-math">GSM8K</a> and <a href="https://huggingface.co/datasets/reasoning-machines/gsm-hard">GSM-Hard</a>, add 25.9% and 13.2% over the baselines. Moved to non-math MMLU and DROP they still beat the hand-designed scaffolds.</li>
+<li><strong>Cross-model transfer</strong>: the top-3 ARC agents found with GPT-3.5 keep their lead when run on Claude Haiku, GPT-4, and Claude Sonnet, with Sonnet reaching nearly 50% on ARC.</li>
+</ul>
+<p>Meta Agent Search wins every column of the head-to-head, and it beats OPRO in all four domains, the result the authors lean on to argue that searching over whole agents, not just prompts, is what pays off.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260625-adas/table1.jpg" class="img-fluid figure-img" data-lightbox-src="table1-full.jpg"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Transfer is the result that matters, and it comes from the scaffolds being domain-agnostic</strong>: it outweighs the ARC gain, a large relative jump on small absolute numbers (human-level is around 80% [4]). Scaffolds discovered on one task keep working on different tasks and on different base models, because the designs are reasoning-and-control patterns that manipulate model calls without encoding the task itself, with the task-specific content kept in the prompt the agent receives rather than in its code, so they behave less like solvers tuned to one benchmark. This parallels <a href="../../posts/20260515-promptbreeder/">Promptbreeder</a> [5], where evolved prompts transferred, but here the unit that transfers is executable code, a broader portability claim. The search optimized accuracy on a single domain with no cross-domain objective, yet the agents transfer anyway, which is good held-out evidence that the generality is real rather than fit to one benchmark. Optimizing for it directly is still untried.</li>
+<li><strong>Code as the search space</strong>: earlier automated-prompting work (OPRO [3], <a href="../../posts/20260514-ape/">APE</a> [6], Promptbreeder) searches over strings fed to a fixed scaffold, and <a href="../../posts/20260430-dspy/">DSPy</a> [7] compiles a human-written module graph, optimizing the prompts and demonstrations inside it rather than the graph itself. ADAS widens the space to code, so the meta agent can invent new control flow (loops, early-exit, ensembles, self-critique), not just better prompts inside an existing shape. AFlow [8] <!-- crosslink-todo: /posts/20260503-aflow/ -->, published around the same time, makes a different trade: it searches a graph over a fixed library of operators with Monte Carlo tree search. ADAS and AFlow leave open whether to search over open-ended code or a fixed operator graph.</li>
+<li><strong>The archive both enables the search and makes it expensive</strong>: Meta Agent Search is a novelty-seeking search with an LLM as the mutation operator, and the archive of past designs lets each round build on earlier ones. That same archive makes each step expensive: 25 iterations on ARC and 30 on the reasoning benchmarks, each generating one candidate, running two self-reflection passes, and allowing up to five error-driven refinements, with every accepted candidate scored on the full validation set. Scaling to harder benchmarks runs into the sample-efficiency limit that prompt-optimization methods like OPRO [3] also hit, and surrogate scoring to avoid running every candidate on the full eval set is the obvious follow-up.</li>
+<li><strong>On the intrinsic-to-extrinsic spectrum of self-improving agents</strong>: that <a href="../../posts/20260430-intrinsic-metacognitive-learning/">spectrum</a> [9], from Liu and van der Schaar, runs from agents that set their own learning loop (intrinsic) to loops fully fixed by humans (extrinsic). ADAS is more intrinsic than the earlier prompt-search optimizers: the meta agent reasons over the archive in an open-ended code space to decide what to build next, which is autonomous metacognitive planning rather than algorithmic mutation, and code can in principle express agents that improve themselves. But the parts that decide what counts as better stay human-fixed: the objective (validation accuracy on a chosen benchmark), the evaluation function, the archive mechanism, the stopping point. So it is a mixed case, not the fully extrinsic end: autonomous proposal inside a human-designed objective and loop. The paper’s own thesis, that hand-designed solutions are eventually replaced by learned ones, applies to the agents but not yet to the loop that finds them. Making that loop learned, a self-referential meta agent that improves itself, is the direction the authors flag as future work. The same team took that step in the Darwin Gödel Machine [10] <!-- crosslink-todo: /posts/20260510-hyperagents/ -->, where agents rewrite their own code against a growing archive of variants.</li>
+<li><strong>The “provided we develop it safely” caveat points at a real property of the method</strong>: the abstract’s closing line is not boilerplate. A loop that proposes and executes arbitrary code is a capability-elicitation concern once it is pointed at an open-ended objective rather than a sandboxed benchmark, closer in shape to <a href="https://github.com/Significant-Gravitas/AutoGPT">AutoGPT</a>-style self-improvement than to prompt search. Clune’s earlier argument for AI-generating algorithms [11] is the right context for reading the paper’s scope.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://shengranhu.com/">Hu, S.</a>, <a href="https://conglu.co.uk/">Lu, C.</a>, <a href="http://jeffclune.com/">Clune, J.</a>. “Automated Design of Agentic Systems.” <em>ICLR 2025</em> (arXiv:2408.08435), August 15, 2024. <a href="https://arxiv.org/abs/2408.08435" class="uri">https://arxiv.org/abs/2408.08435</a></li>
+<li><a id="ref-2"></a>Romera-Paredes, B., Barekatain, M., Novikov, A., Balog, M., Kumar, M. P., Dupont, E., Ruiz, F. J. R., Ellenberg, J. S., Wang, P., Fawzi, O., Kohli, P., Fawzi, A. “Mathematical Discoveries from Program Search with Large Language Models.” <em>Nature</em> 625 (10.1038/s41586-023-06924-6), December 14, 2023. <a href="https://www.nature.com/articles/s41586-023-06924-6" class="uri">https://www.nature.com/articles/s41586-023-06924-6</a></li>
+<li><a id="ref-3"></a>Yang, C., Wang, X., Lu, Y., Liu, H., Le, Q. V., Zhou, D., Chen, X. “Large Language Models as Optimizers.” <em>ICLR 2024</em> (arXiv:2309.03409), September 7, 2023. <a href="https://arxiv.org/abs/2309.03409" class="uri">https://arxiv.org/abs/2309.03409</a></li>
+<li><a id="ref-4"></a>Chollet, F. “On the Measure of Intelligence.” arXiv:1911.01547, November 5, 2019. <a href="https://arxiv.org/abs/1911.01547" class="uri">https://arxiv.org/abs/1911.01547</a></li>
+<li><a id="ref-5"></a>Fernando, C., Banarse, D., Michalewski, H., Osindero, S., Rocktäschel, T. “Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution.” arXiv:2309.16797, September 28, 2023. <a href="https://arxiv.org/abs/2309.16797" class="uri">https://arxiv.org/abs/2309.16797</a></li>
+<li><a id="ref-6"></a><a href="https://yongchao98.github.io/">Zhou, Y.</a>, <a href="https://www.linkedin.com/in/andrei-muresanu/">Muresanu, A. I.</a>, <a href="https://www.linkedin.com/in/ziwen-han/">Han, Z.</a>, <a href="https://keirp.com/">Paster, K.</a>, <a href="https://silviupitis.com/">Pitis, S.</a>, <a href="https://takonan.github.io/">Chan, H.</a>, <a href="https://jimmylba.github.io/">Ba, J.</a>. “Large Language Models Are Human-Level Prompt Engineers.” <em>ICLR 2023</em> (arXiv:2211.01910), November 3, 2022. <a href="https://arxiv.org/abs/2211.01910" class="uri">https://arxiv.org/abs/2211.01910</a></li>
+<li><a id="ref-7"></a><a href="https://omarkhattab.com/">Khattab, O.</a>, Singhvi, A., Maheshwari, P., Zhang, Z., <a href="https://keshav2.me/">Santhanam, K.</a>, Vardhamanan, S., Haq, S., Sharma, A., Joshi, T. T., Moazam, H., <a href="https://heather.miller.am/">Miller, H.</a>, <a href="https://en.wikipedia.org/wiki/Matei_Zaharia">Zaharia, M.</a>, <a href="https://en.wikipedia.org/wiki/Christopher_Potts">Potts, C.</a>. “DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines.” <em>ICLR 2024</em> (arXiv:2310.03714), October 5, 2023. <a href="https://arxiv.org/abs/2310.03714" class="uri">https://arxiv.org/abs/2310.03714</a></li>
+<li><a id="ref-8"></a>Zhang, J., Xiang, J., Yu, Z., Teng, F., Chen, X., Chen, J., Zhuge, M., Cheng, X., Hong, S., Wang, J., Zheng, B., Liu, B., Luo, Y., Wu, C. “AFlow: Automating Agentic Workflow Generation.” <em>ICLR 2025</em> (arXiv:2410.10762), October 14, 2024. <a href="https://arxiv.org/abs/2410.10762" class="uri">https://arxiv.org/abs/2410.10762</a></li>
+<li><a id="ref-9"></a><a href="https://tennisonliu.github.io/">Liu, T.</a>, <a href="https://www.vanderschaar-lab.com/prof-mihaela-van-der-schaar/">van der Schaar, M.</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>ICML 2025</em> (arXiv:2506.05109), June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+<li><a id="ref-10"></a>Zhang, J., <a href="https://shengranhu.com/">Hu, S.</a>, <a href="https://conglu.co.uk/">Lu, C.</a>, Lange, R., <a href="http://jeffclune.com/">Clune, J.</a>. “Darwin Gödel Machine: Open-Ended Evolution of Self-Improving Agents.” arXiv:2505.22954, May 29, 2025. <a href="https://arxiv.org/abs/2505.22954" class="uri">https://arxiv.org/abs/2505.22954</a></li>
+<li><a id="ref-11"></a>Clune, J. “AI-GAs: AI-generating algorithms, an alternate paradigm for producing general artificial intelligence.” arXiv:1905.10985, May 27, 2019. <a href="https://arxiv.org/abs/1905.10985" class="uri">https://arxiv.org/abs/1905.10985</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260514-ape/">Large Language Models Are Human-Level Prompt Engineers (APE)</a>: the prior generation of the idea, automated search but only over prompts fed to a fixed scaffold, which is the limit ADAS generalizes past.</li>
+<li><a href="../../posts/20260515-promptbreeder/">Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution</a>: evolutionary prompt search whose transfer result ADAS echoes, with executable code rather than a prompt as the unit that transfers.</li>
+<li><a href="../../posts/20260430-evoprompt/">EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers</a>: the same LLM-as-mutation-operator pattern over a narrower, prompt-only search space.</li>
+<li><a href="../../posts/20260513-gepa/">GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning</a>: another point on the search-over-prompts line, using reflection to guide the mutation step.</li>
+<li><a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">System Prompt Optimization with Meta-Learning</a>: a bilevel meta-learning search for system prompts, adjacent in spirit to the meta-agent loop but fixed to the prompt layer.</li>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: the programming-model and compiler one layer down: the developer composes the module graph and DSPy optimizes the prompts and demonstrations inside it, while ADAS searches over the graph itself.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260625-adas/</guid>
+  <pubDate>Thu, 25 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260625-adas/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>ResearchQA: Evaluating Scholarly Question Answering at Scale Across 75 Fields with Survey-Mined Questions and Rubrics</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260625-researchqa/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1817,43 +1933,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260610-just-ask-calibration/</guid>
   <pubDate>Wed, 10 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260610-just-ask-calibration/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>9-Mile Run on Elliott Bay Trail</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>Today’s 9mi run on Elliot Bay Trail: time 1:25:13 pace 9’25”/mi.</p>
-<p>Last time I ran on Elliott Bay Trail was <a href="../../posts/20260424-elliott-bay-trail-run/">when it opened after 15-month construction</a>, but the weather was cloudy and gloomy. Today started even worse: rainy and windy, but by lunch time rain had disappeared and sun came back, so I knew what I needed to do!</p>
-<p>Weather was super nice: felt like 56F, sunny with cloud cover, but wind was robust – 12.5mph SW. At times I was fighting with the wind and felt my inner-ear pressure was off balance between the right and the left ear (wind blew in one but not the other)!</p>
-<p>I sped up a little bit in the last 2mi, otherwise it was EZ. This approaches the longest distance I usually run w/o water. We’ll see!</p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-9.jpeg" class="img-fluid" data-lightbox-src="image-9-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-10.jpeg" class="img-fluid" data-lightbox-src="image-10-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-11.jpeg" class="img-fluid" data-lightbox-src="image-11-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/image-12.jpeg" class="img-fluid" data-lightbox-src="image-12-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116724116158259618">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/</guid>
-  <pubDate>Tue, 09 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260609-9mi-run-elliott-bay-trail/cover.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
