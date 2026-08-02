@@ -131,7 +131,7 @@ Four of K3's components trace to DeepSeek, and the report says so in each case:
 - **Latent attention.** Gated MLA is DeepSeek-V2's scheme [[8]](#ref-8) with positional encoding removed and an output gate added.
 - **Expert organization.** Stable LatentMoE follows the shared- and routed-expert split of DeepSeekMoE [[14]](#ref-14).
 - **Expert-parallel communication.** MoonEP needs a fixed $S \times K$ buffer where DeepEP needs $S \times K \times R$.
-- **A kernel worth optimizing.** DeepSeek Sparse Attention (DSA) [[15]](#ref-15) is one of four kernels K3 was set to optimize in its own white-box RL environment, and K3 cut DSA runtime by 55.1% [[1]](#ref-1).
+- **A kernel worth optimizing.** DeepSeek Sparse Attention (DSA) [[15]](#ref-15) is one of four kernels in the report's own kernel-optimization case study, where each model had a 24-hour sandbox budget, and K3 cut DSA runtime by 55.1% [[1]](#ref-1).
 
 ### Two routes to a million tokens
 
@@ -143,7 +143,7 @@ Four of K3's components trace to DeepSeek, and the report says so in each case:
 ### Where they converge
 
 - **Effort levels.** Both ship multiple thinking-effort settings to trade quality against latency.
-- **Speculative decoding from a multi-token-prediction layer.** K3 fine-tunes its pre-trained MTP layer into an EAGLE-3-style draft model trained against acceptance rate [[10]](#ref-10). GLM-5.2 applies IndexShare and KVShare to its MTP layer, sharing parameters across steps and reporting a 20% gain in acceptance length.
+- **Speculative decoding from a multi-token-prediction layer.** K3 fine-tunes its pre-trained MTP layer into an EAGLE-3-style draft model trained against acceptance rate [[10]](#ref-10). GLM-5.2 applies IndexShare and KVShare to its MTP layer, reusing top-k indices and KV cache across steps, which raises acceptance length from 4.56 to 5.10. Rejection sampling and an end-to-end total-variation loss take it to 5.47, the reported 20% gain [[16]](#ref-16).
 - **The licenses differ.** GLM-5.2 ships under MIT with, in Zhipu's words, "no regional limits."
 
 ## Results
@@ -162,7 +162,7 @@ Table 2 gives the full comparison across 44 benchmarks in four capability groups
 - **Best open score, second or third overall**. K3 trails Fable 5 and GPT-5.6 Sol on the aggregate while beating Claude Opus 4.8, GPT-5.5, and GLM-5.2 across the suite. GLM-5.2, the only other open-weight entrant, has no score on 17 of the 44 rows, ten of them the vision benchmarks.
 - **Competitive on graduate reasoning, behind on research reasoning**. 93.5% on [GPQA Diamond](https://github.com/idavidrein/gpqa) against 94.1% for GPT-5.6 Sol, but 23.4% on [CritPt](https://artificialanalysis.ai/evaluations/critpt) against 32.3%, and behind on [Humanity's Last Exam](https://lastexam.ai/) both with and without tools. The report names research-level reasoning as its own weakest area.
 - **Best score on long-context reasoning**. K3 leads [AA-LCR](https://artificialanalysis.ai/evaluations/artificial-analysis-long-context-reasoning) (Artificial Analysis Long Context Reasoning) at 74.7, ahead of GPT-5.5 at 74.3 and Fable 5 at 70.0, which is the one row that tests directly what the million-token window is for.
-- **Coding is split by benchmark**. K3 leads ProgramBench (77.8 versus 76.8) and SWE-Marathon (42.0 versus 40.0 for Opus 4.8), places second on [Terminal-Bench 2.1](https://github.com/laude-institute/terminal-bench) (88.3 versus 88.8), and trails on DeepSWE (67.5 versus 73.0) and FrontierSWE (81.2 versus 86.6).
+- **Coding is split by benchmark**. K3 leads ProgramBench (77.8 versus 77.6 for GPT-5.6 Sol) and SWE-Marathon (42.0 versus 40.0 for Opus 4.8), places second on [Terminal-Bench 2.1](https://github.com/laude-institute/terminal-bench) (88.3 versus 88.8), and trails on DeepSWE (67.5 versus 73.0) and FrontierSWE (81.2 versus 86.6).
 - **Most of its best scores are agentic**. K3 takes the best score on [BrowseComp](https://openai.com/index/browsecomp/) (91.2), DeepSearchQA (95.0), ResearchRubrics (76.2), MCPMark-Verified (94.5), [AutomationBench](https://artificialanalysis.ai/evaluations/automationbench-aa) (30.8), [Harvey Lab-AA](https://artificialanalysis.ai/evaluations/harvey-lab-aa) (94.6), and [$\tau^3$-Banking](https://artificialanalysis.ai/evaluations/tau3-banking) (33.4).
 - **Vision is strong without leading**. Best scores on [OmniDocBench](https://github.com/opendatalab/OmniDocBench) (91.1), [Video-MME](https://video-mme.github.io/) (90.0), and [MMVU](https://mmvu-benchmark.github.io/) (82.1), but Fable 5 leads WorldVQA, [MMMU-Pro](https://artificialanalysis.ai/evaluations/mmmu-pro), [CharXiv](https://charxiv.github.io/), and [ZeroBench](https://zerobench.github.io/) once tools are allowed.
 - **Cyber capability measured against one peer**. The Anthropic and OpenAI models decline the tasks, so the suite excludes them and GLM-5.2 is the only comparison left. Against GLM-5.2, K3 solves 14 of 36 exploit tasks versus 8, with 10 of its 14 in the user-space track rather than the kernel track. On vulnerability discovery, about 70% of human-reviewed findings were genuine, including 16 previously unknown vulnerabilities across six projects. A released set of weights has no endpoint at which to decline, and the joint UK AI Security Institute and CAISI assessment, run separately on those weights, found K3 reaching arbitrary code execution on 0 of 41 tasks [[17]](#ref-17).
@@ -178,7 +178,7 @@ Figure 13 plots score against per-task cost on four suites, with K3 marked by a 
 
 [Simon Willison](https://simonwillison.net/) ran the model on launch day and found only one reasoning effort available, `max`. A single prompt for an SVG of a pelican riding a bicycle spent 13,241 reasoning tokens out of 16,658 output tokens and cost 25 cents [[18]](#ref-18). The same post puts the size claim in context: the largest open-weights release before K3 was DeepSeek's 1.6T v4 Pro.
 
-API pricing is $0.30 per million tokens for cache-hit input, $3.00 for cache-miss input, and $15.00 for output, which the report attributes partly to a prefix-cache hit rate above 90% on coding workloads [[2]](#ref-2). A shared prefix is "reusable at any 512-token boundary, independently of request length, chunking, or scheduling interleaving" [[1]](#ref-1), so tokens between the last boundary and the true end of a shared prefix bill at the cache-miss rate. K3's pricing matches Anthropic's Claude Sonnet series and makes it the most expensive model a Chinese lab has released, against $0.95 and $4.00 for Kimi K2.6 [[18]](#ref-18).
+API pricing is $0.30 per million tokens for cache-hit input, $3.00 for cache-miss input, and $15.00 for output. The announcement attributes that partly to Mooncake's disaggregated inference architecture, which it credits with a cache-hit rate above 90% on coding workloads [[2]](#ref-2). A shared prefix is "reusable at any 512-token boundary, independently of request length, chunking, or scheduling interleaving" [[1]](#ref-1), so tokens between the last boundary and the true end of a shared prefix bill at the cache-miss rate. K3's pricing matches Anthropic's Claude Sonnet series and makes it the most expensive model a Chinese lab has released, against $0.95 and $4.00 for Kimi K2.6 [[18]](#ref-18).
 
 ## Independent Evaluations
 
@@ -192,7 +192,7 @@ Third-party evaluators put K3 in a similar place. Table 5 collects them as of Ju
 - **Text Arena**: eighth of 200 at 1,486 Elo.
 - **Agent Arena**: fourth of 37 at 9.1, behind Fable 5, GPT-5.6 Sol, and Claude Opus 4.8.
 
-The architecture notes chart the same two indices five days later, on July 28 [[3]](#ref-3). Claude Opus 5 scores 61 on the Intelligence Index, a model absent from the report's baselines. On the Coding Agent Index, Kimi Code with K3 scores 61 against Claude Code with Claude Opus 5 at 67.
+The architecture notes chart the Intelligence Index and the Coding Agent Index five days later, on July 28 [[3]](#ref-3). Claude Opus 5 scores 61 on the Intelligence Index, a model absent from the report's baselines. On the Coding Agent Index, Kimi Code with K3 scores 61 against Claude Code with Claude Opus 5 at 67.
 
 [Artificial Analysis](https://artificialanalysis.ai/) published its own account of the AA-Briefcase run on July 21 [[19]](#ref-19), with the absolute numbers behind Table 5's placement:
 
