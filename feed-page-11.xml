@@ -21,7 +21,184 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sat, 01 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 02 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Conformal Language Modeling</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260505-conformal-language-modeling/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260505-conformal-language-modeling/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Schematic of the conformal sampling procedure. A black-box language model emits candidates one by one; each is added to the growing output set only if it clears a minimum-quality threshold and a diversity criterion; the loop halts when the calibrated stopping rule certifies the set likely contains an acceptable answer. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Conformal Language Modeling</em> [1] (ICLR 2024), <a href="https://vquach.com/">Victor Quach</a>, <a href="https://people.csail.mit.edu/fisch/">Adam Fisch</a>, <a href="https://people.csail.mit.edu/tals/">Tal Schuster</a>, Adam Yala, Jae Ho Sohn, <a href="https://people.csail.mit.edu/tommi/tommi.html">Tommi Jaakkola</a>, and <a href="https://www.regina.csail.mit.edu/">Regina Barzilay</a> (MIT, Google Research, UC Berkeley, and others) adapt <a href="../../posts/20260505-conformal-prediction-primer/">conformal prediction</a> to generative language models (LMs) by calibrating a sampling stopping rule plus a candidate-rejection rule so the returned output set provably contains an acceptable answer with user-chosen probability.</p>
+<blockquote class="blockquote">
+<p>We propose a novel approach to <em>conformal prediction for generative language models (LMs)</em>. Standard conformal prediction produces prediction sets — in place of single predictions — that have rigorous, statistical performance guarantees. LM responses are typically sampled from the model’s predicted distribution over the large, combinatorial output space of natural language. Translating this process to conformal prediction, we <em>calibrate a stopping rule for sampling different outputs from the LM that get added to a growing set of candidates until we are confident that the output set is sufficient</em>. Since some samples may be low-quality, we also simultaneously calibrate and apply <em>a rejection rule for removing candidates from the output set to reduce noise</em>. Similar to conformal prediction, we prove that the sampled set returned by our procedure <em>contains at least one acceptable answer with high probability</em>, while still being empirically precise (i.e., small) on average. Furthermore, within this set of candidate responses, we show that we can also accurately <em>identify subsets of individual components — such as phrases or sentences — that are each independently correct</em> (e.g., that are not “hallucinations”), again with statistical guarantees.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The method treats the LM as a black box. The set predictor <img src="https://benjaminhan.net/feed-assets/e6c8d0ff418a690b.svg" alt="\mathcal{C}_\lambda" class="feed-math-inline"/> is built by sampling candidates one at a time: each candidate is added if it clears a learned quality threshold and a diversity check against what is already in the set, and sampling halts once a calibrated statistic certifies the set likely covers an acceptable answer. The subscript <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> collects the calibration-time hyperparameters: stopping threshold, rejection threshold, diversity threshold.</p>
+<p>A second conformal layer operates inside the final set, selecting subsets of <em>components</em> (individual phrases or sentences) that are each independently likely to be correct, so users can keep guaranteed claims and drop the rest. Joint calibration of all these thresholds uses the Learn-then-Test (LTT) framework of [2], which tunes multiple parameters at once with finite-sample validity via multiple-testing correction.</p>
+<p>Unlike standard conformal prediction, the guarantee is a <em>nested</em> probability with two user parameters. <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> is the familiar coverage level (miss rate at most <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> across fresh prompts). <img src="https://benjaminhan.net/feed-assets/c2e62a810351cb51.svg" alt="\delta" class="feed-math-inline"/> is new: because LTT tunes multiple hyperparameters jointly, a second probabilistic budget covers the randomness of the calibration set itself. Formally,</p>
+<p><img src="https://benjaminhan.net/feed-assets/b5441b50df6f3cc5.svg" alt="\mathbb{P}\Big(\mathbb{P}\big(\exists y \in \mathcal{C}_\lambda(X_{\text{test}}): A(y) = 1 \mid \mathcal{D}_{\text{cal}}\big) \geq 1-\epsilon\Big) \geq 1-\delta," class="feed-math-inline"/></p>
+<p>where <img src="https://benjaminhan.net/feed-assets/76f97a8751c96fa8.svg" alt="A(y) = 1" class="feed-math-inline"/> means <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/> is acceptable under the user’s per-task scoring rule. The inner probability (over fresh test prompts, given the calibration set) says the returned set covers an acceptable answer at least <img src="https://benjaminhan.net/feed-assets/94b6a64d85863021.svg" alt="1-\epsilon" class="feed-math-inline"/> of the time. The outer probability (over draws of the calibration set itself) says this inner bound holds for at least a <img src="https://benjaminhan.net/feed-assets/77cd214c0a6897f9.svg" alt="1-\delta" class="feed-math-inline"/> fraction of calibration draws.</p>
+<p>In practice the two probabilities apply at two different moments. At calibration time, the random draw of the calibration data determines whether the tuned hyperparameter <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> is good, and this happens with probability <img src="https://benjaminhan.net/feed-assets/77cd214c0a6897f9.svg" alt="1-\delta" class="feed-math-inline"/>. At deployment time, given a good <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/>, the miss rate across fresh prompts is at most <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> in expectation. There is no runtime signal to tell you whether your <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/> was one of the good ones. Concretely, with <img src="https://benjaminhan.net/feed-assets/38bc87e1f8bce31b.svg" alt="\epsilon = 0.1" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/26bb056ca5be8553.svg" alt="\delta = 0.05" class="feed-math-inline"/>, and 1,000 calibration prompts: 95% of calibration runs produce a usable <img src="https://benjaminhan.net/feed-assets/590301ffa9ff6538.svg" alt="\lambda" class="feed-math-inline"/>; when they do, about 9,000 of the next 10,000 deployment prompts are expected to be covered.</p>
+<p>The guarantee is marginal across prompts, not conditional on any one: per-prompt coverage can be much better or much worse than <img src="https://benjaminhan.net/feed-assets/94b6a64d85863021.svg" alt="1-\epsilon" class="feed-math-inline"/> depending on difficulty. Exchangeability is the critical assumption; calibrate on 2023 clinical notes and deploy on 2026 notes, and all bets are off. And at inference time there is no per-element signal saying which output in the returned set is the acceptable one; the component-level layer is the paper’s partial answer.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Experiments cover open-domain question answering (TriviaQA), text summarization (CNN/DailyMail), and radiology report generation (MIMIC-CXR) across several LM backbones. The four scoring functions compared are FIRST-K (keep the first <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> samples unconditionally), FIRST-K+REJECT (same but filter with the quality threshold), MAX (keep candidates whose score exceeds the running max), and SUM (keep candidates until the summed score crosses a threshold).</p>
+<p>Figure 2 serves two purposes. The top row is a validity check: if the conformal theory holds, every method’s empirical set loss should track or fall below the <img src="https://benjaminhan.net/feed-assets/6305ef40b98dcfb4.svg" alt="y = \epsilon" class="feed-math-inline"/> diagonal across the risk range. All four scoring functions pass on all three tasks. The middle and bottom rows compare efficiency — middle row for how many LM forward passes each method consumes, bottom row for how large the returned set grows at matched coverage. Uniform sampling (FIRST-K) is the worst performer across nearly every task and metric. The three rejection-based variants (FIRST-K+REJECT, MAX, SUM) all improve on it, with no single variant dominating across tasks. The paper treats the scoring function as a task-specific design choice rather than declaring a winner.</p>
+<p>Three patterns in the figure are worth naming beyond that basic read. First, the validity check is near-tight: the set-loss curves sit close to the <img src="https://benjaminhan.net/feed-assets/6305ef40b98dcfb4.svg" alt="y = \epsilon" class="feed-math-inline"/> diagonal rather than well below it, meaning the procedure isn’t silently over-conservative, and efficiency gains aren’t bought by hidden extra margin. Second, the rejection-vs-uniform gap is task-dependent. TriviaQA shows the largest improvement of rejection methods over FIRST-K. MIMIC-CXR shows the smallest. One plausible reason: when acceptable answers span a wider semantic range (radiology reports have many valid phrasings for the same findings), the LM’s likelihood signal that the rejection methods exploit is less informative. Third, rejection methods separate most at moderate <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>, roughly 0.2–0.4 in these plots. At tight <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> all methods converge toward nearly-trivial “everything” sets, and at loose <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> the gaps also narrow, which means the practical window where scoring-function choice matters most is the middle of the risk range.</p>
+<p>Figure 2 from the paper [1], reproduced below as a 3×3 grid. Solid lines show the mean over 100 trials; shaded bands are <img src="https://benjaminhan.net/feed-assets/18ac9bd5085465b5.svg" alt="\pm 1" class="feed-math-inline"/> SD. Numbers in the legends are the AUC over achievable <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>.</p>
+<div class="quarto-layout-panel" data-layout-ncol="3">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_cxr_loss.png" class="img-fluid figure-img"></p>
+<figcaption>MIMIC-CXR — set loss</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_cnndm_loss.png" class="img-fluid figure-img"></p>
+<figcaption>CNN/DM — set loss</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_triviaqa_loss.png" class="img-fluid figure-img"></p>
+<figcaption>TriviaQA — set loss</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_cxr_samples.png" class="img-fluid figure-img"></p>
+<figcaption>MIMIC-CXR — relative excess samples</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_cnndm_samples.png" class="img-fluid figure-img"></p>
+<figcaption>CNN/DM — relative excess samples</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_triviaqa_samples.png" class="img-fluid figure-img"></p>
+<figcaption>TriviaQA — relative excess samples</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_cxr_size.png" class="img-fluid figure-img"></p>
+<figcaption>MIMIC-CXR — set size <img src="https://benjaminhan.net/feed-assets/c61c6c83f8d9557e.svg" alt="/k_{\max}" class="feed-math-inline"/></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_cnndm_size.png" class="img-fluid figure-img"></p>
+<figcaption>CNN/DM — set size <img src="https://benjaminhan.net/feed-assets/c61c6c83f8d9557e.svg" alt="/k_{\max}" class="feed-math-inline"/></figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-language-modeling/fig2_triviaqa_size.png" class="img-fluid figure-img"></p>
+<figcaption>TriviaQA — set size <img src="https://benjaminhan.net/feed-assets/c61c6c83f8d9557e.svg" alt="/k_{\max}" class="feed-math-inline"/></figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Applying conformal prediction to generative LMs has three obstacles; the paper motivates only one.</strong>
+<ul>
+<li>Obstacle 1 is the infinite output space: unlike <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/>-class classification, the set of possible LM outputs is combinatorial and can’t be enumerated. The paper solves this with sampling plus a calibrated stopping rule, and explicitly names it as the motivating challenge in its introduction.</li>
+<li>Obstacle 2 is score quality: raw sequence probability is a bad non-conformity score on generative output because of length bias, exposure bias, and semantic incoherence on long text. The paper solves this with four alternative scoring functions (FIRST-K, FIRST-K+REJECT, MAX, SUM), whose empirical wins appear in Figure 2’s bottom row. But the paper never names raw likelihood as the problem the alternatives exist to solve.</li>
+<li>Obstacle 3 is semantic equivalence: “George Washington” and “Washington” are both correct answers, and paraphrases would otherwise inflate the returned set. The paper solves this with a user-supplied admission function <img src="https://benjaminhan.net/feed-assets/bbaab48e56ec0236.svg" alt="A(y)" class="feed-math-inline"/> plus a diversity check at sampling time. But both are presented as algorithmic choices rather than as the solution to semantic equivalence per se.</li>
+<li>Consequence: readers outside conformal prediction have to reverse-engineer why the method’s design choices exist. A review post that surfaces the three obstacles makes the paper’s contributions easier to assess.</li>
+</ul></li>
+<li><strong>The component-level filter is the more interesting half, and its scope matters.</strong>
+<ul>
+<li>The component-level layer (Proposition 4.4 in the paper) upgrades set-level coverage to per-phrase coverage, closer to what practitioners actually want for hallucination control. Same lineage as <a href="../../posts/20260505-linguistic-calibration/">Linguistic Calibration of Long-Form Generations</a> [3] and the <a href="../../posts/20260505-conformal-factuality/">conformal-factuality</a> line from the Hashimoto group [4].</li>
+<li>Retained components each come with a coverage guarantee but no calibrated probability, so the layer does not recover the posterior the background flagged as missing. It gives per-component admissibility instead, which addresses hallucination flagging but not candidate ranking.</li>
+<li>Two composition questions remain open: whether conformal components compose cleanly with downstream retrieval-augmented generation (RAG) pipelines, and whether a posterior method (temperature-scaled likelihoods for ranking, or a Bayesian head on top of the LM) layered on top of CLM recovers the per-candidate probability information the method discards.</li>
+</ul></li>
+<li><strong><a href="../../posts/20260505-conformal-factuality/">Conformal Factuality</a> [4] narrows this framework to factuality via sub-claim decomposition.</strong> The <a href="../../posts/20260505-conformal-factuality/#vs-clm">CF post’s comparison bullet</a> has the side-by-side: sub-claim back-off vs.&nbsp;candidate sampling, single-threshold conformal vs.&nbsp;LTT’s nested <img src="https://benjaminhan.net/feed-assets/f161d8126bf1978b.svg" alt="(\epsilon, \delta)" class="feed-math-inline"/>, entailment-implicit coverage vs.&nbsp;set-level coverage.</li>
+<li><strong>Swapping CLM’s default non-conformity score for a P(True) signal would likely tighten the sets.</strong> Kadavath et al.&nbsp;[5] report that LMs have usable internal correctness signals (raw logits, and a P(True) self-evaluation prompt) that are reasonably calibrated at scale. CLM uses raw sequence probability by default, but any monotone-in-relevance score works, and cleaner ranks mean smaller sets at the same <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>. A natural swap to try.</li>
+<li><strong>The “coverage hull, not a posterior” limitation matters less because LMs can’t verbalize their distribution anyway.</strong> <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [6] shows verbal uncertainty doesn’t match the sampling distribution. A natural workaround for CLM’s missing posterior, asking the LM which candidate in the returned set is most likely, doesn’t work, so the gap isn’t one a simpler alternative would close.</li>
+<li><strong>Three deployment patterns follow from the component-level guarantee.</strong>
+<ul>
+<li><strong>Hallucination flagging at the sentence level (the paper’s framing).</strong> The Appendix H radiology example bolds the sentences the method has vetted and leaves hallucinated findings unbolded. A clinician reads the bolded set as a reliable shortlist and the unbolded remainder as the part worth checking.</li>
+<li><strong>Fact-verification pipelines (my reading, unevaluated in the paper).</strong> When some phrases carry a coverage guarantee and others don’t, a downstream verifier (human or automated) can prioritize the unguaranteed ones. The paper doesn’t measure verifier effort saved, but the per-component guarantee structure supports the workflow.</li>
+<li><strong>Empty-bolding as an escalation trigger (my reading).</strong> The Table H.2 failure case, where low cross-sample overlap leaves no sentences selected, is a legible signal that the LM couldn’t produce a confident output at any granularity and the query should be routed to a human. The paper describes this outcome but doesn’t frame it as a deployment recommendation.</li>
+</ul></li>
+<li><strong>Cost shifts from training to inference samples.</strong> Because the method is post-hoc over a frozen LM, the expense shows up as extra forward passes per query. That trade is acceptable when a single wrong answer is expensive (medical, legal) but unattractive for high-throughput chat. A natural follow-up is to learn a cheaper per-query sampler budget that preserves the guarantee, perhaps by conditioning on an internal uncertainty signal rather than a uniform stopping rule.</li>
+<li><strong>Deployment drift stresses the outer-<img src="https://benjaminhan.net/feed-assets/c2e62a810351cb51.svg" alt="\delta" class="feed-math-inline"/> bound more than the paper’s experiments probe.</strong> Beyond the general exchangeability caveat in the body, what stays unexamined is how gracefully the LTT [2] bounds degrade when calibration and deployment distributions drift moderately rather than breaking entirely. That matters more for clinical text (evolving protocols, new procedures) than for TriviaQA (stable trivia facts); the paper’s experiments do not probe the intermediate regime.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://vquach.com/">Quach, V.</a>, <a href="https://people.csail.mit.edu/fisch/">Fisch, A.</a>, <a href="https://people.csail.mit.edu/tals/">Schuster, T.</a>, Yala, A., Sohn, J. H., <a href="https://people.csail.mit.edu/tommi/tommi.html">Jaakkola, T. S.</a>, and <a href="https://www.regina.csail.mit.edu/">Barzilay, R.</a> “Conformal Language Modeling.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://arxiv.org/abs/2306.10193" class="uri">https://arxiv.org/abs/2306.10193</a></li>
+<li><a id="ref-2"></a><a href="https://people.eecs.berkeley.edu/~angelopoulos/">Angelopoulos, A. N.</a>, Bates, S., Candès, E. J., Jordan, M. I., and Lei, L. “Learn then Test: Calibrating Predictive Algorithms to Achieve Risk Control.” <em>arXiv preprint</em> (arXiv:2110.01052), October 3, 2021. <a href="https://arxiv.org/abs/2110.01052" class="uri">https://arxiv.org/abs/2110.01052</a></li>
+<li><a id="ref-3"></a><a href="https://nband.github.io/">Band, N.</a>, Li, X., <a href="https://tengyuma.github.io/">Ma, T.</a>, and <a href="https://thashim.github.io/">Hashimoto, T.</a> “Linguistic Calibration of Long-Form Generations.” <em>arXiv preprint</em> (arXiv:2404.00474), March 30, 2024. <a href="https://arxiv.org/abs/2404.00474" class="uri">https://arxiv.org/abs/2404.00474</a></li>
+<li><a id="ref-4"></a><a href="https://cmohri.github.io/">Mohri, C.</a> and <a href="https://thashim.github.io/">Hashimoto, T.</a> “Language Models with Conformal Factuality Guarantees.” <em>Proceedings of the 41st International Conference on Machine Learning</em> (ICML 2024). arXiv:2402.10978, February 16, 2024. <a href="https://arxiv.org/abs/2402.10978" class="uri">https://arxiv.org/abs/2402.10978</a></li>
+<li><a id="ref-5"></a>Kadavath, S., Conerly, T., Askell, A., Henighan, T., Drain, D., Perez, E., Schiefer, N., Hatfield-Dodds, Z., DasSarma, N., Tran-Johnson, E., et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></li>
+<li><a id="ref-6"></a>Kirchhof, M., Füger, L., Goliński, A., Dhekane, E. G., Blaas, A., Oh, S. J., and Williamson, S. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: the narrower specialization of this framework to factuality, with a side-by-side comparison of sub-claim back-off versus candidate sampling.</li>
+<li><a href="../../posts/20260505-conformal-prediction-primer/">A Primer on Conformal Prediction</a>: the finite-class recipe this paper extends to the combinatorial output space of generative LMs by replacing enumeration with a calibrated stopping rule.</li>
+<li><a href="../../posts/20260505-semantic-entropy/">Detecting Hallucinations in Large Language Models Using Semantic Entropy</a>: a sample-then-aggregate sibling sharing the same <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/>-forward-pass backbone but returning a scalar abstention signal instead of a calibrated set.</li>
+<li><a href="../../posts/20260505-linguistic-calibration/">Linguistic Calibration of Long-Form Generations</a>: the same hallucination-control goal pursued by training calibrated surface form, which this paper’s set-level guarantees leave untreated.</li>
+<li><a href="../../posts/20260505-llm-uncertainty-survey/">How to Make LLM Output More Trustworthy</a>: the survey that frames this paper as the first guarantee-based adaptation of conformal prediction to generative LMs.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260505-conformal-language-modeling/</guid>
+  <pubDate>Tue, 05 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260505-conformal-language-modeling/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>A Primer on Conformal Prediction</title>
   <dc:creator>synesis </dc:creator>
@@ -2893,54 +3070,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260428-openai-agi-principles/</guid>
   <pubDate>Tue, 28 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260428-openai-agi-principles/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Prompt Injections in the Wild: What Google Found in Common Crawl</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260428-prompt-injections-public-web/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260428-prompt-injections-public-web/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260428-prompt-injections-public-web/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>A screenshot from the article showing a public GitHub catalog of “Act as…” prompt-injection examples — the kind of hit that dominates Common Crawl false positives. Image from <a href="https://security.googleblog.com/2026/04/ai-threats-in-wild-current-state-of.html">Google Online Security Blog</a>.</figcaption>
-</figure>
-</div>
-<p>Thomas Brunner, Yu-Han Liu, and Moni Pande on the <a href="https://security.googleblog.com/2026/04/ai-threats-in-wild-current-state-of.html">Google Online Security Blog</a> ran a sweep of Common Crawl for indirect prompt injection (IPI) patterns and report what they actually found across billions of pages of the public English-speaking web:</p>
-<ul>
-<li>The dominant signal is false positives. Most “prompt injection” text on the public web is research papers, educational blog posts, and security articles discussing the topic.</li>
-<li>Confirmed in-the-wild categories:
-<ul>
-<li><strong>Harmless pranks</strong> — invisible injections that change a chatbot’s conversational tone.</li>
-<li><strong>Helpful guidance</strong> — instructions asking AI summaries to add useful context for the reader.</li>
-<li><strong>SEO</strong> — instructions that try to manipulate AI assistants into promoting a business over its competitors, including elaborate auto-generated payloads.</li>
-<li><strong>Deterring AI agents</strong> — variations on “if you are an AI, do not crawl this site,” including one that lures AI readers onto a page that streams an infinite, never-finishing response.</li>
-<li><strong>Malicious: exfiltration</strong> — small number, low sophistication, mostly individual experiments. No sign of advanced exfiltration prompts published by security researchers in 2025 being deployed at scale.</li>
-<li><strong>Malicious: destruction</strong> — instructions to delete files on the user’s machine. “Potentially devastating” but unlikely to succeed as written.</li>
-</ul></li>
-<li>A 32% relative increase in malicious detections between November 2025 and February 2026, measured across multiple Common Crawl snapshots.</li>
-</ul>
-<hr>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20230318-indirect-prompt-injection/">Indirect Prompt Injection Threats</a>: the early demonstration of the exact attack class Google is now measuring at web scale, showing what a working exfiltration payload looks like.</li>
-<li><a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex AI Escapes Sandbox and Executes Malware</a>: a concrete in-the-wild case of the malicious-destruction category Google flags as “potentially devastating,” where an injected README actually ran shell commands.</li>
-<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: the realized version of the file-deletion threat, showing what happens when a destructive instruction does succeed against an agent with real privileges.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260428-prompt-injections-public-web/</guid>
-  <pubDate>Tue, 28 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260428-prompt-injections-public-web/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
