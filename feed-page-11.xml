@@ -21,7 +21,112 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 02 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 05 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Language Models with Conformal Factuality Guarantees</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260505-conformal-factuality/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260505-conformal-factuality/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-factuality/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Target error rate vs.&nbsp;empirical factuality on GPT-4. Each solid line starts at the base factuality of GPT-4 on the associated dataset; NaturalQuestions and MATH overlap at the top-right. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Language Models with Conformal Factuality Guarantees</em> [1] (ICML 2024), <a href="https://cmohri.github.io/">Christopher Mohri</a> and <a href="https://thashim.github.io/">Tatsunori Hashimoto</a> (Stanford) propose <em>conformal factuality</em> (CF): cast the correctness of a language model (LM) output as uncertainty quantification, and solve it with <a href="../../posts/20260505-conformal-prediction-primer/">conformal prediction</a>.</p>
+<blockquote class="blockquote">
+<p>Guaranteeing the correctness and factuality of language model (LM) outputs is a major open problem. In this work, we propose <em>conformal factuality</em>, a framework that can ensure high probability correctness guarantees for LMs by <em>connecting language modeling and conformal prediction</em>. We observe that the correctness of an LM output is equivalent to an uncertainty quantification problem, where <em>the uncertainty sets are defined as the entailment set of an LM’s output</em>. Using this connection, we show that conformal prediction in language models corresponds to <em>a back-off algorithm that provides high probability correctness guarantees by progressively making LM outputs less specific</em> (and expanding the associated uncertainty sets). This approach applies to any black-box LM and requires very few human-annotated samples. Evaluations of our approach on closed book QA (FActScore, NaturalQuestions) and reasoning tasks (MATH) show that our approach can provide <em>80-90% correctness guarantees while retaining the majority of the LM’s original output</em>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The construction decomposes an LM answer into atomic sub-claims, scores each one, and <em>backs off</em> by dropping the lowest-scoring claims until the retained set is expected to be factual with probability <img src="https://benjaminhan.net/feed-assets/1b7be0f4a276d0d7.svg" alt="1-\alpha" class="feed-math-inline"/>. The threshold for dropping is calibrated on a small held-out set with human factuality labels, following the standard conformal-prediction recipe.</p>
+<p>The connection to conformal prediction runs through a second set, distinct from the sub-claims. For a prompt <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/>, let <img src="https://benjaminhan.net/feed-assets/063748da3b206a97.svg" alt="O" class="feed-math-inline"/> be the (possibly backed-off) LM output. The “uncertainty set” <img src="https://benjaminhan.net/feed-assets/a2e0c20f2ef714ee.svg" alt="C(x)" class="feed-math-inline"/> is every more-specific statement <img src="https://benjaminhan.net/feed-assets/89805762c7419a40.svg" alt="S" class="feed-math-inline"/> such that <img src="https://benjaminhan.net/feed-assets/89805762c7419a40.svg" alt="S" class="feed-math-inline"/> entails <img src="https://benjaminhan.net/feed-assets/063748da3b206a97.svg" alt="O" class="feed-math-inline"/> — equivalently, every possible ground-truth answer that would make <img src="https://benjaminhan.net/feed-assets/063748da3b206a97.svg" alt="O" class="feed-math-inline"/> true. The sub-claim set is finite, explicit, and the object the algorithm directly manipulates; dropping sub-claims is how it acts on <img src="https://benjaminhan.net/feed-assets/063748da3b206a97.svg" alt="O" class="feed-math-inline"/>. The uncertainty set <img src="https://benjaminhan.net/feed-assets/a2e0c20f2ef714ee.svg" alt="C(x)" class="feed-math-inline"/> is implicit, defined by the meaning of <img src="https://benjaminhan.net/feed-assets/063748da3b206a97.svg" alt="O" class="feed-math-inline"/>, and is what the guarantee is stated over. Dropping a sub-claim weakens <img src="https://benjaminhan.net/feed-assets/063748da3b206a97.svg" alt="O" class="feed-math-inline"/>, so more statements clear the entailment bar and <img src="https://benjaminhan.net/feed-assets/a2e0c20f2ef714ee.svg" alt="C(x)" class="feed-math-inline"/> expands. A factuality guarantee is then a coverage guarantee on <img src="https://benjaminhan.net/feed-assets/a2e0c20f2ef714ee.svg" alt="C(x)" class="feed-math-inline"/>: with probability <img src="https://benjaminhan.net/feed-assets/23cf81c5d8e046e1.svg" alt="\geq 1-\alpha" class="feed-math-inline"/>, the true answer lies inside <img src="https://benjaminhan.net/feed-assets/a2e0c20f2ef714ee.svg" alt="C(x)" class="feed-math-inline"/>, which by construction makes <img src="https://benjaminhan.net/feed-assets/063748da3b206a97.svg" alt="O" class="feed-math-inline"/> itself factual.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-factuality/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>Conformal factuality as conformal prediction on entailment sets. Each candidate LM output (top) is paired with the set of more-specific statements that entail it (bottom); dropping sub-claims expands the uncertainty set and raises factuality. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p><strong>How it’s implemented.</strong> Every non-trivial stage in the pipeline is a GPT-4 prompt. The base LM <img src="https://benjaminhan.net/feed-assets/9994f4360177928c.svg" alt="\mathsf{L}" class="feed-math-inline"/> generates the initial answer. A separator prompt <img src="https://benjaminhan.net/feed-assets/c23e56949b18a9df.svg" alt="\mathsf{S}" class="feed-math-inline"/> decomposes it into atomic sub-claims. Scoring is either <em>frequency</em> (sample five GPT-4 generations at temperature 1.0 and count how often each claim appears) or <em>self-confidence</em> (another prompt asks GPT-4 to rate its own claims). After low-score claims are dropped, a merger prompt <img src="https://benjaminhan.net/feed-assets/e73297076755231a.svg" alt="\mathsf{M}" class="feed-math-inline"/> stitches the survivors into a coherent user-facing paragraph. The merger is the critical step the guarantee depends on: the paper’s Assumption 5.1 requires <img src="https://benjaminhan.net/feed-assets/e73297076755231a.svg" alt="\mathsf{M}" class="feed-math-inline"/> to neither add nor remove sub-claims, only reorder and connect. If GPT-4 introduces a new claim in a transition phrase, or drops a retained one as stylistically awkward, the coverage guarantee on <img src="https://benjaminhan.net/feed-assets/a2e0c20f2ef714ee.svg" alt="C(x)" class="feed-math-inline"/> breaks silently, and nothing in the pipeline audits this.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Experiments use GPT-4 on three datasets: FActScore [2] [2] biographies, NaturalQuestions [3], and MATH [4]. Empirical factuality tracks the target <img src="https://benjaminhan.net/feed-assets/1b7be0f4a276d0d7.svg" alt="1-\alpha" class="feed-math-inline"/> across the range (Figure 3). Calibration needs only a few hundred human-labeled examples.</p>
+<p>Figure 4 plots the cost–benefit tradeoff across all three benchmarks. The panel titles (FActScore, NQ, MATH) are benchmark names, not the metric; the y-axis in every panel is the fraction of sub-claims the method had to drop (the cost), and the x-axis is the fraction of factual outputs achieved (the benefit). Lower curves = better (less removal for the same factuality). Tick marks along each curve correspond to different target <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/> values. The ★ at the bottom-left of each panel is base GPT-4 with no removal: ~25% factual on biographies, ~75% on NQ and MATH. Five scoring functions are compared: Random (blue) and Ordinal (orange, by position in the output) are baselines; GPT-4 self-confidence (green) and Frequency (red, how often a sub-claim appears across sampled generations) are the LM-based methods; Oracle (purple) uses ground-truth labels as an upper bound. Frequency dominates the baselines on every benchmark: biography factuality climbs from ~25% to ~80% while removing only ~50% of sub-claims; NQ gains ~15 points at ~25% removal; MATH gains ~15 points at ~10% removal. GPT-4 self-confidence is second-best and tracks Frequency on MATH but lags on the open-ended generation tasks.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-factuality/figure4.webp" class="img-fluid figure-img" data-lightbox-src="figure4-full.png"></p>
+<figcaption>Cost–benefit tradeoff of conformal factuality on FActScore biographies, NaturalQuestions, and MATH. Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Table 1 shows the qualitative behavior: base GPT-4 output on the left, conformal-factuality output on the right, with claims the method flagged as likely-false highlighted in red. The first three rows are FActScore biographies at <img src="https://benjaminhan.net/feed-assets/c446ed3b64612ee3.svg" alt="\alpha=0.2" class="feed-math-inline"/>; the last row is a MATH problem at <img src="https://benjaminhan.net/feed-assets/ad68116e936fbcd3.svg" alt="\alpha=0.1" class="feed-math-inline"/>. The backed-off outputs are shorter but preserve the claims that scored high-confidence. The MATH example shows CF can remove a single incorrect reasoning step while keeping the rest of the derivation intact.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-conformal-factuality/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The guarantee rests on the sub-claim decomposition, not the conformal prediction.</strong> The guarantee is only as tight as the atomic-claim decomposer and the entailment assumption: “removing a sub-claim expands the entailment set.” This is the same premise that FActScore [2] relies on to score biographies, and it’s contested. Claim splitting can be lossy, and two sub-claims can jointly imply a third that neither contains. The paper assumes the decomposition is fine-grained enough that residual entailment closure is negligible, which is a stronger condition than the conformal machinery needs.</li>
+<li><strong>“Factuality guarantee” is marginal, not conditional.</strong> Conformal prediction gives a guarantee <em>on average over a calibration distribution</em>, not per-prompt. If a user asks a question whose underlying topic is rare in the calibration set, the empirical error can be much higher than <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/>. This is the same limitation Angelopoulos and Bates [5] flag in their conformal tutorial, and it’s worth naming because “80–90% correctness guarantee” reads stronger than it is.</li>
+<li><strong>Frequency scoring breaks when the model is confidently wrong.</strong> Self-consistency [6] [6] and <a href="../../posts/20260505-semantic-entropy/">semantic entropy</a> use the same sampling-distribution structure as a truth signal, and both fail the same way: when multiple samples converge on the same wrong answer, the score is high but the claim is false. The paper’s GPT-4 numbers don’t tell us how the method degrades on weaker models where this happens more often.</li>
+<li><strong>Useful complement to retrieval-augmented generation (RAG).</strong> Conformal factuality sits downstream of generation, so it composes with RAG: retrieval supplies grounded context to the base LM, and the conformal layer then drops sub-claims whose confidence scores stay low even with the retrieved evidence in the prompt. The interesting experiment, not run here, is whether the back-off threshold needed for 90% factuality shrinks enough under RAG that retention stays high on questions the base model would otherwise hallucinate. The natural benchmark for that experiment is something like <a href="../../posts/20260507-averitec/">AVeriTeC</a> [8], where claims come from real fact-checking organizations, evidence is web-retrieved, and <em>Not Enough Evidence</em> is a labelled verdict class — though the AVeriTeC post flags that NEI there means “annotators couldn’t find evidence”, not “the model abstained”, so the mapping into selective prediction needs care.</li>
+<li><strong>Relative to <a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling (CLM)</a> [7] (Quach et al.).</strong> <a id="vs-clm"></a>CLM appeared on arXiv in June 2023 and was presented at ICLR 2024; CF followed eight months later, arriving on arXiv in February 2024 and at ICML 2024. CLM was the more general “adapt conformal prediction to generative LMs” move, and CF the narrower factuality-via-sub-claim-back-off specialization. CLM returns a set of whole candidate outputs with coverage. CF takes a different route: it operates on a single LM answer, uses the entailment relation to define coverage implicitly, and backs off to a weaker version of that answer until the factuality target is hit.
+<ul>
+<li>CLM is task-agnostic. Its stopping rule scores whole candidate outputs (likelihood, cluster membership, an external scorer). CF requires sub-claim decomposition, which only factors cleanly for factual claims, so open-ended generation (creative writing, free-form summarization) is out of scope.</li>
+<li>CF returns one clean output. CLM returns a candidate set, which requires a downstream selection step (ranking, user choice, or a wrapper that picks one).</li>
+<li>Both methods spend multiple LLM calls per query, but for different purposes. CLM samples <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> full candidate outputs from the base LM (typically 5–20) and keeps a subset with coverage. CF with frequency scoring also samples <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> generations, but uses them only to <em>score</em> sub-claims in a single base answer (counting how often each claim appears), then drops low-score claims and merges the survivors. CF with self-confidence scoring skips the extra samples entirely. The choice between CLM and CF is about what you get back (a set vs.&nbsp;a single backed-off output), not compute.</li>
+<li>CLM’s coverage is over sampled candidates. CF’s is over an implicit entailment set, which inherits the quality of the sub-claim decomposition (<img src="https://benjaminhan.net/feed-assets/c23e56949b18a9df.svg" alt="\mathsf{S}" class="feed-math-inline"/>) and the merger assumption (5.1). CLM avoids both soft assumptions.</li>
+</ul></li>
+<li><strong>Stacking CF inside CLM is a direction neither paper explored.</strong> Run CLM’s outer sampler to get <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> candidates, then pass each through CF’s sub-claim decomposition and back-off before applying CLM’s conformal stopping rule over the set. Each returned candidate is individually factual; the set as a whole retains CLM’s coverage.
+<ul>
+<li>Cost is ~<img src="https://benjaminhan.net/feed-assets/fa167df81855cc28.svg" alt="K \times" class="feed-math-inline"/> CF per query.</li>
+<li>Two calibrations compose. Whether the joint guarantee is additive, multiplicative, or needs a separate joint calibration is the technical question a follow-up would have to solve.</li>
+<li>CF’s back-off reduces information per candidate, so the final set may be dominated by short hedged answers, which defeats CLM’s motivation for returning diverse candidates.</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://cmohri.github.io/">Mohri, C.</a> and <a href="https://thashim.github.io/">Hashimoto, T.</a>. “Language Models with Conformal Factuality Guarantees.” <em>Proceedings of the 41st International Conference on Machine Learning</em> (ICML 2024). arXiv:2402.10978, February 16, 2024. <a href="https://arxiv.org/abs/2402.10978" class="uri">https://arxiv.org/abs/2402.10978</a></li>
+<li><a id="ref-2"></a>Min, S., Krishna, K., Lyu, X., Lewis, M., Yih, W.-t., Koh, P. W., Iyyer, M., Zettlemoyer, L., and Hajishirzi, H. “FActScore: Fine-grained Atomic Evaluation of Factual Precision in Long Form Text Generation.” <em>EMNLP 2023</em>, arXiv:2305.14251. <a href="https://arxiv.org/abs/2305.14251" class="uri">https://arxiv.org/abs/2305.14251</a></li>
+<li><a id="ref-3"></a>Kwiatkowski, T., Palomaki, J., Redfield, O., Collins, M., Parikh, A., Alberti, C., Epstein, D., Polosukhin, I., Devlin, J., Lee, K., Toutanova, K., Jones, L., Kelcey, M., Chang, M.-W., Dai, A. M., Uszkoreit, J., Le, Q., and Petrov, S. “Natural Questions: A Benchmark for Question Answering Research.” <em>Transactions of the Association for Computational Linguistics (TACL)</em>, 2019. <a href="https://aclanthology.org/Q19-1026/" class="uri">https://aclanthology.org/Q19-1026/</a></li>
+<li><a id="ref-4"></a>Hendrycks, D., Burns, C., Kadavath, S., Arora, A., Basart, S., Tang, E., Song, D., and Steinhardt, J. “Measuring Mathematical Problem Solving With the MATH Dataset.” <em>NeurIPS Datasets and Benchmarks</em>, 2021. arXiv:2103.03874. <a href="https://arxiv.org/abs/2103.03874" class="uri">https://arxiv.org/abs/2103.03874</a></li>
+<li><a id="ref-5"></a>Angelopoulos, A. N. and Bates, S. “A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification.” <em>arXiv preprint</em> (arXiv:2107.07511), July 15, 2021. <a href="https://arxiv.org/abs/2107.07511" class="uri">https://arxiv.org/abs/2107.07511</a></li>
+<li><a id="ref-6"></a>Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and Zhou, D. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR 2023</em>, arXiv:2203.11171. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
+<li><a id="ref-7"></a>Quach, V., Fisch, A., Schuster, T., Yala, A., Sohn, J. H., Jaakkola, T. S., and Barzilay, R. “Conformal Language Modeling.” <em>ICLR 2024</em>, arXiv:2306.10193, June 16, 2023. <a href="https://arxiv.org/abs/2306.10193" class="uri">https://arxiv.org/abs/2306.10193</a></li>
+<li><a id="ref-8"></a><a href="https://aclanthology.org/people/michael-schlichtkrull/">Schlichtkrull, M.</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Guo, Z.</a>, and <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, A.</a> “AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web.” <em>NeurIPS 2023 Datasets &amp; Benchmarks Track</em>, arXiv:2305.13117, May 22, 2023. <a href="https://arxiv.org/abs/2305.13117" class="uri">https://arxiv.org/abs/2305.13117</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a>: the more general conformal-prediction-for-LMs framework that this paper narrows to factuality via sub-claim back-off, compared head-to-head in the My Notes.</li>
+<li><a href="../../posts/20260505-conformal-prediction-primer/">A Primer on Conformal Prediction</a>: the background recipe whose marginal-not-conditional coverage caveat applies directly to the “factuality guarantee is marginal” limitation here.</li>
+<li><a href="../../posts/20260505-semantic-entropy/">Detecting Hallucinations in Large Language Models Using Semantic Entropy</a>: a detection-based alternative that shares the same sampling-distribution-as-truth-signal premise, and the same failure when the model is confidently wrong.</li>
+<li><a href="../../posts/20260505-linguistic-calibration/">Linguistic Calibration of Long-Form Generations</a>: the same Hashimoto group attacking long-form factuality by training calibrated prose rather than backing off claims post-hoc.</li>
+<li><a href="../../posts/20260505-llm-uncertainty-survey/">How to Make LLM Output More Trustworthy</a>: the survey that places conformal factuality in the guarantee-based branch alongside its detection-based and behavioral-calibration cousins.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260505-conformal-factuality/</guid>
+  <pubDate>Tue, 05 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260505-conformal-factuality/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Conformal Language Modeling</title>
   <dc:creator>synesis </dc:creator>
@@ -591,7 +696,7 @@
 </item>
 <item>
   <title>Fire</title>
-  <dc:creator>synesis </dc:creator>
+  <dc:creator>Ben </dc:creator>
   <link>https://benjaminhan.net/posts/20260502-fire/?utm_source=rss&amp;utm_medium=feed</link>
   <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260502-fire/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
  
@@ -2999,77 +3104,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/</guid>
   <pubDate>Wed, 29 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>OpenAI’s Five Principles for AGI</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260428-openai-agi-principles/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260428-openai-agi-principles/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260428-openai-agi-principles/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>The hero graphic for OpenAI’s “Our principles” post. Image from <a href="https://openai.com/index/our-principles/">OpenAI</a>.</figcaption>
-</figure>
-</div>
-<p>OpenAI has posted <em>Our principles</em> [1] on its blog, laying out five principles for its work on AGI:</p>
-<ol type="1">
-<li><strong>Democratization.</strong> “We will resist the potential of this technology to consolidate power in the hands of the few.” Key decisions about AI should run through democratic processes, not be settled inside AI labs.</li>
-<li><strong>Empowerment.</strong> “We believe AI can empower everyone to achieve their goals, learn more, be happier and more fulfilled, and pursue their dreams.” Users get very broad latitude in how they use OpenAI’s services, balanced against a responsibility to minimise local, catastrophic, and “potential corrosive societal effects.” Under uncertainty OpenAI will err on the side of caution, relaxing constraints as evidence accumulates.</li>
-<li><strong>Universal prosperity.</strong> “We want a future where everyone can have an excellent life.” OpenAI says its compute and infrastructure build-out is driven by this goal: “buying huge amounts of compute while our revenue is relatively small, vertically integrating to lower costs and make our technology easier to use, pushing to build datacenters all around the world.” The post says governments may need to consider “new economic models” so everyone can participate in the value being created.</li>
-<li><strong>Resilience.</strong> “AI will introduce new risks, and we will work with other companies, ecosystems, governments, and society to solve them.” OpenAI takes a society-wide approach: pathogen-agnostic countermeasures for bioweapons, rapid use of AI to secure open-source software and critical infrastructure, backed by the OpenAI Foundation. The post commits to “collaborate with governments, international agencies, and other AGI efforts” and, if needed, to wait before proceeding further.</li>
-<li><strong>Adaptability.</strong> “We continue to believe the only way to meet the challenges of a very unpredictable future is to be prepared to update our positions as we learn more.” OpenAI commits to be “transparent about when, how, and why” those positions change. The concrete example in the post: future scenarios where OpenAI may need to “trade off some empowerment for more resilience.”</li>
-</ol>
-<p>Other notable moves in the post:</p>
-<ul>
-<li>The post acknowledges that “OpenAI is a much larger force in the world than it was a few years ago.”</li>
-<li>The 2019 staged release of GPT-2 weights, originally paused out of concern about societal impact, is recast as a “misplaced worry” whose main legacy is the discovery of iterative deployment, the release strategy the company has used ever since.</li>
-<li>Near the close: “We deserve an enormous amount of scrutiny given the weight of what we are doing. We will not get everything right, but we will learn quickly and course-correct.”</li>
-</ul>
-<section id="my-notes-how-this-compares-to-other-frontier-labs" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes-how-this-compares-to-other-frontier-labs">My Notes: How this compares to other frontier labs</h2>
-<p>The other major frontier labs all pair a values-level statement with an operational, capability-gate document. They differ in how explicit the operational document is about what actually blocks deployment.</p>
-<ul>
-<li><strong>Anthropic</strong> publishes <em>Core Views on AI Safety</em> [2] at the values layer, paired with a <em>Responsible Scaling Policy</em> [3] at the operational layer. The RSP (currently at v3.1, April 2026) defines named Capability Thresholds in domains including CBRN (chemical, biological, radiological, nuclear) and AI R&amp;D, each paired with ASL (AI Safety Level) security standards. Under v3, Anthropic also publishes Frontier Safety Roadmaps and Risk Reports. When a model crosses a threshold, Anthropic commits to meet the corresponding safeguards before further training or deployment can proceed. Anthropic’s RSP has the most-revised public history among the four labs, with published redlines for prior versions and a separate RSP Noncompliance Reporting and Anti-Retaliation Policy.</li>
-<li><strong>Google DeepMind</strong> publishes the <em>Frontier Safety Framework</em> [4], which defines Critical Capability Levels in four domains — autonomy, biosecurity, cybersecurity, and machine learning R&amp;D — each paired with security and deployment mitigations that scale with the level. Structurally similar to Anthropic’s RSP; its emphasis is on “detect and mitigate” rather than an explicit pause commitment.</li>
-<li><strong>Meta</strong> publishes the <em>Advanced AI Scaling Framework</em> [5], an April 2026 update to the original Frontier AI Framework. Models are evaluated for cybersecurity, chemical and biological, and loss-of-control risks, both before and after safeguards are applied, and the framework is paired with per-model <em>Safety &amp; Preparedness Reports</em>, the first of which was published for Muse Spark. Meta’s commitment: “only deploying models when they meet the standards set by our Framework.”</li>
-</ul>
-<p>OpenAI’s operational counterpart is its separately-published <em>Preparedness Framework</em>, currently at v2 (April 2025) [6]. The Framework names three Tracked Categories — Biological and Chemical, Cybersecurity, AI Self-improvement — and five Research Categories: Long-range Autonomy, Sandbagging, Autonomous Replication and Adaptation, Undermining Safeguards, and Nuclear and Radiological. It distinguishes High and Critical capability thresholds, governed internally by a Safety Advisory Group, and commits that OpenAI “will not deploy these very capable models until we’ve built safeguards to sufficiently minimize the associated risks of severe harm.”</p>
-<p>OpenAI’s new <em>Our principles</em> is the values half of that pair; the capability-gate work remains in the Preparedness Framework v2. What’s new in this post is adaptability: a values-level commitment to revise OpenAI’s positions as evidence accumulates, and to be transparent about those revisions.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“Our principles.” <em>OpenAI</em>. <a href="https://openai.com/index/our-principles/" class="uri">https://openai.com/index/our-principles/</a></li>
-<li><a id="ref-2"></a>“Core Views on AI Safety: When, Why, What, and How.” <em>Anthropic</em>. <a href="https://www.anthropic.com/news/core-views-on-ai-safety" class="uri">https://www.anthropic.com/news/core-views-on-ai-safety</a></li>
-<li><a id="ref-3"></a>“Responsible Scaling Policy.” <em>Anthropic</em>. <a href="https://www.anthropic.com/rsp" class="uri">https://www.anthropic.com/rsp</a></li>
-<li><a id="ref-4"></a>“Introducing the Frontier Safety Framework.” <em>Google DeepMind</em>. <a href="https://deepmind.google/discover/blog/introducing-the-frontier-safety-framework/" class="uri">https://deepmind.google/discover/blog/introducing-the-frontier-safety-framework/</a></li>
-<li><a id="ref-5"></a>“Scaling How We Build and Test Our Most Advanced AI.” <em>Meta</em>. <a href="https://ai.meta.com/blog/scaling-how-we-build-test-advanced-ai/" class="uri">https://ai.meta.com/blog/scaling-how-we-build-test-advanced-ai/</a></li>
-<li><a id="ref-6"></a>“Our updated Preparedness Framework” (v2, April 15, 2025). <em>OpenAI</em>. <a href="https://openai.com/index/updating-our-preparedness-framework/" class="uri">https://openai.com/index/updating-our-preparedness-framework/</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260516-anthropic-institute-agenda/">The Anthropic Institute’s Research Agenda</a>: another frontier lab publishing a public-facing agenda meant to feed governance and release decisions, the same genre as this values statement.</li>
-<li><a href="../../posts/20260223-marcus-brundage-agi-bet/">Marcus vs.&nbsp;Brundage: A Concrete AGI Bet</a>: a concrete operationalization of the AGI these principles take as their subject, where the term’s meaning is still contested.</li>
-<li><a href="../../posts/20260603-superintelligence/">Superintelligence: The Idea That Eats Smart People</a>: a counterweight that questions the AGI-and-resilience framing this post’s principles assume as premise.</li>
-<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: the labor-displacement and universal-prosperity concern behind OpenAI’s third principle, argued out in detail.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260428-openai-agi-principles/</guid>
-  <pubDate>Tue, 28 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260428-openai-agi-principles/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
