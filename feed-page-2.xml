@@ -21,7 +21,204 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Wed, 05 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 07 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Teaching a Script to Draw a Map of My Runs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260715-map-rendering-evolution/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260715-map-rendering-evolution/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>The version I ended up with: my Juneteenth half marathon down the Seattle waterfront, colored by heart rate, with self-drawn place names, PR pills, and the hardest single moment pinned.</figcaption>
+</figure>
+</div>
+<p>I have a little side project. Every run I do gets pulled into a local database that stitches together a few sources: the activity itself from <a href="https://www.strava.com/">Strava</a>, plus readiness and recovery data from Apple Health and my watch’s FIT files. A script then draws a map of the route that ends up in my <a href="../../posts/20260710-coachclaude-is-coming-up-nicely/">CoachClaude</a> coaching notes. It started as a red squiggle on a stock basemap. Over about ten days of tinkering it turned into something I actually <em>read</em>: effort, landmarks, PRs, and even which direction I ran each stretch, all on one picture.</p>
+<p>Because every version regenerates over the whole history, I can re-draw <em>any</em> past run with <em>any</em> version of the code. So here are the same two runs at each stage.</p>
+<p>I picked two runs on purpose:</p>
+<ul>
+<li><a href="../../posts/20260619-juneteenth-run-lincoln-park/"><strong>My Juneteenth half marathon</strong></a> (13.8 mi down the Seattle waterfront), a point-to-point with lots of named landmarks and several PRs (personal records). A good test of the labels and callouts.</li>
+<li><a href="../../posts/20260112-bridle-trails-50k/"><strong>The Bridle Trails 50K</strong></a> (29.5 mi of looping horse trails), where I ran a lot of the same singletrack more than once. That turns out to be the hard case that motivated the very last change.</li>
+</ul>
+<section id="stage-1-a-line-on-a-map" class="level2">
+<h2 class="anchored" data-anchor-id="stage-1-a-line-on-a-map">Stage 1: a line on a map</h2>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/juneteenth-1-baseline.png" class="img-fluid figure-img"></p>
+<figcaption>Juneteenth half marathon</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/bridle-1-baseline.png" class="img-fluid figure-img"></p>
+<figcaption>Bridle Trails 50K</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>The first version draws the route as a flat red line over an off-the-shelf <a href="https://www.openstreetmap.org/">OpenStreetMap</a> tile, with start and finish markers. That’s it.</p>
+<p>The half marathon is framed loosely, with a lot of open water and eastside street grid the run never touches, and the basemap piles on dashed ferry lanes, freeway shields, and tiny labels. It’s a map with my run on it, not a map of my run.</p>
+</section>
+<section id="stage-2-frame-it-tight-and-mark-the-prs" class="level2">
+<h2 class="anchored" data-anchor-id="stage-2-frame-it-tight-and-mark-the-prs">Stage 2: frame it tight, and mark the PRs</h2>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/juneteenth-2-framing-pr.webp" class="img-fluid figure-img" data-lightbox-src="juneteenth-2-framing-pr-full.png"></p>
+<figcaption>Juneteenth half marathon</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/bridle-2-framing-pr.webp" class="img-fluid figure-img" data-lightbox-src="bridle-2-framing-pr-full.png"></p>
+<figcaption>Bridle Trails 50K</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>Two changes here. First, the map now zooms to fit the route and swaps the raw OpenStreetMap tiles for <a href="https://carto.com/">CARTO</a>’s cleaner Voyager basemap, rendered at retina resolution so the labels stay crisp. They’re still CARTO’s labels, but there’s far less clutter to fight. Second, and the actual reason for this version, it pulls my Strava PRs and segment splits and drops little pills on the map (<code>PR</code>, <code>½mi·1K</code>) right where they happened. The direction arrows got clearer too, so on the 50K you can now follow the flow of the loop.</p>
+<p>Marking a personal best is the first bit of story added to the bare route. And tight framing means each run fills its own frame.</p>
+</section>
+<section id="stage-3-draw-my-own-labels" class="level2">
+<h2 class="anchored" data-anchor-id="stage-3-draw-my-own-labels">Stage 3: draw my own labels</h2>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/juneteenth-3-labels.webp" class="img-fluid figure-img" data-lightbox-src="juneteenth-3-labels-full.png"></p>
+<figcaption>Juneteenth half marathon</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/bridle-3-labels.webp" class="img-fluid figure-img" data-lightbox-src="bridle-3-labels-full.png"></p>
+<figcaption>Bridle Trails 50K</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>Next I dropped the pre-labeled basemap entirely and started drawing the place names myself over a blank canvas: italic water names (<em>Elliott Bay</em>, <em>Puget Sound</em>, <em>Fauntleroy Cove</em>), neighborhood names, the parks the route runs through (Alki Beach Park, Me-Kwa-Mooks Park, Lincoln Park), and small brown triangles for nearby landmarks. On the 50K the street grid and green space come in as gentle context instead of clutter.</p>
+<p>With someone else’s labels I couldn’t control what showed up or how loud it was. I’d get a gas station named but not the park I ran through. Drawing them myself means the map emphasizes what’s on my route, at a density I choose.</p>
+</section>
+<section id="stage-4-color-the-line-by-heart-rate" class="level2">
+<h2 class="anchored" data-anchor-id="stage-4-color-the-line-by-heart-rate">Stage 4: color the line by heart rate</h2>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/juneteenth-4-hr.webp" class="img-fluid figure-img" data-lightbox-src="juneteenth-4-hr-full.png"></p>
+<figcaption>Juneteenth half marathon</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/bridle-4-hr.webp" class="img-fluid figure-img" data-lightbox-src="bridle-4-hr-full.png"></p>
+<figcaption>Bridle Trails 50K</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>Now the route line is no longer one color. It runs on a gradient from green (easy) through yellow to red (hard), driven by my heart-rate zones, with a new legend in the corner to read it by.</p>
+<p>The map now shows effort in place. On the Juneteenth half you can see it’s almost all calm green, a controlled aerobic day, with only a couple of warmer patches near the end. On the 50K the difference between the runnable flats (green) and the grinding hills (orange and red) jumps right out.</p>
+</section>
+<section id="stage-5-call-out-the-extremes" class="level2">
+<h2 class="anchored" data-anchor-id="stage-5-call-out-the-extremes">Stage 5: call out the extremes</h2>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/juneteenth-5-callouts.webp" class="img-fluid figure-img" data-lightbox-src="juneteenth-5-callouts-full.png"></p>
+<figcaption>Juneteenth half marathon</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/bridle-5-callouts.webp" class="img-fluid figure-img" data-lightbox-src="bridle-5-callouts-full.png"></p>
+<figcaption>Bridle Trails 50K</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>Here I added off-route callout pills for the per-run extremes: a brown <code>▲</code> pill at the peak-elevation point and a red <code>♥</code> pill at max heart rate, each with a thin leader line pointing to exactly where on the course it happened. The PR pills from stage 2 are still there.</p>
+<p>The heart-rate gradient tells you roughly where it got hard. These pins tell you exactly where the hardest single moment was and what it cost. On the 50K the <code>♥ 183</code> is out on the east side.</p>
+</section>
+<section id="stage-6-split-the-retraced-sections-into-lanes" class="level2">
+<h2 class="anchored" data-anchor-id="stage-6-split-the-retraced-sections-into-lanes">Stage 6: split the retraced sections into lanes</h2>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/juneteenth-6-lanes.webp" class="img-fluid figure-img" data-lightbox-src="juneteenth-6-lanes-full.png"></p>
+<figcaption>Juneteenth half marathon</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260715-map-rendering-evolution/bridle-6-lanes.webp" class="img-fluid figure-img" data-lightbox-src="bridle-6-lanes-full.png"></p>
+<figcaption>Bridle Trails 50K</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>The last change (for now): where I ran the same ground more than once (an out-and-back, a lap, a figure-8), the map now draws each pass as its own parallel lane beside the other, instead of one pass painting over the earlier one.</p>
+<p>This is barely visible on the half but changes the 50K completely. The Juneteenth run almost never retraces itself, so it looks about the same as stage 5, which is exactly why I show both. But the 50K is full of repeated singletrack. In every earlier version, the last time I ran a trail simply painted over every earlier time, so a stretch I ran three times looked identical to one I ran once, and the effort colors from the earlier passes were hidden under the last. Now those sections read as thin loops with two colored lanes side by side, each keeping its own effort color and its own direction arrow. You can finally see that it was a lapped course, and how my effort on the same trail changed between passes.</p>
+</section>
+<section id="where-it-ended-up" class="level2">
+<h2 class="anchored" data-anchor-id="where-it-ended-up">Where it ended up</h2>
+<p>None of the underlying GPS changed across the six versions, only how much of the run the map shows.</p>
+<p>There’s plenty left to do (shade, weather, surface type), but I like that I can point the newest version at a run from months ago and see it fresh. Onward.</p>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260710-coachclaude-is-coming-up-nicely/">CoachClaude Is Coming Up Nicely</a> — the running-coach project these maps feed into.</li>
+<li><a href="../../posts/20260619-juneteenth-run-lincoln-park/">A Juneteenth Run to Lincoln Park</a> — the half marathon in the left column of every map above.</li>
+<li><a href="../../posts/20260112-bridle-trails-50k/">Bridle Trails 50K: Hot Cocoa, Sprained Ankle, No Horseshit</a> — the looping trail 50K that motivated the lane-split rendering.</li>
+<li><a href="../../posts/20260420-rube-goldberg-publishing/">A Rube Goldberg Pipeline for Sharing Links</a> — another walk through the personal tooling behind this blog.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260715-map-rendering-evolution/</guid>
+  <pubDate>Wed, 15 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260715-map-rendering-evolution/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Freeing the Law with LOCUS: A Local Ordinance Corpus for the United States</title>
   <dc:creator>synesis </dc:creator>
@@ -1165,175 +1362,6 @@
   <guid>https://benjaminhan.net/posts/20260705-pangram-ai-detection-accuracy/</guid>
   <pubDate>Sun, 05 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260705-pangram-ai-detection-accuracy/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>The Easy Interval Method: Intervals Every Day, Run Easy</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260705-easy-interval-method/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260705-easy-interval-method/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260705-easy-interval-method/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Thumbnail for <em>the Faster Master</em> video on the Easy Interval Method. <a href="https://www.youtube.com/watch?v=MnciyltVuiY">Watch on YouTube</a></figcaption>
-</figure>
-</div>
-<p>In this <a href="https://www.youtube.com/watch?v=MnciyltVuiY">13-minute explainer</a>, <a href="https://www.youtube.com/@thefastermaster">Terry O’Hare</a>, a masters runner from Ireland who runs <a href="https://www.youtube.com/@thefastermaster"><em>the Faster Master</em></a> channel, lays out the <a href="https://easyintervalmethod.com/">Easy Interval Method</a> (EIM), a training system devised by Dutch coach <a href="https://easyintervalmethod.com/">Herman Verheul</a> in the 1970s and developed by Dutch 5,000 m runner <a href="https://easyintervalmethod.com/">Klaas Lok</a> [1]. The pitch is counterintuitive: instead of building a base from long, slow endurance runs, you run <a href="https://en.wikipedia.org/wiki/Interval_training">intervals</a> almost every day, but at a <a href="https://en.wikipedia.org/wiki/Lactate_threshold">sub-threshold</a> pace, with recoveries long enough that you can back it up the next day.</p>
-<p>The main points, each linking to the supporting part of the transcript:</p>
-<ul>
-<li><strong>The workload is survivable because of pace and recovery.</strong> Intervals run six days a week are possible because they sit at sub-threshold pace with a recovery jog roughly equal to the rep, plus a short walk at each end, so you can complete the session today and repeat it tomorrow.</li>
-<li><strong>The long recovery is the point.</strong> Far from being a concession, an 800–1,000 m jog recovery covers real aerobic mileage a static 90-second rest never would, which is why critics who want to shorten it miss what the system is doing.</li>
-<li><strong>Even skeptics can steal the surges.</strong> If daily intervals aren’t for you, adding short pickups (surges) to an ordinary long run captures much of the benefit and turns the run into an impromptu <a href="https://en.wikipedia.org/wiki/Fartlek">fartlek</a>.</li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>Where the easy mileage goes.</strong> EIM accumulates aerobic stimulus without the neuromuscular cost of hard intervals or the staleness of slow steady running. The recovery jog does the easy-volume work that steady-state runs do in a conventional plan, while the daily reps keep some pace and leg reactivity in the system. That is why “intervals every day” is less reckless than it first sounds, once you see where the easy mileage goes.</li>
-<li><strong>Versus Norwegian singles.</strong> The contrast Terry draws with the <a href="https://marathonhandbook.com/norwegian-singles-training/">Norwegian singles method</a> is the useful reference point for anyone who has met that trend. Both hold reps at sub-threshold, and the only real difference is scheduling. Norwegian singles pack the sub-threshold work into a few days and fill the rest with easy running. EIM spreads it across almost every day and lets the long recovery jog absorb the easy running.</li>
-<li><strong>The evidence caveat.</strong> What the video lacks is evidence. The case rests on one athlete’s palmares, one masters record-holder, and a coach’s rationale, with no controlled comparison against a matched training plan. That is normal for training-methodology content, but a reader deciding whether to switch should treat the mechanism story as plausible rather than proven, and ramp in gradually as Terry himself insists.</li>
-</ul>
-</section>
-<section id="transcript" class="level2">
-<h2 class="anchored" data-anchor-id="transcript">Transcript</h2>
-<p>What’s here is the video’s <a href="https://www.youtube.com/watch?v=MnciyltVuiY">auto-generated transcript</a>, reorganized into a reader-friendly form. The spoken words are preserved; three layers of editorial structure have been added on top:</p>
-<ul>
-<li><strong>Topic outline.</strong> The video has no official YouTube chapters, so the [12] section headings below are my own segmentation of the talk. Each links to the video at the timestamp where that section begins.</li>
-<li><strong>Inline hyperlinks.</strong> First mention of a salient name, concept, or product links to an authoritative source.</li>
-<li><strong>Editor’s notes</strong> in blue callout boxes flag a claim worth confirming or a spot where the auto-captions garbled a figure.</li>
-</ul>
-<p>This is a single-speaker video, so there are no per-paragraph speaker labels — the whole body is Terry O’Hare talking. Because the source is auto-captions, punctuation, capitalization, and paragraph breaks are editorial (ASR ships without them), and obvious mishearings of names and terms are corrected silently — e.g.&nbsp;the captions’ <code>Class Lactate</code>, <code>EAM</code>, and <code>EIAM</code> are rendered as <code>Klaas Lok</code>, <code>EIM</code>, and the garbled <code>PSS 4 200 m</code> as <code>paces for 200 m</code>.</p>
-<section id="ch-intro" class="level3">
-<h3 class="anchored" data-anchor-id="ch-intro"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=2s">0:00 — The club-runner rut, and a Dutch alternative</a></h3>
-<p>A lot of runners, particularly club runners, training 5 or 6 days a week, can get into a bit of a cycle of long run Sunday, during the week maybe one, two speed sessions Tuesday and Thursday, and the rest of the week they just fill in with long, easy, or recovery runs. And of course, time has shown that this can work for many of us. But is there a better way?</p>
-<p>Well, back in the 1970s, Dutch coach Herman Verheul, I think that’s how you pronounce it, turned traditional thinking on its head. Instead of slow, easy endurance runs as the basis of all training, he introduced a system consisting almost entirely of interval training. It was then popularized and continually developed by Dutch 5,000 m runner Klaas Lok, and it is now widely known as EIM, easy interval method. So, if your training has become a bit monotonous, or your race times have stagnated, perhaps it’s time to look at a different approach.</p>
-<p>I’m Terry O’Hare, a masters runner from Ireland. This is the Faster Masters channel, and if you haven’t already done so, it would really help the channel if you give it a thumbs up like, and hit the subscribe button. Thank you.</p>
-</section>
-<section id="ch-what-is-eim" class="level3">
-<h3 class="anchored" data-anchor-id="ch-what-is-eim"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=84s">1:24 — What the method actually is</a></h3>
-<p>So, let’s look at this in a bit more depth. It could be said, and has been said, that lots of long, slow endurance runs create long, slow endurance runners. But are intervals 6 days a week a real, viable alternative? Is it actually possible?</p>
-<p>In the EIM, sustained easy or steady-state runs are virtually nonexistent. For all distances other than the marathon, and occasionally the half marathon, the traditional weekly long run disappears too. And even when included, in the marathon schedules, it will contain surges. More of that later.</p>
-</section>
-<section id="ch-how-possible" class="level3">
-<h3 class="anchored" data-anchor-id="ch-how-possible"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=125s">2:05 — Why daily intervals are possible: easy pace and long recovery</a></h3>
-<p>So is it physically possible to run intervals every day, six days a week, without breaking down very quickly? Well, the clue is in the name, easy, and made possible by both the pace of the run and the length of the recovery period.</p>
-<p>The intervals, normally 200 m, 400 m, and 1,000 m repeats, with the occasional 2,000, will have an equal or near-equal recovery. So 200s will have a 200 easy recovery, 400s will have a 400 recovery, and 1,000 m repeats will have 800, maybe even 1,000 m recovery. And furthermore, at the finish of each rep, you will actually walk 30 to 40 m, and walk again before the start of the next one.</p>
-<p>Then there’s the speed of each interval. These are not run at the pace we would normally consider interval pace. Instead, these are very much <a href="https://en.wikipedia.org/wiki/Lactate_threshold">sub-threshold</a> pace — a bit of a buzzword at the moment with the Norwegian singles — but I’ll give you some idea of the actual pace times in a minute so you get the idea.</p>
-</section>
-<section id="ch-sample-week" class="level3">
-<h3 class="anchored" data-anchor-id="ch-sample-week"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=188s">3:08 — A sample half-marathon week</a></h3>
-<p>Let’s look at a typical week’s training for a runner preparing for a half marathon and training six days a week. Sunday, and being a half marathon program, there is actually a moderate endurance run here, 14 to 18K, but with surges, which we’re going to look at later, and also three to five times 100 m strides. Monday, 10 by 400. Tuesday, six by 1,000. Wednesday, six by 1,000. Thursday, 15 by 200s. Friday, six by 1,000. And a rest day Saturday. And there’s a few strides thrown in there three or four days a week, whenever you can manage it. And the intervals Monday to Friday would of course have three or 4 k warm-up and the same cool-down.</p>
-<p>Now, before you say that’s excessive, just remember these intervals are not run at your 3k or 5k race pace with a 60s and 90-second recovery. No, they’re run very much at a sub-threshold pace.</p>
-</section>
-<section id="ch-vs-norwegian" class="level3">
-<h3 class="anchored" data-anchor-id="ch-vs-norwegian"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=251s">4:11 — How it differs from Norwegian singles</a></h3>
-<p>So, are these similar to <a href="https://marathonhandbook.com/norwegian-singles-training/">Norwegian singles</a>? Well, Norwegian singles are also run at a sub-threshold pace, maybe a little quicker, but the big difference is in the recovery. The recovery with the EIM is designed so that you can recover sufficiently, not only to finish the session, but to do it again tomorrow and the next day and the next day, five or six times a week. With Norwegian singles, you do them all on three separate days a week and just fill in the rest with easy recovery runs.</p>
-</section>
-<section id="ch-pace-comparison" class="level3">
-<h3 class="anchored" data-anchor-id="ch-pace-comparison"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=282s">4:42 — Pace comparison: Daniels’ VDOT versus Lok’s charts</a></h3>
-<p>Maybe the easiest way to demonstrate the actual pace would be to compare interval times calculated, for example, by renowned coach <a href="https://en.wikipedia.org/wiki/Jack_Daniels_(coach)">Jack Daniels</a> and his VDOT system with Klaas Lok’s EIM times. Let’s take a 40-minute 10k runner as an example. Using the well-known Jack Daniels VDOT charts, 1,000 intervals for a 40-minute 10k runner would be run at between 3:43 and 3:55 pace. With Klaas Lok’s EIM system, these would be run at 4:14 to 4:31 pace. A substantial difference.</p>
-<p>And furthermore, Daniels would recommend a recovery time equal to about half of the time of the interval. So, in this example, about 2 minutes. Whereas with the easy interval method, you would have an 800-meter recovery plus a little walk at the start and finish, maybe looking at 6, 7 minutes. All of a sudden, it looks a bit — or a lot — easier. And there would be a similar percentage difference in the paces for 200 m and 400 m intervals.</p>
-</section>
-<section id="ch-easing-in" class="level3">
-<h3 class="anchored" data-anchor-id="ch-easing-in"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=345s">5:45 — Easing in, and the claimed benefits</a></h3>
-<p>Nevertheless, even though this is beginning to sound a lot easier than at first sight, there is no way that someone doing four, five easy runs a week could switch to this immediately. You would definitely have to introduce it gradually. If you’re already doing, however, one or two faster workouts a week, consider changing those to 1,000 m repeats, and you would actually find that easier. Then you’d be in a position to consider adding a third day for a few weeks, maybe 400s.</p>
-<p>So, the claimed advantages to using this system would be more reactivity in the legs from running at a faster than easy pace. That in turn would give a better <a href="https://en.wikipedia.org/wiki/Running_economy">running economy</a> and improved biomechanics. The ability to run at a higher speed without excess lactate in the muscles. And you’d be fitter and better prepared for races. Is it suited for masters runners? I think it’s ideal for masters runners to maintain your speed and reactive running.</p>
-</section>
-<section id="ch-long-recovery" class="level3">
-<h3 class="anchored" data-anchor-id="ch-long-recovery"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=408s">6:48 — Why the recoveries are so long</a></h3>
-<p>Why are the recovery periods so long? Critics will say that 800 m or 1,000 m jog recovery is far too long, and the intervals at that sub-threshold pace could be done with 60 to 90-second recovery. But this longer recovery is as crucial to the system as the pace. A full 800, 1,000 m jog provides far greater aerobic stimulus than a static 90-second rest, simply due to the actual mileage being covered.</p>
-<p>And remember that, just as with normal intervals, where you don’t do the first few too hard and then struggle to complete the session, they need to be at this easy controlled pace not only to complete the session today, but to repeat it tomorrow and the next day and the next day. This is high-end aerobic training at its best, and this is the key.</p>
-</section>
-<section id="ch-surges" class="level3">
-<h3 class="anchored" data-anchor-id="ch-surges"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=471s">7:51 — Surges: the one long run, done differently</a></h3>
-<p>I mentioned earlier that one long endurance run is included in the marathon training and sometimes in the half marathon schedule. But there’s a slight, or big, important difference to how this is run. Every endurance run includes surges. Now, surges are when you pick up the pace to maybe 10k race pace for 30 to 60 seconds every 5 to 7 minutes.</p>
-<p>I’ve tried this. What I do is when my <a href="https://www.garmin.com/">Garmin</a> beeps at each kilometer, I pick up the pace for 200 m, back off again. Simple as that. And what a difference that makes to your run. Doing this on a long run over varied terrain almost turns this into a <a href="https://en.wikipedia.org/wiki/Fartlek">fartlek</a> session, in that I have no idea before I start where the 1k markers are going to hit. They could be on a nice flat even surface, or they could be at the bottom of a steep hill. And that makes the run more fun.</p>
-<p>I regularly do a 20k run like this. I use the first 2k of that as a warm-up and then add the 200 surges each kilometer, and I end up with a 20k run that has included 18 by 200s at about 10k pace without noticing any extra effort. It’s a very useful workout that is fun and it’s over before you realize it.</p>
-<p>You can look at this system and decide all those intervals are not for me. At least take the surges out of this. Add them into your long run. They will transform your long run and you will enjoy it.</p>
-</section>
-<section id="ch-no-vo2max" class="level3">
-<h3 class="anchored" data-anchor-id="ch-no-vo2max"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=565s">9:25 — No VO2 max work, and racing as the anaerobic stimulus</a></h3>
-<p>As I mentioned earlier, this is high-end aerobic training. There is no <a href="https://en.wikipedia.org/wiki/VO2_max">VO2 max</a> workout here, and that could be an issue for some. Klaas himself raced very regularly and used a lot of those races as anaerobic workouts. And regular racing is almost assumed with this system. For those who don’t, including myself, there are anaerobic sessions included in the plans, and to be used particularly in the build-up to racing.</p>
-</section>
-<section id="ch-who-suits" class="level3">
-<h3 class="anchored" data-anchor-id="ch-who-suits"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=597s">9:57 — Who it suits: Lok, masters reactivity, and Dan King</a></h3>
-<p>So, who is this type of training suited to? Well, Klaas Lok himself admits, or claims, that he was not naturally very talented or gifted, but he still used to win 26 Dutch national titles, including six cross-country championships, a 10,000 m title, a 1,500 m title, and a European indoor silver in the 3,000 m in 1980.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The auto-captions garble the specific personal-best times Terry lists here (the raw ASR reads “a 20 at 24 10,000 m, a 330 at 1,500 m”), so the mistranscribed numbers have been dropped rather than guessed at. See the book for Lok’s actual bests.</p>
-</div>
-</div>
-<p>Now, some coaches believe that us masters runners shouldn’t be doing interval training at all because our muscle reactivity has declined with age, but EIM actually promotes the opposite. Reactivity is a basic essential which should be maintained at your highest possible personal level. Not only are strong reactive muscles faster, they’re also less prone to injury.</p>
-<p>A masters runner you might have heard of who is an exponent of the EIM is <a href="https://www.runnersworld.com/runners-stories/a35013830/dan-king-masters-runner-sets-three-american-records/">Dan King</a>, a US male 60 to 65 runner who, in one day in 2020, set a world mile record of 4:52, an American record of 9:58 in the 3,000 m, and a US 5,000 m record of 16:48. And yes, all in one day.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> This checks out: on December 11, 2020, Dan King (then 61) ran 4:52 for the mile, 9:58.47 for the 3,000 m, and 16:48.67 for the 5,000 m in a single day, the latter two ratified as M60 American records (per <em>Runner’s World</em> and Bring Back the Mile). Age-group records move, so treat “world record” as of that date.</p>
-</div>
-</div>
-</section>
-<section id="ch-book" class="level3">
-<h3 class="anchored" data-anchor-id="ch-book"><a href="https://www.youtube.com/watch?v=MnciyltVuiY&amp;t=691s">11:31 — The book and the community</a></h3>
-<p>To get a complete insight into this system, you really need to read this book, unsurprisingly titled <em>The Easy Interval Method</em> [1]. It really is a bible, and it’s a mine of information. I just flicked through a few pages and you’ll see how well worn it is with me. I refer to it almost on a daily basis. It contains everything: schedules from 800 m to marathon. It has pace charts, everything you would ever need as a runner. Have a look on Google for this, <em>The Easy Interval Method</em> by Klaas Lok. And it has schedules for runners who can only commit to 3 days a week right up to those who want to train 7, 8 times a week. Buy it, you will not regret it.</p>
-<p>Buying the book will give you access to the Facebook group where ex-runners of the system and Klaas Lok himself will answer your questions, respond to your comments, which is incredibly useful as you progress through a training plan.</p>
-<p>So, if you enjoyed this video, please hit the subscribe button, you know it makes sense. And if you want to find out more about the alternative Norwegian singles training, watch my most successful ever video here. And of course, don’t forget to look at our brand new website, thefastermaster.com. For now, though, thank you for watching.</p>
-<hr>
-</section>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<p><strong>Talk and source</strong></p>
-<ul>
-<li><a href="https://www.youtube.com/watch?v=MnciyltVuiY">Build massive aerobic fitness with the best training system you’ve never heard of!</a> — <em>the Faster Master</em>, June 30, 2026 (13 min).</li>
-</ul>
-<p><strong>People</strong></p>
-<ul>
-<li><a href="https://www.youtube.com/@thefastermaster">Terry O’Hare / <em>the Faster Master</em></a> — masters runner from Ireland; the video’s presenter.</li>
-<li><a href="https://easyintervalmethod.com/">Klaas Lok</a> — Dutch 5,000 m runner and coach who developed and popularized the Easy Interval Method.</li>
-<li><a href="https://easyintervalmethod.com/">Herman Verheul</a> — Dutch coach who originated the interval-based approach in the 1970s that became the EIM.</li>
-<li><a href="https://en.wikipedia.org/wiki/Jack_Daniels_(coach)">Jack Daniels</a> — running coach and physiologist; creator of the VDOT system referenced in the pace comparison.</li>
-<li><a href="https://www.runnersworld.com/runners-stories/a35013830/dan-king-masters-runner-sets-three-american-records/">Dan King</a> — US M60 runner cited as an EIM exponent.</li>
-</ul>
-<p><strong>Concepts and background</strong></p>
-<ul>
-<li><a href="https://en.wikipedia.org/wiki/Interval_training">Interval training</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Lactate_threshold">Lactate threshold</a> (the “sub-threshold” pace target)</li>
-<li><a href="https://en.wikipedia.org/wiki/VO2_max">VO2 max</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Running_economy">Running economy</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Fartlek">Fartlek</a></li>
-<li><a href="https://marathonhandbook.com/norwegian-singles-training/">Norwegian singles method</a> — the contemporary sub-threshold approach Terry contrasts with EIM.</li>
-</ul>
-<p><strong>Book</strong></p>
-<ol type="1">
-<li><a id="ref-1"></a>Lok, Klaas. <em>The Easy Interval Method</em>. Meyer &amp; Meyer Sport, 2019. Official site: <a href="https://easyintervalmethod.com/" class="uri">https://easyintervalmethod.com/</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260705-easy-interval-method/</guid>
-  <pubDate>Sun, 05 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260705-easy-interval-method/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

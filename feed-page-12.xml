@@ -21,7 +21,59 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Wed, 05 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 07 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Frontier Model, Lower Bill: The Triager Pattern</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Hero card for Mendral’s blog post on frontier-model cost savings. Image from <a href="https://www.mendral.com/blog/frontier-model-lower-costs">Mendral</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://github.com/aluzzardi">Andrea Luzzardi</a> at Mendral <a href="https://www.mendral.com/blog/frontier-model-lower-costs">reports</a> that they now run Opus 4.6 across their CI-triage agent and pay less than they did when everything ran on Sonnet 4.0, because most failures never reach the frontier model at all.</p>
+<p>What the article reports:</p>
+<ul>
+<li><strong>A Haiku “triager” agent fronts the system.</strong> It reads each new CI failure, runs exact-match plus pgvector semantic search against known issues, and decides whether to escalate. Roughly 4 in 5 failures match a known issue and stop there; a triager match costs about 25× less than a full investigation.</li>
+<li><strong>Opus 4.6 orchestrates. The Haiku tier does the reading.</strong> It forms hypotheses, then spawns Haiku 4.5 sub-agents with tight prompts (“fetch the exact error from the pnpm install step, return the last 50–100 lines”). Sub-agents are capped at one level deep so fan-out doesn’t run away. Haiku absorbs about 65% of input tokens but only ~36% of spend; the input/output ratio is 86:1 for Haiku vs 50:1 for the orchestrator.</li>
+<li><strong>Logs are pulled, not pushed.</strong> The agent has a SQL interface to ClickHouse and a set of pre-aggregated materialized views; it queries for what it needs rather than receiving 200K-line dumps in the prompt. The authors argue pushing logs front-loads a relevance judgement before you know the cause, and biases the investigation.</li>
+<li><strong>The pattern only works because both tiers got better.</strong> Six months ago, Sonnet 4.0 wrote bad ClickHouse queries and Haiku 4.0 was useful only for yes/no classification. Opus 4.6 plans well enough to write precise sub-agent prompts; Haiku 4.5 executes narrow scoped tasks reliably. The savings come from the architecture. Both tiers getting good enough made the new shape possible.</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The savings are architectural, not a per-token price cut.</strong> “We upgraded and our bill went down” invites the reading that newer models are simply cheaper. They aren’t, on a per-token basis. Mendral is running Opus 4.6, priced identically to 4.5; if anything, the trend runs the other way, since <a href="../../posts/20260420-opus-47-token-count/">Opus 4.7’s new tokenizer raised effective cost ~40% at unchanged sticker pricing</a>. What changed at Mendral is that the expensive model now sees a small fraction of the input. Anyone reading this as “just upgrade” will not see the same bill.</li>
+<li><strong>The 86:1 input/output ratio is a useful diagnostic for whether your agent has the right shape.</strong> A worker that reads 86 tokens for every 1 it returns is doing what cheap models are good at: absorbing data, returning a focused extract. An orchestrator running closer to 50:1 is synthesizing. If both your tiers come out with similar ratios, you probably haven’t actually separated the planning role from the reading role. You’re paying frontier prices for token absorption.</li>
+<li><strong>Capping sub-agents at one level deep is the unglamorous decision that makes the bill predictable.</strong> Recursive agent spawning is the easy default and the easy way to a $40K weekend. The piece notes this in passing, but it’s worth pulling out: bounded fan-out is what keeps the cost ceiling in place, and most published multi-agent designs don’t impose it.</li>
+<li><strong>One thing the article doesn’t quantify: how much of the win came from the triager vs the better models.</strong> They tell us the triager handles 80% of cases at 25× less cost, and they tell us the upgrade enabled the architecture, but the counterfactual (“Sonnet 4.0 + the same triager pattern”) isn’t in the post. It would be a useful ablation, especially for teams trying to justify the migration.</li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the formal version of the same point, deriving why agent token costs grow quadratically and why keeping work off the expensive model is what controls the bill.</li>
+<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the other end of the spend breakdown, showing where the input tokens actually go once an agent is running.</li>
+<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the counterweight to any “just upgrade and pay less” reading, since per-token cost has trended up, not down.</li>
+<li><a href="../../posts/20250725-anthropic-claude-code-teams/">How Anthropic Teams Use Claude Code</a>: a complementary look at usage patterns from the model maker, against which Mendral’s triager-plus-orchestrator architecture is one concrete instance.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/</guid>
+  <pubDate>Wed, 29 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>OpenAI’s Five Principles for AGI</title>
   <dc:creator>synesis </dc:creator>
@@ -1213,74 +1265,6 @@
   <guid>https://benjaminhan.net/posts/20260421-civilizations-three-stages/</guid>
   <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260421-civilizations-three-stages/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Prompt Repetition Improves Non-Reasoning LLMs</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>First page of Leviathan, Kalman, and Matias 2025. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
-</figure>
-</div>
-<p>Another inference-time trick for getting more out of an LLM without touching its weights [1].</p>
-<blockquote class="blockquote">
-<p><em>When not using reasoning</em>, <em>repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek)</em> <em>without increasing the number of generated tokens or latency</em>.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The trick is one line: prepend a copy of the user’s prompt before the model generates. No fine-tuning, no extra decoding tokens, no latency hit at generation time — just a longer prefill.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The paper sweeps 70 benchmark-model combinations across Gemini, GPT, Claude, and Deepseek:</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/figure1.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 1 from the paper: prompt repetition vs baseline accuracy across Gemini, GPT, Claude, and Deepseek on multiple benchmarks. Repetition wins 47/70 benchmark-model combinations, with 0 losses. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<p>Why does this work? Causal attention. The autoregressive LLMs we’re talking about — Gemini, GPT, Claude, Deepseek — read left-to-right: each token can only attend to tokens that came before it. So when a model is given <code>&lt;context&gt; &lt;question&gt;</code>, it has to encode every word of the context before it ever sees the question. This is the opposite of how “good” students prepare for exams: they look at past questions first, then read the texts with those questions in mind, focusing attention on what’s likely to be asked. Repeating the prompt gives the model the same second pass — by the time it encodes the second copy, the question is already in view, so the context can be processed in light of what’s being asked. Because prefill is parallelizable, doubling the prompt doesn’t slow generation down.</p>
-<p>The paper itself names the root cause:</p>
-<blockquote class="blockquote">
-<p>LLMs are often trained as causal language models, i.e.&nbsp;past tokens cannot attend to future tokens. Therefore, the order of the tokens in a user’s query can affect prediction performance.</p>
-</blockquote>
-<p>Bidirectional attention over the prefix would fix this natively — every prompt token attending to every other, no repetition needed. Encoder-decoder models (T5, BART) do this in their encoder; Prefix-LM variants (UL2) bidirectionally attend over the prompt and switch to causal only at generation. The paper flags “Explore interactions with techniques such as Prefix LM” as a future direction. But decoder-only causal architectures won the scaling battle: simpler training at scale, more efficient KV-caching for sequential serving, more natural in-context learning. Prompt repetition is a runtime patch that buys back some of what bidirectional attention would natively provide — without retraining the frontier models we already have.</p>
-<p>Compare to the <a href="../20260324-llm-neuroanatomy/">LLM Neuroanatomy</a> post: there, the trick was duplicating a block of middle transformer layers and running them twice. Here, the trick is simpler still: duplicate the input itself. The intuition is the same in both cases — give the model another pass over the same information.</p>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Yaniv Leviathan, Matan Kalman, and Yossi Matias. “Prompt Repetition Improves Non-Reasoning LLMs.” <em>arXiv</em>. 2025-12-17. <a href="https://arxiv.org/abs/2512.14982" class="uri">https://arxiv.org/abs/2512.14982</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260324-llm-neuroanatomy/">LLM Neuroanatomy: Topping the Leaderboard Without Changing a Weight</a>: the same second-pass idea applied to transformer layers instead of the prompt, the comparison this post draws directly.</li>
-<li><a href="../../posts/20230804-icl-learning-algorithms/">What Learning Algorithm Is In-Context Learning?</a>: the deeper question of how a model computes from its prompt at all, which repetition gives a cleaner second look at.</li>
-<li><a href="../../posts/20260422-kv-cache-compression/">Sequential KV Cache Compression via Probabilistic Language Tries</a>: another no-retraining move on the prompt prefix, trading the opposite way by shrinking the cache rather than doubling the input.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260421-prompt-repetition/</guid>
-  <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -21,7 +21,75 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Wed, 05 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 07 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Prompt Repetition Improves Non-Reasoning LLMs</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260421-prompt-repetition/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>First page of Leviathan, Kalman, and Matias 2025. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
+</figure>
+</div>
+<p>Another inference-time trick for getting more out of an LLM without touching its weights [1].</p>
+<blockquote class="blockquote">
+<p><em>When not using reasoning</em>, <em>repeating the input prompt improves performance for popular models (Gemini, GPT, Claude, and Deepseek)</em> <em>without increasing the number of generated tokens or latency</em>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The trick is one line: prepend a copy of the user’s prompt before the model generates. No fine-tuning, no extra decoding tokens, no latency hit at generation time — just a longer prefill.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper sweeps 70 benchmark-model combinations across Gemini, GPT, Claude, and Deepseek:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260421-prompt-repetition/figure1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the paper: prompt repetition vs baseline accuracy across Gemini, GPT, Claude, and Deepseek on multiple benchmarks. Repetition wins 47/70 benchmark-model combinations, with 0 losses. Image from <a href="https://arxiv.org/abs/2512.14982">arXiv</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>Why does this work? Causal attention. The autoregressive LLMs we’re talking about — Gemini, GPT, Claude, Deepseek — read left-to-right: each token can only attend to tokens that came before it. So when a model is given <code>&lt;context&gt; &lt;question&gt;</code>, it has to encode every word of the context before it ever sees the question. This is the opposite of how “good” students prepare for exams: they look at past questions first, then read the texts with those questions in mind, focusing attention on what’s likely to be asked. Repeating the prompt gives the model the same second pass — by the time it encodes the second copy, the question is already in view, so the context can be processed in light of what’s being asked. Because prefill is parallelizable, doubling the prompt doesn’t slow generation down.</p>
+<p>The paper itself names the root cause:</p>
+<blockquote class="blockquote">
+<p>LLMs are often trained as causal language models, i.e.&nbsp;past tokens cannot attend to future tokens. Therefore, the order of the tokens in a user’s query can affect prediction performance.</p>
+</blockquote>
+<p>Bidirectional attention over the prefix would fix this natively — every prompt token attending to every other, no repetition needed. Encoder-decoder models (T5, BART) do this in their encoder; Prefix-LM variants (UL2) bidirectionally attend over the prompt and switch to causal only at generation. The paper flags “Explore interactions with techniques such as Prefix LM” as a future direction. But decoder-only causal architectures won the scaling battle: simpler training at scale, more efficient KV-caching for sequential serving, more natural in-context learning. Prompt repetition is a runtime patch that buys back some of what bidirectional attention would natively provide — without retraining the frontier models we already have.</p>
+<p>Compare to the <a href="../20260324-llm-neuroanatomy/">LLM Neuroanatomy</a> post: there, the trick was duplicating a block of middle transformer layers and running them twice. Here, the trick is simpler still: duplicate the input itself. The intuition is the same in both cases — give the model another pass over the same information.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Yaniv Leviathan, Matan Kalman, and Yossi Matias. “Prompt Repetition Improves Non-Reasoning LLMs.” <em>arXiv</em>. 2025-12-17. <a href="https://arxiv.org/abs/2512.14982" class="uri">https://arxiv.org/abs/2512.14982</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260324-llm-neuroanatomy/">LLM Neuroanatomy: Topping the Leaderboard Without Changing a Weight</a>: the same second-pass idea applied to transformer layers instead of the prompt, the comparison this post draws directly.</li>
+<li><a href="../../posts/20230804-icl-learning-algorithms/">What Learning Algorithm Is In-Context Learning?</a>: the deeper question of how a model computes from its prompt at all, which repetition gives a cleaner second look at.</li>
+<li><a href="../../posts/20260422-kv-cache-compression/">Sequential KV Cache Compression via Probabilistic Language Tries</a>: another no-retraining move on the prompt prefix, trading the opposite way by shrinking the cache rather than doubling the input.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260421-prompt-repetition/</guid>
+  <pubDate>Tue, 21 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260421-prompt-repetition/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>A Rube Goldberg Pipeline for Sharing Links</title>
   <dc:creator>synesis </dc:creator>
@@ -996,41 +1064,6 @@
   <guid>https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/</guid>
   <pubDate>Thu, 19 Mar 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260319-snowflake-cortex-sandbox-escape/cover.png" medium="image" type="image/png" height="75" width="144"/>
-</item>
-<item>
-  <title>Language Puzzles, NACLO, and a Note of Thanks</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260319-language-puzzles/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260319-language-puzzles/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260319-language-puzzles/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Cover image from the Scientific American article. (<a href="https://www.scientificamerican.com/article/try-these-language-puzzles-north-americas-biggest-linguistics-competition/">Source</a>)</figcaption>
-</figure>
-</div>
-<p>This&nbsp;Scientific American&nbsp;article on the North American Computational Linguistics Open Competition (NACLO) highlighted both the people behind it and the impact it has had over the years [1]. Deep appreciation to Lori Levin, Dragomir Radev, Tom Payne, James Pustejovsky, and Tanya Korelsky, whose founding work helped create a competition that has introduced so many students to linguistics, AI, and language preservation through the joy of solving language puzzles. Lori in particular helped guide me into the wonderful world of linguistics back in my grad school days, and her class inspired me to write my first computational linguistics paper [2], motivated by the idea that field linguists should not have to rely on shoeboxes full of note cards and lexical slips to collect and analyze language data!</p>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“Try These Language Puzzles from North America’s Biggest Linguistics Competition.” <em>Scientific American</em>. <a href="https://www.scientificamerican.com/article/try-these-language-puzzles-north-americas-biggest-linguistics-competition/" class="uri">https://www.scientificamerican.com/article/try-these-language-puzzles-north-americas-biggest-linguistics-competition/</a></li>
-<li><a id="ref-2"></a>Han, Benjamin. “Building a Bilingual Dictionary with Scarce Resources: A Genetic Algorithm Approach.” <em>Proceedings of the Student Research Workshop, Second Meeting of the North American Chapter of the Association for Computational Linguistics (NAACL 2001)</em>. <a href="https://www.cs.cmu.edu/~benhdj/Publications/Published/bhan_naccl_2001.pdf" class="uri">https://www.cs.cmu.edu/~benhdj/Publications/Published/bhan_naccl_2001.pdf</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_can-you-solve-these-language-puzzles-test-activity-7440446106678796288-QERC">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260319-language-puzzles/</guid>
-  <pubDate>Thu, 19 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260319-language-puzzles/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

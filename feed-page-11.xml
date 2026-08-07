@@ -21,7 +21,144 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Wed, 05 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 07 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Linguistic Calibration of Long-Form Generations</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260505-linguistic-calibration/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260505-linguistic-calibration/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-linguistic-calibration/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>The linguistic calibration (LC) training framework: a summary-distillation supervised-finetuning (SFT) step bootstraps the language model to emit confidence phrases, and a decision-based reinforcement-learning (RL) step rewards generations that let a downstream reader produce calibrated forecasts on related questions. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Linguistic Calibration of Long-Form Generations</em> [1] (ICML 2024), <a href="https://nband.github.io/">Neil Band</a>, Xuechen Li, <a href="https://tengyuma.github.io/">Tengyu Ma</a>, and <a href="https://thashim.github.io/">Tatsunori Hashimoto</a> (Stanford) define linguistic calibration in decision-theoretic terms: a language model (LM) is linguistically calibrated if its long-form generations enable a downstream reader to make calibrated probabilistic predictions. They train Llama 2 7B [2] to emit paragraphs with confidence statements (“I estimate a 30% chance of…”, “I am certain that…”) that satisfy that property.</p>
+<blockquote class="blockquote">
+<p>Language models (LMs) may lead their users to make suboptimal downstream decisions when they confidently hallucinate. This issue can be mitigated by having the LM verbally convey the probability that its claims are correct, but existing models cannot produce long-form text with calibrated confidence statements. Through the lens of decision-making, we define <em>linguistic calibration for long-form generations: an LM is linguistically calibrated if its generations enable its users to make calibrated probabilistic predictions</em>. This definition enables a training framework where <em>a supervised finetuning step bootstraps an LM to emit long-form generations with confidence statements</em> such as “I estimate a 30% chance of…” or “I am certain that…”, followed by <em>a reinforcement learning step which rewards generations that enable a user to provide calibrated answers to related questions</em>. We linguistically calibrate <em>Llama 2 7B</em> and find in automated and human evaluations of long-form generations that it is <em>significantly more calibrated than strong finetuned factuality baselines with comparable accuracy</em>. These findings generalize under significant domain shifts to scientific and biomedical questions and to an entirely held-out person biography generation task. Our results demonstrate that long-form generations may be calibrated end-to-end by constructing an objective in the space of the predictions that users make in downstream decision-making.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The framework has two stages. Both operate on queries <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/> derived upstream from QA benchmark items: an API-based LLM rewrites each question <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/> (from TriviaQA, Jeopardy, SciQ, BioASQ) into a paragraph-generation prompt <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/> (e.g., “Write a paragraph about {topic of <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/>}”). The question <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/> and its ground-truth answer <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/> are carried through the pipeline, but only RL consumes them.</p>
+<ul>
+<li><strong>Summary distillation (SFT).</strong> For each <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/>, the base LM samples <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> paragraph responses; a stronger summarizer LM (Claude 2) condenses them into one paragraph <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/> whose embedded confidence phrases reflect how often each claim appears across the <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> samples. The base LM is finetuned on the resulting <img src="https://benjaminhan.net/feed-assets/a57765091e7e9373.svg" alt="(q, s)" class="feed-math-inline"/> pairs. Neither <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/> nor <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/> enters the SFT loss; confidence phrases come from sampling frequency alone.</li>
+<li><strong>Decision-based reinforcement learning (RL).</strong> The policy <img src="https://benjaminhan.net/feed-assets/58188bc44f302a9f.svg" alt="\pi_\theta(z \mid q)" class="feed-math-inline"/> samples a paragraph <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/>. A downstream reader then sees only <img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/> (never <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/>), forecasts an answer distribution for <img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/>, and the reward is the calibration of that forecast against <img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/>. PPO updates the policy. For the reader’s forecast to be calibrated, the paragraph has to convey the LM’s uncertainty on its own. A paragraph that leans on the topic framing in <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/>, rather than naming what the model knows and doesn’t, wouldn’t help a reader who can’t see <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/>.</li>
+</ul>
+<p>Evaluation uses both simulated readers (LMs conditioned on the generation) and real human readers, and factuality is scored at the claim level with a retrieval plus large-language-model (LLM) verifier pipeline in the style of FActScore [3] [3].</p>
+<p>To make the data flow concrete, here is one RL-stage training item from the paper’s Appendix A.13 (TriviaQA):</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 58%">
+<col style="width: 41%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><img src="https://benjaminhan.net/feed-assets/0a779929db52d18d.svg" alt="x" class="feed-math-inline"/> (QA question)</td>
+<td>Which classic novel features a boy hiding in a barrel of apples on a ship?</td>
+</tr>
+<tr class="even">
+<td><img src="https://benjaminhan.net/feed-assets/0b6705291cbba090.svg" alt="y" class="feed-math-inline"/> (ground truth)</td>
+<td><em>Treasure Island</em></td>
+</tr>
+<tr class="odd">
+<td><img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/> (derived query)</td>
+<td>“Write a paragraph about the classic book in which a boy hides in a ship’s barrel of apples.”</td>
+</tr>
+<tr class="even">
+<td><img src="https://benjaminhan.net/feed-assets/82eb244ca5b3e22b.svg" alt="z" class="feed-math-inline"/> (LC RL policy output)</td>
+<td>“Based on my understanding, the classic book in which a boy hides in a ship’s barrel of apples is most likely <em>Treasure Island</em> by Robert Louis Stevenson. I estimate there is a 75% chance it is <em>Treasure Island</em>, a 15% chance it is <em>The Wonderful Wizard of Oz</em> by L. Frank Baum, a 5% chance it is <em>The Adventures of Tom Sawyer</em> by Mark Twain, and a 5% chance it is another book…”</td>
+</tr>
+</tbody>
+</table>
+<p>The SFT target <img src="https://benjaminhan.net/feed-assets/473211c1fc832e53.svg" alt="s" class="feed-math-inline"/> (Claude 2’s summary) has the same surface shape, with confidence phrases distributed over candidate answers, but is produced by prompting Claude 2 with <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> base-LM samples for the same <img src="https://benjaminhan.net/feed-assets/26d95c98bea60397.svg" alt="q" class="feed-math-inline"/> and asking it to verbalize their empirical frequency. The paper does not publish verbatim Claude 2 summaries.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>On TriviaQA [4] (in-distribution), SciQ, biomedical questions, and a held-out person-biography generation task, the LC-trained Llama 2 7B improves expected calibration error (ECE) by a wide margin over strong factuality-finetuning baselines at matched accuracy. The RL stage reduces ECE from 0.163 (LC SFT) to 0.116 with human readers and from 0.166 to 0.108 with simulated readers, and the gains generalize across all four out-of-distribution settings.</p>
+<p>Figure 3 plots the accuracy-ECE frontier for the three QA conditions. LC RL (blue diamond) sits in the upper-left corner on all three panels, meaning higher accuracy and lower ECE than every baseline. The jump from LC SFT (green) to LC RL (blue) captures the incremental value of the decision-based RL stage on top of summary-distillation SFT.</p>
+<div class="quarto-layout-panel" data-layout-ncol="3">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-linguistic-calibration/fig3a.png" class="img-fluid figure-img"></p>
+<figcaption>(a) TriviaQA (in-distribution), simulated reader</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-linguistic-calibration/fig3b.png" class="img-fluid figure-img"></p>
+<figcaption>(b) TriviaQA (in-distribution), human readers</figcaption>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: flex-start;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-linguistic-calibration/fig3c.png" class="img-fluid figure-img"></p>
+<figcaption>(c) SciQ (out-of-distribution), simulated reader</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>Figure 3 from the paper [1]: <em>Accuracy-ECE Frontier for Question-Answering (upper left is better). LC RL pareto-dominates Factuality RL and SFT, with significantly better reader ECE while matching or exceeding their accuracy.</em></p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Calibration is defined through downstream reader forecasts.</strong> Prior verbalized-uncertainty work such as Teaching Models to Express Their Uncertainty in Words [5] [5] scored the model’s own emitted probability against the ground-truth answer it produced, which pins calibration to a single question. By scoring against a downstream reader’s forecast on a <em>related</em> question, the paper forces the generation to convey useful uncertainty rather than just report it. The resulting objective is harder to game with generic hedging, since hedged text that does not help the reader does not improve the reader’s forecast.</li>
+<li><strong>Summary distillation substitutes for labeled calibration data.</strong> Human-labeled “this paragraph should say 30% chance” data does not exist at scale. LC’s workaround uses sampling frequency as a self-label and Claude 2 as a translator into prose: the base LM’s distribution over claims is already the target, and Claude 2 just verbalizes it. The same trick should work for other verbalization targets (e.g., scope hedging, answer plurality) where ground truth is computable from sampling statistics but not annotatable by humans.</li>
+<li><strong>Summary distillation mirrors <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a>’s [7] sample-then-summarize workaround, but across models.</strong> SelfReflect found modern LLMs cannot write faithful summaries of their own answer distribution through prompting, SFT, or DPO; the fix that works is sampling <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> outputs and summarizing those. LC’s SFT target is exactly that: Claude 2 summarizing Llama 2’s <img src="https://benjaminhan.net/feed-assets/11c8b03791b96e04.svg" alt="M" class="feed-math-inline"/> samples, so the supervision is reliable. At inference, though, Llama 2 emits summaries <em>without</em> seeing its own samples, which is the regime SelfReflect declared broken for SFT. LC sidesteps the contradiction because the RL reward scores reader forecasts, not the summary’s fidelity to Llama 2’s post-training distribution. A follow-up check: run SelfReflect on the trained policy.</li>
+<li><strong>Both the RL reward and the headline ECE numbers route through the same FActScore-family verifier [3].</strong> That verifier’s retrieval has weaker evidence on biomedical and long-tail-person topics, so absolute ECE on BioASQ and biography generation should be read with the verifier’s own noise folded in. The ordering of methods is still informative; the magnitudes less so.</li>
+<li><strong>LC trains end-to-end against reader-forecast calibration, which Lin 2022 and CLM did not.</strong> Lin et al.&nbsp;2022 [5] learned verbalized confidence for short answers, scored against the answer itself. <a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a> [6] (ICLR 2024) added set-level and component-level statistical guarantees but left surface form untreated. A natural next step would be conformal guarantees over claim subsets with aligned surface-form confidence phrases.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://nband.github.io/">Band, N.</a>, Li, X., <a href="https://tengyuma.github.io/">Ma, T.</a>, and <a href="https://thashim.github.io/">Hashimoto, T.</a> “Linguistic Calibration of Long-Form Generations.” <em>International Conference on Machine Learning (ICML)</em>, 2024. arXiv:2404.00474. <a href="https://arxiv.org/abs/2404.00474" class="uri">https://arxiv.org/abs/2404.00474</a></li>
+<li><a id="ref-2"></a>Touvron, H., Martin, L., Stone, K., Albert, P., Almahairi, A., Babaei, Y., et al.&nbsp;“Llama 2: Open Foundation and Fine-Tuned Chat Models.” <em>arXiv preprint</em> (arXiv:2307.09288), July 19, 2023. <a href="https://arxiv.org/abs/2307.09288" class="uri">https://arxiv.org/abs/2307.09288</a></li>
+<li><a id="ref-3"></a><a href="https://shmsw25.github.io/">Min, S.</a>, Krishna, K., Lyu, X., <a href="https://www.michaellewis.dev/">Lewis, M.</a>, <a href="https://scottyih.org/">Yih, W.</a>, <a href="https://koh.pw/">Koh, P. W.</a>, Iyyer, M., <a href="https://www.cs.washington.edu/people/faculty/lsz">Zettlemoyer, L.</a>, and <a href="https://homes.cs.washington.edu/~hannaneh/">Hajishirzi, H.</a> “FActScore: Fine-grained Atomic Evaluation of Factual Precision in Long Form Text Generation.” <em>Empirical Methods in Natural Language Processing (EMNLP)</em>, 2023. <a href="https://arxiv.org/abs/2305.14251" class="uri">https://arxiv.org/abs/2305.14251</a></li>
+<li><a id="ref-4"></a><a href="https://mandarjoshi90.github.io/">Mandar Joshi</a>, <a href="https://eunsol.github.io/">Eunsol Choi</a>, <a href="https://www.cs.washington.edu/people/faculty/weld">Daniel S. Weld</a>, and <a href="https://www.cs.washington.edu/people/faculty/lsz">Luke Zettlemoyer</a>. “TriviaQA: A Large Scale Distantly Supervised Challenge Dataset for Reading Comprehension.” <em>ACL 2017</em>, arXiv:1705.03551. <a href="https://arxiv.org/abs/1705.03551" class="uri">https://arxiv.org/abs/1705.03551</a></li>
+<li><a id="ref-5"></a><a href="https://sylinrl.github.io/">Lin, S.</a>, <a href="https://www.jacobh.co.uk/">Hilton, J.</a>, and <a href="https://owainevans.github.io/">Evans, O.</a> “Teaching Models to Express Their Uncertainty in Words.” <em>arXiv preprint</em> (arXiv:2205.14334), May 28, 2022. <a href="https://arxiv.org/abs/2205.14334" class="uri">https://arxiv.org/abs/2205.14334</a></li>
+<li><a id="ref-6"></a><a href="https://vquach.com/">Quach, V.</a>, <a href="https://people.csail.mit.edu/fisch/">Fisch, A.</a>, <a href="https://people.csail.mit.edu/tals/">Schuster, T.</a>, Yala, A., Sohn, J. H., <a href="https://people.csail.mit.edu/tommi/tommi.html">Jaakkola, T. S.</a>, and <a href="https://www.regina.csail.mit.edu/">Barzilay, R.</a> “Conformal Language Modeling.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. <a href="https://arxiv.org/abs/2306.10193" class="uri">https://arxiv.org/abs/2306.10193</a></li>
+<li><a id="ref-7"></a><a href="https://mkirchhof.github.io/">Kirchhof, M.</a>, Füger, L., Goliński, A., Dhekane, E. G., Blaas, A., Oh, S. J., and Williamson, S. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: the same Hashimoto group’s post-hoc, guarantee-based take on long-form factuality, a counterpoint to this paper’s train-the-prose approach.</li>
+<li><a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a>: the set-level and component-level guarantees this paper complements by treating the surface form of confidence those guarantees leave untreated.</li>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the sample-then-summarize regime this paper’s summary-distillation step mirrors, and which it sidesteps by scoring reader forecasts rather than summary fidelity.</li>
+<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: a later attempt at the same goal of getting an LM to verbalize calibrated uncertainty in its own prose.</li>
+<li><a href="../../posts/20260505-llm-uncertainty-survey/">How to Make LLM Output More Trustworthy</a>: the survey that files this paper under behavioral calibration, distinct from the guarantee-based and detection-based branches.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260505-linguistic-calibration/</guid>
+  <pubDate>Tue, 05 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260505-linguistic-calibration/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Language Models with Conformal Factuality Guarantees</title>
   <dc:creator>synesis </dc:creator>
@@ -3052,58 +3189,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/</guid>
   <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Frontier Model, Lower Bill: The Triager Pattern</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Hero card for Mendral’s blog post on frontier-model cost savings. Image from <a href="https://www.mendral.com/blog/frontier-model-lower-costs">Mendral</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://github.com/aluzzardi">Andrea Luzzardi</a> at Mendral <a href="https://www.mendral.com/blog/frontier-model-lower-costs">reports</a> that they now run Opus 4.6 across their CI-triage agent and pay less than they did when everything ran on Sonnet 4.0, because most failures never reach the frontier model at all.</p>
-<p>What the article reports:</p>
-<ul>
-<li><strong>A Haiku “triager” agent fronts the system.</strong> It reads each new CI failure, runs exact-match plus pgvector semantic search against known issues, and decides whether to escalate. Roughly 4 in 5 failures match a known issue and stop there; a triager match costs about 25× less than a full investigation.</li>
-<li><strong>Opus 4.6 orchestrates. The Haiku tier does the reading.</strong> It forms hypotheses, then spawns Haiku 4.5 sub-agents with tight prompts (“fetch the exact error from the pnpm install step, return the last 50–100 lines”). Sub-agents are capped at one level deep so fan-out doesn’t run away. Haiku absorbs about 65% of input tokens but only ~36% of spend; the input/output ratio is 86:1 for Haiku vs 50:1 for the orchestrator.</li>
-<li><strong>Logs are pulled, not pushed.</strong> The agent has a SQL interface to ClickHouse and a set of pre-aggregated materialized views; it queries for what it needs rather than receiving 200K-line dumps in the prompt. The authors argue pushing logs front-loads a relevance judgement before you know the cause, and biases the investigation.</li>
-<li><strong>The pattern only works because both tiers got better.</strong> Six months ago, Sonnet 4.0 wrote bad ClickHouse queries and Haiku 4.0 was useful only for yes/no classification. Opus 4.6 plans well enough to write precise sub-agent prompts; Haiku 4.5 executes narrow scoped tasks reliably. The savings come from the architecture. Both tiers getting good enough made the new shape possible.</li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The savings are architectural, not a per-token price cut.</strong> “We upgraded and our bill went down” invites the reading that newer models are simply cheaper. They aren’t, on a per-token basis. Mendral is running Opus 4.6, priced identically to 4.5; if anything, the trend runs the other way, since <a href="../../posts/20260420-opus-47-token-count/">Opus 4.7’s new tokenizer raised effective cost ~40% at unchanged sticker pricing</a>. What changed at Mendral is that the expensive model now sees a small fraction of the input. Anyone reading this as “just upgrade” will not see the same bill.</li>
-<li><strong>The 86:1 input/output ratio is a useful diagnostic for whether your agent has the right shape.</strong> A worker that reads 86 tokens for every 1 it returns is doing what cheap models are good at: absorbing data, returning a focused extract. An orchestrator running closer to 50:1 is synthesizing. If both your tiers come out with similar ratios, you probably haven’t actually separated the planning role from the reading role. You’re paying frontier prices for token absorption.</li>
-<li><strong>Capping sub-agents at one level deep is the unglamorous decision that makes the bill predictable.</strong> Recursive agent spawning is the easy default and the easy way to a $40K weekend. The piece notes this in passing, but it’s worth pulling out: bounded fan-out is what keeps the cost ceiling in place, and most published multi-agent designs don’t impose it.</li>
-<li><strong>One thing the article doesn’t quantify: how much of the win came from the triager vs the better models.</strong> They tell us the triager handles 80% of cases at 25× less cost, and they tell us the upgrade enabled the architecture, but the counterfactual (“Sonnet 4.0 + the same triager pattern”) isn’t in the post. It would be a useful ablation, especially for teams trying to justify the migration.</li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: the formal version of the same point, deriving why agent token costs grow quadratically and why keeping work off the expensive model is what controls the bill.</li>
-<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the other end of the spend breakdown, showing where the input tokens actually go once an agent is running.</li>
-<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the counterweight to any “just upgrade and pay less” reading, since per-token cost has trended up, not down.</li>
-<li><a href="../../posts/20250725-anthropic-claude-code-teams/">How Anthropic Teams Use Claude Code</a>: a complementary look at usage patterns from the model maker, against which Mendral’s triager-plus-orchestrator architecture is one concrete instance.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/</guid>
-  <pubDate>Wed, 29 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260429-frontier-model-lower-bill/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
