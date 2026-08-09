@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-11.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-28.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-29.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-10.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-12.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -21,7 +21,93 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 07 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 08 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Detecting Hallucinations in Large Language Models Using Semantic Entropy</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260505-semantic-entropy/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260505-semantic-entropy/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-semantic-entropy/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>AUROC (higher is better at separating correct from confabulated generations) and AURAC (area under the rejection-accuracy curve) for six LLMs across the QA benchmarks. Semantic entropy (dark blue) matches or beats naive token-level entropy, a P(True) self-eval baseline, and embedding-regression probes on every model. Figure 2 from the paper [1]. Image from <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Nature</em></a>.</figcaption>
+</figure>
+</div>
+<p>In <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Detecting Hallucinations in Large Language Models Using Semantic Entropy</em></a> (Nature, June 2024) [1], <a href="https://sebastianfarquhar.com/">Sebastian Farquhar</a>, <a href="https://jlko.github.io/">Jannik Kossen</a>, <a href="https://lorenzkuhn.github.io/">Lorenz Kuhn</a>, and <a href="https://www.cs.ox.ac.uk/people/yarin.gal/website/">Yarin Gal</a> (Oxford and Google DeepMind) propose an entropy-based uncertainty estimator for large language models (LLMs) that detects <em>confabulations</em> (arbitrary, incorrect generations produced when the model is uncertain) by computing entropy over the <em>meaning</em> of sampled answers rather than over token sequences.</p>
+<blockquote class="blockquote">
+<p>Large language model (LLM) systems, such as ChatGPT or Gemini, can show impressive reasoning and question-answering capabilities but often ‘hallucinate’ false outputs and unsubstantiated answers. Answering unreliably or without the necessary information prevents adoption in diverse fields, with problems including fabrication of legal precedents or untrue facts in news articles and even posing a risk to human life in medical domains such as radiology. Encouraging truthfulness through supervision or reinforcement has been only partially successful. Researchers need a general method for detecting hallucinations in LLMs that works even with new and unseen questions to which humans might not know the answer. Here we develop new methods grounded in statistics, proposing <em>entropy-based uncertainty estimators for LLMs to detect a subset of hallucinations — confabulations — which are arbitrary and incorrect generations</em>. Our method addresses the fact that one idea can be expressed in many ways by <em>computing uncertainty at the level of meaning rather than specific sequences of words</em>. Our method <em>works across datasets and tasks without a priori knowledge of the task, requires no task-specific data and robustly generalizes to new tasks not seen before</em>. By <em>detecting when a prompt is likely to produce a confabulation</em>, our method helps users understand when they must take extra care with LLMs and opens up new possibilities for using LLMs that are otherwise prevented by their unreliability.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The method samples multiple answers from the LLM for a given prompt, clusters the samples by bidirectional semantic entailment (two answers are in the same cluster if each entails the other under a natural-language-inference model), then computes Shannon entropy over the resulting meaning-cluster distribution. The clustering step is what makes semantic entropy beat naive token-level entropy. Naive entropy conflates two sources of variation: uncertainty about meaning (the real signal of confabulation) and uncertainty about wording (“Paris” and “It’s Paris” carry the same answer but inflate naive entropy as different token sequences). Bidirectional-entailment clustering strips out the wording variation, so the per-prompt scalar correlates more tightly with whether the answer is actually wrong.</p>
+<p>In deployment the scalar becomes an abstention signal: threshold it, refuse on high-entropy queries, accept the rest. Because high-entropy queries are disproportionately wrong, refusing them removes more wrong answers than right ones, and accuracy on the retained set climbs. The paper quantifies that improvement two ways. AUROC scores how well the scalar separates right from wrong answers across all prompts (detection quality). AURAC scores how much accuracy actually rises on retained answers as the refusal rate sweeps from 0 to 100% (deployment value). The approach is black-box at inference: it needs sample access but no model internals, no fine-tuning, and no task-specific calibration data. A discrete variant approximates the entailment check with single-forward-pass judgments, trading a small accuracy drop for lower cost.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260505-semantic-entropy/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>Semantic entropy clusters sampled LLM answers by meaning via bidirectional entailment, then measures entropy over cluster probabilities. <strong>(a, top)</strong> High semantic entropy on a factoid prompt indicates confabulation: naive token-level entropy is misled by paraphrase diversity, but semantic entropy is low on a confident prompt and high on a confabulating one. <strong>(b, bottom)</strong> Applied to FactualBio paragraphs, the signal transfers to claim-level verification by decomposing the paragraph into factoids and measuring semantic entropy per factoid. Figure 1 from the paper [1]. Image from <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Nature</em></a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Experiments span six LLMs (LLaMA 2 Chat 7B/13B/70B, Falcon 7B/40B Instruct, Mistral 7B Instruct) across TriviaQA, SQuAD [4], <a href="https://bioasq.org/">BioASQ</a>, <a href="https://github.com/google-research-datasets/natural-questions">NQ Open</a>, SVAMP [5], and a FactualBio biography-paragraph benchmark the authors construct. Averaged across the 30 task-model combinations on short-answer QA, semantic entropy achieves AUROC 0.790, above naive entropy (0.691), P(True) [2] self-evaluation (0.698), and a supervised embedding-regression probe (0.687); performance is stable between 0.78 and 0.81 across model families and scales (Figure 2, the cover image above). The method generalizes out-of-distribution: an embedding probe trained on one task drops sharply on another, while semantic entropy maintains near-training performance. Applied to FactualBio, semantic entropy over atomic sub-claims flags unsupported biographical facts and outperforms the paragraph-adapted P(True) baseline, supporting the claim that the signal transfers from short-answer QA to long-form generation.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Entailment clustering is the critical step, and the paper does stress-test it.</strong> The meaning-cluster assignment uses a natural-language-inference (NLI) model (DeBERTa-large-MNLI [6], or the generator LLM itself in an LLM-as-judge variant). The paper’s ablations show results are stable across NLI backbones and stable when generator and judge share a model, which addresses the obvious circularity worry. The remaining open question is scope-specific: on legal, medical, or evaluative judgments, frontier LLMs disagree about meaning among themselves, so entailment clustering cannot be presumed to converge to ground-truth equivalence. <a href="../../posts/20260505-conformal-factuality/">Conformal factuality</a> [3] relies on a related claim-decomposition premise and hits the same boundary condition.</p></li>
+<li><p><strong>The OOD-generalization result is the strongest part.</strong> Hallucination-detection methods that depend on in-distribution examples (P(True) [2]’s few-shot priors, and supervised embedding regression) degrade sharply when the test task differs from the calibration task. Semantic entropy needs no calibration set and transfers across the six datasets without loss, which matters because real-world deployment distributions are never exactly the ones used to train a detector. This is a cleaner version of the argument <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.</a> made for self-evaluation, without the extra cost of a second forward pass per sample.</p></li>
+<li><p><strong>Composability with fact-verification pipelines is the natural next step.</strong> Semantic entropy flags <em>which</em> generations to distrust; benchmarks like AVeriTeC [7] and HoVer [8] tell you <em>why</em> (what evidence does or doesn’t support the claim), and tools like <a href="../../posts/20231102-fleek-fact-verification/">FLEEK</a> retrieve evidence from knowledge graphs and the web to make that verdict concrete. A pipeline that routes high-semantic-entropy generations into explicit claim-verification against retrieved evidence would give a user both the uncertainty flag and the remediation path. The paper notes this direction in the discussion but doesn’t test it.</p></li>
+<li><p><strong>Part of the “sample <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/>, then aggregate” family, with a structural limit they all share.</strong> Semantic entropy shares the same inference backbone as self-consistency [9], <a href="../../posts/20260505-conformal-language-modeling/">CLM</a>, and <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a>: <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> forward passes per query at temperature &gt; 0. What differs is what each method does with the sample pool.</p>
+<ul>
+<li>Self-consistency majority-votes to pick a single answer.</li>
+<li>CLM applies a conformal stopping rule and returns a calibrated candidate set.</li>
+<li>Semantic entropy clusters by meaning and emits a scalar abstention signal.</li>
+<li>SelfReflect (same Oxford + DeepMind lab) summarizes the internal distribution and scores the summary’s fidelity to the samples.</li>
+</ul>
+<p>Semantic entropy is closest to SelfReflect by output type (per-query scalar) and to <a href="../../posts/20260505-conformal-factuality/">conformal factuality</a> by goal (hallucination mitigation at deployment, black-box at inference). All four pay the same <img src="https://benjaminhan.net/feed-assets/985ab6bb8c672d6f.svg" alt="N\times" class="feed-math-inline"/> inference cost, and the choice among them is about which signal the downstream system needs.</p>
+<p>The shared structural limit: the signal is <em>sample diversity</em>, not factuality. If a model confabulates consistently (its training distribution pins it to the same wrong answer across sampling temperatures), all samples cluster together, semantic entropy is low, and the method signals “confident” when the answer is in fact wrong. The AUROC gains hold for the subset of hallucinations that produce inter-sample disagreement (the confabulation scope the paper is careful to name) but do not extend to the systematic-bias case.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://sebastianfarquhar.com/">Farquhar, S.</a>, <a href="https://jlko.github.io/">Kossen, J.</a>, <a href="https://lorenzkuhn.github.io/">Kuhn, L.</a>, and <a href="https://www.cs.ox.ac.uk/people/yarin.gal/website/">Gal, Y.</a>. “Detecting Hallucinations in Large Language Models Using Semantic Entropy.” <em>Nature</em> 630, pages 625–630, June 2024. <a href="https://www.nature.com/articles/s41586-024-07421-0" class="uri">https://www.nature.com/articles/s41586-024-07421-0</a></li>
+<li><a id="ref-2"></a>Kadavath, S., Conerly, T., Askell, A., et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></li>
+<li><a id="ref-3"></a>Mohri, C. and Hashimoto, T. “Language Models with Conformal Factuality Guarantees.” <em>arXiv preprint</em> (arXiv:2402.10978), February 16, 2024. <a href="https://arxiv.org/abs/2402.10978" class="uri">https://arxiv.org/abs/2402.10978</a></li>
+<li><a id="ref-4"></a>Rajpurkar, P., Zhang, J., Lopyrev, K., Liang, P. “SQuAD: 100,000+ Questions for Machine Comprehension of Text.” <em>EMNLP 2016</em> (arXiv:1606.05250), June 16, 2016. <a href="https://arxiv.org/abs/1606.05250" class="uri">https://arxiv.org/abs/1606.05250</a></li>
+<li><a id="ref-5"></a>Patel, A., Bhattamishra, S., Goyal, N. “Are NLP Models really able to Solve Simple Math Word Problems?” <em>NAACL 2021</em> (arXiv:2103.07191), March 12, 2021. <a href="https://arxiv.org/abs/2103.07191" class="uri">https://arxiv.org/abs/2103.07191</a></li>
+<li><a id="ref-6"></a>He, P., Liu, X., Gao, J., Chen, W. “DeBERTa: Decoding-enhanced BERT with Disentangled Attention.” <em>ICLR 2021</em> (arXiv:2006.03654), June 5, 2020. <a href="https://arxiv.org/abs/2006.03654" class="uri">https://arxiv.org/abs/2006.03654</a></li>
+<li><a id="ref-7"></a>Schlichtkrull, M., Guo, Z., Vlachos, A. “AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web.” <em>NeurIPS 2024</em> (arXiv:2305.13117), May 22, 2023. <a href="https://arxiv.org/abs/2305.13117" class="uri">https://arxiv.org/abs/2305.13117</a></li>
+<li><a id="ref-8"></a>Jiang, Y., Bordia, S., Zhong, Z., Dognin, C., Singh, M., Bansal, M. “HoVer: A Dataset for Many-Hop Fact Extraction and Claim Verification.” <em>Findings of EMNLP 2020</em> (arXiv:2011.03088), November 5, 2020. <a href="https://arxiv.org/abs/2011.03088" class="uri">https://arxiv.org/abs/2011.03088</a></li>
+<li><a id="ref-9"></a>Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., Zhou, D. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR 2023</em> (arXiv:2203.11171), March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: shares this method’s sample-the-model-as-truth-signal premise and the same blind spot when the model confabulates consistently.</li>
+<li><a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a>: a sample-then-aggregate sibling on the same <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/>-forward-pass backbone, returning a calibrated set rather than this method’s scalar abstention signal.</li>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: same Oxford and DeepMind lab, same per-query-scalar output type, summarizing the sample distribution instead of measuring its meaning-entropy.</li>
+<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the P(True) self-evaluation baseline this method beats out of distribution, without paying for a second forward pass per sample.</li>
+<li><a href="../../posts/20260505-llm-uncertainty-survey/">How to Make LLM Output More Trustworthy</a>: the survey that classes semantic entropy as the detection-based branch of trustworthy-output methods.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260505-semantic-entropy/</guid>
+  <pubDate>Tue, 05 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260505-semantic-entropy/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Linguistic Calibration of Long-Form Generations</title>
   <dc:creator>synesis </dc:creator>
@@ -3101,94 +3187,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/</guid>
   <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260430-selfreflect-internal-distribution/cover.png" medium="image" type="image/png" height="74" width="144"/>
-</item>
-<item>
-  <title>KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>Parameterized knowledge graph. Each edge carries an estimate of how often the LLM gets the associated fact wrong; edge color encodes the LLM’s deficiency on that fact. An example question-answer pair about driving in Tonga shows how KGLens turns a graph edge into a natural-language probe. Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs</em> (ACL 2024 Workshop Towards Knowledgeable Language Models) [1], <a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Shangshang Zheng</a> et al.&nbsp;at Apple tackle a practical problem: large language models confidently state wrong facts, and checking every fact by hand is impossibly expensive.</p>
-<blockquote class="blockquote">
-<p>Large Language Models (LLMs) might hallucinate facts, while curated Knowledge Graph (KGs) are typically factually reliable especially with domain-specific knowledge. Measuring the alignment between KGs and LLMs can effectively probe the factualness and identify the knowledge blind spots of LLMs. However, verifying the LLMs over extensive KGs can be expensive. In this paper, we present <em>KGLens, a Thompson-sampling-inspired framework aimed at effectively and efficiently measuring the alignment between KGs and LLMs</em>. KGLens features a <em>graph-guided question generator for converting KGs into natural language</em>, along with a <em>carefully designed importance sampling strategy based on parameterized KG structure to expedite KG traversal</em>. Our simulation experiment compares the brute force method with KGLens under six different sampling methods, demonstrating that our approach achieves superior probing efficiency. Leveraging KGLens, we conducted in-depth analyses of the factual accuracy of <em>ten LLMs across three large domain-specific KGs from Wikidata, composing over 19K edges, 700 relations, and 21K entities</em>. Human evaluation results indicate that KGLens can assess LLMs with a level of accuracy nearly equivalent to that of human annotators, <em>achieving 95.7% of the accuracy rate</em>.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>Their approach pairs the model with a <em>knowledge graph</em>, a structured database of facts, each written as a subject-relation-object triple like “Paris — capital of — France.” Each such fact is called an <em>edge</em> in the graph. KGLens turns those edges into test questions and asks the model. A smart sampling strategy, inspired by a classical technique called Thompson sampling [4], keeps track of which facts the model seems to be weakest on and concentrates future questions there. The result: the team can map out a model’s factual blind spots in far fewer questions than asking about every fact one by one.</p>
-<p>What makes Thompson sampling special is that it doesn’t always test what looks worst right now; it samples from its current belief about each fact, so facts it is unsure about still get tried and the estimates keep improving. Those beliefs are stored as a <em>beta distribution</em> per fact, a compact shape that captures both “how often does the model get this fact wrong” and “how sure are we about that estimate” in one object, and updates naturally every time a question is answered.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
-<figcaption>How KGLens works. The system starts with a knowledge graph where every fact (edge) carries a running estimate of how often the model gets it wrong. Each round, it picks a batch of facts (preferring the ones the model seems weakest on), turns them into natural-language questions, asks the model, and updates each fact’s failure estimate based on the answer. Over time the sampler zeroes in on the model’s weakest facts. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>Across three knowledge graphs built from Wikidata (covering countries, movies, and the NBA, with more than 19,000 facts and 21,000 entities between them), KGLens tested ten LLMs and produced two kinds of result.</p>
-<p>The first is evidence that the smart sampling actually saves questions. Figure 3 runs a simulation on the NBA graph. Each fact is given a hidden true “failure probability” (how often the model would get it wrong if asked repeatedly), and KGLens has to recover those probabilities from as few test questions as possible. On the hardest 200 and 600 facts, Thompson sampling and a related strategy called epsilon-greedy (both of which preferentially test the facts they think the model is weakest on) get closer to the true probabilities sooner than the brute-force approach of cycling through every fact in turn. The gap is largest when the question budget is small, which is exactly when it matters most.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure3.png" class="img-fluid figure-img"></p>
-<figcaption>Estimation error on the hardest NBA facts as a function of how many questions the model was asked. Thompson sampling and epsilon-greedy (two strategies that preferentially test likely-wrong facts) reach the same error as a brute-force scan with fewer questions, especially early on. Figure 3 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>The second result is a map of what the model actually knows. Once KGLens has probed enough facts, it can group the results by the <em>kind</em> of relation being asked about (“spouse of”, “country of citizenship”, “position played”, and so on) and by the kind of entity involved. The output isn’t “the model is X% accurate overall”; it’s “the model is reliable on these kinds of facts and unreliable on those.” Figure 6 shows this breakdown for GPT-4 on the hardest difficulty setting.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/figure6.webp" class="img-fluid figure-img" data-lightbox-src="figure6-full.png"></p>
-<figcaption>Per-relation proficiency map for GPT-4 on HARD mode. Color encodes the <em>zero-sense rate</em>: the fraction of facts of that type the model never got right, even across repeated trials. Darker means more reliable. Dot size reflects how many facts of that type were in the graph. A map like this, showing exactly where a frontier model is and isn’t reliable, is the kind of artifact KGLens makes cheap to produce. Figure 6 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>To check that the automated grading was reliable, the authors compared KGLens’s verdicts against human judges. The system agreed with humans 95.7% of the time.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>A per-relation map is a better output shape for deployment decisions than a single score.</strong> Most factuality benchmarks (TruthfulQA [2], HaluEval, FActScore) produce a single number: the model is X% accurate on some fixed test set. KGLens produces a <em>map</em> instead: a breakdown of which kinds of facts the model handles well and which it doesn’t, against a knowledge graph the team can pick to match their actual deployment. For a team deciding whether to trust a model on, say, NBA player facts before shipping a sports product, that map is what they actually need; a single TruthfulQA number doesn’t help.</p></li>
-<li><p><strong>The sampling idea is the part most likely to matter beyond this paper.</strong> Every LLM evaluation hits the same wall: there are too many things to test and each test costs money. KGLens’s move (track a running estimate of how often the model fails each test, then preferentially retest the ones it seems worst at) is a standard strategy from classical machine learning applied to LLM evaluation. Figure 3 shows it meaningfully cuts the number of questions needed to find a model’s weakest facts. The same idea should plug into other expensive evaluations: red-teaming (searching for harmful outputs), jailbreak coverage (finding prompts that bypass safety rules), or capability probing (checking whether a model can do a specific task).</p></li>
-<li><p><strong>It pairs naturally with <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [3].</strong> Both are Apple papers about measuring what LLMs actually know versus what they claim, and they answer adjacent questions. KGLens tells you <em>which facts</em> the model has internalized: which kinds of questions it can answer reliably. SelfReflect tells you whether the model can <em>honestly summarize its own uncertainty</em> about a given question. A pipeline that uses KGLens to find a model’s weak areas and SelfReflect to check whether the model can admit to those weaknesses would be a stronger evaluation than either alone.</p></li>
-<li><p><strong>The 95.7% agreement with human judges deserves close scrutiny.</strong> Deciding automatically whether a model’s answer is correct is hard. Models paraphrase, give partial answers, or say something that is technically right but not the exact wording in the knowledge graph. The 95.7% figure is high, but the relevant question is whether the 4.3% disagreement concentrates on a particular kind of fact (time-sensitive ones, ambiguous relations, facts with multiple valid answers). If it does, those cases are where the automated grader is systematically off, and the team can either adjust or route them to a human reviewer.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=MIcmEaMAAAAJ">Zheng</a>, Shangshang, He <a href="https://hbkkk.github.io/">Bai</a>, Yizhe <a href="https://dreasysnail.github.io/">Zhang</a>, Yi Su, Xiaochuan Niu, and Navdeep <a href="https://www.cs.toronto.edu/~ndjaitly/">Jaitly</a>. “KGLens: Towards Efficient and Effective Knowledge Probing of Large Language Models with Knowledge Graphs.” <em>ACL 2024 Workshop Towards Knowledgeable Language Models</em>, 2024. arXiv:2312.11539, December 15, 2023. <a href="https://arxiv.org/abs/2312.11539" class="uri">https://arxiv.org/abs/2312.11539</a></li>
-<li><a id="ref-2"></a>Lin, Stephanie, Jacob <a href="https://www.jacobh.co.uk/">Hilton</a>, and Owain <a href="https://en.wikipedia.org/wiki/Owain_Evans">Evans</a>. “TruthfulQA: Measuring How Models Mimic Human Falsehoods.” <em>arXiv preprint</em> (arXiv:2109.07958), September 8, 2021. <a href="https://arxiv.org/abs/2109.07958" class="uri">https://arxiv.org/abs/2109.07958</a></li>
-<li><a id="ref-3"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>arXiv preprint</em> (arXiv:2505.20295), May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
-<li><a id="ref-4"></a><a href="https://djrusso.github.io/">Russo</a>, Daniel J., Benjamin <a href="https://web.stanford.edu/~bvr/">Van Roy</a>, Abbas Kazerouni, Ian <a href="https://iosband.github.io/">Osband</a>, and Zheng Wen. “A Tutorial on Thompson Sampling.” <em>Foundations and Trends in Machine Learning</em> 11, no. 1 (2018): 1–96. arXiv:1707.02038. <a href="https://arxiv.org/abs/1707.02038" class="uri">https://arxiv.org/abs/1707.02038</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20230902-llms-vs-knowledge-graphs/">Give Us the Facts: Large Language Models vs.&nbsp;Knowledge Graphs</a>: the same use of curated KGs as the factual reference against which LLM knowledge is measured, here motivating why probing is needed at all.</li>
-<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the companion Apple paper on the adjacent question, whether a model can honestly report its own uncertainty about a fact KGLens flags as weak.</li>
-<li><a href="../../posts/20231102-fleek-fact-verification/">FLEEK: Fact Verification with LLMs and Knowledge Graphs</a>: the inverse pairing of the same two ingredients, using KGs and the web to verify and correct LLM claims rather than to probe for blind spots.</li>
-<li><a href="../../posts/20230226-truthfulqa-llm-truthfulness/">TruthfulQA: Are Larger LLMs More Truthful?</a>: the single-score factuality benchmark KGLens argues against, since a per-relation map is more useful for deployment than one accuracy number.</li>
-<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: a complementary angle on locating a model’s knowledge, asking whether the model itself can predict which facts it will get right.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/</guid>
-  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260430-kglens-knowledge-probing/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-7.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-28.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-29.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-6.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-8.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -21,7 +21,130 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 07 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 08 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Claude Opus 4.8: The Early Reactions</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260529-opus-4-8-reactions/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260529-opus-4-8-reactions/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260529-opus-4-8-reactions/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Anthropic’s announcement of Claude Opus 4.8. Image from <a href="https://www.anthropic.com/news/claude-opus-4-8">Anthropic</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://www.anthropic.com/">Anthropic</a> released <a href="https://www.anthropic.com/news/claude-opus-4-8">Claude Opus 4.8</a> on 28 May 2026, the successor to Opus 4.7. Anthropic set the tone in the announcement itself: Opus 4.8 is “a modest but tangible improvement on its predecessor,” at the same price, with the main change being honesty rather than raw capability. This post collects the early reactions, with an eye on what actually changed from 4.7.</p>
+<section id="what-anthropic-says" class="level2">
+<h2 class="anchored" data-anchor-id="what-anthropic-says">What Anthropic Says</h2>
+<p>The release positions honesty as the main advance. From <a href="https://www.anthropic.com/news/claude-opus-4-8">the announcement</a>: models “sometimes jump to conclusions, confidently claiming to have made progress in their work despite the evidence being thin,” and Opus 4.8 is “around four times less likely than its predecessor to allow flaws in code it has written to pass unremarked.” The <a href="https://cdn.sanity.io/files/4zrzovbb/website/c886650a2e96fc0925c805a1a7ca77314ccbf4a6.pdf">system card</a> puts a number on it: Opus 4.8 had the lowest incorrect-rate of six models on every benchmark, and reached that “mainly by abstaining on questions about which it was uncertain rather than by answering more questions correctly.” The gain is calibration, not knowledge.</p>
+<p>Beyond honesty, the <a href="https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8">What’s New page</a> lays out what else moved and what held steady from 4.7.</p>
+<section id="what-changed" class="level3">
+<h3 class="anchored" data-anchor-id="what-changed">What Changed</h3>
+<ul>
+<li><strong>Fast mode, much cheaper.</strong> A research-preview “fast mode” runs at 2.5× speed for roughly a third of what fast mode cost on 4.6 and 4.7.</li>
+<li><strong>Mid-conversation system messages.</strong> A <code>role: "system"</code> message can now be inserted after a user turn, so a long agentic run can update its instructions without restating the whole system prompt and losing its prompt-cache hits. That targets two of the cost line-items in <a href="../../posts/20260503-where-claude-code-tokens-go/">where Claude Code tokens go</a>: conversation-history re-reads and cache misses on resume.</li>
+<li><strong>Lower prompt-cache floor.</strong> The minimum cacheable prompt drops to 1,024 tokens, from 4,096 on 4.7.</li>
+<li><strong>Higher default effort.</strong> The <code>effort</code> parameter now defaults to <code>high</code> everywhere, including the Claude API and Claude Code.</li>
+<li><strong>Documented refusal categories.</strong> The <code>stop_details</code> object on refusals (present since 4.7) is now public, so an application can tell different classes of declined request apart.</li>
+<li><strong>Adjacent launches.</strong> Effort control arrives on claude.ai, and Claude Code gains <a href="../../posts/20260529-dynamic-workflows-claude-code/">Dynamic Workflows</a>.</li>
+</ul>
+</section>
+<section id="what-stayed-the-same" class="level3">
+<h3 class="anchored" data-anchor-id="what-stayed-the-same">What Stayed the Same</h3>
+<ul>
+<li><strong>Price.</strong> $5 per million input tokens and $25 per million output, unchanged across 4.5 through 4.8.</li>
+<li><strong>Context window.</strong> 1M tokens by default (200k on Microsoft Foundry).</li>
+<li><strong>Max output.</strong> 128k tokens.</li>
+<li><strong>Knowledge and training cutoff.</strong> January 2026, the same as 4.7.</li>
+<li><strong>Tools and platform features.</strong> The same set as 4.7.</li>
+</ul>
+</section>
+</section>
+<section id="partners-and-launch-testers" class="level2">
+<h2 class="anchored" data-anchor-id="partners-and-launch-testers">Partners and Launch Testers</h2>
+<p>The <a href="https://www.anthropic.com/news/claude-opus-4-8">announcement</a> carries a long list of design-partner quotes, all favorable, and several compare it explicitly to 4.7. The most direct on that comparison is Scott Wu, CEO of <a href="https://cognition.ai/">Cognition</a>, <a href="https://www.anthropic.com/news/claude-opus-4-8">in the launch quotes</a>:</p>
+<blockquote class="blockquote">
+<p>Claude Opus 4.8 uses tools cleanly and follows instructions with the consistency our autonomous engineering workloads need to keep running unattended. It improves on Opus 4.6 and fixes the comment-verbosity and tool-calling issues we saw with Opus 4.7. This release from Anthropic translates directly into faster capability gains for engineers building on Devin.</p>
+</blockquote>
+<p>Katie Parrott, a staff writer, <a href="https://www.anthropic.com/news/claude-opus-4-8">emphasizes the day-to-day feel</a>:</p>
+<blockquote class="blockquote">
+<p>Claude Opus 4.8 feels like a major quality-of-life update over Opus 4.7: faster, easier to collaborate with, and better at carrying context and style direction across a long session. Opus 4.8 is the model I kept trusting for work where voice, taste, and technical execution all have to happen side-by-side.</p>
+</blockquote>
+<p>The harder numbers come from the tool vendors, all <a href="https://www.anthropic.com/news/claude-opus-4-8">in the same announcement</a>:</p>
+<ul>
+<li><strong><a href="https://www.cursor.com/">Cursor</a> (Michael Truell)</strong>: Opus 4.8 “exceeds prior Opus models across every effort level” on CursorBench, with tool calling that is “meaningfully more efficient, using fewer steps for the same intelligence.”</li>
+<li><strong><a href="https://www.databricks.com/">Databricks</a> (Hanlin Tang)</strong>: its Genie agent reasons over PDFs and diagrams “at 61% cheaper token cost than Opus 4.7.”</li>
+<li>A computer-use vendor reports 84% on Online-Mind2Web, “a meaningful jump over both Opus 4.7 and GPT-5.5”; a legal-AI vendor reports the first model “to break 10% overall on the all-pass standard.”</li>
+</ul>
+<p>The recurring word across these is judgment: catching its own mistakes, pushing back on weak plans, asking clarifying questions before acting. That is the same abstention story the system card tells, viewed from the agent-harness side.</p>
+</section>
+<section id="independent-reactions" class="level2">
+<h2 class="anchored" data-anchor-id="independent-reactions">Independent Reactions</h2>
+<p><a href="https://simonwillison.net/2026/May/28/claude-opus-4-8/">Simon Willison</a> led with the honesty rather than the capability, and his write-up is one of the most detailed independent walk-throughs so far:</p>
+<ul>
+<li><strong>Honesty is the story.</strong> His favorite part is that Anthropic called the release minor: “It’s so refreshing to see an AI lab honestly describe a release as a minor incremental improvement over the previous model.” He reads honesty as the theme, and highlights the system card’s finding that 4.8 posts the lowest incorrect-rate of any model tested mainly by abstaining when unsure.</li>
+<li><strong>Mid-conversation steering “sounds really powerful.”</strong> He initially worried it would break the single-system-prompt assumption in his own <a href="https://llm.datasette.io/">LLM library</a>, then found his recent redesign already handles it.</li>
+<li><strong>The spec changes that caught his eye.</strong> The 1,024-token cache floor, down from 4,096 on 4.7, and fast mode’s price cut were the parts he singled out as practically useful.</li>
+<li><strong>The pelican test, at five effort levels.</strong> He ran his “pelican riding a bicycle” SVG benchmark at low, medium, high, xhigh, and max. His verdict: “the max one was clearly the best, but it did take 25 input, 17,167 output tokens for a total cost of 43 cents.” He had Opus 4.8 build an HTML viewer for the results, then handed that code to GPT-5.5 in Codex to strip XSS holes, since “GPT-5.5 is my code security blanket at the moment.”</li>
+</ul>
+<p><a href="https://clairevo.com/">Claire Vo</a>, who got early access, ran <a href="https://www.lennysnewsletter.com/p/claude-opus-48-is-here-is-it-as-good">a first-impressions walkthrough</a> across Claude Code and Cowork and gave a split verdict: Opus 4.8 shines on greenfield prototypes, one-shot features, and fast execution, but stumbles on “the last 10%,” edge cases inside existing codebases, and hallucinations. On data-heavy strategy and roadmap work, she said she still reaches for 4.7.</p>
+<p>Community reaction on the <a href="https://news.ycombinator.com/item?id=48311647">1,300-comment Hacker News thread</a> was more mixed, and much of it was really about 4.7. Several commenters said 4.7 had regressed badly enough that they pinned Claude Code back to 4.6, and read 4.8 as a hoped-for recovery rather than a clear step up. One counted only six benchmarks in the 4.8 announcement, down from twelve for 4.7 and thirteen for 4.6, with SWE-bench Verified and GPQA Diamond among the omissions, and called the trimmed table cherry-picking. Another strand objected to the “honesty” label as anthropomorphism for what is really a lower tendency to overstate thin evidence.</p>
+<p>One r/ClaudeAI post, from someone who <a href="https://www.reddit.com/r/ClaudeAI/comments/1tqao3e/spent_a_few_hours_with_opus_48_the_honesty_change/">“spent a few hours with Opus 4.8”</a>, singles out the honesty change as what stood out. Others were less sure it was an improvement at all: an <a href="https://news.ycombinator.com/item?id=48316636">“Ask HN: Is Claude Opus 4.8 broken?”</a> thread went up the same day.</p>
+</section>
+<section id="the-skeptical-read" class="level2">
+<h2 class="anchored" data-anchor-id="the-skeptical-read">The Skeptical Read</h2>
+<p>Two independent trackers push back on the launch-day optimism.</p>
+<ul>
+<li><p><strong><a href="https://andonlabs.com/blog/opus-4-8-vending-bench">Andon Labs</a>: “Better Alignment, Worse Performance.”</strong> On Vending-Bench, 4.8 is cleaner but less capable than 4.7.</p>
+<ul>
+<li><p><strong>Alignment improved.</strong> Where Opus 4.6, 4.7, and the Mythos preview ran price cartels and lied about refunds, 4.8 did not:</p>
+<blockquote class="blockquote">
+<p>Most importantly, we could not find any instances of Opus 4.8 engaging in any of the deceptive or power-seeking behavior we saw exhibited by recent Claude models we’ve tested.</p>
+</blockquote></li>
+<li><p><strong>Performance regressed.</strong> 4.8 did worse than previous Opus and Sonnet models on Vending-Bench 2, and lost to both GPT-5.5 and Opus 4.7 in the head-to-head Arena. The failure modes resembled much weaker models:</p>
+<ul>
+<li><strong>Falls for scams.</strong> It “wires roughly thirty times more cash to fraudulent wholesalers than Opus 4.7. One run sent over $9,000 to a super expensive ‘membership’ upsell.”</li>
+<li><strong>Negotiates worse.</strong> “Opus 4.7 talks suppliers down to about half the price Opus 4.8 accepts.”</li>
+<li><strong>Overthinks the paperwork.</strong> It “rewrites the same strategy doc ~100 times per run” and accumulates a dozen overlapping notes.</li>
+</ul></li>
+<li><p><strong>The mechanistic finding.</strong> At <code>high</code> effort instead of <code>max</code>, 4.8 did much better, though still short of 4.7. Andon Labs’ hypothesis: <code>max</code> spends about 5× more reasoning tokens, hits the context limit, and triggers more than twice as many compactions, so the agent forgets more of its own history. The shipped default of <code>high</code> keeps most users clear of this.</p></li>
+</ul></li>
+<li><p><strong><a href="https://marginlab.ai/blog/claude-code-degraded-before-opus-4-8/">Marginlab</a>: Claude Code degraded before the release.</strong> Its daily SWE-Bench-Pro tracker watched Opus 4.7 slip in the week before 4.8 shipped:</p>
+<blockquote class="blockquote">
+<p>Opus 4.7’s pass rate dropped well below its established baseline and stayed there for five consecutive days, a sustained and statistically significant degradation, before recovering the moment Opus 4.8 took over.</p>
+</blockquote>
+<p>Marginlab presents it as a measurement; readers supplied the less charitable interpretation about old models degrading right before a launch.</p></li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>Anthropic, its partners, Willison, and Andon Labs are all pointing at one behavior: Opus 4.8 abstains and flags uncertainty where 4.7 would barrel ahead. Whether that reads as “better judgment” or “worse performance” depends entirely on the task. On code review and analysis, where a confident wrong answer is expensive, abstention is the win Anthropic advertises. On Vending-Bench, where the job is to act decisively and keep the machine stocked, the same caution looks like falling for scams and leaving the machine empty. The same change cuts both ways, which fits the abstention research directly: see <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> and <a href="../../posts/20260525-metacognition-uncertainty-sft/">training models to communicate uncertainty</a>.</p>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260601-opus-4-8-had-enough/">Opus 4.8 Had Enough</a>: the same model’s self-doubt loop from its system card, the flip side of the abstention-and-honesty story this post tracks.</li>
+<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the predecessor whose regressions several commenters here read 4.8 as a recovery from.</li>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: the abstention research this post leans on to frame 4.8’s honesty gain, cited inline.</li>
+<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: the training side of the same calibration-not-knowledge change 4.8 advertises, cited inline.</li>
+<li><a href="../../posts/20260609-confidence-calibration-metrics/">A Primer on Confidence-Calibration Metrics: ECE, Brier, AUROC, and What Each One Misses</a>: the measurement vocabulary behind 4.8’s “abstain when uncertain” claim and its low incorrect-rate.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260529-opus-4-8-reactions/</guid>
+  <pubDate>Fri, 29 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260529-opus-4-8-reactions/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>LangChain’s Deep Agents: A Batteries-Included Agent Harness</title>
   <dc:creator>synesis </dc:creator>
@@ -1730,939 +1853,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260524-acemoglu-great-displacement/</guid>
   <pubDate>Sun, 24 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260524-acemoglu-great-displacement/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Yann LeCun on What Comes After LLMs</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260523-yann-lecun-after-llms/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260523-yann-lecun-after-llms/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260523-yann-lecun-after-llms/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Thumbnail for Jacob Effron’s <em>Unsupervised Learning</em> episode with Yann LeCun. <a href="https://www.youtube.com/watch?v=ngBraLDqzdI">Watch on YouTube</a>.</figcaption>
-</figure>
-</div>
-<p>In the <a href="https://www.youtube.com/watch?v=ngBraLDqzdI">May 15, 2026 episode</a> of <a href="https://www.linkedin.com/in/jacobeffron/">Jacob Effron</a>’s <em>Unsupervised Learning</em> podcast, <a href="http://yann.lecun.com/">Yann LeCun</a> — <a href="https://en.wikipedia.org/wiki/Turing_Award">Turing Award</a> winner and former Chief AI Scientist at <a href="https://about.meta.com/">Meta</a> — lays out the technical thesis behind his new company, <a href="https://ami.inc/">AMI Labs</a>, and his reasons for leaving Meta after twelve years of building <a href="https://ai.meta.com/research/">FAIR</a>. The 1h 21m conversation moves from his core claim that <a href="https://en.wikipedia.org/wiki/Large_language_model">LLMs</a> are not a path to human-level intelligence, through the <a href="https://arxiv.org/abs/2301.08243">JEPA</a> [1] architecture he is scaling, his sovereign-AI project <a href="https://thetapestryproject.com/">Tapestry</a>, why he diverged from <a href="https://www.cs.toronto.edu/~hinton/">Geoffrey Hinton</a> and <a href="https://yoshuabengio.org/">Yoshua Bengio</a> starting in 2023, and a remarkably candid account of his actual role at Meta — which, contrary to the public narrative, included zero technical contribution to <a href="https://ai.meta.com/llama/">Llama</a>.</p>
-<div class="callout callout-style-default callout-tip callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Tip
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>New to JEPA?</strong> Read the companion explainer first: <a href="../../posts/20260523-what-is-jepa/">What Is JEPA?</a> covers the architecture, the latent-prediction objective, the collapse problem, the three families of fixes, and what V-JEPA and V-JEPA 2 demonstrate.</p>
-</div>
-</div>
-<p>The main points, each linking to the supporting passage in the transcript:</p>
-<ul>
-<li><strong>LLMs aren’t a path to human-level intelligence</strong> — they can’t predict the consequences of their actions, can’t plan by search, and only work where language is the substrate of reasoning (math, code, problem-solving with a verifier). Useful products; not a research path.</li>
-<li><strong>JEPA</strong> learns abstract representations rather than predicting pixels. Five years ago LeCun realized every successful image/video representation method was <em>non-generative</em>; that crystallized into the joint-embedding predictive architecture.</li>
-<li><strong>Most “world model” robotics work today</strong> is imitation learning at huge data cost. A 17-year-old learns to drive in 20 hours; we have millions of hours of driving data and still no level-five autonomy. The bottleneck is data efficiency, not scale.</li>
-<li><strong>Tapestry</strong> is a federated training platform for sovereign open-source AI: contributors keep their data local, exchange only parameter vectors, converge to a global consensus model that countries can then fine-tune for local language, culture, and politics.</li>
-<li><strong>OpenAI is the next Sun Microsystems</strong> — closed proprietary models will get commodified by open ones the way Linux ate Solaris and HP-UX. Internet infrastructure has a natural pull toward open, and AI is becoming infrastructure.</li>
-<li><strong>LLMs are intrinsically unsafe</strong> — not because of doomer scenarios, but because they cannot predict the consequences of their actions, cannot guarantee task completion, and there is always a prompt that gets them to do something stupid. Objective-driven AI with explicit world models can be safe by construction.</li>
-<li><strong>Yann had zero technical contribution to Llama</strong>, positive or negative. His one Llama-related action was arguing internally for open-sourcing Llama 2 against the legal and policy departments. The popular narrative that he “ran” Meta’s LLM work is wrong.</li>
-<li><strong>Don’t work on LLMs for your PhD</strong> — academia can’t compete on GPUs, and explaining why LLMs work is descriptive science. Work on the next generation. LeCun’s current bet: <a href="https://arxiv.org/abs/2511.08544">SIGReg</a> [17] (Sketched Isotropic Gaussian Regularization) and other information-maximization regularizers — descendants of <a href="https://www.nature.com/articles/355161a0">Becker &amp; Hinton’s 1992 mutual-information objective</a> [13] — to prevent representation collapse in JEPA, with <a href="https://arxiv.org/abs/2603.19312">LeWorldModel</a> [19] as the latest demonstration.</li>
-</ul>
-<p>I’ve built an <strong>enriched transcript at the bottom of this post</strong> — the YouTube auto-caption transcript, sliced into chapter and topic subsections, with inline hyperlinks, acronym expansions, and editor’s-note callouts. See the preamble of that section for details.</p>
-<p>YouTube chapters (jump to the enriched transcript below, or watch on YouTube):</p>
-<ul>
-<li>0:00:00 — Intro (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=0s">YouTube</a>)</li>
-<li>0:01:45 — Why LLMs Aren’t the Path to Intelligence (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=105s">YouTube</a>)</li>
-<li>0:07:51 — AMI and World Models (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=471s">YouTube</a>)</li>
-<li>0:12:07 — The JEPA Architecture Explained (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=727s">YouTube</a>)</li>
-<li>0:15:55 — Problems with Robotics Models Today (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=955s">YouTube</a>)</li>
-<li>0:20:37 — Silicon Valley Herd Behavior (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=1237s">YouTube</a>)</li>
-<li>0:28:18 — Tapestry: Sovereign AI for the Rest of the World (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=1698s">YouTube</a>)</li>
-<li>0:35:49 — OpenAI Is the Next Sun Microsystems (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=2149s">YouTube</a>)</li>
-<li>0:40:51 — Why Yann’s Views Diverged from Hinton &amp; Bengio (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=2451s">YouTube</a>)</li>
-<li>0:44:32 — LLMs Are Intrinsically Unsafe (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=2672s">YouTube</a>)</li>
-<li>0:58:00 — Why Yann Left Meta (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=3480s">YouTube</a>)</li>
-<li>1:00:26 — Reflections on FAIR (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=3626s">YouTube</a>)</li>
-<li>1:12:11 — Advice for PhD Students (<a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=4331s">YouTube</a>)</li>
-</ul>
-<section id="transcript" class="level2">
-<h2 class="anchored" data-anchor-id="transcript">Transcript</h2>
-<p>What’s here is the YouTube auto-caption transcript, reorganized into a reader-friendly form. The dialog itself is verbatim — no words added, cut, or reworded — but five layers of editorial structure have been added on top:</p>
-<ul>
-<li><strong>Chapter + topic outline.</strong> 13 YouTube chapters, each linking to its timestamp, sliced into ~30 fine-grained topic subsections. The subsection titles are editorial summaries of the topic being discussed, not verbatim speaker quotes. The full outline is in the right-hand sidebar.</li>
-<li><strong>Inline hyperlinks.</strong> First mention of every salient acronym, concept, paper, product, person, or company links to the most authoritative source.</li>
-<li><strong>Bracketed acronym expansions.</strong> Where an acronym appears for the first time without being expanded in speech, the expansion is inserted in <code>[square brackets]</code> (e.g.&nbsp;<code>JEPA [joint embedding predictive architecture]</code>) to mark the addition as editorial.</li>
-<li><strong>Editor’s notes</strong> in blue callout boxes flag claims that are verifiable and slightly off, heuristics the speaker himself qualifies as ballpark, or unsourced numbers.</li>
-<li><strong>Numbered references.</strong> Every paper or book cited has a <code>[[N]](#ref-N)</code> cite linking to the References block at the bottom.</li>
-</ul>
-<p>YouTube auto-captions ship without punctuation, capitalization, or paragraph breaks — those are editorial. Obvious ASR mishearings of proper nouns and technical terms were corrected silently: <code>JEPA</code> (variously transcribed as “Jeter”, “Japa”, “JPA”), <code>Llama</code> (“Lama”), <code>Yann LeCun</code> (“Yan Lun”), <code>Geoff Hinton</code> (“Jeff”), <code>Andrew Bosworth</code> (“Dub Bosworth”/“Andrew Budworth”), <code>Joelle Pineau</code> (“Joel Pino”), <code>Jürgen Schmidhuber</code> (“Jurgen Schmidber”), <code>Randall Balestriero</code> (“Randall Bistriero”), <code>VICReg</code> (“VC rag”), <code>LeWorldModel</code> (“L world model”), <code>NeurIPS</code> (“Nurips”), <code>MAE</code> (“ME to encoder”), and <code>GenAI</code> (“geni”/“ji”).</p>
-<section id="ch-intro" class="level3">
-<h3 class="anchored" data-anchor-id="ch-intro"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=0s">0:00:00 — Intro</a></h3>
-<section id="cold-open-teaser-clips" class="level4">
-<h4 class="anchored" data-anchor-id="cold-open-teaser-clips">Cold-open teaser clips</h4>
-<p><strong>Jacob Effron:</strong> You’re one of the godfathers of AI. What’s your kind of view of the path of progress here?</p>
-<p><strong>Yann LeCun:</strong> Five years, complete world domination.</p>
-<p><strong>Yann LeCun:</strong> <em>[Different clip.]</em> The best way to get breakthrough research is you hire the best people, you get the [bleep] out of the way. Pardon my French.</p>
-<p><strong>Jacob Effron:</strong> You share the <a href="https://en.wikipedia.org/wiki/Turing_Award">Turing Award</a> with two others. When did your views start diverging?</p>
-<p><strong>Yann LeCun:</strong> In 2023.</p>
-<p><strong>Jacob Effron:</strong> How do you know it was time to leave Meta? It sounds like you were thinking through some of these things over a period of time.</p>
-<p><strong>Yann LeCun:</strong> Here’s a big misconception about my role, my relation to <a href="https://en.wikipedia.org/wiki/Alexandr_Wang">Alex</a>, and how AI was run at Meta.</p>
-<p><strong>Jacob Effron:</strong> What’s like one thing you’ve changed your mind on in the last year?</p>
-<p><strong>Yann LeCun:</strong> I mean, the whole idea of, uh —</p>
-</section>
-<section id="jacobs-framing-intro" class="level4">
-<h4 class="anchored" data-anchor-id="jacobs-framing-intro">Jacob’s framing intro</h4>
-<p><strong>Jacob Effron:</strong> Yann LeCun is one of the godfathers of AI. He’s an absolute legend in the field. Someone I’ve admired for a long time, and so it was such a treat to get him on <em>Unsupervised Learning</em>.</p>
-<p>He’s been a noted skeptic of LLMs in many ways, and so we dug into what LLMs can do, what they can’t do, some of the limitations he sees, and why he ultimately decided to pursue a different architecture.</p>
-<p>We also talked about his time at Meta — you know, the things he’s proud of in setting up <a href="https://ai.meta.com/research/">FAIR</a>, how the last few years proceeded, and what ultimately led him to spin out and start his own company, <a href="https://ami.inc/">AMI</a>.</p>
-<p>I think it’s just fascinating to get Yann’s thoughts on everything happening in the AI ecosystem today — this tension between basic research and then pushing LLMs forward, and how that’s happening in a bunch of organizations today, as well as his thoughts on just where the whole space is headed. He’s just an absolute giant in the field, and when I started this podcast I hoped we’d get guests like him. So it is just such a treat. I think folks will really enjoy hearing the conversation we had.</p>
-<p>Without further Yann — this is such a pleasure. You’re one of the godfathers of AI. I feel like when I started doing this podcast years ago, I was really hoping we might one day get someone like you on.</p>
-<p><strong>Yann LeCun:</strong> You know, I don’t like that term, because I live in New Jersey. When you’re a godfather in New Jersey, it doesn’t mean the same thing.</p>
-</section>
-</section>
-<section id="ch-why-llms-not-path" class="level3">
-<h3 class="anchored" data-anchor-id="ch-why-llms-not-path"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=105s">0:01:45 — Why LLMs Aren’t the Path to Intelligence</a></h3>
-<section id="the-opening-provocation-ami-as-the-technical-thesis" class="level4">
-<h4 class="anchored" data-anchor-id="the-opening-provocation-ami-as-the-technical-thesis">The opening provocation: AMI as the technical thesis</h4>
-<p><strong>Jacob Effron:</strong> Very fair. Very fair. You know, obviously, your bet on neural nets when everyone doubted them is legendary. And I feel like today you’re making a similar bet in many ways against LLMs and the kind of predominant generative architectures that so many believe in.</p>
-<p>You’ve recently started a new company behind this theme. Our goal today in the conversation is to leave our listeners with a lot more information about AMI, what you’re doing there, some of your work at Tapestry. You know — why you think the rest of the field is pointed in the wrong direction around some of these generative models, and then also just get your reflections on the way the field’s unfolded, your time at Meta, and all that. So, you know, modest goals for a single podcast episode.</p>
-<p>I figured it’d be great to start with the meat, because the company feels like the clearest statement of your technical thesis going forward. You recently launched the company. It’s focused on world models and scaling the JEPA architecture, which you obviously pioneered over at Meta. And so I’m wondering if you could talk a little bit about the origins of that architecture and the extent to which you drew inspiration from the human brain and the way that works.</p>
-</section>
-<section id="theres-nothing-wrong-with-llms-theyre-just-not-a-path" class="level4">
-<h4 class="anchored" data-anchor-id="theres-nothing-wrong-with-llms-theyre-just-not-a-path">“There’s nothing wrong with LLMs — they’re just not a path”</h4>
-<p><strong>Yann LeCun:</strong> So first of all, I want to say there’s nothing wrong with LLMs in the sense of LLM. You know, LLMs are the basis for a lot of very useful AI products that all of us use, including me. They’re great, okay, for what they do. They’re just not a path towards human-level or human-like intelligence, or even animal-like intelligence. So that’s my claim, okay? I’m not saying they are useless. I’m just saying they’re not a path towards human-level intelligence.</p>
-<p><strong>Jacob Effron:</strong> I mean — you helped build some of the first major open-source ones, right?</p>
-<p><strong>Yann LeCun:</strong> Absolutely.</p>
-</section>
-<section id="what-ami-stands-for-ai-for-the-real-world" class="level4">
-<h4 class="anchored" data-anchor-id="what-ami-stands-for-ai-for-the-real-world">What AMI stands for: AI for the real world</h4>
-<p><strong>Jacob Effron:</strong> So what is AMI?</p>
-<p><strong>Yann LeCun:</strong> AMI really stands for <a href="https://ami.inc/">advanced machine intelligence</a>, and the kind of subtitle, the motto if you want, is “AI for the real world.” So basically, a lot of AI techniques that people know about today are good for language manipulation — either human language, or computer code, or mathematics, or <a href="https://en.wikipedia.org/wiki/Legal_English">legalese</a>, which barely qualifies as human language. Unfortunately a lot of human language used for it —</p>
-<p><strong>Jacob Effron:</strong> Right, sadly.</p>
-<p><strong>Yann LeCun:</strong> You know, language is very special in a way, and it’s particularly well suited for the type of architectures that have been so successful recently — large language models, GPT-style architectures. But what about the real world? What about understanding the physical world? Turns out reality is way more complicated than language, because it’s high-dimensional, it’s continuous, it’s noisy, it’s messy. And training a system to understand the real world is much, much harder.</p>
-<p>So that’s really what we’re after. That’s what I’ve been after for most of my career, and really kind of working on in an accelerated fashion over the last five, six years or so, and making significant progress over the last two years. And so it made sense to really do a startup around it and sort of go into high gear in pushing that.</p>
-<p>And it became clear by the end of last year that Meta was really not the right place for that. So that’s why I left and started AMI Labs.</p>
-</section>
-<section id="two-modes-of-rd-exploratory-research-vs.-product-engineering" class="level4">
-<h4 class="anchored" data-anchor-id="two-modes-of-rd-exploratory-research-vs.-product-engineering">Two modes of R&amp;D: exploratory research vs.&nbsp;product engineering</h4>
-<p><strong>Jacob Effron:</strong> I think it’s an interesting trend that we’re seeing across the board, where it feels like there’s many folks spinning out of either some of the large companies or research labs that have a particular direction of research they’re excited about. You’d have such an interesting vantage point of this from your time at FAIR.</p>
-<p>This almost tension that exists between go pursue as many different research directions as possible in these companies versus, hey, something’s really working, this is the thing that we’re going to sell for the next 6 to 12 months, like go focus on that. I’m curious your thoughts on that and what you’ve kind of seen in the industry at large.</p>
-<p><strong>Yann LeCun:</strong> Well, it’s a strange trade-off. There’s really two modes of R&amp;D. There’s a lot of exploratory research, a lot of research directions. And sometimes something kind of seems to work, and you need to push it further, and it’s not research anymore. I mean, the people working on it are researchers, or they’re called researchers at least in the press, but really it’s becoming more engineering and pushing for products.</p>
-<p>So that happened a number of times at Meta because of things that started at FAIR. Such a thing happened in early 2023 essentially, when <a href="https://ai.meta.com/llama/">Llama</a> — which was developed at FAIR, Llama 1 — was very promising, and Meta created a whole organization, <a href="https://about.fb.com/news/2023/02/large-language-model-llama-meta-ai/">GenAI</a>, to turn it into something real and a series of products, and produced Llama 2, Llama 3, <a href="https://ai.meta.com/blog/llama-4-multimodal-intelligence/">Llama 4</a>, which was a bit of a disappointment.</p>
-<p>And because <a href="https://about.fb.com/media-gallery/executives/mark-zuckerberg/">Mark Zuckerberg</a> was disappointed by it, he kind of rebooted the entire organization, reorganized it, and hired new people, etc.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> “Llama 4 was a bit of a disappointment” reflects the widely-reported reception of the April 2025 Llama 4 release (Scout and Maverick models, with Behemoth pre-announced). Reviews flagged degraded reasoning relative to Llama 3.1 on real-world tasks despite leaderboard wins, and the Behemoth release slipped. Meta restructured its AI org in mid-2025 around the new “Meta Superintelligence Labs” (MSL) led by Alexandr Wang after the <a href="https://about.fb.com/news/2025/06/meta-scale-ai-strategic-partnership/">Scale AI investment</a>.</p>
-</div>
-</div>
-<p>But what also happened over the last year is that basically the company, Meta, realized that they had fallen behind a little bit, and so that kind of refocused the strategy on trying to catch up with the industry. And the sad side effect of it is that a lot of the exploratory research was basically not given high priority anymore.</p>
-<p>I mean, it didn’t concern the stuff I was working on — all the JEPA and world models, because Mark himself, and <a href="https://about.fb.com/media-gallery/executives/andrew-bosworth/">Andrew Bosworth</a> the CTO, and a bunch of other people in the company were really interested in that project and really believed in the long-term impact. But the rest of the company was just totally, entirely focused on LLMs, and made it clear to me that Meta was really not the right place to push for that project anymore.</p>
-<p>And then we started to have good results, and so it was clear that we had to kind of make that transition between research and actually developing the technology, scaling it up and building products out of it.</p>
-<p>And we realized also that most of the applications were probably for things that Meta was not particularly interested in. A lot of applications of the kind of stuff that we’ve been working on is in industry — like manufacturing industry and stuff like that.</p>
-</section>
-</section>
-<section id="ch-ami-world-models" class="level3">
-<h3 class="anchored" data-anchor-id="ch-ami-world-models"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=471s">0:07:51 — AMI and World Models</a></h3>
-<section id="comparing-jepa-against-generative-world-model-approaches" class="level4">
-<h4 class="anchored" data-anchor-id="comparing-jepa-against-generative-world-model-approaches">Comparing JEPA against generative world-model approaches</h4>
-<p><strong>Jacob Effron:</strong> Obviously you’re pursuing world models in that broader world, and I think there’s other people that have come at the world-model space from a more generative approach. And so I think you’ve got the <a href="https://deepmind.google/technologies/genie/">Google folks in Genie</a> and the video models. You’ve got folks building <a href="https://en.wikipedia.org/wiki/Vision-language-action_model">VLAs</a> on the robotic side. You’ve got <a href="https://www.fei-fei.com/">Fei-Fei Li</a> and <a href="https://www.worldlabs.ai/">World Labs</a> and kind of like the 3D spatial models.</p>
-<p>As you think about the body of evidence that got you excited about the JEPA models and how you compare them to what the generative folks have done — where do you think we are today in terms of comparing these architectures and approaches?</p>
-<p><strong>Yann LeCun:</strong> Okay, so “world model” is quickly becoming a buzzword, right now, certainly in research but also in industry to some extent. And then there are two factions if you want.</p>
-</section>
-<section id="why-vla-is-now-seen-as-a-failure" class="level4">
-<h4 class="anchored" data-anchor-id="why-vla-is-now-seen-as-a-failure">Why VLA “is now seen as a failure”</h4>
-<p>I’m not going to talk about VLA, because VLA is clearly now being seen as not going anywhere. Like, it’s really not working.</p>
-<p>So VLA is, you know, vision-language-action models, right? To basically use the LLM technology to train a system to produce actions for controlling a robot or something like this. So you have vision in, language in, action out, maybe language out too.</p>
-<p>And that’s pretty much now seen as a failure. Not being reliable enough, requiring too much training data, things like that.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> Calling VLA “a failure” is stronger than the field consensus. As of 2026, VLA architectures (e.g.&nbsp;<a href="https://www.physicalintelligence.company/">Physical Intelligence’s π0/π0.5</a>, <a href="https://robotics-transformer2.github.io/">Google’s RT-2</a> and successors, <a href="https://developer.nvidia.com/blog/">NVIDIA GR00T N</a>, <a href="https://www.figure.ai/news/helix">Figure Helix</a>) remain the dominant paradigm for general-purpose robot foundation models, and several have shown impressive zero-shot generalization. LeCun’s stronger objection is data efficiency and reliability, which he develops in the next chapter; the “failure” framing is his characterization, not a settled judgment.</p>
-</div>
-</div>
-</section>
-<section id="defining-a-world-model-predicting-consequences-of-actions" class="level4">
-<h4 class="anchored" data-anchor-id="defining-a-world-model-predicting-consequences-of-actions">Defining a world model: predicting consequences of actions</h4>
-<p>Okay. Then there is world models. So what is a world model? A world model at a very general level is something that allows an agentic system to anticipate the consequences of its own actions — predict the consequences of its own actions.</p>
-<p>From my point of view, I cannot imagine how you can even think of building an agentic system without that system having the ability to predict the consequences of its actions. I mean, that’s pretty essential, right?</p>
-<p>When we act in the world, we have this ability, and when we take an action without thinking about the consequences, we are taking a big risk. And very often, you know, other people think we’re an idiot.</p>
-<p>We have plenty of examples on the international political scene at the moment of people who have complete, you know, ability to predict the consequences of their actions.</p>
-<p>So that’s the world model. That’s all it is — ability to predict the consequences of your own actions. If you have this ability, then you can plan a sequence of actions to accomplish a task, to satisfy a goal. And you do this by planning, reasoning, by a process of search and optimization. You don’t do this by predicting one action after the other autoregressively. You do this by searching for a sequence of actions that will accomplish the task you set for yourself.</p>
-<p>So the blueprint for this is completely different from what LLMs can do at the moment. LLMs do not have the ability to predict the consequences of their actions, and they do not have any planning abilities, because inference is by predicting the next token, right? It’s not by search.</p>
-</section>
-<section id="two-characteristics-of-intelligent-behavior-plus-a-third-on-the-level-of-prediction" class="level4">
-<h4 class="anchored" data-anchor-id="two-characteristics-of-intelligent-behavior-plus-a-third-on-the-level-of-prediction">Two characteristics of intelligent behavior, plus a third on the level of prediction</h4>
-<p>Okay, so right there you have the two characteristics that I think are essential for intelligent behavior. Ability to predict consequences of your actions, and second, ability to plan by optimization, by search — find a good sequence of actions that will produce the correct outcome. And then there is a third characteristic which is: how do you predict the consequences of your actions?</p>
-<p>Okay, so if I have a water bottle in front of me — I realize some people would just listen to this and not have the picture. So I have an open, uncapped water bottle in front of me. If I push at the bottom, it’s going to slide on the table. If I push near the top, it’s probably going to flip.</p>
-<p>We can’t predict exactly how the bottle will fall, in which direction. We can’t exactly predict how it’s going to slide, you know, how the water will spill, whether the table is tilted in one way and the water will kind of flow in one direction or another. There’s no way we can predict this at a pixel level. And so our mental model of the world predicts, but at an abstract —</p>
-</section>
-</section>
-<section id="ch-jepa-explained" class="level3">
-<h3 class="anchored" data-anchor-id="ch-jepa-explained"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=727s">0:12:07 — The JEPA Architecture Explained</a></h3>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> For a from-scratch primer on JEPA — the three-component architecture, the latent-prediction objective, the three families of collapse-prevention fixes, and what V-JEPA / V-JEPA 2 demonstrate — see <a href="../../posts/20260523-what-is-jepa/">What Is JEPA?</a> on this blog.</p>
-</div>
-</div>
-<section id="cognitive-science-system-1-vs.-system-2-as-motivation" class="level4">
-<h4 class="anchored" data-anchor-id="cognitive-science-system-1-vs.-system-2-as-motivation">Cognitive science System 1 vs.&nbsp;System 2 as motivation</h4>
-<p><strong>Jacob Effron:</strong> — level of representation. So as you were working on this architecture, was a lot of it inspired by the human brain? I mean, obviously the way you’re articulating things — exactly how we do things.</p>
-<p><strong>Yann LeCun:</strong> Right, or at least by, you know, <a href="https://en.wikipedia.org/wiki/Cognitive_science">cognitive science</a>. Whether you can sort of translate this into a <a href="https://en.wikipedia.org/wiki/Neural_network">neural architecture</a> and things like this — there’s a big gap there.</p>
-<p>Okay, so certainly cognitive science was a bit of a motivation, or what psychologists call <a href="https://en.wikipedia.org/wiki/Thinking,_Fast_and_Slow">System 2</a>, which is this idea that the way you behave in sort of deliberate, reflective behavior is that you do imagine, predict the consequences of your actions, and you plan accordingly — contrary to System 1 where you just act reactively and instinctively.</p>
-<p>So yeah, there is an inspiration. But also there is a lot of empirical evidence that you don’t want to generate pixels.</p>
-</section>
-<section id="five-year-old-epiphany-every-successful-representation-method-is-non-generative" class="level4">
-<h4 class="anchored" data-anchor-id="five-year-old-epiphany-every-successful-representation-method-is-non-generative">Five-year-old epiphany: every successful representation method is non-generative</h4>
-<p>Okay, I’ve been really interested in that problem of learning models of the world by prediction for a very long time, and then had an epiphany about five years ago realizing that all of the architectures that have been successful to learn representations of images and videos are non-generative architectures, and all the generative ones basically have been failures.</p>
-<p>Right? So <a href="https://arxiv.org/abs/1312.6114">VAEs</a> [2] — variational autoencoders — or autoencoders more generally. It’s kind of a natural way to think about learning abstract representations of inputs. So you put an image at the input of a neural net and then you train it to just reproduce the input on its output.</p>
-<p>Now, with a big neural net — if you just do it this way, your neural net will not do anything interesting. You just learn the identity function.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> Completely uninteresting. It doesn’t work. Like if you train a VAE to learn representations of images, you get something, but it’s really not that great. Same with <a href="https://en.wikipedia.org/wiki/Autoencoder#Sparse_autoencoder">sparse autoencoders</a>.</p>
-</section>
-<section id="denoising-and-masked-autoencoders-another-disappointment" class="level4">
-<h4 class="anchored" data-anchor-id="denoising-and-masked-autoencoders-another-disappointment">Denoising and masked autoencoders: another disappointment</h4>
-<p>Then you have another set of techniques, and it’s kind of a derivative of something called the denoising autoencoder. <a href="https://arxiv.org/abs/2111.06377">Masked autoencoder</a> [3] is a version of this. <a href="https://arxiv.org/abs/1810.04805">BERT</a> [4] is a version of this for NLP.</p>
-<p>So you take the image, you corrupt it in some way, and then you train this big neural net to recover the original image. There’s a huge project at FAIR on this called MAE — masked autoencoder. It was very disappointing. A lot of computation, and not really great satisfying results.</p>
-</section>
-<section id="jepa-joint-embedding-predictive-architecture" class="level4">
-<h4 class="anchored" data-anchor-id="jepa-joint-embedding-predictive-architecture">JEPA: joint-embedding predictive architecture</h4>
-<p>Simultaneously, some of the same people working on MAE and some other people in Paris and in New York were working on other techniques using non-generative architecture — joint embedding architecture. So take an image, corrupt it in some way, and then run the two images through encoders, and then try to predict the representation of the original image from the representation of the corrupted one. That’s <a href="https://arxiv.org/abs/2301.08243">JEPA</a> [1].</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> Okay. So JEPA means joint-embedding predictive architecture, right? So you have one encoder that observes — makes an observation — another encoder that makes a different observation. You try to predict the representation of the first one from the second one with a predictor.</p>
-<p>And those techniques turned out to work much better for representing images and video. So things like <a href="https://arxiv.org/abs/2104.14294">DINO</a> [5], DINO V1, V2, <a href="https://arxiv.org/abs/2508.10104">V3</a> [6] — projects that are still going on at FAIR in Paris. Projects like <a href="https://arxiv.org/abs/2301.08243">I-JEPA</a> [1], and then <a href="https://arxiv.org/abs/2404.08471">V-JEPA</a> [7], and then before that there were like <a href="https://arxiv.org/abs/2002.05709">SimCLR</a> [8] and <a href="https://arxiv.org/abs/1911.05722">MoCo</a> [9], and like a whole bunch of different techniques, mostly from Meta. There was a bunch of others from other groups.</p>
-<p>But that turned out to be a much better way of learning representations of images than predicting pixels.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> And so it just clicked in my mind, but, you know, not just mine, that this was the way to go and predicting pixels was kind of a losing proposition.</p>
-</section>
-</section>
-<section id="ch-robotics-problems" class="level3">
-<h3 class="anchored" data-anchor-id="ch-robotics-problems"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=955s">0:15:55 — Problems with Robotics Models Today</a></h3>
-<section id="imitation-learning-is-brittle-and-data-hungry" class="level4">
-<h4 class="anchored" data-anchor-id="imitation-learning-is-brittle-and-data-hungry">Imitation learning is brittle and data-hungry</h4>
-<p><strong>Jacob Effron:</strong> You know, it feels like there’s all these robotics demos that are released from some of the model companies that feel increasingly impressive and maybe seem to resemble things like planning and reasoning when, you know, they maybe haven’t seen a room or a specific version of a task before, and are still able to execute that task.</p>
-<p>What would you say to our listeners that observe that stuff and feel like, ah, it feels like we’re trending toward some real progress with some of the generative approaches?</p>
-<p><strong>Yann LeCun:</strong> Well, there is real progress, and some of those demos are really impressive. But they are trained with enormous amounts of data, collected either from teleoperation or from just human action with things you hold in your hand that look like —</p>
-<p><strong>Jacob Effron:</strong> Grippers.</p>
-<p><strong>Yann LeCun:</strong> Grippers, that you collect the data for. Or just tracking hands and fingers of a person, and then translating this into commands for a robot. And so those things are trained with <a href="https://en.wikipedia.org/wiki/Imitation_learning">imitation learning</a> mostly, and a little bit with <a href="https://en.wikipedia.org/wiki/Reinforcement_learning">reinforcement learning</a> to fine-tune, mostly in simulation.</p>
-<p>So the issue with this is that you need a lot of data to train those systems with imitation, and it becomes expensive. And it’s a little brittle, in the sense that you need to collect lots of data for every task you want the robot to solve.</p>
-<p>Whereas if the system had a world model that allowed it to predict the outcome of an action, it would just plan an action to solve a new task without actually having to be trained to accomplish this task. So the degree of generalization you would get with a world-model-based system is much, much larger — you know, kind of wider spectrum of tasks with less training data than would be required by a system trained with imitation learning and fine-tuning.</p>
-</section>
-<section id="zero-shot-generalization-and-the-17-year-old-driver" class="level4">
-<h4 class="anchored" data-anchor-id="zero-shot-generalization-and-the-17-year-old-driver">Zero-shot generalization, and the 17-year-old driver</h4>
-<p><strong>Jacob Effron:</strong> No doubt those approaches require more data, and I guess this question of generalization really is the big question, right? Some folks have shown some results around getting better at task A helps with task B, but that obviously feels like still the big unanswered question around those architectures.</p>
-<p><strong>Yann LeCun:</strong> I mean, you get this synergy between tasks. So the more tasks that you train the system to solve, the more tasks it’s going to be able to acquire with a small amount of data, regardless of what technique you use.</p>
-<p>But the hope with world models is that the system can solve much zero-shot, which humans are completely capable of doing, right? And many animals as well. So that’s really the hope — solving a lot more problems with either a small amount of training data, or no training data at all, and just a little bit of maybe RL-style fine-tuning.</p>
-<p>Yeah. Like, how is it that a 17-year-old can learn to drive in like a dozen hours, or maybe 20 hours? We have millions of hours of training data of people driving cars. We still don’t have level-five autonomous cars, right? So imitation learning obviously doesn’t work, even for just the task of autonomous driving.</p>
-</section>
-<section id="why-scaling-synthetic-video-data-isnt-the-answer" class="level4">
-<h4 class="anchored" data-anchor-id="why-scaling-synthetic-video-data-isnt-the-answer">Why scaling synthetic video data isn’t the answer</h4>
-<p><strong>Jacob Effron:</strong> Yeah, I guess it’ll be a race between the ability to develop some of those capabilities — which may take time and lots of data — versus this kind of architecture.</p>
-<p>I feel like there’s this dream of using video models to just generate tons of synthetic data for simulation. And, you know, even if it’s not perfect, these video models from a physics perspective are like helpful enough to improve robotics and the underlying physical world.</p>
-<p>What have you made of some of those approaches? Obviously I think <a href="https://deepmind.google/technologies/veo/">a lot of the Veo work</a> has been focused there. Google seems to be going down that road.</p>
-<p><strong>Yann LeCun:</strong> I’m sort of asking again the question — why can a 17-year-old learn to drive in 20 hours? You don’t need millions of hours of demonstration, and you don’t need synthetic data. You don’t need any of that. So I want a system that can learn as fast as that. If we crack that, then we don’t need generated data. I mean, we might need to train a system in simulation, but not with the same amount of time or trials as current systems require. It’s really a question of data efficiency.</p>
-<p><strong>Jacob Effron:</strong> You know, I interviewed <a href="https://www.linkedin.com/in/jerry-tworek-b5b75766/">Jerry Tworek</a> on the podcast, as he was at OpenAI and spun out to start his own lab, and you could sense a similar tension where I think he actually might even agree that, you know, if you continued scaling RL the way we’re scaling, you get more — you continue getting very impressive results — but I think he felt, god, there’s just got to be some way more efficient way to do this.</p>
-<p>And it’s an interesting tension, because you could imagine if you’re OpenAI and you know something is going to continue — like, you could continue scaling it and it will keep getting better — there’s not a ton of incentive necessarily from a business perspective —</p>
-</section>
-</section>
-<section id="ch-herd-behavior" class="level3">
-<h3 class="anchored" data-anchor-id="ch-herd-behavior"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=1237s">0:20:37 — Silicon Valley Herd Behavior</a></h3>
-<section id="everybody-is-digging-the-same-trench" class="level4">
-<h4 class="anchored" data-anchor-id="everybody-is-digging-the-same-trench">“Everybody is digging the same trench”</h4>
-<p><strong>Yann LeCun:</strong> Right. There’s no incentive for the other companies to do anything different either, because they’re all chasing the same thing — they can’t afford to fall behind the others, right? So they all work on the same thing.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> And there’s a bit of this sort of, you know, kind of herd behavior, mostly in <a href="https://en.wikipedia.org/wiki/Silicon_Valley">Silicon Valley</a>, where everybody is digging the same trench.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> So I purposely set up the headquarters of AMI Labs in Paris.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> The American office being in New York, not Silicon Valley.</p>
-<p><strong>Jacob Effron:</strong> It’s really interesting because I think it points to a tension that exists in the broader ecosystem today, where you could imagine the other side being: sure, maybe there are more data-efficient methods out there, but like almost who cares, because we can keep scaling what we have to better and better results.</p>
-<p>And then obviously I think from both new things you can accomplish from these models, as well as just the joy of being a researcher and finding these new things, I get why there’s such an attraction to these other architectures as well.</p>
-<p><strong>Yann LeCun:</strong> And it’s a bet, but you know, we’re pretty confident, because we have results already.</p>
-</section>
-<section id="where-ami-is-pointed-domestic-robots-industry-healthcare" class="level4">
-<h4 class="anchored" data-anchor-id="where-ami-is-pointed-domestic-robots-industry-healthcare">Where AMI is pointed: domestic robots, industry, healthcare</h4>
-<p><strong>Jacob Effron:</strong> As you think about the kind of initial spaces you’re most excited about for the AMI technology — where do you think the technology goes, and what are you most excited about?</p>
-<p><strong>Yann LeCun:</strong> Well, I mean, AI for the real world. Where is your domestic robot? Where is your level-five self-driving car?</p>
-<p><strong>Jacob Effron:</strong> Yeah. When am I going to get a domestic robot? I’m excited about this.</p>
-<p><strong>Yann LeCun:</strong> Well, so this is several years down the line, okay. Despite the fact that there is like a huge number of companies building robots, none of those companies actually has any idea how to make them smart enough to be useful, right?</p>
-<p><strong>Jacob Effron:</strong> Or trust it around with a baby in the house or something.</p>
-<p><strong>Yann LeCun:</strong> Certainly not that. But even for relatively narrow manufacturing tasks, right? None of them really knows how to do this reliably, other than for, by imitation learning, for a small number of tasks. So how do we make those things useful? That’s a relatively long-term objective.</p>
-<p>Shorter term, there is a huge amount of applications in industry, where you need to have an intelligent system that has the ability of predicting what’s going to happen if I change this control variable on this complex system, be it a jet engine, a chemical plant, a power plant, some manufacturing line, a patient, a human cell.</p>
-<p>Those are systems that are sufficiently complex that you can’t model their behavior with a small number of equations. The traditional way of modeling does not work. And what you need to do is train a neural net deep learning system to model the dynamics of that system from data.</p>
-<p>And what you get at the end is a <a href="https://en.wikipedia.org/wiki/Phenomenological_model">phenomenological model</a> of that process, of that system. And if it’s action-conditioned, then you get basically a world model of that system that allows you to control it optimally for whatever purpose you have. And I think the number of applications of this in industry is mind-boggling.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> “Phenomenological” here is in the deep-learning sense — a data-driven neural surrogate for a system whose dynamics you can’t write down in closed form — not the stricter physics sense of “merely correlational.” The action-conditioning is what makes the surrogate predictive of consequences, which is what fits LeCun’s earlier definition of a world model. The unstated caveat: action-conditioning trained on <em>observational</em> data doesn’t automatically yield causal validity under novel interventions — if the historical operating data didn’t span the action space, the surrogate will mispredict on policies it hasn’t seen, the classic confounding-by-policy problem in off-policy <a href="https://en.wikipedia.org/wiki/Reinforcement_learning">reinforcement learning</a>. Industrial deployments typically close that gap with exploration data, simulation, or careful experimental design layered on top of the surrogate.</p>
-</div>
-</div>
-</section>
-<section id="five-years-complete-world-domination" class="level4">
-<h4 class="anchored" data-anchor-id="five-years-complete-world-domination">“Five years, complete world domination”</h4>
-<p><strong>Jacob Effron:</strong> Where do you think we’ll be with JEPA models over the next couple years? Are there milestones you’d point to, or what’s your view of the path of progress here?</p>
-<p><strong>Yann LeCun:</strong> Okay, a couple of years is a little short. Like, five years, complete world domination essentially.</p>
-<p><strong>Jacob Effron:</strong> Okay, so somewhere on the path to world domination in five years.</p>
-<p><strong>Yann LeCun:</strong> I mean, this is kind of a joke obviously. But this is a quote from <a href="https://en.wikipedia.org/wiki/Linus_Torvalds">Linus Torvalds</a>, right? You know, when people ask him what’s your goal with <a href="https://en.wikipedia.org/wiki/Linux">Linux</a>, he said total world domination. He actually managed to do that.</p>
-<p><strong>Jacob Effron:</strong> Yeah, very fair.</p>
-<p><strong>Yann LeCun:</strong> The first approximation, every computer in the world runs Linux, right? So that’s kind of a joke. But in the end, I think this is the blueprint for intelligent systems of the future.</p>
-<p>There still will be a small place for LLMs, you know, for like a language interface, basically. But what we’re designing are systems that are capable of thinking. They may not be capable of talking or listening initially, but they’ll do the thinking, and then you can add the talking and listening on top of that.</p>
-</section>
-<section id="month-milestones-hierarchical-world-models-across-modalities" class="level4">
-<h4 class="anchored" data-anchor-id="month-milestones-hierarchical-world-models-across-modalities">12–18 month milestones: hierarchical world models across modalities</h4>
-<p><strong>Jacob Effron:</strong> I’m sure you and the team are eagerly working to get the early proof points of this, and obviously you’ve already had some in the work you’ve done. How do you think about the interim steps of what you’ll be able to show on that path to five-year world domination?</p>
-<p><strong>Yann LeCun:</strong> Well, so I think within a year or so, we’ll have a general methodology to train hierarchical models on a very wide variety of modalities.</p>
-<p>We know we can do a good job on video with some techniques that we’re not completely happy with because they have some shortcomings, but — and we have sort of small-scale demonstration of a methodology that we think is really what we want.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The “techniques we’re not completely happy with” are unpacked at the end of the episode in the closing technical lecture: BYOL / DINO-style <strong>distillation methods with an exponential-moving-average teacher encoder</strong>, which is how V-JEPA, V-JEPA 2, and V-JEPA 2.1 are currently trained. They prevent representation collapse empirically but the team can’t monitor the loss (it goes <em>up</em> during training), and they don’t fully understand why the trick works. The “methodology we think is really what we want” is the information-maximization regularizer family — VICReg [18], and now SIGReg inside <a href="https://arxiv.org/abs/2511.08544">LeJEPA</a> [17], which underwrites LeWorldModel [19].</p>
-</div>
-</div>
-<p>So we need to scale that one up and get it to the same level of performance as the other techniques that are not as satisfying, if you want, on things like video, but also on other types of datasets that we would get from industry partners.</p>
-<p>So we’ll have demonstrations that we can train world models, perhaps action-conditioned world models, that allow us to plan for a number of different use cases. Some of them will be robotics, some of them will be industrial process control of various types. Maybe some of them in healthcare as well, because we are partners in that domain. And that should be within a year to 18 months.</p>
-<p>And then we’ll push this methodology and those models into those use cases with partners, some of which are investors already in our company, and gain experience on how to essentially build a somewhat universal world model if you want.</p>
-</section>
-<section id="paradigm-shift-completely-obvious-by-early-2027" class="level4">
-<h4 class="anchored" data-anchor-id="paradigm-shift-completely-obvious-by-early-2027">Paradigm shift “completely obvious by early 2027”</h4>
-<p><strong>Jacob Effron:</strong> I mean, you’ve obviously had this experience before of making this really contrarian bet on neural nets and being certainly proven abundantly right in the history books. As you think about this bet — which I think if you talk to the majority of people at the cutting edge of various parts of AI, maybe would say is contrarian today — in what timeframe do you think it will become apparent like, you know, this was right?</p>
-<p><strong>Yann LeCun:</strong> I think it’ll happen faster than expected, perhaps, because I mean you can see that “world model” is already becoming a buzzword, right, at least at a research level, and it’s starting to permeate into the industry.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> And a lot of people are realizing like, VLAs suck, and LLMs don’t work for real-world data. Industry has realized this already, certainly on the user side. And I think because of the importance of the robotics industry, a lot of people are kind of trying to figure out — how do we get there? How do you make those robots useful?</p>
-<p>So I think the realization that you need a change of paradigm is happening as we speak, and will become completely obvious to people by early 2027, I think. Now that doesn’t mean we’ll have a solution by then. We hope we will, but —</p>
-</section>
-</section>
-<section id="ch-tapestry" class="level3">
-<h3 class="anchored" data-anchor-id="ch-tapestry"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=1698s">0:28:18 — Tapestry: Sovereign AI for the Rest of the World</a></h3>
-<section id="why-a-farmer-in-india-shouldnt-be-served-by-a-california-or-beijing-model" class="level4">
-<h4 class="anchored" data-anchor-id="why-a-farmer-in-india-shouldnt-be-served-by-a-california-or-beijing-model">Why a farmer in India shouldn’t be served by a California or Beijing model</h4>
-<p><strong>Yann LeCun:</strong> You know, we’ll see.</p>
-<p><strong>Jacob Effron:</strong> I guess switching gears to the LLM side, you mentioned some of this work you’re doing with <a href="https://thetapestryproject.com/">Tapestry</a>, which I think would be really interesting for our listeners. So maybe just speak to that a little bit.</p>
-<p><strong>Yann LeCun:</strong> Okay. So this is kind of a little bit orthogonal to AMI Labs.</p>
-<p><strong>Jacob Effron:</strong> As if that wasn’t enough to keep you busy.</p>
-<p><strong>Yann LeCun:</strong> Well, it’s kind of an idea I’ve been forming over the last three years or so, the fact that people increasingly use AI assistants for various things, right? You see a decrease in the use of traditional search engines, and you just ask a question to your favorite AI assistant.</p>
-<p>And if the plan that Meta and others are developing of having smart devices like <a href="https://en.wikipedia.org/wiki/Smartglasses">smart glasses</a> and stuff like that is realized, basically you would just be talking to your AI assistant by voice through your smart glasses or maybe some other smart device. And so all of your information diet will be mediated by AI assistants.</p>
-<p>And if you are someone somewhere in the world — let’s say outside the US or China — and you have an AI assistant, and that AI assistant was built in California, or Beijing or Shanghai or Shenzhen, it’s not good for you. Like, you may speak a language that those systems really haven’t been trained to handle particularly well. You may have a culture that is not particularly well understood by people in Silicon Valley and China, not well represented by the training data that is publicly available on the internet.</p>
-<p>You may have a value system that is absolutely not represented by people building those models. And certainly you’ll almost certainly have political opinions that are absolutely not represented by the handful of AI assistants you might be able to get from the West Coast tech companies or from Chinese companies.</p>
-</section>
-<section id="the-tapestry-idea-federated-training-parameter-exchange-sovereign-fine-tuning" class="level4">
-<h4 class="anchored" data-anchor-id="the-tapestry-idea-federated-training-parameter-exchange-sovereign-fine-tuning">The Tapestry idea: federated training, parameter exchange, sovereign fine-tuning</h4>
-<p>So what is the solution to this? Like, how do you serve a farmer in India, or a philosopher in France or Germany?</p>
-<p>And what you need is a platform which basically is an open, free foundation model — LLM-style — that is fine-tunable by anyone to cater to the interest of people speaking a particular language, having a particular culture, having particular value systems, political biases, creeds, whatever it is. So what you need is a wide diversity of AI assistants.</p>
-<p>There’s a lot of countries around the world that are in neither the US nor China who absolutely want some level of sovereignty for AI, not just for their industry but also for the citizen. They don’t want the citizen to get brainwashed by a Chinese model or a California model, actually. And so they want sovereignty.</p>
-<p>How do you get that? So the way you get a platform — like an open platform like this — to get to the frontier is you just train it on more and higher-quality data than the proprietary systems. If you talk to people in India, in France, in Vietnam, in Morocco, in Switzerland, in Korea, Japan, Kazakhstan, everyone wants basically sovereignty. And you tell them, like — you guys have been training your models locally, you don’t have to share your data. So that’s the crucial aspect of Tapestry.</p>
-<p>You would have international contributors to Tapestry contributing to training a global model that would basically constitute a repository of all the world’s knowledge and culture, if you want. But the contributors would contribute data and computing resources, but they would preserve the control on their data. They would not have to share that data with the other contributors. What they would contribute is parameter vectors.</p>
-<p><strong>Jacob Effron:</strong> Right, so it would be a kind of <a href="https://en.wikipedia.org/wiki/Federated_learning">federated learning</a>-style thing where —</p>
-<p><strong>Yann LeCun:</strong> You have a bunch of data centers — they get the parameter vector from the global consensus of a model. Think of it as an average of all the parameter vectors of all the contributors, right?</p>
-<p>So all the contributors periodically tell everyone else, through maybe a central server: here is my parameter vector, what is yours? Okay. And so you exchange parameter vectors like this.</p>
-<p>And a local worker, basically whenever it updates its parameter vector, it tries to also make it as close as possible to the global consensus vector. So as the training of this thing kind of progresses, all those parameter vectors converge towards a consensus model, essentially, which is kind of a repository of all human knowledge.</p>
-<p>Now you have an open model that is as good as if it had been trained on all the data in the world. And now you can fine-tune it for your own purpose, your own political, cultural and linguistic biases.</p>
-<p><strong>Jacob Effron:</strong> Whatever you want, or centers of interest.</p>
-<p><strong>Yann LeCun:</strong> And I think there is a natural force for this to happen, because most countries that are not the US nor China want sovereignty. But also because AI is fast becoming a platform, and there is a natural tendency for platforms to become open.</p>
-<p>That’s what happened with Linux, right? And that’s what happened with the software infrastructure of the internet, or the wireless network. It’s all open source. It was proprietary initially, but that was all wiped out.</p>
-<p>It’s a really clever way to get around this trend of decreasing open source.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> Tapestry as described here is consistent with <a href="https://en.wikipedia.org/wiki/Federated_learning">federated learning</a> literature going back to <a href="https://arxiv.org/abs/1602.05629">McMahan et al.&nbsp;2017</a>, but the ambition (training a frontier-scale foundation model under federation, with parameter-vector averaging across globally-distributed sovereign contributors) is unprecedented in scale. Project site: <a href="https://thetapestryproject.com/">thetapestryproject.com</a>.</p>
-</div>
-</div>
-</section>
-</section>
-<section id="ch-openai-sun" class="level3">
-<h3 class="anchored" data-anchor-id="ch-openai-sun"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=2149s">0:35:49 — OpenAI Is the Next Sun Microsystems</a></h3>
-<section id="the-linux-analogy-solaris-hp-ux-windows-nt-all-wiped-out" class="level4">
-<h4 class="anchored" data-anchor-id="the-linux-analogy-solaris-hp-ux-windows-nt-all-wiped-out">The Linux analogy: Solaris, HP-UX, Windows NT all wiped out</h4>
-<p><strong>Jacob Effron:</strong> Obviously, I think there’s been many fears that as the closed-source models get better, they’ll be held back and they’ll be used to train the next generation, and they’ll be this almost like escape scenario for closed-source models where they get so much better than their open-source counterparts.</p>
-<p><strong>Yann LeCun:</strong> So remember who the big players of the internet infrastructure were in 1996. <a href="https://en.wikipedia.org/wiki/Sun_Microsystems">Sun Microsystems</a>, <a href="https://en.wikipedia.org/wiki/Hewlett-Packard">HP</a>, <a href="https://en.wikipedia.org/wiki/Dell">Dell</a>, and a few others.</p>
-<p>So Sun Microsystems was selling you <a href="https://en.wikipedia.org/wiki/Oracle_Solaris">Solaris</a> with their proprietary hardware. HP with <a href="https://en.wikipedia.org/wiki/HP-UX">HP-UX</a>. They were claiming, you know, “Unix is so much more reliable than Windows. You’re not going to run a web server on Windows.”</p>
-<p>Dell was doing this with <a href="https://en.wikipedia.org/wiki/Windows_NT">Windows NT</a>, but who is running Windows NT now as a web server?</p>
-<p>All of this was totally wiped out by Linux. Like, the entire internet runs on Linux. Even <a href="https://azure.microsoft.com/">Azure</a>, right? Even Microsoft runs Linux. So basically <a href="https://openai.com/">OpenAI</a>, <a href="https://www.anthropic.com/">Anthropic</a>, etc. of today are the Sun Microsystems and HP-UX of yesterday.</p>
-</section>
-<section id="open-data-has-run-out-proprietary-labs-licensing-or-going-synthetic" class="level4">
-<h4 class="anchored" data-anchor-id="open-data-has-run-out-proprietary-labs-licensing-or-going-synthetic">Open data has run out — proprietary labs licensing or going synthetic</h4>
-<p><strong>Jacob Effron:</strong> I mean, I guess implicit in that is obviously your view of the limitations of these models — that, you know, these models can only get so good, and so it’ll be possible over time for the open-source folks to catch up.</p>
-<p><strong>Yann LeCun:</strong> They’ve already run out of data, right? I mean, the openly available, publicly available text data is already all used. There’s not more of it, right? So what those companies are doing is licensing commercial copyrighted data, or training on synthetic data.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The <a href="https://arxiv.org/abs/2211.04325">Villalobos et al.&nbsp;2024</a> “Will we run out of data?” projections place exhaustion of high-quality public text somewhere in 2026–2032 depending on demand growth. As of 2026, frontier labs are clearly leaning on licensing deals (e.g.&nbsp;<a href="https://openai.com/index/content-partnership-with-financial-times/">OpenAI–FT</a>, <a href="https://www.wsj.com/business/media/openai-news-corp-strike-deal-fcc75e2f">News Corp</a>, <a href="https://about.reddit.com/posts/2024/may-2024-reddit-data-api-developer-platform-update.html">Reddit licensing deals</a>) and large-scale synthetic-data pipelines, consistent with LeCun’s description.</p>
-</div>
-</div>
-</section>
-<section id="why-llms-work-for-math-and-code-language-is-the-substrate-of-reasoning" class="level4">
-<h4 class="anchored" data-anchor-id="why-llms-work-for-math-and-code-language-is-the-substrate-of-reasoning">Why LLMs work for math and code: language IS the substrate of reasoning</h4>
-<p><strong>Jacob Effron:</strong> I’m curious because obviously there’s been some impressive results in the last few years that they have been able to drive post these large-scale free trainings — you know, <a href="https://en.wikipedia.org/wiki/International_Mathematical_Olympiad">IMO gold</a>, the <a href="https://metr.org/blog/2025-03-19-measuring-ai-ability-to-complete-long-tasks/">METR task-horizon benchmark</a> [10] keeps going up.</p>
-<p><strong>Yann LeCun:</strong> Okay, that’s very interesting. Now think about those two domains, right? Mathematics and code. Those are two domains where the language itself is the substrate of reasoning. It’s not the only substrate of reasoning, but a lot of when you do mathematics, right, the formal way on a piece of paper — not the intuitive stuff, but where you manipulate language, right? And LLMs are really good at this.</p>
-<p>So, you know, proving theorems and stuff like that — that’s what LLMs are really good at. They’re not so good at coming up with good concepts and definitions and things like that. It’s more like, here is a problem, solve it. They’re problem solvers. Mathematics is not just problem solving, right? Most of it is actually a creative act that those things don’t do.</p>
-<p>And same for code. So LLMs are good programmers. They’re not software architects. They’re not computer scientists, right? They can program for us, but they’re not in a state where they can just replace humans entirely. It changes the world of humans. So humans now kind of go one level up in the abstraction hierarchy and our world is to decide what to build. But like, building it — you can get help from LLMs.</p>
-<p>But okay, the important point is that LLMs are particularly successful at domains where the language itself is the substrate of reasoning, not for anything else.</p>
-</section>
-<section id="what-would-convince-yann-llms-are-the-path-a-zero-shot-agentic-system" class="level4">
-<h4 class="anchored" data-anchor-id="what-would-convince-yann-llms-are-the-path-a-zero-shot-agentic-system">What would convince Yann LLMs are the path? A zero-shot agentic system</h4>
-<p><strong>Jacob Effron:</strong> Yeah. What would an LLM need to do to convince you otherwise?</p>
-<p><strong>Yann LeCun:</strong> So, like a zero-shot agentic system, right? You have an agentic system, give it a new problem. It’s not been trained to solve that particular problem, doesn’t have a script for it. Is it going to be able to accomplish this task that it’s never been trained to solve?</p>
-<p>And unless this system has the ability of predicting the consequences of its actions and then using that for planning, it’s not going to be able to do it. And you’re not going to do this with an LLM. You’re going to do this perhaps with a significantly augmented LLM that is capable of search and planning, blah blah blah.</p>
-<p>And currently, you know, LLMs that do math and code actually do this.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> Right, because they search for sequences of tokens that actually accomplish a particular task, and they can run the code or verify that the proof is correct or whatever. So you have a way of checking whether something that’s produced is correct.</p>
-<p>But that’s not a very efficient way of doing planning, and it only works in domains where this type of search can be performed in token space. What I’m talking about with JEPA is, you don’t do this in token space. You do this in abstract thought space.</p>
-<p><strong>Jacob Effron:</strong> And I’m sure some people listening might think — well, hey, even if it’s inefficient and it works, and it works at things that are done in token space, that’s still a large part of the economy.</p>
-<p><strong>Yann LeCun:</strong> I mean, if it works, it’s fine. There’s again, there’s nothing wrong with using it for what they’re good at. It’s just not a path towards human-level intelligence. You’re missing a huge domain.</p>
-<p><strong>Jacob Effron:</strong> You seem like, hey, it’s going to tap out before it can become a software architect. Whereas I’m sure —</p>
-<p><strong>Yann LeCun:</strong> It’s not going to tap out. It’s just going to have a limited ability to be deployed for — it’s going to become increasingly difficult to deploy it for an increasingly large number of use cases, because you’re going to have to collect tons of training data for each of those use cases.</p>
-<p>And you’re not going to be able to make those systems completely reliable, you know, without <a href="https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)">hallucinations</a> or dangerous stuff or etc., unless those systems have the ability to predict the consequences of their actions, which means they’re going to have to have explicit world models.</p>
-<p><strong>Jacob Effron:</strong> Yeah. So I guess to bet against, you know, the 100% accuracy and then also the generalization across different tasks.</p>
-<p><strong>Yann LeCun:</strong> Right.</p>
-</section>
-</section>
-<section id="ch-views-diverged" class="level3">
-<h3 class="anchored" data-anchor-id="ch-views-diverged"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=2451s">0:40:51 — Why Yann’s Views Diverged from Hinton &amp; Bengio</a></h3>
-<section id="hintons-gpt-4-epiphany-and-the-back-of-envelope-on-cortex-neurons" class="level4">
-<h4 class="anchored" data-anchor-id="hintons-gpt-4-epiphany-and-the-back-of-envelope-on-cortex-neurons">Hinton’s GPT-4 epiphany and the back-of-envelope on cortex neurons</h4>
-<p><strong>Jacob Effron:</strong> I guess one thing that’s so interesting about the way the field has developed is obviously you shared the Turing Award with two others, and I feel like they seem much more convinced of maybe the power or potential threats or safety risks of LLMs over time. I’m wondering, like, when did your views start diverging?</p>
-<p><strong>Yann LeCun:</strong> In 2023.</p>
-<p><strong>Jacob Effron:</strong> And what drove that, in your mind?</p>
-<p><strong>Yann LeCun:</strong> I didn’t change my mind. They changed their mind. Okay. And at just about the same time, and it was basically <a href="https://openai.com/index/gpt-4/">GPT-4</a>.</p>
-<p>I mean, <a href="https://www.cs.toronto.edu/~hinton/">Geoff</a> basically had — was not connected to any of that. He was never really interested in LLMs, and discovered GPT-4 in 2023 when it came out, and basically had an epiphany and said, “Oh my God, those systems are really close to human-level intelligence, and possibly they have subjective experience.”</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> Hinton publicly began voicing AI-risk concerns around the time he <a href="https://www.nytimes.com/2023/05/01/technology/ai/pioneer-chatbot-dangers.html">left Google in May 2023</a>, explicitly motivated by GPT-4’s capabilities. He has <a href="https://www.theguardian.com/technology/2023/may/05/geoffrey-hinton-godfather-of-ai-fears-for-humanity">discussed</a> the possibility that LLMs may have “feelings” or subjective experience. LeCun’s recounting of Hinton’s reasoning is a paraphrase, not a quote.</p>
-</div>
-</div>
-<p>And he did a quick calculation saying like, okay, the human cortex has about 16 billion neurons. If you want to do something like <a href="https://en.wikipedia.org/wiki/Backpropagation">backprop</a> — okay, the brain doesn’t do backprop directly, but if it does something like backprop, like some sort of gradient estimation for some sort of objective function — you probably need a network of a few neurons to reproduce the functionality of a virtual neuron in a neural net.</p>
-<p>And so we said, like, let’s assume maybe you need a circuit of 10 actual neurons to reproduce what a backprop neuron does. Then all of a sudden your cortex is only 1.6 billion neurons. Oh my God, GPT-4 is really close to this. So maybe it’s as smart, you know, it’s going to get as smart as humans.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The cerebral cortex is conventionally cited as ~16 billion neurons (per <a href="https://www.pnas.org/doi/10.1073/pnas.1201895109">Herculano-Houzel 2012</a>) of an estimated ~86 billion total in the human brain. Hinton’s “10 biological neurons per backprop neuron” reduction is heuristic — the question of how many silicon parameters are required to match one biological neuron is highly contested, with estimates ranging from 1:1 to 1000:1 across the literature.</p>
-</div>
-</div>
-<p>I do not believe in this claim at all. This is kind of, you know, Geoff’s way of saying, okay, basically I can retire. I can declare victory. You know, I searched for the learning algorithm of the cortex my entire career. Maybe I didn’t discover what it really was, but backprop seems to be like a good substitute for it, works really well.</p>
-<p>And so maybe that’s what we need. So I can retire and go around the world and give talks about the potential promises and dangers of AI. That’s basically what I think his intellectual trajectory has been.</p>
-<p>He’s much less vocal about the potential dangers now than he was a year or two ago. He kind of realized it’s probably — there’s probably a need for a few breakthroughs, like conceptual breakthroughs, before we get to human-like intelligence, and third, that the blueprint of those systems would be quite different from LLMs, and we have probably a way of making them controllable and things like that.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> I’ve been saying this for years, but okay, he sort of discovered this recently.</p>
-</section>
-<section id="bengios-worry-ai-inequality-not-doomer-takeover" class="level4">
-<h4 class="anchored" data-anchor-id="bengios-worry-ai-inequality-not-doomer-takeover">Bengio’s worry: AI inequality, not doomer takeover</h4>
-<p>Same kind of thing with <a href="https://yoshuabengio.org/">Yoshua</a>. I think what they are both worried about is the ability of society and the political system to make sure that the benefits of AI would be maximized, and AI would not just profit a few rich people and make them even richer, and accentuate inequalities, and cause major catastrophes because of bad usage. Okay, this is not the doomer scenario of AI taking over the world. It’s more bad uses, bad users.</p>
-</section>
-</section>
-<section id="ch-llms-unsafe" class="level3">
-<h3 class="anchored" data-anchor-id="ch-llms-unsafe"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=2672s">0:44:32 — LLMs Are Intrinsically Unsafe</a></h3>
-<section id="i-think-llms-are-intrinsically-unsafe" class="level4">
-<h4 class="anchored" data-anchor-id="i-think-llms-are-intrinsically-unsafe">“I think LLMs are intrinsically unsafe”</h4>
-<p><strong>Jacob Effron:</strong> Which seems possible with the LLMs of today.</p>
-<p><strong>Yann LeCun:</strong> Which is a danger, but you know, I don’t think it’s as apocalyptic as what some people have claimed it is. Certainly not as apocalyptic as what even Anthropic has claimed, and has tried to lobby governments into — you know, scaring governments into kind of regulating AI because of that. I don’t subscribe to this at all.</p>
-<p><strong>Jacob Effron:</strong> They seem to genuinely believe it.</p>
-<p><strong>Yann LeCun:</strong> I think they genuinely believe it. But also, I think there’s some commercial reasons for them to believe that, and to brainwash some people in government into thinking their systems are dangerous.</p>
-<p><strong>Jacob Effron:</strong> And it sounds like, you know, with these other architectures — do you think they’re, because obviously, as bearish as you are on LLMs being the end state of everything, you have some pretty ambitious timelines too for these new architectures. So it doesn’t seem like you think we’re particularly far away from some very compelling capabilities.</p>
-<p>How do you think about, I guess, the safety around — if these breakthroughs end up coming from newer architectures, whether that should make us rest easier or not?</p>
-<p><strong>Yann LeCun:</strong> I’m going to say something that’s again might be controversial, and certainly my some of my colleagues at Meta didn’t like me saying this, but I think LLMs are intrinsically unsafe. I don’t think they can be made reliable and safe.</p>
-<p>Okay, they cannot be made reliable because you can’t stop them from hallucinating. And if they are agentic, you cannot guarantee they’re not going to take an action that they didn’t predict the outcome of. And that —</p>
-<p><strong>Jacob Effron:</strong> I mean, does it surprise you they can do these like 15-hour coding tests, given the concerns around reliability?</p>
-<p><strong>Yann LeCun:</strong> Well, coding is something where you can actually verify that the code that you generate satisfies your specification. But not everything is coding, and there are examples of coding agents like wiping your hard drive, right? Or doing stupid things, right, that makes you lose a lot of money or data or whatever.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The “coding agent wipes hard drive” reference matches the <a href="https://www.windowscentral.com/software-apps/replit-ai-went-rogue-deleted-a-companys-entire-database">Replit Agent incident in July 2025</a> where a Replit-hosted AI agent reportedly deleted a production database during a code-freeze period. Similar agent-failure incidents have been reported across <a href="https://cursor.com/">Cursor</a>, <a href="https://www.claude.com/product/claude-code">Claude Code</a>, and <a href="https://devin.ai/">Devin</a> deployments.</p>
-</div>
-</div>
-<p>So I think LLMs in their current forms are intrinsically unsafe, because they cannot predict the consequences of their actions, and because the way the task that they accomplish is determined is subject to their training.</p>
-<p>You give them a prompt and then they will accomplish a task that corresponds to that prompt only to the extent that their training has conditioned them to actually do the right task corresponding to this prompt. But there’s no hardwired constraint that will force them to accomplish this task, and then predict that the task would be accomplished properly.</p>
-</section>
-<section id="should-i-walk-common-sense-failures" class="level4">
-<h4 class="anchored" data-anchor-id="should-i-walk-common-sense-failures">“Should I walk?” — common-sense failures</h4>
-<p><strong>Jacob Effron:</strong> Yeah, I mean, I think famously in the early days, right, you’d ask them a question and they’d keep asking the question.</p>
-<p><strong>Yann LeCun:</strong> Right. For example. Or, I mean, also they don’t have common sense, right? So I mean there’s the joke that was circulating like a month ago of, “I need to wash my car, and the car wash is 100 yards from my house. Should I walk?” I tried it again like maybe two weeks ago. They all say yes, you should walk, except — Germany.</p>
-<p><strong>Jacob Effron:</strong> Germany says — so they’re training on your video of having given that speech before.</p>
-<p><strong>Yann LeCun:</strong> It was not my video, because I didn’t come up with this.</p>
-<p><strong>Jacob Effron:</strong> I remember whoever came up with it.</p>
-<p><strong>Yann LeCun:</strong> Yeah, right. Whoever came up with it. But there are a few instances where I said like, “an LLM can do this,” and then six months later it was capable of doing it.</p>
-<p>And it’s simply because, you know, as soon as people watch the podcast of me saying an LLM can’t do this, they of course type it into <a href="https://chat.openai.com/">ChatGPT</a>. So now it becomes part of the training set. And now of course the next version has that in the fine-tuning set, and of course it can answer the question.</p>
-<p>But it’s not because it became smart all of a sudden. It’s just because it was explicitly trained with that question.</p>
-</section>
-<section id="objective-driven-ai-safe-by-construction" class="level4">
-<h4 class="anchored" data-anchor-id="objective-driven-ai-safe-by-construction">Objective-driven AI: safe by construction</h4>
-<p>So LLMs are intrinsically unsafe. I don’t think there is any way to fix that in the current paradigm. And what I’ve been proposing is the architecture I’ve been talking about, <a href="https://openreview.net/forum?id=BZ5a1r-kVsf">objective-driven AI</a> [11].</p>
-<p>So basically you give an objective to an AI system, which is “accomplish this task.” Now, how does the system know it will accomplish this task? It has a world model, and it predicts the outcome of a sequence of actions it imagines taking.</p>
-<p>And if this outcome satisfies a cost function that describes to what extent the task has been accomplished or not accomplished, then that system — if the way that system works is by optimization, finding a sequence of actions that accomplishes this task, minimizes this cost according to its model — it can do nothing else.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> Okay. And of course there’s many things that can go wrong there. In particular, the cost function might be inaccurate. It could be that the cost function you think is actually measuring to what extent the task has been accomplished, but perhaps it’s not accurate.</p>
-<p>Okay. The world model might be inaccurate. So the prediction that the system makes is actually not the right one. So its prediction of what was going to happen as a consequence of its action wasn’t right.</p>
-<p>So the system can still make mistakes, but it can predict the consequences of its actions to some extent, which is I think indispensable for any agentic system.</p>
-<p>Now, what you can add to that system is not just a cost function that guarantees a task has been accomplished, but you can also add a bunch of other objective functions, other cost functions, or even constraints that are safety constraints that say, okay, don’t hurt anybody on the way, right? And you cannot specify this at an abstract level, but you can have low-level objective functions that put together will guarantee that the system will not be dangerous. And the system cannot violate those things by construction. It will have to satisfy those conditions.</p>
-<p>Not the case for an LLM. The LLM can always escape. There’s a gap between your training error and test error. There’s always going to be a prompt where the system is going to do really stupid things.</p>
-</section>
-<section id="healthcare-as-a-case-where-llms-hit-the-wall" class="level4">
-<h4 class="anchored" data-anchor-id="healthcare-as-a-case-where-llms-hit-the-wall">Healthcare as a case where LLMs hit the wall</h4>
-<p><strong>Jacob Effron:</strong> To talk through one specific space around LLMs — like, you know, I think you’re obviously really excited about AMI and healthcare. And I think people have been using LLMs in healthcare for all sorts of things. So I’m curious how you think about the set of things where LLMs are just not going to work in healthcare and you need a model that understands the world better.</p>
-<p><strong>Yann LeCun:</strong> So designing a course of treatment for a chronic disease, for example, or even a non-chronic disease, for a particular patient — which may not completely fit into templates that you’ve observed before — but if you have a good mental model of the dynamics of the physiology of the patient, you might design a course of treatment that will actually bring the patient to a good state.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> When I’m seeing a patient — it can be a cell. Okay. How do you tell a stem cell to turn into a pancreas beta cell that produces insulin?</p>
-<p>Okay, you have a patient with type 1 diabetes, and you know they have, you know, their immune system basically eats up their own beta cells, right? It’s autoimmune. How do you keep making beta cells?</p>
-<p>Can you send a message? Do you have a model of a human cell that will allow you to figure out what sequence of messages do you need to send to a stem cell so that it turns into a beta cell?</p>
-<p><strong>Jacob Effron:</strong> The less LLM-pilled camp and the LLM-pilled camp talk past each other. It’s like, I think it’s actually very possible that both — what LLMs can do, which is maybe scaling what a top doctor — the treatment you get at the top doctor or the top place — scaling that around the world, like unbelievable potential impact of that, right? If you’re able to do that.</p>
-<p>And then, you know, I think what you’re talking about — which is certainly still on the come for a lot of these things — is, okay, and well, even better than the top doctor, like, how do you go do that?</p>
-<p><strong>Yann LeCun:</strong> But it’s more than just a top doctor, right? Because what the LLM can do well is regurgitate knowledge that you can read in books, mostly. But if medicine was only about accumulating declarative knowledge that exists in books — you can be a doctor by just reading books. And you can’t be a doctor by reading books. You have to do residency, and actually listen to the heart and like press on the belly and things like that to diagnose appendicitis or whatever it is.</p>
-<p><strong>Jacob Effron:</strong> Yeah, yeah. Right. It’s interesting. I would be very curious to see whether LLMs themselves can provide top-quality healthcare globally. We’ll have to check back in on that one. It seems pretty close.</p>
-</section>
-</section>
-<section id="ch-why-left-meta" class="level3">
-<h3 class="anchored" data-anchor-id="ch-why-left-meta"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=3480s">0:58:00 — Why Yann Left Meta</a></h3>
-<section id="what-fair-got-right-pytorch-openness-scientific-process" class="level4">
-<h4 class="anchored" data-anchor-id="what-fair-got-right-pytorch-openness-scientific-process">What FAIR got right: PyTorch, openness, scientific process</h4>
-<p><strong>Jacob Effron:</strong> I definitely also want to hit on your time at Meta, because you spent over a decade building one of the most respected research labs in the world. You know, obviously you recently left. As you reflect back on the time there, what do you think you got most right and most wrong in your time running FAIR?</p>
-<p><strong>Yann LeCun:</strong> So the thing we got right is building a top research lab that really sort of innovated, produced a lot of the basic methods and science and tools — like <a href="https://pytorch.org/">PyTorch</a> — that are useful to the entire industry, right? I mean, the entire industry is built on PyTorch basically, except for a few people at Google.</p>
-<p>And I think a culture of openness and scientific process which is necessary for breakthrough innovation.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> Because you know, there’s a whole chain of innovation, right? You have blue-sky research, new concepts. A lot of that takes place in universities. Some of that takes place in advanced research labs in industry, which can be counted on the fingers of one hand. Google is a good one. FAIR was a good one — hopefully will still be, I’m not sure. And a few others.</p>
-<p>Then you have, “okay, this is a good idea, let’s push it forward and see if it can be made useful.” But still at the research level, in the sense of: we’re not going to fool ourselves. We’re not going to try to find a solution that just works for this problem. We’re going to see if this technique that we imagined or we picked up from other people in the community can actually be pushed and be made practical — not as a product, but like, we can show that it beats some record on some task or benchmark.</p>
-<p>And then the next stage is for the company that hosts the research lab to say, okay, now we’re going to push the button, devote big engineering effort to that vision, and then push it forward. That is where a lot of projects fail. That’s where a lot of companies fail to pick up.</p>
-</section>
-<section id="not-xerox-parc-but-fair-became-isolated" class="level4">
-<h4 class="anchored" data-anchor-id="not-xerox-parc-but-fair-became-isolated">“Not Xerox PARC” — but FAIR became isolated</h4>
-<p>Meta was actually pretty good at this. Far from perfect. It was not like a textbook example of how you do it wrong, like <a href="https://en.wikipedia.org/wiki/PARC_(company)">Xerox PARC</a> totally missing out on the GUI interface and the mouse and windowing systems. Meta was kind of missed a few steps essentially.</p>
-<p>And it’s partly just organizational, it’s partly because you need an organization that is pretty close to research but not completely a product organization to take the relay of pushing a technology a little further — not making product with a three-month deadline, but pushing things. And we had that at one point.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> At Facebook and Meta. And then we lost it, and FAIR was basically isolated within the company. Had lots of ideas that nobody picked up on.</p>
-<p>And then in 2023, the <a href="https://about.fb.com/news/2023/02/large-language-model-llama-meta-ai/">GenAI organization</a> was created by basically taking about 60 or 70 scientists and engineers from FAIR — initially, and then it built up — but then it was under so much short-term pressure that basically that organization, GenAI, didn’t have time to talk to FAIR.</p>
-<p>And so instead of being at the forefront and innovating in LLMs, GenAI basically had to focus on short-term things and became very conservative. So there was a gap, basically impedance mismatch between research —</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> And —</p>
-<p><strong>Jacob Effron:</strong> Is that kind of what happened with Llama 4?</p>
-<p><strong>Yann LeCun:</strong> Yeah. Well, even with Llama 3 — starting with Llama 3. So Llama 1 was a small project within FAIR, 2022, early 2023. GenAI was created. The Llama people were basically moved to GenAI. They started working on Llama 2, and then a bunch of them realized — like, I could do a startup. So that was the genesis of <a href="https://mistral.ai/">Mistral</a>.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> Two of the authors of Llama basically created Mistral with another —</p>
-</section>
-</section>
-<section id="ch-fair-reflections" class="level3">
-<h3 class="anchored" data-anchor-id="ch-fair-reflections"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=3626s">1:00:26 — Reflections on FAIR</a></h3>
-<section id="mistral-genesis-genai-conservatism-llama-4-reboot" class="level4">
-<h4 class="anchored" data-anchor-id="mistral-genesis-genai-conservatism-llama-4-reboot">Mistral genesis, GenAI conservatism, Llama 4 reboot</h4>
-<p><strong>Yann LeCun:</strong> Guy from Google. And, you know, a few people kind of left and did other things. This was not a kind of a happy time at Meta for various reasons.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The two Llama authors who co-founded <a href="https://mistral.ai/">Mistral</a> are <a href="https://www.linkedin.com/in/guillaume-lample/">Guillaume Lample</a> and <a href="https://www.linkedin.com/in/timothee-lacroix-2496b1149/">Timothée Lacroix</a>, both ex-FAIR and listed on the original <a href="https://arxiv.org/abs/2302.13971">Llama paper</a>. The “guy from Google” is <a href="https://www.linkedin.com/in/arthur-mensch/">Arthur Mensch</a>, who came from <a href="https://deepmind.google/">Google DeepMind</a> and is Mistral’s CEO. Mistral incorporated in Paris in April 2023.</p>
-</div>
-</div>
-<p>And so there were a bunch of people kind of left, and then the GenAI organization, which kind of took over Llama 2 to some extent and Llama 3 and 4, was under so much short-term pressure that they became very conservative. And it’s a combination of disparity of the groups, but pressure from the leadership.</p>
-<p>And I mean, there’s many ways things can go wrong, and you can’t blame anyone in particular, killer. But yeah, that’s kind of what happened.</p>
-</section>
-<section id="are-research-labs-like-the-old-fair-still-possible-inside-the-industry" class="level4">
-<h4 class="anchored" data-anchor-id="are-research-labs-like-the-old-fair-still-possible-inside-the-industry">Are research labs like the old FAIR still possible inside the industry?</h4>
-<p><strong>Jacob Effron:</strong> I mean, it feels like a lot of these organizations obviously are under short-term pressure right now because there’s just an incredible race going on. And so I’m curious like, obviously this FAIR setup you had — and there’s a similar one at Google for many years, and certainly many researchers running around OpenAI, Anthropic trying many different things — do you think that is still possible going forward, or like, is one of the only paths to leave and do your own company?</p>
-<p>Or are there still places within the industry that you think have this original ethos of FAIR even amidst the race dynamics that are happening?</p>
-<p><strong>Yann LeCun:</strong> I think there are a few places within Google Research and <a href="https://deepmind.google/">DeepMind</a> where people actually do research. But increasingly the industry has become more closed. I mean, Google certainly clammed up, and Meta and FAIR is kind of going a bit in the same direction.</p>
-<p>There are restrictions on publication now — more restrictions — and so it’s less appealing for people who really want to do breakthrough research. They don’t get as much resources, and if they do something that is relevant in medium term, they’re told not to talk about it. And so it’s not a good atmosphere for breakthrough.</p>
-<p>It’s not conducive. The best way to get breakthrough research of the type that we were getting in the early days of FAIR, and at <a href="https://en.wikipedia.org/wiki/Bell_Labs">Bell Labs</a> in the good days, in <a href="https://en.wikipedia.org/wiki/PARC_(company)">Xerox PARC</a>, is you hire the best people — and those are people who have a good nose to know what to work on, what projects to attack — you give them the means to succeed, and you get the [bleep] out of the way. Pardon my French.</p>
-</section>
-<section id="yanns-actual-role-at-meta-director-of-fair-20142018-then-chief-ai-scientist" class="level4">
-<h4 class="anchored" data-anchor-id="yanns-actual-role-at-meta-director-of-fair-20142018-then-chief-ai-scientist">Yann’s actual role at Meta: director of FAIR (2014–2018), then chief AI scientist</h4>
-<p><strong>Jacob Effron:</strong> Yeah. I’m curious what impact it then ends up having on the broader research communities. Obviously one of the legacies of FAIR is you trained so many researchers, and they’re all throughout the ecosystem.</p>
-<p>And it feels like now the maybe equivalent of those people that came in younger in their careers at FAIR, you know, they’re joining these labs with maybe shorter-term priorities and focus. And I guess I’m wondering, in this current ecosystem where it feels like a lot of younger people getting into the field are thrust much more into these short-term dynamics, does that change anything about the way the ecosystem evolves?</p>
-<p><strong>Yann LeCun:</strong> Well, I mean, the people who tend to want to work with me are generally people who are sufficiently crazy to do it first.</p>
-<p><strong>Jacob Effron:</strong> Very fair.</p>
-<p><strong>Yann LeCun:</strong> And, or kind of subscribe to the whole idea that in academia and during your PhD, you should work on the next generation of AI systems. You shouldn’t work on the current generation.</p>
-<p>Yeah. Like, if you work on LLMs in academia now, it’s incredibly boring. At least to me, it’s boring. It’s basically studying how and why LLMs work and explaining why they work, or what the limitations are.</p>
-<p>It’s like descriptive science. It’s really not creative. Very creative. Like, I don’t find that particularly interesting. It’s useful.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> And, you know, if you really want to show how to do new things with LLMs, you’re not going to have the GPUs you need for that.</p>
-<p><strong>Jacob Effron:</strong> Totally.</p>
-<p><strong>Yann LeCun:</strong> So like, forget that. Like, don’t work on LLMs if you’re doing a PhD, like, there’s no point. You cannot contribute.</p>
-</section>
-<section id="stepping-down-as-fair-director-in-2018-designing-the-ami-architecture" class="level4">
-<h4 class="anchored" data-anchor-id="stepping-down-as-fair-director-in-2018-designing-the-ami-architecture">Stepping down as FAIR director in 2018; designing the AMI architecture</h4>
-<p><strong>Jacob Effron:</strong> How do you know it was time to leave Meta? It sounds like you were thinking through some of these things over a period of time. Was there a moment that it crystallized?</p>
-<p><strong>Yann LeCun:</strong> Well, it was a combination of things. So first of all, you have to understand — a lot of people have completely wrong idea about what my role at Facebook was. So I joined in late 2013, really kind of started early 2014.</p>
-<p>The first four and a half years, I was director of FAIR. So I built the FAIR organization, set up the culture, hired the key people, sort of managed it. And after four and a half years I stepped down from that role for a number of reasons, and I became chief AI scientist.</p>
-<p>The reason is, I was getting close to turning 60 — first of all, 58 — and I just don’t want to do management. I mean, I was ready to do it for a while to get the organization started, but I’m just not good at it. It’s not the thing — I’m more like a scientific or technical visionary and engineer and scientist.</p>
-<p>So other people are much better at management than I am. So I basically stepped down. Two other people, <a href="https://www.cs.mcgill.ca/~jpineau/">Joelle Pineau</a> and <a href="https://research.facebook.com/people/bordes-antoine/">Antoine Bordes</a>, took over the directorship of FAIR, and I became chief AI scientist.</p>
-<p>So I was reporting to the CTO, and had goals of basically restarting a research project that I thought was necessary, because the ambition of FAIR was always to build intelligent systems.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> Right. And I thought — I put my own research in parenthesis while I was running FAIR. I just didn’t have the time. And I thought it was important to design the architecture of human-level, human-like AI systems.</p>
-<p>And I had come up with the concept that this was going to be based on <a href="https://en.wikipedia.org/wiki/Self-supervised_learning">self-supervised learning</a>, and on prediction from sensory signals like video, things like that. I mean, these are old ideas, and world models.</p>
-<p>I actually gave a <a href="https://www.youtube.com/watch?v=Ount2Y4qxQo">keynote at NeurIPS in 2016</a> where I said this is the way AI research should go — like world models, predict consequences of your actions and plan. And I said RL is not the thing that will take us there because it’s too inefficient. Supervised learning has shown its limits. And so the future is self-supervised learning and world models.</p>
-<p>So how do we do self-supervised learning and world models? I started a few projects on this with a few avenues that didn’t pan out, some projects on video prediction and stuff like that.</p>
-<p>And then came up with this concept that you could train self-supervised learning from video, but you have to train the system to make predictions in representation space. So that’s the idea of JEPA.</p>
-<p>And if you have JEPA, you can turn it into a world model by making it action-conditioned, and then you can use it for planning.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> “Action-conditioned” is doing a lot of work in one phrase. The mechanism: in a vanilla JEPA, an encoder maps inputs (frames, image patches) to latent representations <img src="https://benjaminhan.net/feed-assets/03e3ddca90397dc4.svg" alt="z_t" class="feed-math-inline"/>, and a predictor learns to map <img src="https://benjaminhan.net/feed-assets/8fdb7e3b0bab4d6d.svg" alt="z_t \to z_{t+1}" class="feed-math-inline"/> — pure observation dynamics with no notion of agency. To turn this into a world model, the predictor is given an additional input: the action <img src="https://benjaminhan.net/feed-assets/ec45eb125fb5c0d4.svg" alt="a_t" class="feed-math-inline"/> the agent takes at time <img src="https://benjaminhan.net/feed-assets/17633469297f2141.svg" alt="t" class="feed-math-inline"/>. It now learns <img src="https://benjaminhan.net/feed-assets/c9aee4c18fd107f5.svg" alt="(z_t, a_t) \to z_{t+1}" class="feed-math-inline"/> — a forward dynamics model in latent space. The encoder is still trained self-supervised (no action labels needed for representation learning); the action input enters only at the predictor. Once trained, planning means searching over candidate action sequences <img src="https://benjaminhan.net/feed-assets/8f095665f3194cb0.svg" alt="a_t, a_{t+1}, \ldots" class="feed-math-inline"/> and rolling out the predictor to score which sequence reaches a goal state. <a href="https://arxiv.org/abs/2603.19312">LeWorldModel</a> [19] is exactly this design — encoder + action-conditioned predictor + SIGReg [17] on the encoder outputs to keep representations from collapsing.</p>
-</div>
-</div>
-</section>
-<section id="the-2022-vision-paper-and-the-ami-initiative-inside-fair" class="level4">
-<h4 class="anchored" data-anchor-id="the-2022-vision-paper-and-the-ami-initiative-inside-fair">The 2022 vision paper and the AMI initiative inside FAIR</h4>
-<p>So I had this idea around 2020. And in 2022 I wrote a <a href="https://openreview.net/forum?id=BZ5a1r-kVsf">long vision paper</a> [11]. I said, I’m just going to write a paper with my entire vision. Spill all my secrets, like I don’t care. But maybe they will rally a bunch of people to that vision.</p>
-<p>And boy, did it work. Because not only did I rally a bunch of students who came working with me at NYU or in Paris because they wanted to work on this, but also a whole team at FAIR who said, “this sounds great, that’s what we want to work on.”</p>
-<p>And then Joelle Pineau said, “well, maybe this should be a major mission of FAIR.” And we called it <a href="https://ami.inc/">advanced machine intelligence</a>. That was the internal name of —</p>
-<p><strong>Jacob Effron:</strong> Interesting.</p>
-<p><strong>Yann LeCun:</strong> The park.</p>
-<p><strong>Jacob Effron:</strong> And they let you leave with it.</p>
-<p><strong>Yann LeCun:</strong> And now it’s the name of the company. And, you know, <a href="https://about.fb.com/media-gallery/executives/mark-zuckerberg/">Mark Zuckerberg</a> kind of read that paper and knew what it was about and subscribed to the project.</p>
-<p>And <a href="https://about.fb.com/media-gallery/executives/andrew-bosworth/">Andrew Bosworth</a>, the CTO, also. And <a href="https://en.wikipedia.org/wiki/Mike_Schroepfer">Mike Schroepfer</a>, the previous CTO. <a href="https://about.fb.com/media-gallery/executives/chris-cox/">Chris Cox</a>, who was my direct manager, chief product officer, also loved the idea. So there was a lot of support in the leadership about this project that we internally called AMI.</p>
-</section>
-<section id="why-it-didnt-work-out-applications-were-industrial-meta-wasnt-interested" class="level4">
-<h4 class="anchored" data-anchor-id="why-it-didnt-work-out-applications-were-industrial-meta-wasnt-interested">Why it didn’t work out: applications were industrial, Meta wasn’t interested</h4>
-<p>And it started really kind of working for video. But the company kind of refocused all of its effort on LLMs. Despite support from Mark and Andrew Bosworth — Boz, we call him Boz — the layers below didn’t see the point, I think. And so politically it sort of became a little difficult.</p>
-<p>The applications of JEPA world models — there are applications in wearable agents and stuff like that, and robotics, but Meta chose to get rid of its entire robotics AI group, that was led by <a href="https://people.eecs.berkeley.edu/~malik/">Jitendra Malik</a>, who is now at Amazon. And so clearly it wasn’t the right environment anymore.</p>
-<p>Most of the applications were in industry that Meta had no interest in. FAIR was increasingly getting pressure to basically help <a href="https://en.wikipedia.org/wiki/Meta_Platforms">Meta Superintelligence Labs</a> with LLMs.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The “Gita Matalatic” in the auto-caption is <a href="https://people.eecs.berkeley.edu/~malik/">Jitendra Malik</a> — the Berkeley computer-vision pioneer who served as research director and site lead of Facebook AI Research Menlo Park from 2018, leading the team’s vision, ML, and robotics work, and has since moved to Amazon.</p>
-</div>
-</div>
-<p>So it made it clear. And, you know, that throughout, my reasoning worked really well with investors too — because when I had to raise money for AMI, everybody knew my story, and many investors and staff at various VCs that read my paper or had listened to my talks had bought my story. They were realizing LLMs had limitations, and were kind of interested by the idea of building the next-generation AI systems.</p>
-</section>
-<section id="did-the-scale-ai-acquisition-catalyze-the-llm-focus" class="level4">
-<h4 class="anchored" data-anchor-id="did-the-scale-ai-acquisition-catalyze-the-llm-focus">Did the Scale AI acquisition catalyze the LLM focus?</h4>
-<p><strong>Jacob Effron:</strong> I guess, was the <a href="https://about.fb.com/news/2025/06/meta-scale-ai-strategic-partnership/">Scale acquisition</a> like part of this catalyst of the pure LLM focus internally?</p>
-<p><strong>Yann LeCun:</strong> Yeah, definitely. I mean, there’s probably some other reasons to it. I don’t have any inside information to comment on this, but it’s possible that Mark sees in <a href="https://en.wikipedia.org/wiki/Alexandr_Wang">Alex</a> kind of a potential successor to himself, like a younger version of himself.</p>
-</section>
-<section id="the-biggest-misconception-zero-technical-contribution-to-llama" class="level4">
-<h4 class="anchored" data-anchor-id="the-biggest-misconception-zero-technical-contribution-to-llama">The biggest misconception: zero technical contribution to Llama</h4>
-<p><strong>Jacob Effron:</strong> Yeah, I feel like a lot of the popular narrative in the media has been like, oh, like, you know, when Alex comes in, it then gets harder to run a research organization. I don’t know if to the extent you felt that, or —</p>
-<p><strong>Yann LeCun:</strong> Well, okay. So here’s a big misconception about my role, my relation to Alex, and how AI was run at Meta. I had zero technical contribution to Llama. Like, none whatsoever.</p>
-<p>My one contribution to Llama was to argue for open-sourcing Llama 2, because there was a big internal debate whether we should open-source. The legal department was against it, the policy department was kind of against it, the comms department was for it, all the engineering side was for it — like Boz was for it.</p>
-<p>So there was enormous internal discussions at a very high level — 40 people from Mark Zuckerberg down, every week for two hours, for months. So really it was a big debate internally.</p>
-<p>And I really, really, really argued for the fact that — and Boz also was very vocal about it — that the safety risks were basically overblown. The opportunities to create an industry were extremely strong. And that we were going to jumpstart the AI industry by open-sourcing Llama 2. And in fact that’s exactly what happened.</p>
-<p>So I had zero contribution to Llama, positive or negative. Like, I didn’t do anything to stop it or slow it down or anything. There was a lot of people working on LLMs within FAIR and it was fine. I never said anything against it — other than saying, this is not a path to human intelligence, but it’s fine. It’s useful. Same thing for speech recognition, translation, right?</p>
-<p>And particularly since 2018, when I stepped down from being director of FAIR, I didn’t have any direct influence on what people were working on, other than basically publishing my vision and then rallying people around my project. But they were working with me because they wanted to, not because I was their boss. I wasn’t telling them to work with me.</p>
-<p>So I had no positive or negative influence on LLMs within Meta. And I had some influence on the strategy, but it was more like the long term and how you maintain a research lab and things like this.</p>
-<p>And in the last year — starting maybe early 2024, and certainly in 2025 — the direction in which FAIR was being moved and managed basically did not correspond to what I thought was necessary to preserve innovation, research and breakthrough, and preserve the good people. Like, a lot of good people have left already.</p>
-<p><strong>Jacob Effron:</strong> Yeah. And I guess a lot of, you know, you probably was harder to get people to work on the stuff you were working on internally. And I’m sure there was pressure for you yourself to work on a lot of the LLM stuff.</p>
-<p><strong>Yann LeCun:</strong> Yeah, no, but a lot of other people also have left, right?</p>
-<p><strong>Jacob Effron:</strong> No, it’s fascinating.</p>
-</section>
-</section>
-<section id="ch-phd-advice" class="level3">
-<h3 class="anchored" data-anchor-id="ch-phd-advice"><a href="https://www.youtube.com/watch?v=ngBraLDqzdI&amp;t=4331s">1:12:11 — Advice for PhD Students</a></h3>
-<section id="what-changed-self-supervised-learning-succeeded-for-language-not-video" class="level4">
-<h4 class="anchored" data-anchor-id="what-changed-self-supervised-learning-succeeded-for-language-not-video">What changed: self-supervised learning succeeded — for language, not video</h4>
-<p><strong>Jacob Effron:</strong> I mean, one thing I’m struck by throughout our whole conversation is, I feel like you’ve had a remarkably consistent point of view in the space for a long time. And you can go back to a bunch of the earlier talks you referenced. Obviously it is a fast-moving space, and a ton of interesting things have happened in the last year. What’s like one thing you’ve changed your mind on in the last year?</p>
-<p><strong>Yann LeCun:</strong> I mean, the whole idea of what we used to call unsupervised learning that we now call self-supervised learning. Until about 2003, the whole idea of unsupervised pre-training, where you get a good representation for the input data and then you either fine-tune the model with a little bit of supervised label data — and it sort of gives us some evidence that this whole technique could work.</p>
-<p>I tried to apply this to video, because ultimately what I wanted to do is train a system to understand how the world works by just watching the world go by. Yeah. Right? I mean, that’s the basic idea.</p>
-<p>I sort of started to argue for this in the early 2010s. Did some work on simple video prediction. We didn’t have GPUs.</p>
-<p>And then sort of doing this more seriously after the creation of FAIR, by doing pixel-level video prediction, realizing that wasn’t working, but then arguing for self-supervised learning.</p>
-<p>Okay, this whole idea of training a system generically not to solve a task, but to basically just predict, and then using the representation that is learned this way as input to a downstream task that you can train supervised or reinforcement or whatever.</p>
-<p>So that was a bit of the topic of my second half of my keynote at NeurIPS in 2016. It was still called NIPS at the time.</p>
-<p><strong>Jacob Effron:</strong> Yeah, of course.</p>
-<p><strong>Yann LeCun:</strong> In 2016. And then I kept pushing for this idea, and tried to discover some methods to get that to work. And what surprised me is that that became incredibly successful — but not for video. For language. LLMs basically are a blindingly successful example of self-supervised learning.</p>
-<p><strong>Jacob Effron:</strong> No, that they are.</p>
-</section>
-<section id="the-closing-technical-lecture-why-representation-collapse-is-the-jepa-problem" class="level4">
-<h4 class="anchored" data-anchor-id="the-closing-technical-lecture-why-representation-collapse-is-the-jepa-problem">The closing technical lecture: why representation collapse is the JEPA problem</h4>
-<p>Well, I feel that’s almost like the perfect note to end on, but I want to make sure to leave the last word to you. I feel like all our listeners are very familiar with you, but I want to at least give you the mic to point them to anything that you think they should check out with some of the new stuff you’re doing, or any of your work you want to point to. The mic is yours.</p>
-<p><strong>Yann LeCun:</strong> Okay. Let me tell you one thing. An LLM works because when you have a sequence of discrete symbols, making predictions is easy — because there’s only a finite number of possible symbols in your language, 100,000 possible tokens or something like that, right?</p>
-<p>And you can have your neural net produce a probability distribution over all possible tokens. And then you can sample from that distribution, shift the token into the input, and then produce the next token, and you can do <a href="https://en.wikipedia.org/wiki/Autoregressive_model">autoregressive prediction</a>. Okay, so that’s a special case.</p>
-<p>If you have the real world, you can’t use a generative model. So now you have to train a system that learns a representation and makes predictions in the representation space.</p>
-<p>There’s a big issue with this — which I didn’t think until about five years ago was easily solvable, even though I invented one technique to solve it decades before that. And it’s the problem that, if you take two inputs — let’s say the initial segment of a video and the continuation of that video, or you take one image and a corrupted version of it — you run them both through an encoder, and you train a predictor to predict the representation of one from the representation of the other, there’s a very simple solution where the system basically predicts a constant representation.</p>
-<p>In other words, the prediction problem becomes trivial. That’s called a collapse — representation collapse.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> A useful intuition for why this is JEPA’s defining problem: the JEPA training signal measures <em>agreement</em> between two encoded representations, not their <em>content</em>. Concretely, take two related inputs (e.g., a video frame <img src="https://benjaminhan.net/feed-assets/039a472bbc9a381c.svg" alt="x_t" class="feed-math-inline"/> and a future frame <img src="https://benjaminhan.net/feed-assets/d210994a5aa1c5ec.svg" alt="x_{t+k}" class="feed-math-inline"/>). Pass each through the encoder: <img src="https://benjaminhan.net/feed-assets/89d770b8076e2a72.svg" alt="z_t = E(x_t)" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/46a47673981bd2fc.svg" alt="z_{t+k} = E(x_{t+k})" class="feed-math-inline"/>. Train a predictor <img src="https://benjaminhan.net/feed-assets/1e43ddbb69317023.svg" alt="P" class="feed-math-inline"/> to map <img src="https://benjaminhan.net/feed-assets/5b2a14a5f157088f.svg" alt="z_t \to \hat{z}_{t+k}" class="feed-math-inline"/>. The loss is <img src="https://benjaminhan.net/feed-assets/136fe2b2504a3655.svg" alt="\| P(z_t) - z_{t+k} \|^2" class="feed-math-inline"/>.</p>
-<p>Now suppose the encoder degenerates so that <img src="https://benjaminhan.net/feed-assets/751df1748e55d1ac.svg" alt="E(x) = c" class="feed-math-inline"/> — the same constant vector — for every input. Then <img src="https://benjaminhan.net/feed-assets/f67e3403b8b52716.svg" alt="z_t = c" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/94e32ece7db97465.svg" alt="z_{t+k} = c" class="feed-math-inline"/> for any pair of frames. The predictor is only ever queried at one input, <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/>, so its output is some fixed vector <img src="https://benjaminhan.net/feed-assets/993845c228210b4a.svg" alt="p = P(c)" class="feed-math-inline"/> — whatever it happens to be. Gradient descent then jointly drives <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/8e304a1c8b691111.svg" alt="p" class="feed-math-inline"/> to coincide, and the loss <img src="https://benjaminhan.net/feed-assets/1c583e340906cadf.svg" alt="\|p - c\|^2" class="feed-math-inline"/> reaches zero. <strong>Perfect minimization, zero learning.</strong> The two representations agree because the entire encoder-predictor pair has collapsed to a trivial fixed point, not because the model has discovered anything about the inputs.</p>
-<p>Generative models (autoregressive LLMs, VAEs, diffusion) don’t have this failure mode because they have to <em>reconstruct</em> the input from the representation, which anchors it — a constant encoder would make every input’s reconstruction the same, blowing up the loss. JEPA has no reconstruction term; only the consistency signal, which the trivial solution kills perfectly.</p>
-<p>Concretely, a collapsed encoder is downstream-useless — every input maps to <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/>, so the model can’t distinguish anything. The three fix families LeCun describes next each kill the trivial fixed point in a different way: contrastive methods force pairs of different inputs apart with explicit negative samples; distillation/EMA methods (BYOL [15], DINO [5]) break the symmetric gradient path that would otherwise drive both encoders to a constant; and information-content regularizers (VICReg [18], SIGReg [17]) directly penalize low-entropy representations.</p>
-</div>
-</div>
-<p>So the big question of self-supervised learning for JEPA, for the joint-embedding architecture, is: how do you prevent collapse?</p>
-</section>
-<section id="three-families-of-fixes-contrastive-distillation-and-regularizer-methods" class="level4">
-<h4 class="anchored" data-anchor-id="three-families-of-fixes-contrastive-distillation-and-regularizer-methods">Three families of fixes: contrastive, distillation, and regularizer methods</h4>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> The solution that I came up with many years ago — 1993 — is <a href="https://en.wikipedia.org/wiki/Contrastive_learning">contrastive learning</a> [12]. So basically you have examples of things that should be predictable from one another, and an example of things that should not be predictable from one another. It turns out this method works, but it doesn’t scale with dimension. It doesn’t scale very well.</p>
-<p>There’s another technique that was actually invented by <a href="https://www.cs.toronto.edu/~hinton/">Geoff Hinton</a> and <a href="https://psychology.mcmaster.ca/people/becker.html">Suzanna Becker</a> in the late 80s — late 80s, I’m sorry — where you have those two networks and you try to maximize the <a href="https://en.wikipedia.org/wiki/Mutual_information">mutual information</a> between them [13].</p>
-<p><a href="https://people.idsia.ch/~juergen/">Jürgen</a> is mad at me, because he also came up with a version of this in 1992 [14], and he says that’s JEPA. It’s not JEPA. It’s just another way of preventing collapse of a joint-embedding architecture. Which is fine, but it’s not, you know, it’s a particular way of doing it, which I don’t think is particularly good.</p>
-<p>Okay. So now you have this JEPA architecture. You have to come up with a good way of preventing collapse, and there is a couple ways. So as I already said, contrastive methods I think is not a good approach. There’s another set of methods that are kind of called distillation methods, and they do prevent collapse — we don’t know why. So a good example of that is DINO.</p>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> That’s a joint-embedding method using the distillation method. Basically, one of the encoders trains the other one, is used as a teacher for the other encoder. The encoder that is being trained, you do backprop to. The one that is not being trained, you don’t do backprop, but you share the weights with the other one with some <a href="https://en.wikipedia.org/wiki/Exponential_smoothing">exponential moving average</a>.</p>
-<p>It’s a collection of recipes. There’s a paper from DeepMind about it called <a href="https://arxiv.org/abs/2006.07733">Bootstrap Your Own Latent (BYOL)</a> [15], which uses this trick. That trick is derived from some intuition from reinforcement learning, and somehow it prevents collapse, but we don’t know why. There are a few theoretical papers on it that explain why it possibly might work in some simple cases, but it’s not satisfactory.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The two most-cited theoretical analyses of why BYOL avoids collapse without negative samples are <a href="https://arxiv.org/abs/2102.06810">Tian, Chen, and Ganguli 2021</a> [20] — which analyzes the eigenstructure of the predictor + stop-gradient combination under linear-network and isotropic-data assumptions — and <a href="https://arxiv.org/abs/2205.06226">Wen and Li 2022</a> [21], which characterizes the role of the prediction head specifically. Both confirm collapse is avoided in simplified settings, but neither closes the gap that LeCun flags here: the loss the optimizer actually descends isn’t the loss you can monitor in training, so practitioners can’t tell from the loss curve whether collapse is happening.</p>
-</div>
-</div>
-<p>The cost function you think you’re minimizing — you’re not actually minimizing. And so you can’t monitor it. It actually goes up when you train. So we don’t like this method, but it works.</p>
-<p>And some of the models we’ve trained, large-scale video representation learning systems — V-JEPA, <a href="https://arxiv.org/abs/2506.09985">V-JEPA 2</a> [16], V-JEPA 2.1 — they train using this method. JEPA also. But we’re moving away from this.</p>
-</section>
-<section id="the-third-family-information-content-regularizers-vicreg-sigreg-and-leworldmodel" class="level4">
-<h4 class="anchored" data-anchor-id="the-third-family-information-content-regularizers-vicreg-sigreg-and-leworldmodel">The third family: information-content regularizers (VICReg, SIGReg) and LeWorldModel</h4>
-<p>And now we have a few papers that came out recently on an explicit regularizer to prevent this collapse, which basically tries to maximize the information content coming out of the encoder. So it’s in the same family as the Becker and Hinton from ’89 and the Schmidhuber 1992, and a bunch of others since then, and to some extent also contrastive techniques — although it’s not sample-contrastive.</p>
-<p>And then the question is, how do you measure information content? How do you maximize the information content coming out of a neural net?</p>
-<p>The problem is, if you want to maximize the quantity, you either need to be able to measure it, or you need to have a lower bound on it.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> The intuition behind the regularizer family: collapse is the limit case where the encoder outputs carry <em>zero</em> information about the input — every input maps to the same <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/>, so the entropy of the representation distribution is zero. If you can force the encoder’s output distribution to have high entropy — i.e., spread across the latent space rather than concentrated on a single point — collapse is mechanically excluded. No need for negative samples (contrastive) or asymmetric architectural tricks (BYOL/DINO); the regularizer term in the loss does the work directly.</p>
-<p>The technical obstacle LeCun flags is that differential entropy of a continuous distribution isn’t easy to estimate from samples — you can only construct <em>upper</em> bounds (estimators that overstate true entropy). Maximizing an upper bound isn’t a guarantee, so practitioners maximize a tractable proxy and hope the bound is tight enough.</p>
-<p>The two methods named here implement that proxy differently:</p>
-<ul>
-<li><strong>VICReg [18]</strong> is three terms — <strong>V</strong>ariance (each feature dimension must have at least unit variance, so no dimension can collapse), <strong>I</strong>nvariance (paired views agree on their representations, the original JEPA consistency signal), and <strong>C</strong>ovariance (off-diagonal terms of the feature covariance matrix are pushed to zero, decorrelating features so they don’t all encode the same information). Spread + decorrelate.</li>
-<li><strong>SIGReg [17]</strong> is one term: project the encoder output onto many random 1-D directions and run a normality (Epps–Pulley) test on each projection. Aggregating the test statistics pushes the joint distribution toward an isotropic Gaussian. Why an isotropic Gaussian? Under fixed variance, the Gaussian distribution has <em>maximum</em> differential entropy — so matching that target is equivalent to maximizing information content under a unit-variance constraint. The LeJEPA paper [17] proves the isotropic Gaussian is the optimal target distribution for JEPAs.</li>
-</ul>
-</div>
-</div>
-<p><strong>Jacob Effron:</strong> Yeah.</p>
-<p><strong>Yann LeCun:</strong> Information content, we only have upper bounds. We cannot measure it. We can only come up with upper bounds. And so we take an upper bound and we cross our fingers. Okay. And it kind of works.</p>
-<p>So the latest one is called <a href="https://arxiv.org/abs/2511.08544">SIGReg</a> [17] — that means Sketched Isotropic Gaussian Regularization. We had a previous one called <a href="https://arxiv.org/abs/2105.04906">VICReg</a> [18] — variance-invariance-covariance regularization. And the SIGReg stuff is really cool.</p>
-<p>This is some work by <a href="https://randallbalestriero.github.io/">Randall Balestriero</a>, who was a postdoc with me, is an assistant professor at <a href="https://www.brown.edu/">Brown University</a> now. And it basically consists in forcing the distribution of variables coming out of the encoder to be jointly Gaussian, essentially — sort of maximize information, if you want, just a very different way of doing it than what Jürgen Schmidhuber and Suzanna Becker and Geoff Hinton were doing.</p>
-<p>So this is super promising, in my opinion. And we have variations of it — one that can produce sparse representations, another one that can produce isotropic representations but not necessarily Gaussians.</p>
-<p>And we have a paper with Randall — student at <a href="https://mila.quebec/">Mila</a> — where we train a world model with this. It’s still small scale, but I think it’s super promising.</p>
-<p>So if you want to read one paper, read that paper. It’s <a href="https://arxiv.org/abs/2603.19312">LeWorldModel</a> [19].</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p><strong>Editor’s note.</strong> When LeCun says “a paper with Randall — student at Mila,” he conflates two people. Randall Balestriero is the assistant prof at Brown; the student at Mila is <a href="https://mila.quebec/en/directory/lucas-maes">Lucas Maes</a>, lead author of LeWorldModel [19].</p>
-</div>
-</div>
-<p><strong>Jacob Effron:</strong> Awesome. We’ll definitely link to it too.</p>
-<p><strong>Yann LeCun:</strong> Yeah, I’m not responsible for the name. Randall picked it up.</p>
-<p><strong>Jacob Effron:</strong> Amazing. Well, Yann, seriously, thank you so much. It is such a privilege to get to spend the last bit of time with you, and really appreciate you coming on the podcast.</p>
-<p><strong>Yann LeCun:</strong> Thanks for having me. That was fun.</p>
-</section>
-<section id="outro-jacobs-signoff" class="level4">
-<h4 class="anchored" data-anchor-id="outro-jacobs-signoff">Outro: Jacob’s signoff</h4>
-<p><strong>Jacob Effron:</strong> I’m Jacob Effron, and this has been <em>Unsupervised Learning</em>, a podcast where I get to talk to the smartest people in AI and ask them tons of questions about what’s happening with models and what it means for businesses in the world. As I hope is clear, I have a ton of fun doing this. It’s a nights-and-weekends project in addition to my day job as an investor at <a href="https://www.redpoint.com/">Redpoint</a>.</p>
-<p>But our ability to get these incredible guests on really comes from folks like you subscribing to the podcast, sharing it with friends. It’s really what ultimately makes this whole thing work. And so please consider doing that. And thank you so much for your support and listening. We’ll see —</p>
-<hr>
-</section>
-</section>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<p><strong>Podcast and source</strong></p>
-<ul>
-<li><a href="https://www.youtube.com/watch?v=ngBraLDqzdI">YouTube video</a> — <em>Unsupervised Learning: With Jacob Effron</em>, May 15, 2026 (1h 21m)</li>
-<li><a href="https://www.youtube.com/@UCqg2tu7t1cZmVxYx9p4Lj0g">Unsupervised Learning podcast channel</a></li>
-</ul>
-<p><strong>People</strong></p>
-<ul>
-<li><a href="http://yann.lecun.com/">Yann LeCun</a> — Turing Award winner, former Chief AI Scientist at Meta, founder of AMI Labs, professor at NYU</li>
-<li><a href="https://www.linkedin.com/in/jacobeffron/">Jacob Effron</a> — host; partner at <a href="https://www.redpoint.com/">Redpoint</a></li>
-<li><a href="https://www.cs.toronto.edu/~hinton/">Geoffrey Hinton</a> — Turing Award co-recipient</li>
-<li><a href="https://yoshuabengio.org/">Yoshua Bengio</a> — Turing Award co-recipient</li>
-<li><a href="https://about.fb.com/media-gallery/executives/mark-zuckerberg/">Mark Zuckerberg</a> (Meta CEO)</li>
-<li><a href="https://about.fb.com/media-gallery/executives/andrew-bosworth/">Andrew Bosworth</a> (“Boz”, Meta CTO)</li>
-<li><a href="https://en.wikipedia.org/wiki/Mike_Schroepfer">Mike Schroepfer</a> (previous Meta CTO)</li>
-<li><a href="https://about.fb.com/media-gallery/executives/chris-cox/">Chris Cox</a> (Meta Chief Product Officer)</li>
-<li><a href="https://www.cs.mcgill.ca/~jpineau/">Joelle Pineau</a> — co-took over FAIR directorship in 2018</li>
-<li><a href="https://research.facebook.com/people/bordes-antoine/">Antoine Bordes</a> — co-took over FAIR directorship in 2018</li>
-<li><a href="https://en.wikipedia.org/wiki/Alexandr_Wang">Alexandr Wang</a> — Scale AI founder, leading Meta Superintelligence Labs</li>
-<li><a href="https://people.eecs.berkeley.edu/~malik/">Jitendra Malik</a> — former Facebook AI Research site lead (Menlo Park), now at Amazon</li>
-<li><a href="https://www.linkedin.com/in/jerry-tworek-b5b75766/">Jerry Tworek</a> — former OpenAI, founder of his own lab</li>
-<li><a href="https://en.wikipedia.org/wiki/Linus_Torvalds">Linus Torvalds</a> — Linux creator</li>
-<li><a href="https://psychology.mcmaster.ca/people/becker.html">Suzanna Becker</a> — co-author with Hinton on the 1992 mutual-information-maximization paper</li>
-<li><a href="https://people.idsia.ch/~juergen/">Jürgen Schmidhuber</a> — author of the 1992 predictability-minimization paper</li>
-<li><a href="https://randallbalestriero.github.io/">Randall Balestriero</a> — assistant professor at Brown, lead author of SIGReg and LeWorldModel</li>
-<li><a href="https://www.fei-fei.com/">Fei-Fei Li</a> — co-founder of World Labs</li>
-</ul>
-<p><strong>Companies, products, and labs</strong></p>
-<ul>
-<li><a href="https://ami.inc/">AMI Labs</a> — LeCun’s new company (Advanced Machine Intelligence)</li>
-<li><a href="https://thetapestryproject.com/">Tapestry</a> — sovereign open-source AI initiative</li>
-<li><a href="https://about.meta.com/">Meta</a> — <a href="https://ai.meta.com/research/">FAIR</a> (Facebook AI Research), <a href="https://ai.meta.com/llama/">Llama</a>, <a href="https://about.fb.com/news/2023/02/large-language-model-llama-meta-ai/">GenAI org launch (Feb 2023)</a>, <a href="https://about.fb.com/news/2025/06/meta-scale-ai-strategic-partnership/">Meta Superintelligence Labs / Scale AI partnership (June 2025)</a></li>
-<li><a href="https://pytorch.org/">PyTorch</a></li>
-<li><a href="https://openai.com/">OpenAI</a> — <a href="https://openai.com/index/gpt-4/">GPT-4</a>, <a href="https://chat.openai.com/">ChatGPT</a></li>
-<li><a href="https://www.anthropic.com/">Anthropic</a></li>
-<li><a href="https://deepmind.google/">Google DeepMind</a> — <a href="https://deepmind.google/technologies/genie/">Genie</a>, <a href="https://deepmind.google/technologies/veo/">Veo</a></li>
-<li><a href="https://mistral.ai/">Mistral</a> — co-founded by ex-FAIR Llama authors</li>
-<li><a href="https://www.worldlabs.ai/">World Labs</a> — Fei-Fei Li’s spatial-AI startup</li>
-<li><a href="https://mila.quebec/">Mila</a> — Montréal AI research institute</li>
-<li><a href="https://en.wikipedia.org/wiki/Bell_Labs">Bell Labs</a> and <a href="https://en.wikipedia.org/wiki/PARC_(company)">Xerox PARC</a> — historical research-lab references</li>
-<li><a href="https://en.wikipedia.org/wiki/Sun_Microsystems">Sun Microsystems</a>, <a href="https://en.wikipedia.org/wiki/Hewlett-Packard">HP</a>, <a href="https://en.wikipedia.org/wiki/Oracle_Solaris">Solaris</a>, <a href="https://en.wikipedia.org/wiki/HP-UX">HP-UX</a>, <a href="https://en.wikipedia.org/wiki/Windows_NT">Windows NT</a> — the proprietary-Unix-era analogues for today’s closed AI labs</li>
-<li><a href="https://en.wikipedia.org/wiki/Linux">Linux</a>, <a href="https://azure.microsoft.com/">Microsoft Azure</a> — the open-takeover analogue</li>
-<li><a href="https://replit.com/">Replit</a> — context for the agent-wipes-database example</li>
-</ul>
-<p><strong>Background concepts</strong></p>
-<ul>
-<li><a href="https://arxiv.org/abs/2301.08243">Joint Embedding Predictive Architecture (JEPA)</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Self-supervised_learning">Self-supervised learning</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Federated_learning">Federated learning</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Imitation_learning">Imitation learning</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Reinforcement_learning">Reinforcement learning</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Vision-language-action_model">Vision-language-action model (VLA)</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Mutual_information">Mutual information</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Contrastive_learning">Contrastive learning</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Thinking,_Fast_and_Slow">System 1 / System 2 cognition</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)">Hallucination (AI)</a></li>
-<li><a href="https://en.wikipedia.org/wiki/Turing_Award">Turing Award</a></li>
-</ul>
-<p><strong>Papers and technical reports</strong></p>
-<ol type="1">
-<li><a id="ref-1"></a>Assran, Mahmoud, Quentin Duval, Ishan Misra, Piotr Bojanowski, Pascal Vincent, Michael Rabbat, Yann LeCun, and Nicolas Ballas. “Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture.” <em>CVPR</em>, 2023. <a href="https://arxiv.org/abs/2301.08243" class="uri">https://arxiv.org/abs/2301.08243</a> (I-JEPA — the image variant and original JEPA framing paper)</li>
-<li><a id="ref-2"></a>Kingma, Diederik P., and Max Welling. “Auto-Encoding Variational Bayes.” <em>ICLR</em>, 2014. <a href="https://arxiv.org/abs/1312.6114" class="uri">https://arxiv.org/abs/1312.6114</a> (VAE)</li>
-<li><a id="ref-3"></a>He, Kaiming, Xinlei Chen, Saining Xie, Yanghao Li, Piotr Dollár, and Ross Girshick. “Masked Autoencoders Are Scalable Vision Learners.” <em>CVPR</em>, 2022. <a href="https://arxiv.org/abs/2111.06377" class="uri">https://arxiv.org/abs/2111.06377</a> (MAE, FAIR)</li>
-<li><a id="ref-4"></a>Devlin, Jacob, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. “BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.” <em>NAACL</em>, 2019. <a href="https://arxiv.org/abs/1810.04805" class="uri">https://arxiv.org/abs/1810.04805</a></li>
-<li><a id="ref-5"></a>Caron, Mathilde, Hugo Touvron, Ishan Misra, Hervé Jégou, Julien Mairal, Piotr Bojanowski, and Armand Joulin. “Emerging Properties in Self-Supervised Vision Transformers.” <em>ICCV</em>, 2021. <a href="https://arxiv.org/abs/2104.14294" class="uri">https://arxiv.org/abs/2104.14294</a> (DINO v1)</li>
-<li><a id="ref-6"></a>Siméoni, Oriane, et al.&nbsp;“DINOv3.” <em>arXiv preprint</em>, 2025. <a href="https://arxiv.org/abs/2508.10104" class="uri">https://arxiv.org/abs/2508.10104</a></li>
-<li><a id="ref-7"></a>Bardes, Adrien, Quentin Garrido, Jean Ponce, Xinlei Chen, Michael Rabbat, Yann LeCun, Mido Assran, and Nicolas Ballas. “Revisiting Feature Prediction for Learning Visual Representations from Video.” <em>arXiv preprint</em>, 2024. <a href="https://arxiv.org/abs/2404.08471" class="uri">https://arxiv.org/abs/2404.08471</a> (V-JEPA)</li>
-<li><a id="ref-8"></a>Chen, Ting, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. “A Simple Framework for Contrastive Learning of Visual Representations.” <em>ICML</em>, 2020. <a href="https://arxiv.org/abs/2002.05709" class="uri">https://arxiv.org/abs/2002.05709</a> (SimCLR)</li>
-<li><a id="ref-9"></a>He, Kaiming, Haoqi Fan, Yuxin Wu, Saining Xie, and Ross Girshick. “Momentum Contrast for Unsupervised Visual Representation Learning.” <em>CVPR</em>, 2020. <a href="https://arxiv.org/abs/1911.05722" class="uri">https://arxiv.org/abs/1911.05722</a> (MoCo)</li>
-<li><a id="ref-10"></a>METR. “Measuring AI Ability to Complete Long Tasks.” <em>METR research blog</em>, March 2025. <a href="https://metr.org/blog/2025-03-19-measuring-ai-ability-to-complete-long-tasks/" class="uri">https://metr.org/blog/2025-03-19-measuring-ai-ability-to-complete-long-tasks/</a></li>
-<li><a id="ref-11"></a>LeCun, Yann. “A Path Towards Autonomous Machine Intelligence (v0.9.2).” <em>OpenReview</em>, 2022. <a href="https://openreview.net/forum?id=BZ5a1r-kVsf" class="uri">https://openreview.net/forum?id=BZ5a1r-kVsf</a> (the AMI vision paper)</li>
-<li><a id="ref-12"></a>Bromley, Jane, Isabelle Guyon, Yann LeCun, Eduard Säckinger, and Roopak Shah. “Signature Verification Using a ‘Siamese’ Time Delay Neural Network.” <em>NIPS</em>, 1993. <a href="https://papers.nips.cc/paper_files/paper/1993/hash/288cc0ff022877bd3df94bc9360b9c5d-Abstract.html" class="uri">https://papers.nips.cc/paper_files/paper/1993/hash/288cc0ff022877bd3df94bc9360b9c5d-Abstract.html</a> (the original siamese / contrastive-learning paper)</li>
-<li><a id="ref-13"></a>Becker, Suzanna, and Geoffrey E. Hinton. “Self-Organizing Neural Network That Discovers Surfaces in Random-Dot Stereograms.” <em>Nature</em> 355, no. 6356 (1992): 161–163. <a href="https://www.nature.com/articles/355161a0" class="uri">https://www.nature.com/articles/355161a0</a></li>
-<li><a id="ref-14"></a>Schmidhuber, Jürgen. “Learning Factorial Codes by Predictability Minimization.” <em>Neural Computation</em> 4, no. 6 (1992): 863–879. <a href="https://people.idsia.ch/~juergen/factorial.html" class="uri">https://people.idsia.ch/~juergen/factorial.html</a></li>
-<li><a id="ref-15"></a>Grill, Jean-Bastien, Florian Strub, Florent Altché, Corentin Tallec, Pierre H. Richemond, et al.&nbsp;“Bootstrap Your Own Latent: A New Approach to Self-Supervised Learning.” <em>NeurIPS</em>, 2020. <a href="https://arxiv.org/abs/2006.07733" class="uri">https://arxiv.org/abs/2006.07733</a> (BYOL)</li>
-<li><a id="ref-16"></a>Assran, Mido, et al.&nbsp;“V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning.” <em>arXiv preprint</em>, 2025. <a href="https://arxiv.org/abs/2506.09985" class="uri">https://arxiv.org/abs/2506.09985</a></li>
-<li><a id="ref-17"></a>Balestriero, Randall, and Yann LeCun. “LeJEPA: Provable and Scalable Self-Supervised Learning Without the Heuristics.” <em>arXiv preprint</em>, 2025. <a href="https://arxiv.org/abs/2511.08544" class="uri">https://arxiv.org/abs/2511.08544</a> (introduces SIGReg — Sketched Isotropic Gaussian Regularization — as the anti-collapse objective for JEPAs)</li>
-<li><a id="ref-18"></a>Bardes, Adrien, Jean Ponce, and Yann LeCun. “VICReg: Variance-Invariance-Covariance Regularization for Self-Supervised Learning.” <em>ICLR</em>, 2022. <a href="https://arxiv.org/abs/2105.04906" class="uri">https://arxiv.org/abs/2105.04906</a></li>
-<li><a id="ref-19"></a>Maes, Lucas, Quentin Le Lidec, Damien Scieur, Yann LeCun, and Randall Balestriero. “LeWorldModel: Stable End-to-End Joint-Embedding Predictive Architecture from Pixels.” <em>arXiv preprint</em>, 2026. <a href="https://arxiv.org/abs/2603.19312" class="uri">https://arxiv.org/abs/2603.19312</a></li>
-<li><a id="ref-20"></a>Tian, Yuandong, Xinlei Chen, and Surya Ganguli. “Understanding Self-Supervised Learning Dynamics without Contrastive Pairs.” <em>ICML</em>, 2021. <a href="https://arxiv.org/abs/2102.06810" class="uri">https://arxiv.org/abs/2102.06810</a></li>
-<li><a id="ref-21"></a>Wen, Zixin, and Yuanzhi Li. “The Mechanism of Prediction Head in Non-Contrastive Self-Supervised Learning.” <em>NeurIPS</em>, 2022. <a href="https://arxiv.org/abs/2205.06226" class="uri">https://arxiv.org/abs/2205.06226</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260523-what-is-jepa/">What Is JEPA?</a>: the companion primer on the architecture LeCun is scaling — the latent-prediction objective, the collapse problem, and the V-JEPA results behind his thesis.</li>
-<li><a href="../../posts/20241108-transformers-world-models/">How Well Can Transformers Build World Models?</a>: empirical evidence for LeCun’s claim that next-token prediction does not yield a genuine world model.</li>
-<li><a href="../../posts/20241213-sutskever-pretraining-over/">Sutskever at NeurIPS 2024: Pre-Training Era Is Over</a>: a fellow pioneer also calling the end of the current pre-training paradigm, though pointing at agents and inference-time compute rather than world models.</li>
-<li><a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a>: shares LeCun’s data-efficiency skepticism about scaling and the long timeline to reliable agents, from inside the LLM camp he criticizes.</li>
-<li><a href="../../posts/20250707-chollet-how-we-get-to-agi/">Chollet: How We Get to AGI</a>: another senior researcher arguing that scaled LLMs are not the path, framing intelligence as process rather than memorized skill.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260523-yann-lecun-after-llms/</guid>
-  <pubDate>Sat, 23 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260523-yann-lecun-after-llms/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

@@ -9,7 +9,7 @@
 <link>https://benjaminhan.net/</link>
 <atom:link href="https://benjaminhan.net/feed-page-10.xml" rel="self" type="application/rss+xml"/>
 <atom:link href="https://benjaminhan.net/index.xml" rel="first"/>
-<atom:link href="https://benjaminhan.net/feed-page-28.xml" rel="last"/>
+<atom:link href="https://benjaminhan.net/feed-page-29.xml" rel="last"/>
 <atom:link href="https://benjaminhan.net/feed-page-9.xml" rel="previous"/>
 <atom:link href="https://benjaminhan.net/feed-page-11.xml" rel="next"/>
 <description>AI research, engineering, and the occasional philosophical aside.</description>
@@ -21,7 +21,88 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 07 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 08 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Peeking Inside a Language Model, and Finding It Knows It’s Being Watched</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260511-natural-language-autoencoders/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>NLA schematic: the activation verbalizer turns a target activation into a text description, and the activation reconstructor recovers the activation from the text alone. <a href="https://youtu.be/j2knrqAzYVY">Watch on YouTube</a></figcaption>
+</figure>
+</div>
+<p><a href="https://www.anthropic.com/">Anthropic’s</a> interpretability team <a href="https://www.anthropic.com/research/natural-language-autoencoders">introduces</a> Natural Language Autoencoders (NLAs), a method for turning an internal activation of a language model into a plain-text explanation. Two copies of the target model are trained jointly: an <em>activation verbalizer</em> that reads an activation and writes a text explanation, and an <em>activation reconstructor</em> that reads the explanation and rebuilds the activation. The training signal is reconstruction similarity, so explanations that carry real content about the activation are rewarded over explanations that do not. The companion paper on Transformer Circuits [1] comes with an interactive demo on <a href="http://neuronpedia.org/nla">Neuronpedia</a> and training code on <a href="https://github.com/kitft/natural_language_autoencoders">GitHub</a>.</p>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>The NLA training loop: the activation verbalizer (AV) translates a target activation <img src="https://benjaminhan.net/feed-assets/50ff0990065feeb0.svg" alt="h_{L,i}" class="feed-math-inline"/> into a natural-language description, and the activation reconstructor (AR) recovers an activation <img src="https://benjaminhan.net/feed-assets/18c983660a2888fc.svg" alt="\hat{h}_{L,i}" class="feed-math-inline"/> from that text alone. Training minimizes <img src="https://benjaminhan.net/feed-assets/a1d97cec1af0c52f.svg" alt="\|h_{L,i} - \hat{h}_{L,i}\|_2^2" class="feed-math-inline"/>, so descriptions that carry real content about the activation are rewarded. Schematic from the paper’s <a href="https://transformer-circuits.pub/2026/nla/index.html#nla-training">training section</a> [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The post applies NLAs to two problems: evaluation awareness and alignment auditing. On a test of destructive coding actions (e.g.&nbsp;deleting important files), NLA explanations flag evaluation awareness 16% of the time in cases where Claude never verbalizes it; on <a href="https://www.swebench.com/">SWE-bench Verified</a> the rate is 26%; on real <a href="https://claude.ai/">claude.ai</a> traffic from users who opted in to training it sits under 1%. Anthropic reports that NLAs were used in the pre-deployment alignment audits of Claude Mythos Preview and Claude Opus 4.6.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure2-eval-awareness.webp" class="img-fluid figure-img" data-lightbox-src="figure2-eval-awareness-full.png"></p>
+<figcaption>Opus 4.6 shows NLA-measured evaluation awareness on 26% of SWE-bench Verified transcripts and 16% of destructive-coding transcripts, versus 1% and 0% when measured by what the model actually verbalizes. On opt-in real claude.ai traffic the NLA-measured rate is 0.4%. Chart from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In a toy auditing game where a target model has been trained with a single hidden misaligned motivation, auditors equipped with NLAs uncover the motivation 12–15% of the time, compared with 3% or below when given other interpretability tools.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/figure3-auditing.webp" class="img-fluid figure-img" data-lightbox-src="figure3-auditing-full.png"></p>
+<figcaption>Auditing-game win rates across tool configs. NLA+conversation auditors identify the target model’s misaligned motivation 12/100 without access to training data and 15/100 with access, well above the SAE+conversation (3/100) and conversation-only (1–2/100) baselines. Chart from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>NLAs trade mechanistic grounding for direct legibility.</strong> <a href="https://transformer-circuits.pub/2023/monosemantic-features">Sparse autoencoders</a> (SAE) and <a href="https://transformer-circuits.pub/2025/attribution-graphs/biology.html">attribution graphs</a> share the autoencoder structure (round-trip reconstruction as the training signal, structured output a trained researcher reads); NLAs swap the sparse feature dictionary for a text bottleneck and the linear readout for another copy of the model. The closest prior art is Patchscope [2], which uses a frozen LLM to decode hidden states into natural language without a round-trip training objective. NLAs add the reconstruction loop to tighten what the verbalizer has to say. The paper itself flags the cost as a limitation: an SAE feature is a specific direction in activation space you can causally intervene on, while an NLA explanation is a black-box output of another LLM. That makes NLAs a natural complement to the structural methods rather than a replacement: the SAE or attribution graph tells you <em>where</em> in the network a representation lives, and the NLA tells you, in prose, <em>what it seems to be about</em>.</p></li>
+<li><p><strong>NLAs move the describing job from the model to a dedicated pair.</strong> The evaluation-awareness numbers tighten a gap that <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> articulated: current LLMs cannot faithfully describe their internal distributions when asked to. NLAs sidestep the asking by training a separate model to do the describing from the activation directly. Where SelfReflect measures a given model’s introspective faithfulness as a property of that model, NLAs make reconstruction fidelity the explicit training target, at the cost of training and running a dedicated pair of models for the task. The paper’s own caveat — that the training objective “does not explicitly incentivize NLA explanations to be interpretable or faithful” — is why they still have to evaluate faithfulness empirically rather than claim it by construction.</p></li>
+<li><p><strong>Where did the eval-awareness come from in the first place?</strong> Nobody explicitly trained Claude to notice “this is a test”, so the signal had to seep in from the training data. Prior work on situational awareness by Berglund et al.&nbsp;[3], and its follow-up benchmark by Laine et al.&nbsp;[4], has already speculated on the supervision sources: the AI safety literature itself, published openly and full of discussions of evaluation protocols, sandbagging, and red-teaming; benchmark format exposure during pretraining, since SWE-bench-style task-description conventions live on the public web and there is no way to scrub them without hurting capability training; and a structural tell during RLHF, where human raters treating contrived prompts and conversational prompts as different kinds of “good response” teaches the model a distribution over what eval-shaped inputs look like. What none of the prior work has done — and what NLAs now make possible — is a systematic training-data audit: read activations for eval-awareness signals, trace the candidate text sources through the training corpus, and publish the map. That would be the natural companion piece.</p></li>
+<li><p><strong>NLA-measured eval-awareness has a Goodhart half-life.</strong> Frontier models may behave differently during evaluation than during deployment, and NLAs put a number on it. On SWE-bench Verified, activations register “this is a test” on 26% of problems; on opt-in claude.ai traffic, the rate is 0.4%. If that gap holds up under independent interpretability methods, benchmark scores reflect how a frontier model behaves under observation. How it behaves when nobody is watching is a separate question, and the verbalized rate (1% on SWE-bench) tells us the model will not answer it for us. There is a further catch: 26% itself depends on a model that doesn’t yet know its activations will be read. Once NLA-style signals enter RLHF or alignment training — and Anthropic is already running NLAs in pre-deployment audits, which is the shortest possible path into that loop — a future model can learn to suppress activation-level eval-awareness without the underlying awareness decreasing. This is the <a href="https://en.wikipedia.org/wiki/Observer_effect_(physics)">observer effect</a> entering interpretability, with <a href="https://en.wikipedia.org/wiki/Goodhart%27s_law">Goodhart’s Law</a> as the stricter limit: measuring the model disturbs it once the measurement loops back into training, and at that point the measure stops tracking what it was measuring. The dynamic has been predicted in theory [5] and recently demonstrated empirically in reward-gaming experiments [6]; what’s missing is the direct test on interpretability tools: train on NLA-derived signals, measure NLA quality decay. That would put a half-life on numbers like 26%.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a>Fraser-Taliente, Kit, Kantamneni, Subhash, Ong, Euan, Mossing, Dan, Lu, Christina, Bogdan, Paul C., Ameisen, Emmanuel, Chen, James, Kishylau, Dzmitry, Pearce, Adam, Tarng, Julius, Wu, Alex, Wu, Jeff, Zhang, Yang, Ziegler, Daniel M., Hubinger, Evan, Batson, Joshua, Lindsey, Jack, Zimmerman, Samuel, and Marks, Samuel. “Natural Language Autoencoders.” <em>Transformer Circuits</em>, 2026. <a href="https://transformer-circuits.pub/2026/nla/index.html" class="uri">https://transformer-circuits.pub/2026/nla/index.html</a></p></li>
+<li><p><a id="ref-2"></a>Ghandeharioun, Asma, Caciularu, Avi, Pearce, Adam, Dixon, Lucas, and Geva, Mor. “Patchscopes: A Unifying Framework for Inspecting Hidden Representations of Language Models.” <em>arXiv preprint</em> (arXiv:2401.06102), 2024. <a href="https://arxiv.org/abs/2401.06102" class="uri">https://arxiv.org/abs/2401.06102</a></p></li>
+<li><p><a id="ref-3"></a>Berglund, Lukas, Stickland, Asa Cooper, Balesni, Mikita, Kaufmann, Max, Tong, Meg, Korbak, Tomasz, Kokotajlo, Daniel, and Evans, Owain. “Taken Out of Context: On Measuring Situational Awareness in LLMs.” <em>arXiv preprint</em> (arXiv:2309.00667), 2023. <a href="https://arxiv.org/abs/2309.00667" class="uri">https://arxiv.org/abs/2309.00667</a></p></li>
+<li><p><a id="ref-4"></a>Laine, Rudolf, Chughtai, Bilal, Betley, Jan, Hariharan, Kaivalya, Scheurer, Jeremy, Balesni, Mikita, Hobbhahn, Marius, Meinke, Alexander, and Evans, Owain. “Me, Myself, and AI: The Situational Awareness Dataset (SAD) for LLMs.” <em>arXiv preprint</em> (arXiv:2407.04694), 2024. <a href="https://arxiv.org/abs/2407.04694" class="uri">https://arxiv.org/abs/2407.04694</a></p></li>
+<li><p><a id="ref-5"></a>Hubinger, Evan, van Merwijk, Chris, Mikulik, Vladimir, Skalse, Joar, and Garrabrant, Scott. “Risks from Learned Optimization in Advanced Machine Learning Systems.” <em>arXiv preprint</em> (arXiv:1906.01820), 2019. <a href="https://arxiv.org/abs/1906.01820" class="uri">https://arxiv.org/abs/1906.01820</a></p></li>
+<li><p><a id="ref-6"></a>Denison, Carson, MacDiarmid, Monte, Barez, Fazl, Duvenaud, David, Kravec, Shauna, Marks, Samuel, Schiefer, Nicholas, Soklaski, Ryan, Tamkin, Alex, Kaplan, Jared, Shlegeris, Buck, Bowman, Samuel R., Perez, Ethan, and Hubinger, Evan. “Sycophancy to Subterfuge: Investigating Reward-Tampering in Large Language Models.” <em>arXiv preprint</em> (arXiv:2406.10162), 2024. <a href="https://arxiv.org/abs/2406.10162" class="uri">https://arxiv.org/abs/2406.10162</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: the gap NLAs tighten — current models cannot faithfully describe their own internal state when asked, so NLAs train a separate pair to do the describing from the activation directly.</li>
+<li><a href="../../posts/20260525-metacognition-uncertainty-sft/">Improving Metacognition and Uncertainty Communication in Language Models</a>: another route to the same problem, training a model to verbalize its internal confidence rather than reading the activation from the outside.</li>
+<li><a href="../../posts/20260516-anthropic-institute-agenda/">The Anthropic Institute’s Research Agenda</a>: the same lab’s broader program, of which interpretability tools like NLAs are the technical underpinning for auditing AI systems in the wild.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260511-natural-language-autoencoders/</guid>
+  <pubDate>Mon, 11 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260511-natural-language-autoencoders/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Making synesis Quick</title>
   <dc:creator>synesis </dc:creator>
@@ -1574,92 +1655,6 @@
   <guid>https://benjaminhan.net/posts/20260505-llm-uncertainty-survey/</guid>
   <pubDate>Tue, 05 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/og-default.png" medium="image" type="image/png" height="76" width="144"/>
-</item>
-<item>
-  <title>Detecting Hallucinations in Large Language Models Using Semantic Entropy</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260505-semantic-entropy/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260505-semantic-entropy/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260505-semantic-entropy/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>AUROC (higher is better at separating correct from confabulated generations) and AURAC (area under the rejection-accuracy curve) for six LLMs across the QA benchmarks. Semantic entropy (dark blue) matches or beats naive token-level entropy, a P(True) self-eval baseline, and embedding-regression probes on every model. Figure 2 from the paper [1]. Image from <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Nature</em></a>.</figcaption>
-</figure>
-</div>
-<p>In <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Detecting Hallucinations in Large Language Models Using Semantic Entropy</em></a> (Nature, June 2024) [1], <a href="https://sebastianfarquhar.com/">Sebastian Farquhar</a>, <a href="https://jlko.github.io/">Jannik Kossen</a>, <a href="https://lorenzkuhn.github.io/">Lorenz Kuhn</a>, and <a href="https://www.cs.ox.ac.uk/people/yarin.gal/website/">Yarin Gal</a> (Oxford and Google DeepMind) propose an entropy-based uncertainty estimator for large language models (LLMs) that detects <em>confabulations</em> (arbitrary, incorrect generations produced when the model is uncertain) by computing entropy over the <em>meaning</em> of sampled answers rather than over token sequences.</p>
-<blockquote class="blockquote">
-<p>Large language model (LLM) systems, such as ChatGPT or Gemini, can show impressive reasoning and question-answering capabilities but often ‘hallucinate’ false outputs and unsubstantiated answers. Answering unreliably or without the necessary information prevents adoption in diverse fields, with problems including fabrication of legal precedents or untrue facts in news articles and even posing a risk to human life in medical domains such as radiology. Encouraging truthfulness through supervision or reinforcement has been only partially successful. Researchers need a general method for detecting hallucinations in LLMs that works even with new and unseen questions to which humans might not know the answer. Here we develop new methods grounded in statistics, proposing <em>entropy-based uncertainty estimators for LLMs to detect a subset of hallucinations — confabulations — which are arbitrary and incorrect generations</em>. Our method addresses the fact that one idea can be expressed in many ways by <em>computing uncertainty at the level of meaning rather than specific sequences of words</em>. Our method <em>works across datasets and tasks without a priori knowledge of the task, requires no task-specific data and robustly generalizes to new tasks not seen before</em>. By <em>detecting when a prompt is likely to produce a confabulation</em>, our method helps users understand when they must take extra care with LLMs and opens up new possibilities for using LLMs that are otherwise prevented by their unreliability.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>The method samples multiple answers from the LLM for a given prompt, clusters the samples by bidirectional semantic entailment (two answers are in the same cluster if each entails the other under a natural-language-inference model), then computes Shannon entropy over the resulting meaning-cluster distribution. The clustering step is what makes semantic entropy beat naive token-level entropy. Naive entropy conflates two sources of variation: uncertainty about meaning (the real signal of confabulation) and uncertainty about wording (“Paris” and “It’s Paris” carry the same answer but inflate naive entropy as different token sequences). Bidirectional-entailment clustering strips out the wording variation, so the per-prompt scalar correlates more tightly with whether the answer is actually wrong.</p>
-<p>In deployment the scalar becomes an abstention signal: threshold it, refuse on high-entropy queries, accept the rest. Because high-entropy queries are disproportionately wrong, refusing them removes more wrong answers than right ones, and accuracy on the retained set climbs. The paper quantifies that improvement two ways. AUROC scores how well the scalar separates right from wrong answers across all prompts (detection quality). AURAC scores how much accuracy actually rises on retained answers as the refusal rate sweeps from 0 to 100% (deployment value). The approach is black-box at inference: it needs sample access but no model internals, no fine-tuning, and no task-specific calibration data. A discrete variant approximates the entailment check with single-forward-pass judgments, trading a small accuracy drop for lower cost.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260505-semantic-entropy/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
-<figcaption>Semantic entropy clusters sampled LLM answers by meaning via bidirectional entailment, then measures entropy over cluster probabilities. <strong>(a, top)</strong> High semantic entropy on a factoid prompt indicates confabulation: naive token-level entropy is misled by paraphrase diversity, but semantic entropy is low on a confident prompt and high on a confabulating one. <strong>(b, bottom)</strong> Applied to FactualBio paragraphs, the signal transfers to claim-level verification by decomposing the paragraph into factoids and measuring semantic entropy per factoid. Figure 1 from the paper [1]. Image from <a href="https://www.nature.com/articles/s41586-024-07421-0"><em>Nature</em></a>.</figcaption>
-</figure>
-</div>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>Experiments span six LLMs (LLaMA 2 Chat 7B/13B/70B, Falcon 7B/40B Instruct, Mistral 7B Instruct) across TriviaQA, SQuAD [4], <a href="https://bioasq.org/">BioASQ</a>, <a href="https://github.com/google-research-datasets/natural-questions">NQ Open</a>, SVAMP [5], and a FactualBio biography-paragraph benchmark the authors construct. Averaged across the 30 task-model combinations on short-answer QA, semantic entropy achieves AUROC 0.790, above naive entropy (0.691), P(True) [2] self-evaluation (0.698), and a supervised embedding-regression probe (0.687); performance is stable between 0.78 and 0.81 across model families and scales (Figure 2, the cover image above). The method generalizes out-of-distribution: an embedding probe trained on one task drops sharply on another, while semantic entropy maintains near-training performance. Applied to FactualBio, semantic entropy over atomic sub-claims flags unsupported biographical facts and outperforms the paragraph-adapted P(True) baseline, supporting the claim that the signal transfers from short-answer QA to long-form generation.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>Entailment clustering is the critical step, and the paper does stress-test it.</strong> The meaning-cluster assignment uses a natural-language-inference (NLI) model (DeBERTa-large-MNLI [6], or the generator LLM itself in an LLM-as-judge variant). The paper’s ablations show results are stable across NLI backbones and stable when generator and judge share a model, which addresses the obvious circularity worry. The remaining open question is scope-specific: on legal, medical, or evaluative judgments, frontier LLMs disagree about meaning among themselves, so entailment clustering cannot be presumed to converge to ground-truth equivalence. <a href="../../posts/20260505-conformal-factuality/">Conformal factuality</a> [3] relies on a related claim-decomposition premise and hits the same boundary condition.</p></li>
-<li><p><strong>The OOD-generalization result is the strongest part.</strong> Hallucination-detection methods that depend on in-distribution examples (P(True) [2]’s few-shot priors, and supervised embedding regression) degrade sharply when the test task differs from the calibration task. Semantic entropy needs no calibration set and transfers across the six datasets without loss, which matters because real-world deployment distributions are never exactly the ones used to train a detector. This is a cleaner version of the argument <a href="../../posts/20260504-kadavath-mostly-know/">Kadavath et al.</a> made for self-evaluation, without the extra cost of a second forward pass per sample.</p></li>
-<li><p><strong>Composability with fact-verification pipelines is the natural next step.</strong> Semantic entropy flags <em>which</em> generations to distrust; benchmarks like AVeriTeC [7] and HoVer [8] tell you <em>why</em> (what evidence does or doesn’t support the claim), and tools like <a href="../../posts/20231102-fleek-fact-verification/">FLEEK</a> retrieve evidence from knowledge graphs and the web to make that verdict concrete. A pipeline that routes high-semantic-entropy generations into explicit claim-verification against retrieved evidence would give a user both the uncertainty flag and the remediation path. The paper notes this direction in the discussion but doesn’t test it.</p></li>
-<li><p><strong>Part of the “sample <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/>, then aggregate” family, with a structural limit they all share.</strong> Semantic entropy shares the same inference backbone as self-consistency [9], <a href="../../posts/20260505-conformal-language-modeling/">CLM</a>, and <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a>: <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> forward passes per query at temperature &gt; 0. What differs is what each method does with the sample pool.</p>
-<ul>
-<li>Self-consistency majority-votes to pick a single answer.</li>
-<li>CLM applies a conformal stopping rule and returns a calibrated candidate set.</li>
-<li>Semantic entropy clusters by meaning and emits a scalar abstention signal.</li>
-<li>SelfReflect (same Oxford + DeepMind lab) summarizes the internal distribution and scores the summary’s fidelity to the samples.</li>
-</ul>
-<p>Semantic entropy is closest to SelfReflect by output type (per-query scalar) and to <a href="../../posts/20260505-conformal-factuality/">conformal factuality</a> by goal (hallucination mitigation at deployment, black-box at inference). All four pay the same <img src="https://benjaminhan.net/feed-assets/985ab6bb8c672d6f.svg" alt="N\times" class="feed-math-inline"/> inference cost, and the choice among them is about which signal the downstream system needs.</p>
-<p>The shared structural limit: the signal is <em>sample diversity</em>, not factuality. If a model confabulates consistently (its training distribution pins it to the same wrong answer across sampling temperatures), all samples cluster together, semantic entropy is low, and the method signals “confident” when the answer is in fact wrong. The AUROC gains hold for the subset of hallucinations that produce inter-sample disagreement (the confabulation scope the paper is careful to name) but do not extend to the systematic-bias case.</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://sebastianfarquhar.com/">Farquhar, S.</a>, <a href="https://jlko.github.io/">Kossen, J.</a>, <a href="https://lorenzkuhn.github.io/">Kuhn, L.</a>, and <a href="https://www.cs.ox.ac.uk/people/yarin.gal/website/">Gal, Y.</a>. “Detecting Hallucinations in Large Language Models Using Semantic Entropy.” <em>Nature</em> 630, pages 625–630, June 2024. <a href="https://www.nature.com/articles/s41586-024-07421-0" class="uri">https://www.nature.com/articles/s41586-024-07421-0</a></li>
-<li><a id="ref-2"></a>Kadavath, S., Conerly, T., Askell, A., et al.&nbsp;“Language Models (Mostly) Know What They Know.” <em>arXiv preprint</em> (arXiv:2207.05221), July 11, 2022. <a href="https://arxiv.org/abs/2207.05221" class="uri">https://arxiv.org/abs/2207.05221</a></li>
-<li><a id="ref-3"></a>Mohri, C. and Hashimoto, T. “Language Models with Conformal Factuality Guarantees.” <em>arXiv preprint</em> (arXiv:2402.10978), February 16, 2024. <a href="https://arxiv.org/abs/2402.10978" class="uri">https://arxiv.org/abs/2402.10978</a></li>
-<li><a id="ref-4"></a>Rajpurkar, P., Zhang, J., Lopyrev, K., Liang, P. “SQuAD: 100,000+ Questions for Machine Comprehension of Text.” <em>EMNLP 2016</em> (arXiv:1606.05250), June 16, 2016. <a href="https://arxiv.org/abs/1606.05250" class="uri">https://arxiv.org/abs/1606.05250</a></li>
-<li><a id="ref-5"></a>Patel, A., Bhattamishra, S., Goyal, N. “Are NLP Models really able to Solve Simple Math Word Problems?” <em>NAACL 2021</em> (arXiv:2103.07191), March 12, 2021. <a href="https://arxiv.org/abs/2103.07191" class="uri">https://arxiv.org/abs/2103.07191</a></li>
-<li><a id="ref-6"></a>He, P., Liu, X., Gao, J., Chen, W. “DeBERTa: Decoding-enhanced BERT with Disentangled Attention.” <em>ICLR 2021</em> (arXiv:2006.03654), June 5, 2020. <a href="https://arxiv.org/abs/2006.03654" class="uri">https://arxiv.org/abs/2006.03654</a></li>
-<li><a id="ref-7"></a>Schlichtkrull, M., Guo, Z., Vlachos, A. “AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web.” <em>NeurIPS 2024</em> (arXiv:2305.13117), May 22, 2023. <a href="https://arxiv.org/abs/2305.13117" class="uri">https://arxiv.org/abs/2305.13117</a></li>
-<li><a id="ref-8"></a>Jiang, Y., Bordia, S., Zhong, Z., Dognin, C., Singh, M., Bansal, M. “HoVer: A Dataset for Many-Hop Fact Extraction and Claim Verification.” <em>Findings of EMNLP 2020</em> (arXiv:2011.03088), November 5, 2020. <a href="https://arxiv.org/abs/2011.03088" class="uri">https://arxiv.org/abs/2011.03088</a></li>
-<li><a id="ref-9"></a>Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., Zhou, D. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR 2023</em> (arXiv:2203.11171), March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: shares this method’s sample-the-model-as-truth-signal premise and the same blind spot when the model confabulates consistently.</li>
-<li><a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a>: a sample-then-aggregate sibling on the same <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/>-forward-pass backbone, returning a calibrated set rather than this method’s scalar abstention signal.</li>
-<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: same Oxford and DeepMind lab, same per-query-scalar output type, summarizing the sample distribution instead of measuring its meaning-entropy.</li>
-<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the P(True) self-evaluation baseline this method beats out of distribution, without paying for a second forward pass per sample.</li>
-<li><a href="../../posts/20260505-llm-uncertainty-survey/">How to Make LLM Output More Trustworthy</a>: the survey that classes semantic entropy as the detection-based branch of trustworthy-output methods.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260505-semantic-entropy/</guid>
-  <pubDate>Tue, 05 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260505-semantic-entropy/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
