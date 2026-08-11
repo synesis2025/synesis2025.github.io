@@ -20,7 +20,261 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 09 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 10 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Recursive Language Models vs. Subagents: A Primer</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260810-rlm-vs-subagents-primer/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260810-rlm-vs-subagents-primer/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260810-rlm-vs-subagents-primer/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>A Recursive Language Model in one picture. The long prompt is loaded as a variable inside a Python session that the root model can write into. The model peeks at the first 100 characters, splits the text at a chapter boundary, and calls a fresh copy of itself on each part. Figure 2 from the RLM paper [1].</figcaption>
+</figure>
+</div>
+<p>A language model has a fixed context window. Long before that window is full, its answers start to degrade. Once a job outgrows the range where the model stays reliable, the work has to be split across several model calls. Two families of systems disagree about what gets split.</p>
+<p><em>Subagents</em> split the <strong>task</strong>. A lead model reads the request, decides what the pieces are, writes each piece out as an instruction in plain English, hands it to a fresh copy of the model, and combines what comes back.</p>
+<p><em>Recursive language models</em> (RLMs) split the <strong>input</strong>. The model never receives the long text at all. The text is parked in a Python session as a variable, and the model writes code that peeks at it, cuts it up, and calls itself on whichever pieces need a model’s judgment rather than a regular expression.</p>
+<p>Both patterns date from 2025, both now have a year of published results, and both have picked up their own skeptical literature. This primer covers what subagents and RLMs each are, what the evidence shows, what the comparison means if you are building on either, and how the two designs are merging.</p>
+<section id="why-performance-drops-as-inputs-grow" class="level2">
+<h2 class="anchored" data-anchor-id="why-performance-drops-as-inputs-grow">Why performance drops as inputs grow</h2>
+<p>Every long-context method exists because of one observation: models get worse as their input gets longer, and they get worse long before the input is too big to accept. <a href="https://www.trychroma.com/">Chroma</a> named this <em>context rot</em> in a July 2025 technical report [2]. The standard test, <a href="https://github.com/gkamradt/LLMTest_NeedleInAHaystack">needle in a haystack</a>, buries a known sentence in a pile of irrelevant text and asks the model to find it. Frontier models score near-perfectly, which invites the conclusion that long context is solved. But that test is lexical matching.</p>
+<p>Chroma changed four things about it. They varied the needle to require a semantic rather than a word-for-word match, added plausible distractors, ran a conversational question-answer benchmark, and asked models to reproduce a series of repeated words. Performance fell off with input length in every case, and fell off unevenly.</p>
+<p>Nobody has a settled explanation for why. <a href="https://alexzhang13.github.io/">Alex Zhang</a>, the first author of the RLM work, says the most plausible one is that long sequences are simply rare in training data, so the far end of a context window is out of distribution.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260810-rlm-vs-subagents-primer/figure1.jpg" class="img-fluid figure-img"></p>
+<figcaption>GPT-5 against an RLM built on GPT-5, on three tasks of increasing difficulty, as the input grows from 8K to 1M tokens. On the left, GPT-5 holds 100% on single-needle retrieval, decays on OOLONG [3], an aggregation benchmark whose answers need most of the context rather than one buried fact, and collapses to near zero on OOLONG-Pairs by 33K tokens. On the right, the RLM holds around 50% on both harder tasks all the way out to 1M. The last two points, 524K and 1M, are inputs larger than GPT-5’s 272K context window can accept at all, which is why only the RLM has scores there. Figure 1 from the RLM paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="subagents-split-the-task" class="level2">
+<h2 class="anchored" data-anchor-id="subagents-split-the-task">Subagents: split the task</h2>
+<p>Picture a manager with four research assistants. The manager reads the brief, writes four short assignments, and hands one to each assistant. Each assistant goes off, reads a pile of documents nobody else sees, and comes back with a one-page memo. The manager reads four memos and writes the answer. The manager never reads the documents.</p>
+<p>That is the whole idea. <a href="https://www.anthropic.com/">Anthropic</a>’s engineering write-up on Claude’s Research feature states the reason plainly: “The essence of search is compression: distilling insights from a vast corpus” [4]. A subagent may burn tens of thousands of tokens exploring, then hand back a summary of one or two thousand [5]. The lead agent’s context fills up with memos while the evidence stays behind in the subagents.</p>
+<p>Anthropic’s system uses an <em>orchestrator-worker</em> pattern: a lead agent plans, spawns subagents that search in parallel, and synthesizes their returns. Two numbers from that post are the reason the pattern spread. A lead <a href="https://www.anthropic.com/claude">Claude</a> Opus 4 with Claude Sonnet 4 subagents beat single-agent Claude Opus 4 by 90.2% on Anthropic’s internal research eval. Then, on <a href="https://openai.com/index/browsecomp/">BrowseComp</a>, a benchmark for finding hard-to-locate information on the web, they looked at what separated their successful runs from their failed ones. How many tokens a run spent accounted for 80% of the difference all by itself. Adding two more factors, the number of tool calls and which model was used, brought the total to 95% [4].</p>
+<p>The second number explains the first. Subagents work largely because they are a way to spend more tokens on a problem than one context window can hold. The bill matches: Anthropic reports that agents use roughly 4× the tokens of a chat interaction, and multi-agent systems roughly 15× [4].</p>
+<p>The pattern is now a default. <a href="https://code.claude.com/docs/en/sub-agents">Claude Code</a> offers subagents as a built-in feature, and <a href="https://www.langchain.com/">LangChain</a>’s Deep Agents packages planning plus subagents plus a filesystem as a library (<a href="../../posts/20260529-langchain-deep-agents/">post</a>).</p>
+</section>
+<section id="recursive-language-models-split-the-input" class="level2">
+<h2 class="anchored" data-anchor-id="recursive-language-models-split-the-input">Recursive language models: split the input</h2>
+<p>Now picture a different assistant. You hand this one a 10,000-page archive and a question. Instead of reading, the assistant writes a short script. Print the first page to see how the thing is formatted. Search for the twelve lines that mention the right date range. Cut the file at the chapter breaks, and for each of the 200 chapters, ask a colleague “does anything here mention X?” The archive is never read by the assistant, only by the script.</p>
+<p>That is an RLM, proposed in October 2025 by Alex Zhang, <a href="https://people.csail.mit.edu/kraska/">Tim Kraska</a>, and <a href="https://omarkhattab.com/">Omar Khattab</a> at <a href="https://www.csail.mit.edu/">MIT CSAIL</a> [1], [6]. The mechanics are small enough to state in full:</p>
+<ul>
+<li><strong>The prompt becomes a variable.</strong> The long input is loaded into a sandboxed Python <a href="https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop">read-eval-print loop</a> (REPL) as a string in memory. The <em>root</em> model, which the paper calls depth 0, starts out knowing only the question and the size of that string.</li>
+<li><strong>The model writes code, and sees only what the code prints.</strong> <code>print(prompt[:100])</code> to peek. <code>prompt.split("Chapter 2")</code> to cut. A regular expression to filter. Whatever the code prints comes back into the model’s context.</li>
+<li><strong>The model can call itself as a function.</strong> An <code>llm_query()</code> call inside the REPL hands a slice of the input to a fresh copy of the model, a <em>sub-call</em> at depth 1. The sub-call’s answer comes back as an ordinary Python value.</li>
+<li><strong>From outside, an RLM looks like one model call.</strong> The paper presents <code>rlm.completion(messages)</code> as a drop-in replacement for <code>gpt5.completion(messages)</code>. What the caller gets back is a single completion, with the agent loop hidden inside it.</li>
+</ul>
+<p>Reading actual RLM trajectories, the authors found a small set of recurring behaviors [6]:</p>
+<ul>
+<li><strong>Peeking</strong>: grab the first couple thousand characters to learn the format, the way a programmer inspects the head of an unfamiliar dataset.</li>
+<li><strong>Grepping</strong>: narrow with keywords or a regular expression instead of a retrieval model.</li>
+<li><strong>Partition and map</strong>: chunk the input and fire a sub-call at each chunk, for the cases where no pattern match will do because the thing being looked for is semantic.</li>
+<li><strong>Summarizing</strong>: condense regions of the input for the root model to reason over, which makes ordinary compaction one thing an RLM can choose to do.</li>
+<li><strong>Stitching long outputs</strong>: solve each piece with a sub-call and concatenate, which turns tasks like “produce the final file after 400 diffs” into a programming problem instead of a generation problem.</li>
+</ul>
+</section>
+<section id="delegating-in-prose-vs.-delegating-in-code" class="level2">
+<h2 class="anchored" data-anchor-id="delegating-in-prose-vs.-delegating-in-code">Delegating in prose vs.&nbsp;delegating in code</h2>
+<p>Both approaches make many model calls. Both keep the long material out of the top-level context. So it is fair to ask whether an RLM is a subagent system with extra steps. The RLM paper answers in one sentence in its introduction:</p>
+<blockquote class="blockquote">
+<p>Similarly, prior self-delegation approaches […] allow LLMs to invoke themselves as sub-agents. However, they are handicapped by the underlying LLM’s limited output lengths because they are designed to verbalize sub-calls autoregressively rather than producing them programmatically.</p>
+</blockquote>
+<p>In plainer terms: a subagent orchestrator has to <em>type out</em> every delegation. Ten subagents cost ten paragraphs of written instructions, and a thousand cost a thousand, which no output budget allows. An RLM writes a <code>for</code> loop. A thousand sub-calls cost the same dozen tokens as ten, because the model emits the rule rather than the instances.</p>
+<p>The second difference is easy to overstate, and the RLM authors do overstate it. Zhang closes the original post this way:</p>
+<blockquote class="blockquote">
+<p>Agents are designed based on human / expert intuition on how to break down a problem to be digestible for an LM. RLMs are designed based on the principle that fundamentally, LMs should decide how to break down a problem to be digestible for an LM.</p>
+</blockquote>
+<p>That is true of fixed-topology multi-agent systems, where a person wires up a searcher, a verifier, and a writer in advance. It is not true of the orchestrator-worker systems that made the pattern popular. Anthropic’s lead agent is itself a language model, and it picks the split per query: “the lead agent analyzes it, develops a strategy, and spawns subagents to explore different aspects simultaneously” [4]. The best evidence that the model rather than a person is choosing is the failure mode Anthropic reports, early agents “spawning 50 subagents for simple queries.” A human designer does not accidentally choose 50. ClawArena-Team exists for the same reason: it measures how well a model manages a team, which only makes sense as a question if the model is the one deciding [7].</p>
+<p>A person fixes less than Zhang suggests. Anthropic describes its own contribution as “instilling good heuristics rather than rigid rules,” encoding into the lead agent’s prompt what skilled human researchers do, including when to go deep and when to go wide [4]. The human sets the guidance and the vocabulary of delegation. The model still makes the call.</p>
+<p>What differs is how many splits each one can afford to consider. Because each prose delegation costs a paragraph, a lead agent can only pick among a handful of coarse assignments, and those tend to resemble the roles its prompt described. Because a code delegation costs a line, an RLM can express splits nobody enumerated: chunk into 200 pieces, filter by pattern first and call the model only on what survives, or set the chunk size from what the opening peek showed about the format.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Subagents</th>
+<th>RLMs</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>What gets split</td>
+<td>The task</td>
+<td>The input</td>
+</tr>
+<tr class="even">
+<td>Who chooses the split</td>
+<td>The lead model, guided by a human-written prompt</td>
+<td>The model, in code it writes for that query</td>
+</tr>
+<tr class="odd">
+<td>Range of splits available</td>
+<td>A handful of prose assignments</td>
+<td>Any program over the input</td>
+</tr>
+<tr class="even">
+<td>How a delegation is expressed</td>
+<td>A prose instruction</td>
+<td>A line of code</td>
+</tr>
+<tr class="odd">
+<td>Cost of 1,000 delegations</td>
+<td>1,000 written instructions</td>
+<td>One loop</td>
+</tr>
+<tr class="even">
+<td>What the top-level context holds</td>
+<td>Returned summaries</td>
+<td>Printed output of its own code</td>
+</tr>
+<tr class="odd">
+<td>What the caller sees</td>
+<td>An agent run</td>
+<td>One completion</td>
+</tr>
+<tr class="even">
+<td>Fails when</td>
+<td>Subagents make conflicting assumptions</td>
+<td>The model cannot write good code</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="the-evidence-on-subagents" class="level2">
+<h2 class="anchored" data-anchor-id="the-evidence-on-subagents">The evidence on subagents</h2>
+<p>The case for is largely the Anthropic result above, plus the hierarchical variants that followed it. Matryoshka Agent applies the same orchestrator-and-workers split to machine-learning engineering, where an orchestrator keeps a compact record of what has been explored while subagents run the expensive attempts, and reports up to a 36.7% relative gain on Qwen3-30B-Coder [8]. Its orchestrator built on Qwen3-4B-Instruct reaches performance comparable to <a href="https://openai.com/index/introducing-o3-and-o4-mini/">o4-mini</a>, which is a hint about where model capacity has to go.</p>
+<p>The case against arrived quickly, and in three flavors.</p>
+<p>The first is architectural, from <a href="https://cognition.com/">Cognition</a>, which builds <a href="https://devin.ai/">Devin</a>. Its June 2025 position piece, “Don’t Build Multi-Agents,” argues from two principles [9]:</p>
+<blockquote class="blockquote">
+<p>Share context, and share full agent traces, not just individual messages</p>
+<p>Actions carry implicit decisions, and conflicting decisions carry bad results</p>
+</blockquote>
+<p>The illustration is a request to clone Flappy Bird, split between a subagent building the bird and a subagent building the background. Both do competent work and the results do not match, because each made a visual-style decision the other never saw. Passing the original task down does not fix it, since the decisions that matter were made in tool calls and turns that no summary preserves. Cognition’s recommendation is a single-threaded agent with a dedicated model, in their case fine-tuned, whose only job is compressing history into decisions and events [9].</p>
+<p>The second is empirical. “The Illusion of Multi-Agent Advantage” evaluated automatically designed multi-agent systems against a plain single-agent baseline, <a href="https://arxiv.org/abs/2201.11903">chain-of-thought</a> with <a href="https://arxiv.org/abs/2203.11171">self-consistency</a>, and found the multi-agent systems consistently behind despite costing up to 10× as much [10]. On a synthetic dataset built specifically to have the properties multi-agent systems are supposed to exploit, decomposable tasks with separable contexts, expert-designed architectures beat automatically generated ones on both accuracy and cost. The authors’ reading is that automated design produces complexity that does not do anything.</p>
+<p>The third is theoretical, and it reconciles the first two with Anthropic’s 90.2%. “When Do Multi-Agent Systems Help? An Information Bottleneck Perspective” observes that a single agent accumulates one shared trace, while a multi-agent system has isolated local contexts joined by bounded relay messages [11]. With unbounded relays a multi-agent system can just forward everything and reproduce the single agent exactly, so any real advantage has to come from the compression the bounded relay forces. The trade is between dropping redundant context, which helps, and dropping task-relevant context, which hurts. The authors back this with 18 controlled experiments, spanning five benchmarks and three sizes of model. Multi-agent systems help when the relay loses little, and help most for weaker models. The gains shrink or reverse for stronger models that were already capable of using the redundant context themselves.</p>
+<p>The prediction that falls out of this is that as base models improve, the delegation tax gets harder to justify at fixed relay bandwidth.</p>
+<p>A newer line of work asks whether a model can run a team at all. ClawArena-Team measures the management ability of the lead model specifically, holding the subagent pool fixed so score differences reflect orchestration rather than raw capability [7]. The setup deliberately handicaps the manager: it reads only text, and it can reach only part of the workspace directly, so anything else has to go through a subagent. That forces two separate skills. <em>Modality routing</em> is sending an image-grounded question to a worker that can actually see images rather than guessing from the surrounding text. <em>Least-privilege empowerment</em> is granting each subagent only the tools and file paths its assignment needs, so that a worker which misbehaves cannot reach anything else.</p>
+<p>Models turn out to be adequate at the first and poor at the second. No model exceeded 50% workspace-permission precision, meaning that more than half the access each manager handed out was access the assignment never called for. The managers were not failing to see what a subagent needed. They were failing to withhold what it did not, which is the same over-permissioning problem that ordinary software security spends most of its effort on.</p>
+<p>Paying more does not buy better management. API cost across the twelve models varied by more than 100×, while overall scores varied by less than 4×, and the cheapest open models were among the most efficient. The scores also make the models look more alike than they are. Most land inside a 9.9-point band. But among the capable ones, how often a subagent reached a path it should not have varied by about 12×.</p>
+</section>
+<section id="the-evidence-on-rlms" class="level2">
+<h2 class="anchored" data-anchor-id="the-evidence-on-rlms">The evidence on RLMs</h2>
+<p>Start with the strongest numbers. On four long-context tasks with <a href="https://openai.com/index/introducing-gpt-5/">GPT-5</a>, the RLM beats common scaffolds by a median of 26% against compaction, 130% against <a href="https://arxiv.org/abs/2402.01030">CodeAct</a> with sub-calls, and 13% against Claude Code, at comparable cost, and it keeps working past 10M tokens. The individual entries in Table 1 are more informative than the medians [1]:</p>
+<ul>
+<li><strong>On <a href="https://huggingface.co/datasets/Tevatron/browsecomp-plus">BrowseComp-Plus</a> at 6M to 11M tokens</strong> [12], a version of BrowseComp where every candidate document is supplied up front instead of searched for on the web, plain GPT-5 scores 0.0 because the input does not fit. The RLM scores 91.3, rising to 92.0 at greater recursion depth. It is not the best number in that column: <a href="https://opencode.ai/">OpenCode</a> with the context offloaded to a file reaches 94.0.</li>
+<li><strong>On OOLONG-Pairs</strong>, a synthetic pairwise-reasoning task the RLM authors built at only 32K tokens, well inside every window involved, GPT-5 scores 0.1, OpenCode with offloading 4.8, and Claude Code with offloading 6.5. The RLM scores 58.0. Capacity cannot explain this one, since everything fit.</li>
+<li><strong>On code-repository question answering</strong>, the ordering is much tighter: 62.0 for the RLM against 64.0 for OpenCode with offloading. The Claude Code rows are not a like-for-like comparison, since the paper runs that baseline on Claude Opus 4.1 rather than GPT-5.</li>
+</ul>
+<p>One finding argues against the method’s own name. <strong>Recursion is not where most of the gain comes from.</strong> The paper’s own ablation at depth 0, meaning the REPL with no sub-calls at all, already reaches 88.0 of the RLM’s 91.3 on BrowseComp-Plus. With <a href="https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct">Qwen3-Coder-480B-A35B</a> on code question answering, depth 0 at 66.0 beats depth 1 at 56.0. And depth does not increase monotonically once it is switched on: with GPT-5, code question answering runs 58.0, 62.0, 66.0, 58.0 across depths 0 through 3, while OOLONG-Pairs climbs steadily, 43.9, 58.0, 65.5, 76.0 [1].</p>
+<p>Two independent follow-ups turn that observation into a claim.</p>
+<ul>
+<li><strong>A reproduction study</strong> ran depth 1 and depth 2 on open agentic models and found deeper recursion made models “overthink”: accuracy dropped on simple retrieval, and one execution went from 3.6 seconds to 344.5 seconds [13].</li>
+<li><strong>SRLM</strong> keeps the REPL and drops the recursion requirement, replacing it with sampling eight candidate programs and picking one using the model’s own uncertainty signals. SRLM reports gains up to 22% over RLM under a matched time budget, and finds that RLMs with recursion often score <em>below</em> the base model for inputs that fit in the window. The paper states directly that recursion is not the primary driver of RLM performance (<a href="../../posts/20260730-self-reflective-program-search/">post</a>) [14].</li>
+</ul>
+<p>Taken with the depth-0 rows in the original paper, the reasonable summary is narrower than the method’s name suggests. Programmatic access to the input is doing most of the work. Recursive sub-calls are a specialized tool, and they pay off on inputs where the thing being looked for is semantic rather than findable by pattern.</p>
+<p>The paper’s negative-results appendix records what did not work [1]:</p>
+<ul>
+<li><strong>The method needs a competent coding model.</strong> Qwen3-8B struggled as an RLM because it could not reason well enough in a REPL.</li>
+<li><strong>Thinking models can run out of output tokens.</strong> Several Qwen3-235B-A22B trajectories hit the per-call output limit mid-run because reasoning tokens consumed the budget, which is why its gains fell below those of the two models in the main results.</li>
+<li><strong>The prompt does not transfer between models.</strong> Qwen3-Coder had to be explicitly warned not to over-delegate, or it would issue thousands of sub-calls on basic tasks.</li>
+<li><strong>Every sub-call blocks.</strong> The published implementation issues them one after another with no prefix caching, which can make an RLM slower than the base model it wraps.</li>
+<li><strong>A text tag is the only signal that an answer is final.</strong> The model is asked to wrap a finished answer in a <code>FINAL()</code> tag, and the loop stops when it sees one. Models sometimes put a plan inside the tag instead, which ends the run on a plan.</li>
+</ul>
+</section>
+<section id="designs-that-combine-both" class="level2">
+<h2 class="anchored" data-anchor-id="designs-that-combine-both">Designs that combine both</h2>
+<p>Nothing so far settles whether to split the task or split the input. The newest designs do both.</p>
+<p>“Recursive Agent Harnesses” names the pattern in between [15]. Keep the RLM idea that delegations are emitted as code, but let each recursive unit be a whole agent, with its own tools, sandbox, and plan, instead of a bare model call. A parent agent writes a script, runs it, and gets many child agents working at once on the repetitive parts, reserving plain function calls for the small ones. The authors ran this with the backbone pinned to GPT-5 so it matched the Codex and RLM numbers already published, which lets them credit the difference to the harness instead of the model: a Codex baseline of 71.75% rose to 81.36% on a long-context aggregation benchmark reaching 4M tokens. Swapping in Claude Sonnet 4.5 took the same design to 89.77%.</p>
+<p>The same pattern is now in production. In Claude Code’s dynamic workflows, Claude writes an orchestration script and a background runtime executes it, running up to 16 agents at once and up to 1,000 across a single run [16] (<a href="../../posts/20260529-dynamic-workflows-claude-code/">post</a>). The documentation draws the same distinction the RLM paper drew, in nearly the same terms:</p>
+<blockquote class="blockquote">
+<p>A workflow moves the plan into code. With subagents, skills, and agent teams, Claude is the orchestrator: it decides turn by turn what to spawn or assign next, and every result lands in a context window. A workflow script holds the loop, the branching, and the intermediate results itself, so Claude’s context holds only the final answer.</p>
+</blockquote>
+<p>Chained RLM comes at the merger from the other side. That design replaces a single long trajectory with a sequence of fresh roots, each inheriting a compact summary, a shared plain-text blackboard, and durable artifacts written by its predecessors rather than the full conversation [17].</p>
+<p>All three designs make the same two choices: emit delegations as code rather than prose, and make whatever receives a delegation as capable as the task requires.</p>
+</section>
+<section id="practical-implications" class="level2">
+<h2 class="anchored" data-anchor-id="practical-implications">Practical implications</h2>
+<ul>
+<li><strong>Ask which thing is too big, the task or the input</strong>: one long object, a repository, a corpus, a transcript, a log file, points to splitting the input. Several genuinely independent lines of inquiry, each needing its own search, points to splitting the task. Most real work has some of each, which is what the merged designs above are for.</li>
+<li><strong>A REPL over the input is the cheap first move</strong>: the depth-0 results and SRLM both say most of the benefit comes from letting the model manipulate the long input programmatically. A sandboxed REPL is much less machinery than an orchestration layer, and it can come first.</li>
+<li><strong>The input split needs a model that codes well</strong>: RLM-style methods put the whole burden on coding ability, and on a weak base model the pattern degrades. The information-bottleneck result points the other way for weak models, where the compression a prose relay forces is what helps most.</li>
+<li><strong>Budget in tokens rather than wall clock</strong>: Anthropic’s 15× multiplier and SRLM’s eight parallel programs are both real costs that a latency measurement hides. Running eight programs at once shortens the wait without reducing the bill.</li>
+<li><strong>Both families fail at the joins</strong>: the MAST taxonomy puts a whole category of multi-agent failures at inter-agent misalignment (<a href="../../posts/20250802-mast-multi-agent-failures/">post</a>) [18]. The RLM failures the authors list are handoff problems too, an answer mistaken for a plan, a syntax error in generated code. Instrument the handoffs.</li>
+<li><strong>Put the strongest model in the manager seat</strong>: a controlled sweep over hierarchical search agents scaled each role on its own and found that a bigger delegating model improved exact match by about 11 points, while a bigger execution subagent moved it about 2.6 [19]. The workers can be cheap. A 1.7B executor trained on filtered trajectories matched a frontier subagent while using 37% fewer subagent tokens. The manager needs skill at managing more than it needs sheer size, which is the gap Matryoshka Agent closes by training for the role: its Qwen3-4B orchestrator reaches orchestration performance comparable to o4-mini.</li>
+<li><strong>Do not read cost as a proxy for orchestration quality</strong>: ClawArena’s 100× cost spread against a sub-4× score spread says the expensive model is not reliably the better manager.</li>
+</ul>
+</section>
+<section id="possible-future-developments" class="level2">
+<h2 class="anchored" data-anchor-id="possible-future-developments">Possible future developments</h2>
+<p>Four lines of work are active.</p>
+<p><strong>Training the recursion instead of prompting it.</strong> Everything above treats the pattern as a wrapper around a model that was never trained for it. The RLM authors post-trained one small model on distilled RLM trajectories, and RLM-Qwen3-8B improved on the base Qwen3-8B by a median of 28% while running its trajectories more efficiently. Reinforcement learning on a 64K-token, two-needle split then generalized to a 1M-token, eight-needle split [1]. If that holds up at scale, “how to interact with your own input” becomes a trainable behavior in the same way chain-of-thought reasoning did.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260810-rlm-vs-subagents-primer/figure3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Post-training an RLM. On the left, rejection fine-tuning Qwen3-8B on trajectories distilled from RLM(Qwen3-Coder-480B-A35B). On the right, reinforcement learning on the 64K-token, two-needle split of MRCRv2, a long-context retrieval benchmark, generalizing to the 1M-token, eight-needle split, with a 1M-context frontier model shown for comparison. Figure 3 from the RLM paper [1].</figcaption>
+</figure>
+</div>
+<p><strong>Constraining the recursion instead of trusting it.</strong> The freedom that makes an RLM strong also makes it unverifiable. Arbitrary generated code has no termination guarantee and no cost bound, the same complaint the paper’s own limitations section makes about exploding sub-call costs. λ-RLM replaces free-form code generation with a typed runtime grounded in <a href="https://en.wikipedia.org/wiki/Lambda_calculus">λ-calculus</a>. It draws on a fixed set of combinators that have been verified ahead of time, and calls the model only on bounded leaf subproblems. The authors report termination and closed-form cost bounds, wins in 29 of 36 model-task comparisons against a standard RLM, and latency cut by up to 4.1× [20]. Whether the field prefers guarantees or freedom here is open.</p>
+<p><strong>Orchestration as code, in products.</strong> Dynamic workflows moved the plan out of the context window and into a script a user can read, diff, save, and rerun. That is a different artifact from a prompt: a plan you can inspect and edit before it runs, rather than a decomposition you reconstruct from a transcript afterward.</p>
+<p><strong>Asynchrony.</strong> Both literatures name the same missing piece. Anthropic notes that its lead agents run subagents one batch at a time, so the system waits on the slowest one and the lead cannot redirect a subagent already in progress [4]. The RLM authors list blocking sub-calls and absent prefix caching as their main implementation debt [1], [6]. Fixing this is engineering rather than research, and it changes the cost curve for both.</p>
+<p>Zhang posed this as a contest between human-designed and model-chosen decomposition. That is not the question a year of results left open, because both approaches now let a model choose. The results settled the medium instead: a decomposition the model writes as code beats one it types out in prose, on the tasks measured so far. They left open how much freedom that code should get, and how much of it needs a type system, a permission model, or a cost bound around it before anyone puts it near production.</p>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Zhang, A. L., Kraska, T., Khattab, O. “Recursive Language Models.” <em>arXiv preprint</em> (arXiv:2512.24601), December 31, 2025 (v3, May 11, 2026). <a href="https://arxiv.org/abs/2512.24601" class="uri">https://arxiv.org/abs/2512.24601</a></li>
+<li><a id="ref-2"></a>Hong, K., Troynikov, A., Huber, J. “Context Rot: How Increasing Input Tokens Impacts LLM Performance.” <em>Chroma technical report</em>, July 2025. <a href="https://www.trychroma.com/research/context-rot" class="uri">https://www.trychroma.com/research/context-rot</a></li>
+<li><a id="ref-3"></a>Bertsch, A., Pratapa, A., Mitamura, T., Neubig, G., Gormley, M. R. “Oolong: Evaluating Long Context Reasoning and Aggregation Capabilities.” <em>arXiv preprint</em> (arXiv:2511.02817), November 4, 2025. <a href="https://arxiv.org/abs/2511.02817" class="uri">https://arxiv.org/abs/2511.02817</a></li>
+<li><a id="ref-4"></a>Hadfield, J., Zhang, B., Lien, K., Scholz, F., Fox, J., Ford, D. “How We Built Our Multi-Agent Research System.” <em>Anthropic Engineering</em>, June 13, 2025. <a href="https://www.anthropic.com/engineering/multi-agent-research-system" class="uri">https://www.anthropic.com/engineering/multi-agent-research-system</a></li>
+<li><a id="ref-5"></a>Anthropic. “Effective Context Engineering for AI Agents.” <em>Anthropic Engineering</em>, September 29, 2025. <a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" class="uri">https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents</a></li>
+<li><a id="ref-6"></a>Zhang, A. L. “Recursive Language Models.” Blog post, October 15, 2025. <a href="https://alexzhang13.github.io/blog/2025/rlm/" class="uri">https://alexzhang13.github.io/blog/2025/rlm/</a></li>
+<li><a id="ref-7"></a>Xiong, K., Ji, H., Qiu, S., Zheng, Z., Xie, C., Ye, X., Yao, H. “ClawArena-Team: Benchmarking Subagent Orchestration and Dynamic Workflows in Language-Model Agents.” <em>arXiv preprint</em> (arXiv:2606.31174), June 30, 2026. <a href="https://arxiv.org/abs/2606.31174" class="uri">https://arxiv.org/abs/2606.31174</a></li>
+<li><a id="ref-8"></a>Qiang, R., Li, C., Sun, H., Zhuang, Y., Zhang, C., Dai, B. “Matryoshka Agent: Unfolding Sub-Agents for Long-Horizon Machine Learning Engineering.” <em>arXiv preprint</em> (arXiv:2607.25090), July 27, 2026. <a href="https://arxiv.org/abs/2607.25090" class="uri">https://arxiv.org/abs/2607.25090</a></li>
+<li><a id="ref-9"></a>Yan, W. “Don’t Build Multi-Agents.” <em>Cognition blog</em>, June 12, 2025. <a href="https://cognition.com/blog/dont-build-multi-agents" class="uri">https://cognition.com/blog/dont-build-multi-agents</a></li>
+<li><a id="ref-10"></a>Jwalapuram, P., Lin, H., Li, C., Jiao, F., Wang, S., Ming, Y., Ke, Z., Qin, C., Carenini, G., Joty, S. “The Illusion of Multi-Agent Advantage.” <em>arXiv preprint</em> (arXiv:2606.13003), June 11, 2026. <a href="https://arxiv.org/abs/2606.13003" class="uri">https://arxiv.org/abs/2606.13003</a></li>
+<li><a id="ref-11"></a>Yu, W., Zhou, L., Dong, X., Barath, S. S., Staunton, D., Yoon, B.-J., Qian, X., Caverlee, J., Ji, S. “When Do Multi-Agent Systems Help? An Information Bottleneck Perspective.” <em>arXiv preprint</em> (arXiv:2607.16133), July 17, 2026. <a href="https://arxiv.org/abs/2607.16133" class="uri">https://arxiv.org/abs/2607.16133</a></li>
+<li><a id="ref-12"></a>Chen, Z., Ma, X., Zhuang, S., Nie, P., Zou, K., Liu, A., Green, J., Patel, K., Meng, R., Su, M., Sharifymoghaddam, S., Li, Y., Hong, H., Shi, X., Liu, X., Thakur, N., Zhang, C., Gao, L., Chen, W., Lin, J. “BrowseComp-Plus: A More Fair and Transparent Evaluation Benchmark of Deep-Research Agent.” <em>arXiv preprint</em> (arXiv:2508.06600), August 8, 2025. <a href="https://arxiv.org/abs/2508.06600" class="uri">https://arxiv.org/abs/2508.06600</a></li>
+<li><a id="ref-13"></a>Wang, D. “Think, But Don’t Overthink: Reproducing Recursive Language Models.” <em>arXiv preprint</em> (arXiv:2603.02615), March 3, 2026. <a href="https://arxiv.org/abs/2603.02615" class="uri">https://arxiv.org/abs/2603.02615</a></li>
+<li><a id="ref-14"></a>Alizadeh, K., Shojaee, P., Cho, M., Farajtabar, M. “Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context.” <em>arXiv preprint</em> (arXiv:2603.15653), March 7, 2026. <a href="https://arxiv.org/abs/2603.15653" class="uri">https://arxiv.org/abs/2603.15653</a></li>
+<li><a id="ref-15"></a>Lumer, E., Sen, S., Paul, K., Subbiah, V. K. “Recursive Agent Harnesses.” <em>arXiv preprint</em> (arXiv:2606.13643), June 11, 2026. <a href="https://arxiv.org/abs/2606.13643" class="uri">https://arxiv.org/abs/2606.13643</a></li>
+<li><a id="ref-16"></a>Anthropic. “Orchestrate Subagents at Scale with Dynamic Workflows.” <em>Claude Code documentation</em>, accessed August 10, 2026. <a href="https://code.claude.com/docs/en/workflows" class="uri">https://code.claude.com/docs/en/workflows</a></li>
+<li><a id="ref-17"></a>Mitra, P., Ulukus, S. “Chained Recursive Language Models for Multi-Iteration Reasoning.” <em>arXiv preprint</em> (arXiv:2608.05124), August 5, 2026. <a href="https://arxiv.org/abs/2608.05124" class="uri">https://arxiv.org/abs/2608.05124</a></li>
+<li><a id="ref-18"></a>Cemri, M., Pan, M. Z., Yang, S., Agrawal, L. A., Chopra, B., Tiwari, R., Keutzer, K., Parameswaran, A., Klein, D., Ramchandran, K., Zaharia, M., Gonzalez, J. E., Stoica, I. “Why Do Multi-Agent LLM Systems Fail?” <em>arXiv preprint</em> (arXiv:2503.13657), March 17, 2025. <a href="https://arxiv.org/abs/2503.13657" class="uri">https://arxiv.org/abs/2503.13657</a></li>
+<li><a id="ref-19"></a>Cai, Q., Zhao, Y., Li, X. “Think Big, Search Small: Where Capacity Matters in Hierarchical Search Agents?” <em>arXiv preprint</em> (arXiv:2607.07548), July 8, 2026. <a href="https://arxiv.org/abs/2607.07548" class="uri">https://arxiv.org/abs/2607.07548</a></li>
+<li><a id="ref-20"></a>Roy, A., Tutunov, R., Ji, X., Zimmer, M., Bou-Ammar, H. “The Y-Combinator for LLMs: Solving Long-Context Rot with λ-Calculus.” <em>arXiv preprint</em> (arXiv:2603.20105), March 20, 2026. <a href="https://arxiv.org/abs/2603.20105" class="uri">https://arxiv.org/abs/2603.20105</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260730-self-reflective-program-search/">Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context</a>: the paper that separates the REPL from the recursion and argues the recursion is not where the gains come from.</li>
+<li><a href="../../posts/20260529-dynamic-workflows-claude-code/">Dynamic Workflows in Claude Code</a>: the production system that puts code-emitted subagent orchestration in users’ hands, and the closest thing to a merged design in a product.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: the 14-mode taxonomy behind the claim that multi-agent systems fail at the joins between agents.</li>
+<li><a href="../../posts/20260529-langchain-deep-agents/">LangChain’s Deep Agents: A Batteries-Included Agent Harness</a>: the planning-plus-subagents-plus-filesystem pattern packaged as a library, and a name for the harness layer all of these designs belong to.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: what happens when the multi-agent topology itself is searched rather than hand-designed, which is the target of the “illusion of advantage” critique.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260810-rlm-vs-subagents-primer/</guid>
+  <pubDate>Mon, 10 Aug 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260810-rlm-vs-subagents-primer/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Passing CoachClaude’s Durability Test</title>
   <dc:creator>Ben </dc:creator>
@@ -2158,32 +2412,6 @@ Each wrapper is published in both Chinese and English, and the raw strings are i
   <guid>https://benjaminhan.net/posts/20260720-llm-disagreement/</guid>
   <pubDate>Mon, 20 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260720-llm-disagreement/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>My 88th Half Marathon, a Steady Easy Long Run</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260719-half-marathon-88/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260719-half-marathon-88/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>HM 88 in the books — 13.3 mi easy at 9:37/mi, HR 131/138. Hips and left calf finally settling down, and I ran it steady start-to-finish in ~10°F warmer air than last Sunday.</p>
-<p>WAP earned its keep today as the temperature rose from 67 to 73°F — now I can see my grade- and temperature-normalized pace all the way along.</p>
-<p><img src="https://benjaminhan.net/posts/20260719-half-marathon-88/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260719-half-marathon-88/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260719-half-marathon-88/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116949379577940275">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260719-half-marathon-88/</guid>
-  <pubDate>Sun, 19 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260719-half-marathon-88/image-1.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
