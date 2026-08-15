@@ -20,7 +20,151 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 10 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Fri, 14 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>The 2nd AVeriTeC Shared Task: Open-Weights, Reproducible and Efficient Systems</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260814-averitec-shared-task-open-weights/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260814-averitec-shared-task-open-weights/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260814-averitec-shared-task-open-weights/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>The 2nd Automated Verification of Textual Claims (AVeriTeC) Shared Task: Open-weights, Reproducible and Efficient Systems</em> [1] (the Eighth Fact Extraction and VERification workshop, FEVER, at <a href="https://2025.aclweb.org/">ACL</a> 2025 in Vienna, July 2025), <a href="https://aclanthology.org/people/mubashara-akhtar/">Mubashara Akhtar</a> (ETH Zurich), <a href="https://aclanthology.org/people/rami-aly/">Rami Aly</a>, <a href="https://aclanthology.org/people/yulong-chen/">Yulong Chen</a>, <a href="https://aclanthology.org/people/zhenyun-deng/">Zhenyun Deng</a> (Cambridge), <a href="https://aclanthology.org/people/michael-schlichtkrull/">Michael Schlichtkrull</a> (Cambridge and Queen Mary University of London), <a href="https://aclanthology.org/people/chenxi-whitehouse/">Chenxi Whitehouse</a> (Cambridge and Meta), and <a href="https://aclanthology.org/people/andreas-vlachos/">Andreas Vlachos</a> (Cambridge) report the second edition of the shared task built on the <a href="../../posts/20260507-averitec/">AVeriTeC</a> claim-verification dataset [2]. Where the first edition [3] was won by systems calling commercial language-model APIs, this one bars external calls at inference time: every system must run on a single 23 GB GPU, finish a claim in a minute, and retrieve its evidence from a knowledge store the organizers compiled in advance.</p>
+<p>Two measurements decide the leaderboard:</p>
+<ul>
+<li><strong>AVeriTeC score</strong>: verdict accuracy, counted only for claims where the system’s retrieved evidence clears a similarity threshold against the annotators’ gold evidence. A system that labels a claim correctly off the wrong evidence scores zero on it, so the number is a joint <em>retrieval-and-verdict</em> measure rather than an accuracy figure.</li>
+<li><strong>Ev2R recall</strong>: the evidence-similarity component, new this year [4]. An LLM-as-judge decomposes both the retrieved and the reference evidence into atomic facts, then measures what share of the reference facts the retrieved evidence supports. It is reported twice, over questions alone (<em>Q only</em>) and over question-answer pairs (<em>Q + A</em>), and the second one gates the AVeriTeC score. Both column names come from the <a href="../../posts/20260507-averitec/">dataset paper</a>, where they scored token overlap, so the figures do not compare across the two.</li>
+</ul>
+<blockquote class="blockquote">
+<p>In the First Automated Verification of Textual Claims (AVeriTeC) shared task, participating teams developed systems that for each claim retrieve evidence from the web and predict its veracity. While there was progress in automated fact-checking for real-world claims, the majority of the systems proposed relied on large closed-weights language models, which rendered them expensive to run and less reproducible. To ameliorate this issue, in this year’s edition of the AVeriTeC shared task, <em>we required system to use only open-weights models that could be run using a single GPU with 23GBs of RAM</em>, and that <em>systems should take one minute or less to return verdicts accompanied by evidence retrieved from a pre-compiled knowledge store</em>. The shared task received 7 submissions; <em>6 of which exceeded the accuracy of our baseline on the test set</em>, while they ran in under a minute per claim on the hardware we had specified. <em>The winning team was CTU AIC with an AVeriTeC score of 33.17%</em>. In this paper we describe the shared task in detail and highlight key findings.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The task itself is inherited from the dataset: given a claim plus metadata such as speaker and date, retrieve supporting or refuting evidence, then assign one of four verdicts: <em>Supported</em>, <em>Refuted</em>, <em>Not Enough Evidence</em>, or <em>Conflicting Evidence/Cherry-picking</em>. Gold evidence is annotated as question-answer pairs, a format the authors note accommodates multi-hop reasoning. Systems were not required to answer in it, though most did.</p>
+<p>Four pieces of infrastructure define this edition:</p>
+<ul>
+<li><strong>A fresh test set.</strong> 1,000 new claims running from January to December 2024.
+<ul>
+<li><em>Annotation.</em> The same five-phase pipeline as the original dataset: extract and decontextualise the claim, generate question-answer pairs and a verdict, then have a <em>different</em> annotator produce a verdict from the question-answer pairs alone.</li>
+<li><em>Adjudication.</em> A claim is admitted when those two verdicts agree. Disagreement sends it through a second round of both steps with fresh annotators, and a second disagreement discards it.</li>
+<li><em>Annotator qualification.</em> Clearing 70% F1 on claim-type and fact-checking-strategy classification, more than two question-answer pairs per claim, and 50% verdict accuracy on training instances. 8 of 9 candidates passed.</li>
+<li><em>Difficulty.</em> The 2025 claims average 2.79 questions each and are further from the training data than any earlier split, the largest domain shift of the three test sets.</li>
+</ul></li>
+<li><strong>A pre-compiled knowledge store.</strong> The frozen evidence pool, in place of live web search.
+<ul>
+<li><em>Construction.</em> For each claim the organizers assembled the gold documents plus Google results for machine-generated queries, including distractor queries built by swapping the claim’s named entities, dates, and events, keeping only URLs available before the claim was made. Each URL’s text is then scraped with <a href="https://github.com/adbar/trafilatura">trafilatura</a>, so a system reads extracted article text rather than raw HTML.</li>
+<li><em>Size.</em> 1,018,800 URLs and roughly 2.5 billion tokens: about 1,019 URLs per claim, of which 593 have usable scraped text.</li>
+<li><em>Effect.</em> Two systems are compared over the same evidence pool, and nobody pays for search.</li>
+</ul></li>
+<li><strong>A fixed inference environment.</strong> One machine, on which the organizers ran every submitted system against the hidden test set.
+<ul>
+<li><em>Hardware.</em> An AWS <code>g5.2xlarge</code> instance, meaning one Nvidia A10G with 23 GB of GPU memory, 8 vCPUs, and 32 GB of system RAM.</li>
+<li><em>Reproducibility.</em> A system counts as reproducible if it completes inference there with no external API calls, so closed-weights models are excluded at inference but allowed during training.</li>
+<li><em>Efficiency.</em> The budget is 16 hours 40 minutes for 1,000 claims, a minute per claim on average. Systems were permitted to run one pipeline stage across all claims before starting the next, which sidesteps repeated model loading.</li>
+<li><em>Effect on the ranking.</em> None. Both reproducibility and efficiency are pass/fail admission gates.</li>
+</ul></li>
+<li><strong>A new evidence metric.</strong> Ev2R, in place of last year’s token overlap.
+<ul>
+<li><em>What it replaces.</em> Last year’s scoring compared generated and gold question-answer pairs by token overlap with METEOR [5], which penalises valid evidence phrased differently from the annotator’s and which correlated near zero with human judgment.</li>
+<li><em>Recall only.</em> Only Ev2R’s recall half is used, so a system is not punished for returning extra context the annotators skipped.</li>
+<li><em>Capped at 10 questions.</em> Only a system’s first 10 questions count, so volume alone earns nothing.</li>
+<li><em>The gate.</em> The AVeriTeC score is verdict accuracy conditioned on Ev2R recall above <img src="https://benjaminhan.net/feed-assets/cc37ce05c0b4250c.svg" alt="t = 0.5" class="feed-math-inline"/>.</li>
+</ul></li>
+</ul>
+<p>Table 1 sets the 2025 test set beside the original 2023 splits and last year’s test set: claim counts, questions per claim, the date of the last claim, and percentage breakdowns by verdict, by claim type, and by the strategy the fact-checker used. The 2025 claims end on 19 December 2024. Numerical claims make up 38.8% of them and causal claims 8.1%, a shift the authors describe as easing verification, since they call numerical claims the more straightforward kind and causal claims the harder one.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260814-averitec-shared-task-open-weights/table1.png" class="img-fluid figure-img"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The baseline is <a href="https://github.com/ssu-humane/HerO">HerO</a> [6], the runner-up from the first edition, cut down to fit the budget: Llama-3.1-8B in place of the 70B model throughout, BM25 retrieval capped at 5,000 sentences and reranking at 500, plus batching and multithreading.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Seven of eight submissions ran. The findings:</p>
+<ul>
+<li><strong>Six of seven systems beat the baseline.</strong> The ranking is the cover table’s AVeriTeC score column. Team CTU AIC won with 0.3317 [7], ahead of HUMANE at 0.2707 and Yellow Flash at 0.2527. The baseline scored 0.2023, and only OldJoe fell below it, at 0.1517. Every system also cleared the runtime budget, from EFC at 7.01 seconds per claim to CTU AIC at 53.67.</li>
+<li><strong>Reproducible meant reproducible-after-repair.</strong> One of the eight submissions never ran, defeated by syntax errors, missing installation instructions, and hardcoded paths. All seven that did run needed manual intervention first: Docker permission errors, dependency build failures, GPU memory crashes, and misconfigured shell scripts, each resolved inside four hours. The organizers also monitored network traffic for non-local calls and ran every system on 99 held-out claims to catch hardcoding against the test set.</li>
+<li><strong>The field converged on two model families.</strong> Every generative stage across all seven systems runs on Qwen3, Qwen2.5, or Phi-4, at 14B parameters or below except HUMANE’s fine-tuned <a href="https://huggingface.co/Qwen/Qwen3-32B">Qwen3-32B</a> verdict head, while retrieval runs on BM25 and open embedding models. Five systems serve with <a href="https://github.com/vllm-project/vllm">vLLM</a>, one with <a href="https://github.com/ggml-org/llama.cpp">llama.cpp</a>, and the winner with <a href="https://github.com/ollama/ollama">Ollama</a>. Fine-tuning was rare: only HUMANE and FZIGOT trained anything, the latter using low-rank adapters [8] on weakly supervised data for three separate pipeline stages.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260814-averitec-shared-task-open-weights/table3.png" class="img-fluid figure-img"></p>
+<figcaption>Table 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Quantization was near-universal, and the winner declined it.</strong> Every non-baseline system except CTU AIC compressed its weights to fit the 23 GB card. CTU AIC instead ran the largest model and context window it could fit uncompressed, which made it the slowest system on the board and the most accurate. EFC went the other way: a filtering step that predicts <em>Not Enough Evidence</em> and <em>Conflicting Evidence/Cherry-picking</em> from cosine similarity alone, skipping the language-model call, got it to roughly five times the baseline’s speed at a score just above it, 0.2047 against 0.2023.</li>
+<li><strong>The top systems skip explicit question generation.</strong> CTU AIC retrieves on the bare claim and generates questions, answers, and verdict together afterwards, while HUMANE expands the query into a hypothetical fact-checking article first. Both outrank the five systems that generate questions up front, and neither leads the question-only column: the highest Q-only recall belongs to FZIGOT at 0.3622 in 4th place, with the baseline second on that column at 0.2723 while placing 7th, against the winner’s 0.2003. The knowledge store, though, was itself built from generated queries. Their 20-claim probe finds complete evidence for 6 claims when searching the claim alone, against 19 under the full query-construction process, so question generation is doing the work one layer down.</li>
+<li><strong>Numerical claims are the hardest type.</strong> Averaged over systems, numerical claims score 0.16, against 0.25 for quote verification, 0.30 for both event/property and causal claims, and 0.36 for position statements. The organizers had described the 2025 test set’s tilt toward numerical claims (38.8%) as a tilt toward claims “more straightforward to verify,” and its smaller share of causal claims (8.1%) as fewer of the “typically more challenging” kind. The authors suggest the widened gap since the first edition is likely down to the change of metric.</li>
+<li><strong>Two verdict labels are effectively unsolved.</strong> On <em>Not Enough Evidence</em> no system exceeds 0.10, and on <em>Conflicting Evidence/Cherry-picking</em> none exceeds 0.06. Several teams dropped those two labels from their output entirely.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260814-averitec-shared-task-open-weights/table4.png" class="img-fluid figure-img"></p>
+<figcaption>Table 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Human raters rate relevance high and coverage low.</strong> Six of the seven teams plus two outside annotators rated evidence samples on a 1–5 scale for relevance to the claim and for coverage of the reference evidence, 35 samples each, leaving 198 valid annotations once the gold-labelled and unusable ones were dropped. About 79% are 4 or 5 for relevance, while coverage is spread almost uniformly, with 17.7% at 1 and 23.7% at 2. Ev2R correlates with the human coverage rating at Spearman <img src="https://benjaminhan.net/feed-assets/ac64bb1fa1fbc79a.svg" alt="\rho = 0.404" class="feed-math-inline"/> and with relevance at <img src="https://benjaminhan.net/feed-assets/39f7448675317ce9.svg" alt="0.244" class="feed-math-inline"/>, against roughly zero for last year’s token-matching metric, and the human ranking of teams broadly reproduces the leaderboard.</li>
+<li><strong>A closed-model swap lowered the winner’s score.</strong> The organizers reran CTU AIC’s pipeline with GPT-4o and GPT-4o-mini in place of Qwen3-14B. Q-only recall rose sharply, to 0.5035 and 0.5718 against 0.2003, while Q+A recall and the AVeriTeC score both fell, with GPT-4o-mini beating GPT-4o. The authors call this preliminary, since neither substitution was tuned for their pipeline.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The benchmark is drifting toward its majority class</strong>: <em>Refuted</em> is 62.0% of the 2023 test set, 66.5% of 2024’s, and 71.9% of 2025’s, while <em>Conflicting Evidence/Cherry-picking</em> falls 6.3% → 4.1% → 1.7% (Table 1). At 1.7% that second label covers 17 of 1,000 claims, too few to score a system on, which explains the near-empty column in Table 4. The same label separated <a href="../../posts/20260507-averitec/">AVeriTeC</a> from three-way benchmarks. The organizers note that systems are rewarded for calibrating toward <em>Refuted</em>, and the reward grows as the <em>Refuted</em> share grows. The claims come from what fact-checking organizations chose to publish, so the cause may be a shift in what gets fact-checked.</li>
+<li><strong>The score rewards matching the annotators’ sources</strong>: Ev2R recall measures how much of the annotators’ evidence is covered by the system’s evidence, fact by fact. A system that reaches the right verdict through different but equally sound sources scores low. In the human evaluation, samples the raters gave 5 on relevance, with the same verdict as the reference, scored low on coverage because the wording and sources differed. <a href="../../posts/20260731-relevance-to-utility/">From Relevance to Utility</a> [9] attacks the same gap at training time, where a retriever tuned on the verifier’s feedback beats one tuned on relevance labels. A <em>sufficiency test</em> would fit the task better: does this evidence support the gold verdict, regardless of which sources it came from.</li>
+<li><strong>Numbers are where the judge is least reliable</strong>: the organizers attribute the widened gap to the metric change, but causal claims score 0.30, tied for second, and causal is the type they deemed more challenging. If switching to Ev2R had depressed hard types generally, causal should have fallen too. Numerical reference evidence splits into many precise atomic facts, and a passage can state the right conclusion while missing most of the figures, so the recall term is the likely cause of the low numerical scores. Ev2R also fails the other way: the human evaluation flags a top-ranked sample whose “predicted evidence directly contradicts the reference evidence by providing different numbers, yet it receives a high AVeriTeC score due to similar wording” (Table 10, row three).</li>
+<li><strong>Leakage would hit every system at once</strong>: the limitations section flags that Qwen3’s training cutoff is estimated at March 2025 while the test claims run through December 2024, so leakage is possible. The 23 GB limit narrowed everyone’s model choices. Six of the seven teams generate questions with a Qwen model and four run one for the verdict, with Phi-4-14B in the other three (Table 3). Leakage in Qwen’s pretraining data would then move most of the board together, and a ranking between two Qwen-based systems cannot separate memorised claims from retrieved evidence. Refreshing the test set each year only helps while the new claims postdate the models’ cutoffs, and this edition’s do not. The organizers suggest requiring open training data as well as open weights, which would let anyone check.</li>
+<li><strong>The successor edition made the store optional</strong>: the group’s image-text dataset AVerImaTeC [10] got its own shared task at FEVER 2026 [11], run by four of the organizers here, and participants may use the provided knowledge store, their own search engines, or both. The stated reason for supplying a store is now the cost of web-search APIs. So the constraint the 2025 edition was built around held for one round. Ev2R carried over, extended to multimodal evidence.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://aclanthology.org/people/mubashara-akhtar/">Akhtar, Mubashara</a>, <a href="https://aclanthology.org/people/rami-aly/">Aly, Rami</a>, <a href="https://aclanthology.org/people/yulong-chen/">Chen, Yulong</a>, <a href="https://aclanthology.org/people/zhenyun-deng/">Deng, Zhenyun</a>, <a href="https://aclanthology.org/people/michael-schlichtkrull/">Schlichtkrull, Michael</a>, <a href="https://aclanthology.org/people/chenxi-whitehouse/">Whitehouse, Chenxi</a>, and <a href="https://aclanthology.org/people/andreas-vlachos/">Vlachos, Andreas</a>. “The 2nd Automated Verification of Textual Claims (AVeriTeC) Shared Task: Open-weights, Reproducible and Efficient Systems.” <em>Proceedings of the Eighth Fact Extraction and VERification Workshop (FEVER)</em>, pages 201–223, July 2025. <a href="https://aclanthology.org/2025.fever-1.15/" class="uri">https://aclanthology.org/2025.fever-1.15/</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://aclanthology.org/people/michael-schlichtkrull/">Schlichtkrull, Michael</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Guo, Zhijiang</a>, and <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, Andreas</a>. “AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web.” <em>37th Conference on Neural Information Processing Systems (NeurIPS) Datasets &amp; Benchmarks Track</em> (arXiv:2305.13117), May 22, 2023. <a href="https://arxiv.org/abs/2305.13117" class="uri">https://arxiv.org/abs/2305.13117</a></p></li>
+<li><p><a id="ref-3"></a>Schlichtkrull, Michael, Chen, Yulong, Whitehouse, Chenxi, Deng, Zhenyun, Akhtar, Mubashara, Aly, Rami, Guo, Zhijiang, Christodoulopoulos, Christos, Cocarascu, Oana, Mittal, Arpit, Thorne, James, and Vlachos, Andreas. “The Automated Verification of Textual Claims (AVeriTeC) Shared Task.” <em>Proceedings of the Seventh Fact Extraction and VERification Workshop (FEVER)</em>, pages 1–26, November 2024. <a href="https://aclanthology.org/2024.fever-1.1/" class="uri">https://aclanthology.org/2024.fever-1.1/</a></p></li>
+<li><p><a id="ref-4"></a>Akhtar, Mubashara, Schlichtkrull, Michael, and Vlachos, Andreas. “Ev2R: Evaluating Evidence Retrieval in Automated Fact-Checking.” <em>Transactions of the Association for Computational Linguistics (TACL)</em> (arXiv:2411.05375), November 8, 2024 (revised July 18, 2025). <a href="https://arxiv.org/abs/2411.05375" class="uri">https://arxiv.org/abs/2411.05375</a></p></li>
+<li><p><a id="ref-5"></a><a href="https://aclanthology.org/people/satanjeev-banerjee/">Banerjee, Satanjeev</a> and <a href="https://aclanthology.org/people/alon-lavie/">Lavie, Alon</a>. “METEOR: An Automatic Metric for MT Evaluation with Improved Correlation with Human Judgments.” <em>ACL Workshop on Intrinsic and Extrinsic Evaluation Measures for Machine Translation and/or Summarization</em>, 2005. <a href="https://aclanthology.org/W05-0909/" class="uri">https://aclanthology.org/W05-0909/</a></p></li>
+<li><p><a id="ref-6"></a>Yoon, Yejun, Jung, Jaeyoon, Yoon, Seunghyun, and Park, Kunwoo. “HerO at AVeriTeC: The Herd of Open Large Language Models for Verifying Real-World Claims.” <em>Proceedings of the Seventh Fact Extraction and VERification Workshop (FEVER)</em>, pages 130–136, November 2024. <a href="https://aclanthology.org/2024.fever-1.15/" class="uri">https://aclanthology.org/2024.fever-1.15/</a></p></li>
+<li><p><a id="ref-7"></a>Ullrich, Herbert and Drchal, Jan.&nbsp;“AIC CTU@FEVER 8: On-premise fact checking through long context RAG.” <em>Proceedings of the Eighth Fact Extraction and VERification Workshop (FEVER)</em>, pages 274–280, July 2025. <a href="https://aclanthology.org/2025.fever-1.22/" class="uri">https://aclanthology.org/2025.fever-1.22/</a></p></li>
+<li><p><a id="ref-8"></a>Hu, Edward J., Shen, Yelong, Wallis, Phillip, Allen-Zhu, Zeyuan, Li, Yuanzhi, Wang, Shean, Wang, Lu, and Chen, Weizhu. “LoRA: Low-Rank Adaptation of Large Language Models.” <em>International Conference on Learning Representations (ICLR)</em> (arXiv:2106.09685), June 17, 2021. <a href="https://arxiv.org/abs/2106.09685" class="uri">https://arxiv.org/abs/2106.09685</a></p></li>
+<li><p><a id="ref-9"></a>Zhang, Hengran, Zhang, Ruqing, Guo, Jiafeng, de Rijke, Maarten, Fan, Yixing, and Cheng, Xueqi. “From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification.” <em>Findings of the Association for Computational Linguistics: EMNLP 2023</em>, pages 6373–6384 (arXiv:2310.11675), October 2023. <a href="https://aclanthology.org/2023.findings-emnlp.422/" class="uri">https://aclanthology.org/2023.findings-emnlp.422/</a></p></li>
+<li><p><a id="ref-10"></a><a href="https://dblp.org/pid/86/259.html">Cao, Rui</a>, <a href="https://dblp.org/pid/283/5849.html">Ding, Zifeng</a>, <a href="https://dblp.org/pid/43/6147.html">Guo, Zhijiang</a>, <a href="https://dblp.org/pid/186/7091.html">Schlichtkrull, Michael Sejr</a>, and <a href="https://dblp.org/pid/18/1071-1.html">Vlachos, Andreas</a>. “AVerImaTeC: A Dataset for Automatic Verification of Image-Text Claims with Evidence from the Web.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2505.17978), May 23, 2025. <a href="https://arxiv.org/abs/2505.17978" class="uri">https://arxiv.org/abs/2505.17978</a></p></li>
+<li><p><a id="ref-11"></a><a href="https://dblp.org/pid/86/259.html">Cao, Rui</a>, <a href="https://dblp.org/pid/155/7447.html">Deng, Zhenyun</a>, <a href="https://dblp.org/pid/157/4604-1.html">Chen, Yulong</a>, <a href="https://dblp.org/pid/186/7091.html">Schlichtkrull, Michael Sejr</a>, and <a href="https://dblp.org/pid/18/1071-1.html">Vlachos, Andreas</a>. “The Automatic Verification of Image-Text Claims (AVerImaTeC) Shared Task.” <em>Proceedings of the Ninth Fact Extraction and VERification Workshop (FEVER)</em> (arXiv:2602.11221), February 2026. <a href="https://aclanthology.org/2026.fever-1.6/" class="uri">https://aclanthology.org/2026.fever-1.6/</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260507-averitec/">AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</a>: the dataset and metric this shared task extends, where my note that the original left retrieval unfrozen is answered by this edition’s knowledge store.</li>
+<li><a href="../../posts/20260731-relevance-to-utility/">From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification</a>: the same relevance-versus-usefulness gap that Ev2R’s reference-recall scoring runs into, attacked at training time instead of evaluation time.</li>
+<li><a href="../../posts/20260627-open-weights-frontier-gap/">How Far Behind the Closed Frontier Are Open-Weights LLMs?</a>: the open-versus-closed gap measured across eighteen benchmarks, a wider counterweight to the single un-tuned GPT-4o substitution reported here.</li>
+<li><a href="../../posts/20260720-llm-disagreement/">Frontier LLMs Disagree on 67% of Real-World Fact-Checks</a>: frontier models split on two-thirds of live fact-check requests with no evidence-retrieval constraint, the setting this task’s gold-evidence gating is built to avoid.</li>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: the abstention failure that shows up here as no system scoring above 0.10 on <em>Not Enough Evidence</em>.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260814-averitec-shared-task-open-weights/</guid>
+  <pubDate>Fri, 14 Aug 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260814-averitec-shared-task-open-weights/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Recursive Language Models vs. Subagents: A Primer</title>
   <dc:creator>synesis </dc:creator>
@@ -2347,71 +2491,6 @@ Each wrapper is published in both Chinese and English, and the raw strings are i
   <guid>https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/</guid>
   <pubDate>Thu, 23 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-1.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Frontier LLMs Disagree on 67% of Real-World Fact-Checks</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260720-llm-disagreement/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260720-llm-disagreement/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260720-llm-disagreement/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>On 67% of real-world fact-checks, the five top frontier LLMs don’t agree on the answer. Image from <a href="https://lenz.io/research/llm-disagreement">Lenz Research</a>.</figcaption>
-</figure>
-</div>
-<p>Kosta Jordanov of <a href="https://lenz.io/research/llm-disagreement">Lenz Research</a> presented 1,000 recent real-user claims to the five top frontier LLMs and asked each for a verdict, then measured how often they agreed. The claims are live fact-check requests submitted to Lenz, a fact-checking platform, rather than benchmark items with public answer keys.</p>
-<p>Two things should temper that 67%. Calling these “fact-checks” is generous: three of the five models get no sources and answer from memory, and some claims are dated after those models’ training cutoffs, so on those they are guessing about events they never saw. I come back to both in my notes.</p>
-<p>What the study reports:</p>
-<ul>
-<li><strong>Setup</strong>: 1,000 claims, none older than February 15, 2026, each normalized into a single neutral testable proposition anchored to its submission date. Five models are forced to pick one of four labels (True / Mostly True / Misleading / False) with no explanation and no Abstain option: three parametric (GPT-5.4, Claude Opus 4.7, Gemini 3 Pro) and two retrieval-augmented (Gemini 3 Pro + Search, <a href="https://sonar.perplexity.ai/">Sonar Pro</a> from Perplexity). There is no LLM grader and no ground truth. Every number comes from direct label agreement across the five verdicts.</li>
-<li><strong>The main result</strong>: on 67% of claims (672 of 1,000) at least one model dissents from the majority, or no majority forms at all. Two or more models dissent on 45%, and 13% split with no majority. Only 33% are unanimous.</li>
-<li><strong>The pigeonhole floor</strong>: since exactly one of the four buckets can be correct, any split means at least one model is wrong. That puts a floor of ≥1 model wrong on 67% of claims, ≥2 wrong on 45%, and ≥3 wrong on the 13% with no majority. It bounds inconsistency from below, without identifying which model is wrong on any given claim.</li>
-<li><strong>Substantive vs calibration</strong>: 34% of claims have a gap of two or more buckets between the most-disagreeing pair, and 21% are polar (one model says True, another says False). Panel agreement, scored with <a href="https://en.wikipedia.org/wiki/Krippendorff%27s_alpha">Krippendorff’s α</a> at the ordinal level, is 0.639, structured but well short of interchangeable.</li>
-<li><strong>Poles vs.&nbsp;middle</strong>: True and False majorities reach full unanimity 43–47% of the time, but Mostly True majorities reach it 0% of the time and Misleading only 5%. Of the 328 unanimous claims, 204 are True, 120 are False, 4 are Misleading, and 0 are Mostly True.</li>
-<li><strong>Per-model behavior</strong>: agreement with the majority of the other four ranges from 69% (Sonar Pro) to 81% (GPT-5.4). Verdict distributions differ by model. Gemini 3 Pro concentrates at the poles (54% True, 40% False, ~3% in each middle bucket), while Claude Opus 4.7 spreads more evenly. The highest-agreeing pair is Gemini 3 Pro and Gemini 3 Pro + Search at 75%, which share a base model, and three pairs tie at the 53% floor.</li>
-<li><strong>By domain</strong>: disagreement runs from 53% (History) to 77% (Legal), with substantive gaps most common in Finance, General, and Legal claims (~39–40%).</li>
-<li><strong>Why a fresh corpus</strong>: public fact-check sets like AVeriTeC and PolitiFact are years old and likely part of the training data, so disagreement on them confounds inference with memorization. These are recent real-user submissions never paired with a canonical verdict in any public set, spanning health, science, finance, history, tech, and legal questions rather than mostly US political claims.</li>
-<li><strong>Artifacts</strong>: a <a href="https://lenz.io/research/llm-disagreement/data.csv">per-claim CSV</a>, a hash-pinned PDF, a versioned archival URL (v1.0), and a <a href="https://doi.org/10.5281/zenodo.20344847">Zenodo DOI</a>. A companion study is planned that human-labels the same corpus so both the frontier panel and Lenz’s own verdicts can be scored against ground truth.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260720-llm-disagreement/verdict-pattern.png" class="img-fluid figure-img"></p>
-<figcaption>The verdict-pattern breakdown across the five-model panel: 33% unanimous, 67% with at least one dissent, 45% with two or more, and 13% splitting with no majority at all. Table from <a href="https://lenz.io/research/llm-disagreement">Lenz Research</a>.</figcaption>
-</figure>
-</div>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>No room to say “I don’t know”</strong>: the panel has to pick a verdict even when “I don’t know” is the right call, and that hurts most in the middle, where Mostly True and Misleading almost never reach unanimity. <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> shows that forcing an answer on unanswerable questions lowers quality, and <a href="../../posts/20260507-averitec/">AVeriTeC</a> keeps <em>Not Enough Evidence</em> and <em>Conflicting Evidence</em> labels for exactly this reason. Part of the 67% reflects the rubric’s design rather than model error.</p></li>
-<li><p><strong>Even the models that search disagree</strong>: the easy dismissal is that three of the five (GPT-5.4, Opus 4.7, Gemini 3 Pro) run on memory alone, so their splits just reflect what each happened to memorize. But take only the two that search the web, Gemini 3 Pro + Search and Sonar Pro: they still give different labels on 42% of claims. Most of that is one step apart, True versus Mostly True. On 6% they go fully opposite, one True and one False, down from 21% across all five. Both can pull the same sources, so that 6% comes down to the sources and how each model reads them.</p></li>
-<li><p><strong>The four labels aren’t clean</strong>: the pigeonhole floor only holds if exactly one label can be right, but the buckets aren’t clean. Misleading shades into both True and False, there’s no Mostly False, and “All almonds are grown in the U.S. state of California” is fairly called either False or Misleading. When two labels both fit, a split is two defensible reads of the same claim, which makes the “someone is wrong on 67%” floor softer than it sounds.</p></li>
-<li><p><strong>The data is open</strong>: <a href="https://lenz.io/research/llm-disagreement/data.csv">the per-claim CSV</a> lists every claim with all five model verdicts, so any agreement number here can be recomputed, including the 42% and 6% above. It has the verdicts but no ground truth, so nothing in it settles who is actually correct, only how much the models diverge.</p></li>
-<li><p><strong>What would actually settle this</strong>: let each model think out loud before it gives a label, and ask each one the same claim several times to see whether it even agrees with itself. A single forced pick can’t separate a genuinely contested claim from a model that happened to be inconsistent that run. The human-labeled pass over the same 1,000 claims, which the author has planned, will finally say who was right.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260507-averitec/">AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</a>: the human-annotated fact-check benchmark this study cites as its agreement ceiling (κ=0.619), with a richer verdict set that the four-bucket rubric here deliberately omits.</li>
-<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: direct support for the concern that forcing a verdict with no Abstain option degrades quality on exactly the contested claims where the panel splits.</li>
-<li><a href="../../posts/20260522-metacognition-atlas/">Domain-Level Metacognitive Monitoring in Frontier LLMs: A 33-Model Atlas</a>: another case of frontier behavior varying stably by domain, matching the History-to-Legal spread in disagreement here.</li>
-<li><a href="../../posts/20260504-kadavath-mostly-know/">Language Models (Mostly) Know What They Know</a>: the calibration counterpoint, where a single model can often judge its own correctness even as a panel of five cannot agree on a verdict.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260720-llm-disagreement/</guid>
-  <pubDate>Mon, 20 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260720-llm-disagreement/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
