@@ -20,7 +20,217 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 14 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 16 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>QuanTemp: A Real-World Open-Domain Benchmark for Fact-Checking Numerical Claims</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>QuanTemp: A real-world open-domain benchmark for fact-checking numerical claims</em> [1] (SIGIR 2024, July 2024), <a href="https://dblp.org/pid/274/2996.html">Venktesh V</a> (TU Delft), <a href="https://dblp.org/pid/183/0636.html">Abhijit Anand</a> (L3S Research Center), <a href="https://dblp.org/pid/02/7062.html">Avishek Anand</a> (TU Delft), and <a href="https://dblp.org/pid/36/8510.html">Vinay Setty</a> (University of Stavanger and <a href="https://www.factiverse.ai/">Factiverse</a>) release 15,514 real numerical claims drawn from 45 fact-checking organizations, together with a 423,320-snippet web evidence corpus that excludes fact-checking sites, and report that the strongest of their baselines reaches 58.32 macro-F1. The <a href="https://github.com/factiverse/QuanTemp">claims, questions, and evidence corpus</a> are released alongside the paper.</p>
+<p>Four definitions first:</p>
+<ul>
+<li><strong>Numerical claim</strong>: a statement that needs verification of any explicit or implicit quantitative or temporal content. That is broader than “contains a number,” since it covers comparisons and date-relative statements where the quantity is implied rather than written out. It is also why the dataset ends up with a <em>temporal</em> category alongside a <em>statistical</em> one.</li>
+<li><strong>Claim decomposition</strong>: rewriting a claim into a set of sub-questions, then using those questions rather than the claim itself as search queries. The paper evaluates two published decomposers, and the choice of decomposer turns out to matter more than the choice of verdict model.</li>
+<li><strong>Unified evidence</strong> versus <strong>gold evidence</strong>: the two retrieval settings. Unified evidence means the system retrieves from the released corpus, which is the realistic setting. Gold evidence means the system is handed the fact-checker’s own justification paragraph, which is an upper bound on what any retriever could supply.</li>
+<li><strong>Macro-F1 (M-F1)</strong> versus <strong>weighted-F1 (W-F1)</strong>: the label distribution is 57.93% <em>False</em>, 23.27% <em>Conflicting</em>, 18.79% <em>True</em>, so weighted-F1 tracks the <em>False</em> class and macro-F1 is the number that moves when a system gets better at the two minority classes. Both are reported throughout, and they disagree about how much progress there has been.</li>
+</ul>
+<blockquote class="blockquote">
+<p>With the growth of misinformation on the web, automated fact checking has garnered immense interest for detecting growing misinformation and disinformation. Current systems have made significant advancements in handling synthetic claims sourced from Wikipedia, and noteworthy progress has been achieved in addressing real-world claims that are verified by fact-checking organizations as well. We compile and release <em>QuanTemp, a diverse, multi-domain dataset focused exclusively on numerical claims, encompassing comparative, statistical, interval, and temporal aspects, with detailed metadata and an accompanying evidence collection</em>. This addresses the challenge of verifying real-world numerical claims, which are complex and often lack precise information, a gap not filled by existing works that mainly focus on synthetic claims. We evaluate and quantify these gaps in existing solutions for the task of verifying numerical claims. We also evaluate <em>claim decomposition based methods</em>, <em>numerical understanding based natural language inference (NLI) models</em> and <em>our best baselines achieves a macro-F1 of 58.32</em>. This demonstrates that QuanTemp serves as a challenging evaluation set for numerical claim verification.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The cover figure traces the construction pipeline end to end, left to right. Fact-checking sites supply real-world claims, a quantity segmenter marks the numeric spans in each claim, and a filter keeps only the claims that pass the numerical test. Two claim-decomposition methods then turn each survivor into sub-questions, those questions go to Google, and the pooled results become the evidence corpus. Five stages, each of which discards or adds something specific:</p>
+<ul>
+<li><strong>Claim collection</strong>: the Google Fact Check Tools API returns 278,636 fact-checks as of 15 November 2023. Dropping non-English fact-checks leaves 139,926 from 45 organizations. Politifact contributes the largest share at 3,840 claims, then Snopes at 1,648. The top source countries are the USA (6,215), India (1,356), and the UK (596).</li>
+<li><strong>Quantity segmentation</strong>: the claim is parsed into a constituency tree, nodes tagged with the cardinal-number part of speech <code>CD</code> are located, and the noun phrases at their least common ancestors are extracted as quantitative segments. Requiring one segment admits false positives such as “the one and only,” so the filter requires more than one segment, excluding bare nouns like “Covid-19.” A self-assessment on 1,000 sampled claims puts the heuristic at 95% accuracy. This is the step that cuts 139,926 fact-checks down to 15,514 numerical claims.</li>
+<li><strong>Label standardization</strong>: source labels from 45 organizations are mapped onto <em>True</em>, <em>False</em>, and <em>Conflicting</em> following the AVeriTeC [2] convention, and claims with unclear or absent labels are dropped.</li>
+<li><strong>Claim decomposition</strong>: two published methods generate the search queries. ClaimDecomp [3] produces yes/no sub-questions, reproduced here by prompting <code>gpt-3.5-turbo</code> with in-context examples from the original ClaimDecomp training set. Program-FC [4] produces a program of <code>Verify(...)</code> calls instead, one call per aspect of the claim. A third condition uses the unmodified claim as the query.</li>
+<li><strong>Evidence collection</strong>: the claim and every generated question are submitted to Google through a commercial search API, the top 10 results per query are kept, results from over 150 fact-checking domains are filtered out, and the per-query result lists are merged by top-<img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> document pooling. What survives is 423,320 snippets. Wikipedia is the largest source at 28,124 snippets, followed by nytimes.com at 8,430 and ncbi.nlm.nih.gov at 8,417. The authors flag 2,889 snippets from youtube.com as a surprise, and on inspection those are news-video transcripts and descriptions.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/table1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Table 1 is where the paper places itself against the field, and the two rightmost columns are the argument. The upper block is synthetic claims written from Wikipedia or a knowledge base: FEVER [5] at 185,445 claims, FEVEROUS [6] at 87,026, TabFact at 92,283, all marked as lacking a numerical focus. The lower block is claims taken from fact-checking sites: LIAR at 12,836, MultiFC at 36,534, AVeriTeC at 4,568, again none of them numerically focused. StatProps is the one prior dataset with a numerical focus, and it is synthetic, generated by rule from 16 statistical properties of geographic regions in Freebase. QuanTemp is the only row with a check mark in both the <em>Numerical Focus</em> and <em>Unleaked Evidence</em> columns, and its 423,320-snippet corpus is the largest among the fact-checker-sourced datasets by a factor of three.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 3 shows the segmenter on one claim: “During paul’s 29 seasons as chairman of the chicago bulls, the team captured the title seven times, including in 2000.” Three subtrees survive. “29 seasons” and “seven times” each resolve to a noun phrase over a cardinal number and a plural noun, <code>CD</code> plus <code>NNS</code>. The middle one is tagged <code>NP-TMP</code>, a temporal noun phrase, which is how a duration is distinguished from a count. “2000” resolves to a noun phrase over a bare <code>CD</code>. The claim needs all three quantities to verify, and the tree is what tells the pipeline that.</p>
+<table class="caption-top table">
+<caption>QuanTemp dataset distribution. Table 5 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Split</th>
+<th>True</th>
+<th>False</th>
+<th>Conflicting</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Train</td>
+<td>1,824</td>
+<td>5,770</td>
+<td>2,341</td>
+<td>9,935</td>
+</tr>
+<tr class="even">
+<td>Dev</td>
+<td>617</td>
+<td>1,795</td>
+<td>672</td>
+<td>3,084</td>
+</tr>
+<tr class="odd">
+<td>Test</td>
+<td>474</td>
+<td>1,423</td>
+<td>598</td>
+<td>2,495</td>
+</tr>
+</tbody>
+</table>
+<p>The splits are unbalanced in the same direction at every level, roughly 58% <em>False</em> throughout, which the authors attribute to fact-checkers choosing what to fact-check. Every reported number should be read against the majority-class baseline this produces: 24.21 macro-F1 and 41.42 weighted-F1.</p>
+<p>A separate weak-supervision pass sorts the claims into four numerical categories, so that a failure can be attributed to a specific kind of reasoning. Fifty claims were annotated by hand, <code>gpt-3.5-turbo</code> labelled a few hundred more from those as in-context examples, and a SetFit classifier trained on the result labelled the rest. Two annotators checked 250 random claims and agreed with 199 of the assignments, an accuracy of 80%.</p>
+<table class="caption-top table">
+<caption>Claim categories and their distribution. Counts and shares from Table 6 of the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Claims</th>
+<th>Share</th>
+<th>Requires</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Statistical</td>
+<td>7,302</td>
+<td>47.07%</td>
+<td>a quantity or statistic looked up and compared</td>
+</tr>
+<tr class="even">
+<td>Temporal</td>
+<td>4,193</td>
+<td>27.03%</td>
+<td>a date or duration resolved</td>
+</tr>
+<tr class="odd">
+<td>Interval</td>
+<td>2,357</td>
+<td>15.19%</td>
+<td>reasoning over a range of values</td>
+</tr>
+<tr class="even">
+<td>Comparison</td>
+<td>1,645</td>
+<td>10.60%</td>
+<td>two quantities compared against each other</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Every experiment holds the retrieval stack fixed and varies one component at a time. Three components get varied across the two tables:</p>
+<ul>
+<li><strong>Held fixed: the retrieval stack.</strong> BM25 returns the top 100 documents per query and <code>paraphrase-MiniLM-L6-v2</code> re-ranks them, with the top 3 snippets passed on. The authors swept <img src="https://benjaminhan.net/feed-assets/119d554839012124.svg" alt="k \in \{1, 3, 5, 7\}" class="feed-math-inline"/> and found 3 best at claim level.</li>
+<li><strong>Held fixed: three snippets per claim.</strong> The no-decomposition condition takes the claim’s top 3, the two decomposition conditions take the top 1 per question, so all three see the same amount of evidence.</li>
+<li><strong>Varied in Table 7: the query.</strong> The raw claim, ClaimDecomp’s sub-questions, or Program-FC’s program. The verdict model stays at <code>Roberta-Large-MNLI</code> throughout these three rows: a three-class classifier reading the claim, the questions, and the evidence concatenated with separators, fine-tuned to early stopping with patience 2, batch size 16, and AdamW at a learning rate of <img src="https://benjaminhan.net/feed-assets/f25a1a2c9e2307ef.svg" alt="2 \times 10^{-5}" class="feed-math-inline"/>.</li>
+<li><strong>Varied in Table 7: the evidence source.</strong> The lower block swaps the retrieved snippets for the fact-checkers’ own justification paragraphs, then swaps the training set from numerical claims alone to a mix of numerical and non-numerical ones.</li>
+<li><strong>Varied in Table 8: the verdict model.</strong> Eight replacements over ten rows, with the query held at ClaimDecomp. Two of the eight appear twice, once zero-shot and once few-shot.
+<ul>
+<li><em>Fine-tuned.</em> <code>bart-large-mnli</code>, <code>Roberta-large</code>, <code>T5-small</code>, <code>NumT5-small</code> [7], and <code>FinQA-Roberta-Large</code> [8]. The last two are the middle two with numerical pretraining added, so <code>NumT5-small</code> against <code>T5-small</code> and <code>FinQA-Roberta-Large</code> against <code>Roberta-large</code> each isolate that one factor.</li>
+<li><em>Prompted.</em> <code>flan-t5-xl</code> and <code>gpt-3.5-turbo</code> in both zero-shot and few-shot settings, GPT-4 few-shot only, all at temperature 0.3 and asked for a verdict and a justification together.</li>
+</ul></li>
+<li><strong>Scoring.</strong> Macro-F1 and weighted-F1 over the 2,495-claim test set, plus per-class F1 and a breakdown by the four numerical categories. Significance is a t-test at the 0.01 level, measured against the raw-claim baseline in Table 7 and against <code>Roberta-large</code> in Table 8.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/table7.jpg" class="img-fluid figure-img"></p>
+<figcaption>Table 7 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The findings:</p>
+<ul>
+<li><strong>Decomposition beats using the claim as the query</strong> (Table 7). ClaimDecomp reaches 57.12 macro-F1 and 64.89 weighted-F1 against 52.48 and 58.52 for the raw claim, relative gains of 8.84% and 10.9%, both significant at 0.01. Program-FC reaches 53.43 macro-F1, between the two, and does not reach significance.</li>
+<li><strong>The gain concentrates on the Conflicting class</strong> (Table 7). Conflicting-class F1 moves from 35.27 to 39.72 under ClaimDecomp. These are the claims that are partly right, so the verdict needs evidence pulling in two directions, and a single query built from the whole claim tends to return one side of it or nothing at all.</li>
+<li><strong>Comparison claims gain the most</strong> (Table 7). 53.59 against 40.72 macro-F1, a relative gain of 31.6%, and 34.7% on weighted-F1. Interval claims gain second-most, 56.02 against 48.84. Temporal claims are both the easiest category in absolute terms and the least improved, 61.46 against 60.29.</li>
+<li><strong>Better questions, measured directly</strong> (Tables 9 and 10). ClaimDecomp’s questions score 0.831 on BERTScore relevance against Program-FC’s 0.782, and 0.490 against 0.430 on a diversity measure built from 1−BLEU plus Word Position Deviation. Two annotators rating 20 sampled claims on a 1–5 scale put ClaimDecomp ahead on question usefulness, 3.7 against 3.4, and on evidence usefulness, 3.2 against 2.9. Program-FC leads only on completeness, 4.6 against 4.5.</li>
+<li><strong>Number-pretrained NLI models beat their general-purpose twins</strong> (Table 8). <code>NumT5-small</code> [7] reaches 50.26 macro-F1 against <code>T5-small</code>’s 44.96, a relative gain of 11.8%. <code>FinQA-Roberta-Large</code> [8] reaches 58.32 against <code>Roberta-large</code>’s 54.43, a relative gain of 7.1%, and that 58.32 is the paper’s headline number. It is also the only configuration to push Conflicting-class F1 past 47.</li>
+<li><strong>Prompting trails fine-tuning</strong> (Table 8). <code>gpt-3.5-turbo</code> few-shot reaches 47.00 macro-F1 and GPT-4 few-shot 36.50, against 54.43 for a fine-tuned 355M-parameter encoder. GPT-4 few-shot scores below the fine-tuned 60M-parameter <code>T5-small</code>. Zero-shot is worse still: FlanT5 at 30.68 and <code>gpt-3.5-turbo</code> at 33.87. The authors attribute the gap to the models misreading evidence they have parsed correctly.</li>
+<li><strong>Gold evidence raises the ceiling without lifting it far</strong> (Table 7). Fine-tuning on the fact-checkers’ own justification paragraphs reaches 62.85 macro-F1 and 69.79 weighted-F1. Training on a mix of numerical and non-numerical claims from the same fact-checkers drops that to 58.66 and 66.73, a fall of 7.14% in macro-F1, which is the paper’s evidence that numerical claims are their own distribution rather than a slice of a general one.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/table8.jpg" class="img-fluid figure-img"></p>
+<figcaption>Table 8 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>QuanTemp’s corpus can contain evidence written after the claim was checked</strong>: the searches ran in late 2023 against claims fact-checked years earlier, and nothing filters a snippet by publication date. <a href="../../posts/20260507-averitec/">AVeriTeC</a> [2] controls for this. Its annotators search a Google bar restricted to documents published before the claim date, and its splits are temporally disjoint. Table 1 still gives QuanTemp the check mark in <em>Unleaked Evidence</em> and AVeriTeC a cross, because a footnote restricts the column to “gold evidence being leaked from fact-checking websites.” So the column covers one kind of leakage and not the other, and the two datasets each avoid a different one. A reader who takes the check mark at face value will credit QuanTemp with both. The follow-up from two of the same authors, QuanTemp++ [9], admits the temporal problem in its own abstract: existing benchmarks use “weakly supervised web search to collect evidences… with temporal leakage rendering a less realistic retrieval setting.”</li>
+<li><strong>The paper never scores the evidence it retrieves</strong>: there is no recall@k, no nDCG, no retrieval number anywhere in it, because the dataset includes no relevance labels. Retrieval quality is measured once, as a 1–5 usefulness rating on 20 sampled claims, which came out at 2.9 and 3.2, near the middle of the scale. So when Table 8 compares eight verdict models over ten rows, a reader cannot tell whether <code>FinQA-Roberta-Large</code>’s 3.89-point macro-F1 lead over <code>Roberta-large</code> comes from better numerical reasoning or from coping better with the same noisy snippets. FEVER-based work does not have this problem, because FEVER annotates evidence at sentence level, so <a href="../../posts/20260731-relevance-to-utility/">From Relevance to Utility</a> [10] can report retrieval precision, recall, and F1 at five sentences alongside verdict accuracy. QuanTemp++ fixes that, releasing <a href="https://github.com/VenkteshV/QuanTemp_Plus">per-claim relevance judgments</a> with a pre-indexed corpus.</li>
+<li><strong>Two fixes to the verdict model failed in the follow-up shared task</strong>: QuanTemp became Task 3 of the CLEF 2025 CheckThat! lab, whose organizers include two of the authors here [11]. CheckThat! 2026 then extended numerical claim verification to English and Arabic [12]. One top-four 2025 system tried a longer context window with more retrieved snippets, and right-to-left tokenization, which helps arithmetic reasoning. Neither helped numerical entailment. Heil and Pramov scored 0.57 macro-F1 [13], close to the 58.32 here, though the task supplied claims rather than the paper’s corpus, so participants built their own retrieval and the two numbers are not a like-for-like comparison. The same pattern is in the paper’s own numbers: replacing the retrieved snippets with the fact-checkers’ justification paragraphs is worth 5.73 macro-F1 points, more than any verdict model in Table 8 gained.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://dblp.org/pid/274/2996.html">V, Venktesh</a>, <a href="https://dblp.org/pid/183/0636.html">Anand, Abhijit</a>, <a href="https://dblp.org/pid/02/7062.html">Anand, Avishek</a>, <a href="https://dblp.org/pid/36/8510.html">Setty, Vinay</a>. “QuanTemp: A real-world open-domain benchmark for fact-checking numerical claims.” <em>Proceedings of the 47th International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR ’24)</em>, pages 650–660 (arXiv:2403.17169), July 2024. <a href="https://doi.org/10.1145/3626772.3657874" class="uri">https://doi.org/10.1145/3626772.3657874</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://aclanthology.org/people/michael-schlichtkrull/">Schlichtkrull, Michael</a>, <a href="https://aclanthology.org/people/z/zhijiang-guo/">Guo, Zhijiang</a>, <a href="https://aclanthology.org/people/a/andreas-vlachos/">Vlachos, Andreas</a>. “AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web.” <em>37th Conference on Neural Information Processing Systems (NeurIPS) Datasets &amp; Benchmarks Track</em> (arXiv:2305.13117), May 22, 2023. <a href="https://arxiv.org/abs/2305.13117" class="uri">https://arxiv.org/abs/2305.13117</a></p></li>
+<li><p><a id="ref-3"></a><a href="https://dblp.org/pid/143/0527.html">Chen, Jifan</a>, <a href="https://dblp.org/pid/320/4282.html">Sriram, Aniruddh</a>, <a href="https://dblp.org/pid/116/2765.html">Choi, Eunsol</a>, <a href="https://dblp.org/pid/69/7968.html">Durrett, Greg</a>. “Generating Literal and Implied Subquestions to Fact-check Complex Claims.” <em>Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing (EMNLP)</em>, pages 3495–3516 (arXiv:2205.06938), 2022. <a href="https://arxiv.org/abs/2205.06938" class="uri">https://arxiv.org/abs/2205.06938</a></p></li>
+<li><p><a id="ref-4"></a><a href="https://dblp.org/pid/186/9707.html">Pan, Liangming</a>, <a href="https://dblp.org/pid/249/8429.html">Wu, Xiaobao</a>, <a href="https://dblp.org/pid/88/422.html">Lu, Xinyuan</a>, <a href="https://dblp.org/pid/81/8329.html">Luu, Anh Tuan</a>, <a href="https://dblp.org/pid/08/9282.html">Wang, William Yang</a>, <a href="https://dblp.org/pid/k/MinYenKan.html">Kan, Min-Yen</a>, <a href="https://dblp.org/pid/19/1947.html">Nakov, Preslav</a>. “Fact-Checking Complex Claims with Program-Guided Reasoning.” <em>Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (ACL)</em>, pages 6981–7004 (arXiv:2305.12744), 2023. <a href="https://arxiv.org/abs/2305.12744" class="uri">https://arxiv.org/abs/2305.12744</a></p></li>
+<li><p><a id="ref-5"></a><a href="https://dblp.org/pid/204/1380.html">Thorne, James</a>, <a href="https://dblp.org/pid/18/1071-1.html">Vlachos, Andreas</a>, <a href="https://dblp.org/pid/82/1906.html">Christodoulopoulos, Christos</a>, <a href="https://dblp.org/pid/20/6147.html">Mittal, Arpit</a>. “FEVER: a Large-scale Dataset for Fact Extraction and VERification.” <em>Proceedings of the 2018 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (NAACL-HLT)</em>, pages 809–819, 2018. <a href="https://aclanthology.org/N18-1074/" class="uri">https://aclanthology.org/N18-1074/</a></p></li>
+<li><p><a id="ref-6"></a><a href="https://dblp.org/pid/242/8351.html">Aly, Rami</a>, <a href="https://dblp.org/pid/43/6147.html">Guo, Zhijiang</a>, <a href="https://dblp.org/pid/186/7091.html">Schlichtkrull, Michael Sejr</a>, <a href="https://dblp.org/pid/204/1380.html">Thorne, James</a>, <a href="https://dblp.org/pid/18/1071-1.html">Vlachos, Andreas</a>, <a href="https://dblp.org/pid/82/1906.html">Christodoulopoulos, Christos</a>, <a href="https://dblp.org/pid/185/7576.html">Cocarascu, Oana</a>, <a href="https://dblp.org/pid/20/6147.html">Mittal, Arpit</a>. “FEVEROUS: Fact Extraction and VERification Over Unstructured and Structured information.” <em>NeurIPS 2021 Datasets and Benchmarks Track</em> (arXiv:2106.05707), 2021. <a href="https://arxiv.org/abs/2106.05707" class="uri">https://arxiv.org/abs/2106.05707</a></p></li>
+<li><p><a id="ref-7"></a><a href="https://dblp.org/pid/290/1235.html">Yang, Peng-Jian</a>, <a href="https://dblp.org/pid/174/7371.html">Chen, Ying-Ting</a>, <a href="https://dblp.org/pid/290/1286.html">Chen, Yuechan</a>, <a href="https://dblp.org/pid/16/6461.html">Cer, Daniel</a>. “NT5?! Training T5 to Perform Numerical Reasoning.” <em>arXiv preprint</em> (arXiv:2104.07307), April 15, 2021. <a href="https://arxiv.org/abs/2104.07307" class="uri">https://arxiv.org/abs/2104.07307</a></p></li>
+<li><p><a id="ref-8"></a><a href="https://dblp.org/pid/331/5372.html">Zhang, Jiaxin</a>, <a href="https://dblp.org/pid/87/6501.html">Moshfeghi, Yashar</a>. “ELASTIC: Numerical Reasoning with Adaptive Symbolic Compiler.” <em>Advances in Neural Information Processing Systems 35 (NeurIPS)</em> (arXiv:2210.10105), 2022. <a href="https://arxiv.org/abs/2210.10105" class="uri">https://arxiv.org/abs/2210.10105</a></p></li>
+<li><p><a id="ref-9"></a><a href="https://dblp.org/pid/274/2996.html">Venktesh, V</a>, Prabhu, Deepali, <a href="https://dblp.org/pid/02/7062.html">Anand, Avishek</a>. “A Benchmark for Open-Domain Numerical Fact-Checking Enhanced by Claim Decomposition.” <em>arXiv preprint</em> (arXiv:2510.22055), October 24, 2025. <a href="https://arxiv.org/abs/2510.22055" class="uri">https://arxiv.org/abs/2510.22055</a></p></li>
+<li><p><a id="ref-10"></a><a href="https://dblp.org/pid/339/3052.html">Zhang, Hengran</a>, <a href="https://dblp.org/pid/203/8270-1.html">Zhang, Ruqing</a>, <a href="https://dblp.org/pid/02/146.html">Guo, Jiafeng</a>, <a href="https://dblp.org/pid/r/MdRijke.html">de Rijke, Maarten</a>, <a href="https://dblp.org/pid/188/2160.html">Fan, Yixing</a>, <a href="https://dblp.org/pid/44/912-1.html">Cheng, Xueqi</a>. “From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification.” <em>Findings of the Association for Computational Linguistics: EMNLP 2023</em>, pages 6373–6384 (arXiv:2310.11675), 2023. <a href="https://arxiv.org/abs/2310.11675" class="uri">https://arxiv.org/abs/2310.11675</a></p></li>
+<li><p><a id="ref-11"></a><a href="https://dblp.org/pid/126/2083.html">Alam, Firoj</a>, <a href="https://dblp.org/pid/154/2466.html">Struß, Julia Maria</a>, <a href="https://dblp.org/pid/65/2136-2.html">Chakraborty, Tanmoy</a>, <a href="https://dblp.org/pid/25/5167.html">Dietze, Stefan</a>, <a href="https://dblp.org/pid/301/6384.html">Hafid, Salim</a>, <a href="https://dblp.org/pid/306/8831.html">Korre, Katerina</a>, <a href="https://dblp.org/pid/280/9970.html">Muti, Arianna</a>, <a href="https://dblp.org/pid/19/1947.html">Nakov, Preslav</a>, <a href="https://dblp.org/pid/256/2276.html">Ruggeri, Federico</a>, <a href="https://dblp.org/pid/322/5533.html">Schellhammer, Sebastian</a>, <a href="https://dblp.org/pid/36/8510.html">Setty, Vinay</a>, <a href="https://dblp.org/pid/284/1031.html">Sundriyal, Megha</a>, <a href="https://dblp.org/pid/36/6753.html">Todorov, Konstantin</a>, <a href="https://dblp.org/pid/274/2996.html">V, Venktesh</a>. “The CLEF-2025 CheckThat! Lab: Subjectivity, Fact-Checking, Claim Normalization, and Retrieval.” <em>arXiv preprint</em> (arXiv:2503.14828), March 19, 2025. <a href="https://arxiv.org/abs/2503.14828" class="uri">https://arxiv.org/abs/2503.14828</a></p></li>
+<li><p><a id="ref-12"></a>Sinha, Sagnik, Shrestha, Shreyas. “DS@GT ARC at CheckThat! 2026: LLM-Based Trace Ranking and Grouped Reward Modeling for Multilingual Numerical Claim Verification.” <em>CLEF 2026 CheckThat! Lab, CEUR Workshop Proceedings</em> (arXiv:2607.25069), July 27, 2026. <a href="https://arxiv.org/abs/2607.25069" class="uri">https://arxiv.org/abs/2607.25069</a></p></li>
+<li><p><a id="ref-13"></a>Heil, Maximilian, Pramov, Aleksandar. “DS@GT at CheckThat! 2025: Evaluating Context and Tokenization Strategies for Numerical Fact Verification.” <em>CLEF 2025 CheckThat! Lab, CEUR Workshop Proceedings</em> (arXiv:2507.06195), July 8, 2025. <a href="https://arxiv.org/abs/2507.06195" class="uri">https://arxiv.org/abs/2507.06195</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260507-averitec/">AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</a>: the dataset QuanTemp borrows its three-way label mapping from, and the one it compares itself against in Table 1. Both pull claims from around 50 fact-checking organizations, and they differ on which kind of evidence leakage they control for.</li>
+<li><a href="../../posts/20260814-averitec-shared-task-open-weights/">The 2nd AVeriTeC Shared Task: Open-Weights, Reproducible and Efficient Systems</a>: what happens when a fact-verification benchmark forces every system to retrieve from one frozen corpus, which is the property QuanTemp’s released snippet collection has by construction.</li>
+<li><a href="../../posts/20260731-relevance-to-utility/">From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification</a>: trains the evidence retriever on the verdict model’s own signal, the step QuanTemp holds fixed as BM25 plus a re-ranker across every experiment.</li>
+<li><a href="../../posts/20260609-expertqa/">ExpertQA: Expert-Curated Questions and Attributed Answers</a>: the other way to build a factuality benchmark from scratch, paying domain experts to write the questions instead of harvesting what fact-checkers already chose to check.</li>
+<li><a href="../../posts/20260720-llm-disagreement/">Frontier LLMs Disagree on 67% of Real-World Fact-Checks</a>: five frontier models rating fresh real-user claims agree far less than their benchmark scores suggest, which is the failure mode behind the prompting rows near the bottom of Table 8.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/</guid>
+  <pubDate>Sun, 16 Aug 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260816-quantemp-numerical-claims/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>The 2nd AVeriTeC Shared Task: Open-Weights, Reproducible and Efficient Systems</title>
   <dc:creator>synesis </dc:creator>
@@ -2457,40 +2667,6 @@ Each wrapper is published in both Chinese and English, and the raw strings are i
   <guid>https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/</guid>
   <pubDate>Sat, 25 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260725-my-first-pittsburgh-parkrun/image-1.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>First Run Back in Pittsburgh</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>First run back in Pittsburgh in ~20 years — 7 easy miles along the Monongahela on the South Side Trail. Lots has changed, but plenty still felt like home. Flew in on a redeye, went straight to work, then squeezed this in (with a 40-min pause at mile 2 to take an emergency meeting 😅). HR stayed solidly Z2 the whole way and my watch flashed VO₂max 54 — almost my all-time high (54.3)!</p>
-<p>Can’t wait to run Saturday’s Parkrun in Pittsburgh!</p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-9.jpeg" class="img-fluid" data-lightbox-src="image-9-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-10.jpeg" class="img-fluid" data-lightbox-src="image-10-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-11.jpeg" class="img-fluid" data-lightbox-src="image-11-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-12.jpeg" class="img-fluid" data-lightbox-src="image-12-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-13.jpeg" class="img-fluid" data-lightbox-src="image-13-full.jpeg"></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/</guid>
-  <pubDate>Thu, 23 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260723-first-run-back-in-pittsburgh/image-1.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

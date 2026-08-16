@@ -21,7 +21,79 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Fri, 14 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 16 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Anthropic Economic Index</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260423-anthropic-economic-index/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260423-anthropic-economic-index/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260423-anthropic-economic-index/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Illustration from <a href="https://www.anthropic.com/research/economic-index-primitives">Anthropic</a>.</figcaption>
+</figure>
+</div>
+<p>Anthropic’s <a href="https://www.anthropic.com/research/economic-index-primitives">fourth Economic Index report</a> (Jan 15, 2026) introduces <em>economic primitives</em> — a set of five foundational measurements Claude extracts from every sampled conversation — and uses them to revisit earlier findings about AI’s impact on work.</p>
+<p>The primitives:</p>
+<ul>
+<li><strong>Task complexity</strong> — estimated human time to complete without AI, time with AI, and whether a conversation bundles multiple tasks.</li>
+<li><strong>Human and AI skills</strong> — years of education needed to understand prompts and responses; whether the user could have done the task alone.</li>
+<li><strong>Use case</strong> — work, education, or personal.</li>
+<li><strong>AI autonomy</strong> — from active collaboration to full delegation.</li>
+<li><strong>Task success</strong> — Claude’s own assessment of completion.</li>
+</ul>
+<p>What the November 2025 sample (1M Claude.ai conversations + 1M first-party API transcripts, mostly Sonnet 4.5) shows:</p>
+<ul>
+<li><strong>Complex tasks get the biggest speedup.</strong> High-school-level prompts: 9× on Claude.ai. College-level: 12×. API speedups are higher still.</li>
+<li><strong>Success drops only modestly with complexity.</strong> 70% success on sub-high-school tasks vs.&nbsp;66% on college-level — not enough to offset the speedup gradient.</li>
+<li><strong>Time horizons are longer than METR suggests.</strong> Claude hits 50% success at ~3.5h tasks on the API and ~19h on Claude.ai, vs.&nbsp;METR’s 2h. Attributed to users decomposing tasks and selecting ones they expect to work.</li>
+<li><strong>Country patterns follow an adoption curve.</strong> Lower-income countries skew toward educational coursework; higher-income countries toward work and personal use.</li>
+<li><strong>Occupation coverage is up but uneven.</strong> 49% of jobs saw Claude used for ≥25% of tasks (vs.&nbsp;36% in January 2025). Adjusted for success rates, data entry keyers and radiologists are more affected than raw coverage suggests; teachers and software developers less so.</li>
+<li><strong>Claude covers the higher-skill tasks within a job.</strong> Claude-covered tasks require 14.4 years of education on average, vs.&nbsp;13.2 for the economy overall — implying a first-order deskilling effect if those tasks were fully automated.</li>
+<li><strong>Productivity estimate revised down.</strong> The earlier 1.8 pp/year US labor-productivity boost falls to 1.2 pp (Claude.ai) or 1.0 pp (API) once task reliability is factored in. Still roughly late-1990s/early-2000s rates.</li>
+<li><strong>Usage is concentrating.</strong> The top-10 work tasks now account for 24% of Claude.ai traffic (up from 21% in January). Computer and math tasks are ~⅓ of Claude.ai and nearly half of API.</li>
+<li><strong>Augmentation has overtaken automation.</strong> 52% vs.&nbsp;45% on Claude.ai in November, reversing the August split. (Empirical confirmation of what <a href="../../posts/20230203-ai-job-automation-augmentation/#ch-augmentation-vs-automation">Steve Miller</a> argued in 2022 — every one of the 29 case studies in <em>Working with AI</em> was augmentation, not automation.)</li>
+<li><strong>US state distribution is flattening.</strong> On current trends, Claude use would be geographically equalized across US states within 2–5 years.</li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<p>“Time horizon” in this report borrows <a href="https://metr.org/">METR</a>’s framing: the longest task, measured in human-equivalent hours, that a model can complete with at least 50% success. The metric is designed to track AI progress without saturating the way fixed benchmarks do, since as models improve, the horizon stretches.</p>
+<p>Which brings a caveat about what is actually being measured in Anthropic’s report. They didn’t actually measure the time from actual humans from what I can tell. They asked Claude:</p>
+<blockquote class="blockquote">
+<p>We derive these primitives from asking Claude to answer a common set of questions about every conversation in our sample for this report.</p>
+</blockquote>
+<p>And in a footnote:</p>
+<blockquote class="blockquote">
+<p>We measure complexity through estimated human time to complete tasks without AI, time spent completing tasks with AI, and whether users handle multiple tasks within a single conversation.</p>
+</blockquote>
+<p>So while METR’s 2h figure is grounded in actual humans on the clock, Anthropic’s 3.5h and 19h are model-generated estimates of human time. The two methodologies are not exactly the same.</p>
+<p>Assuming the two sides are comparable, the differences in time horizon between METR and Anthropic come from differences in experimental conditions, not from differences in what the model can do (because they were all measured on the same model). Two things vary across the setups: whether a human steers the model mid-task, and whether the task was pre-selected as something the model could plausibly handle. METR has neither: an autonomous agent runs a fixed benchmark, with no steering and no pre-selection. The API sample has pre-selection but no steering: developers send Claude tasks they have already validated will work, and the calls then run on their own. Claude.ai has both: the human steers and decomposes the work as it goes, and the human only brings tasks they expect will succeed. Pre-selection alone moves the horizon from METR’s 2h to the API’s 3.5h, a modest 1.75×. Human steering on top moves it from there to Claude.ai’s 19h, a much bigger 5× jump.</p>
+<p>The gap reflects how humans and AI work together, not a change in what Claude can do. The 5× multiplier from human steering shows that the most productive AI work right now happens in the human-AI pair, not in autonomous agents. Humans bring task decomposition, judgment about what to attempt, and verification of what comes back; the model brings speed, breadth, and stamina. The 19-hour result on Claude.ai is what that pairing makes possible, on tasks neither side would have completed as quickly alone. As models get better, the kinds of work that fit this pairing keep expanding, and so does the range of jobs where the most useful human skill is steering the model well rather than competing with it.</p>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20230203-ai-job-automation-augmentation/">Will AI Take Your Job? It’s Not So Simple</a>: Steve Miller’s augmentation-over-automation case, which this report’s reversal to 52% augmentation now confirms at scale.</li>
+<li><a href="../../posts/20230321-gpts-are-gpts-labor-market-impact/">GPTs Are GPTs: Labor Market Impact of Large Language Models</a>: the earlier top-down estimate of which occupations LLMs touch, against which the Index measures actual usage.</li>
+<li><a href="../../posts/20260524-acemoglu-great-displacement/">Daron Acemoglu on AI, Jobs, and Liberal Democracy</a>: the macro counterweight, skeptical that measured task speedups turn into the aggregate productivity gains this report revises downward.</li>
+<li><a href="../../posts/20260528-ai-assistance-reduces-persistence/">AI Assistance Reduces Persistence and Hurts Independent Performance</a>: the individual-level deskilling mechanism behind the report’s first-order deskilling estimate.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260423-anthropic-economic-index/</guid>
+  <pubDate>Thu, 23 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260423-anthropic-economic-index/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Proof Generation vs Digestion</title>
   <dc:creator>Ben </dc:creator>
@@ -1085,45 +1157,6 @@
   <guid>https://benjaminhan.net/posts/20260402-artemis-launch/</guid>
   <pubDate>Thu, 02 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260402-artemis-launch/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Learning to Reason in 13 Parameters</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260331-tinylora/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260331-tinylora/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260331-tinylora/figure1.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 1 from the TinyLoRA paper. (<a href="https://arxiv.org/abs/2602.04118">Source</a>)</figcaption>
-</figure>
-</div>
-<p>TinyLoRA pushes low-rank adaptation down to almost nothing [1].</p>
-<ul>
-<li>They report that an 8B-parameter Qwen2.5 model reaches 91% on GSM8K with only 13 trained bf16 parameters, which they note is just 26 bytes of learned weights.</li>
-<li>For RL-based post-training, the effective update needed to unlock better reasoning may live in a very low-dimensional subspace.</li>
-<li>This works well with RL, but not nearly as well with SFT, where they say SFT needs 100–1000x larger updates to match the same gains.</li>
-</ul>
-<hr>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>“Learning to Reason in 13 Parameters.” <em>arXiv</em>. <a href="https://arxiv.org/abs/2602.04118" class="uri">https://arxiv.org/abs/2602.04118</a></li>
-</ol>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_learning-to-reason-in-13-parameters-activity-7444959168408559616-psHg">LinkedIn</a>.</em></p>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260331-tinylora/</guid>
-  <pubDate>Tue, 31 Mar 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260331-tinylora/figure1.png" medium="image" type="image/png" height="113" width="144"/>
 </item>
 
 </channel>
