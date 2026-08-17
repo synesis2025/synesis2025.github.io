@@ -21,7 +21,58 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 16 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 17 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Filesystems vs. RAG</title>
+  <dc:creator>Ben </dc:creator>
+  <link>https://benjaminhan.net/posts/20260404-filesystem-vs-rag/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/chromafs-architecture.png" class="img-fluid figure-img" data-lightbox-src="chromafs-architecture-full.png"></p>
+<figcaption>ChromaFs architecture diagram from the Mintlify post. (<a href="https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant">Source</a>)</figcaption>
+</figure>
+</div>
+<p>Can we replace RAG with filesystems? This article shares a neat engineering write-up on doing exactly that: replacing a standard docs RAG flow with a virtual filesystem for an assistant [1].</p>
+<p>Instead of only retrieving top-K chunks, they let the model interact with documentation through familiar file operations like&nbsp;ls,&nbsp;cat,&nbsp;find, and&nbsp;grep. Under the hood, they built a virtual layer over their existing docs index, avoiding the latency and cost of spinning up full sandboxes while giving the assistant a more natural way to explore the corpus.</p>
+<p>Optimization details aside, the article hints at two bigger ideas.</p>
+<p>First, the filesystem vs.&nbsp;RAG distinction is really about structured navigation vs.&nbsp;relevance retrieval. A filesystem presents the corpus as a pre-built navigable structure for exploration. Plain RAG presents it as a retrieval space.</p>
+<p>Second, system interfaces work better when they align with the interaction patterns the base LLM already knows. For coding-oriented models especially, files, paths, directories, and shell-style operations are much closer to the environments they were trained on than a one-shot retrieve-and-insert workflow. The article explicitly framed the goal as letting the assistant explore docs the way a developer explores a codebase.</p>
+<p>A few contrasts between the filesystem and RAG approaches:</p>
+<ol type="1">
+<li><p>Filesystems preserve and expose author-created structure that chunk RAG often weakens.</p></li>
+<li><p>Filesystem agents are natively iterative and exploratory; plain RAG is often, but not always, more one-shot.</p></li>
+<li><p>Filesystems provide a richer tool surface than retrieval alone.</p></li>
+<li><p>Filesystems are better for exact search, full-page reading, and multi-page investigation.</p></li>
+<li><p>Filesystems support hypothesis-driven exploration across documents: inspect one page, discover a term, search for it elsewhere, and refine understanding.</p></li>
+<li><p>Filesystems preserve document integrity better by making whole pages or files accessible, rather than only isolated retrieved chunks.</p></li>
+<li><p>Filesystem-based interfaces can align access control more naturally with paths, files, and directories, so the assistant’s visible world is scoped up front.</p></li>
+</ol>
+<p>But RAG still shines when the main problem is semantic recall: messy corpora, weak or ambiguous structure, heterogeneous sources or modalities, or cases where a few relevant passages are enough and full exploration would be overkill.</p>
+<p>The interesting part is that these approaches are not incompatible. RAG can be one tool inside a filesystem-style agent: useful for candidate recall, while the filesystem layer handles navigation, inspection, and verification. The implementation described effectively does this by using existing indexing infrastructure to narrow search before exact filtering.</p>
+<p>Takeaway: RAG retrieves likely evidence. A filesystem lets the model investigate the source material. We can combine both.</p>
+<hr>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Mintlify. “How we built a virtual filesystem for our Assistant.” <em>Mintlify Blog</em>, March 24, 2026. <a href="https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant" class="uri">https://www.mintlify.com/blog/how-we-built-a-virtual-filesystem-for-our-assistant</a></li>
+</ol>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_how-we-built-a-virtual-filesystem-for-our-activity-7446351506905415680-l9ES">LinkedIn</a>.</em></p>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260404-filesystem-vs-rag/</guid>
+  <pubDate>Sat, 04 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260404-filesystem-vs-rag/chromafs-architecture.png" medium="image" type="image/png" height="86" width="144"/>
+</item>
 <item>
   <title>The Revenge of the Data Scientist</title>
   <dc:creator>Ben </dc:creator>
@@ -830,38 +881,6 @@
   <guid>https://benjaminhan.net/posts/20251231-zhengdong-wang-2025-letter/</guid>
   <pubDate>Wed, 31 Dec 2025 08:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20251231-zhengdong-wang-2025-letter/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>End of 2025: 2,543 Miles, 342 Days, Six PRs</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20251231-end-of-2025-running-retrospective/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20251231-end-of-2025-running-retrospective/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20251231-end-of-2025-running-retrospective/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Watch the end-of-year run on YouTube. <a href="https://youtu.be/LZhaVOLnfzY">Watch on YouTube</a></figcaption>
-</figure>
-</div>
-<p>Here is my end-of-year run, a relaxed 7-miler on the beautiful Sammamish River Trail!</p>
-<p>Looking back at 2025: I ran 2,543.3 miles (4,093 km), 7% up from 2024. I ran on 342 of 365 days (including Jan 1 and Dec 31), and I’m on a 123-week streak since August 2023. I also set PRs at 5K (21:11), 10K (44:16), 15K (1:09:25), half marathon (1:39:07), marathon (3:25:52), and 50K (4:47:35).</p>
-<p>For 2026, I’m targeting 2,500 miles (~48 mi/week), with plans to run 1 ultra, 3 full marathons, 2+ half marathons, 1+ 10K, and 30+ Parkrun 5K races. I also want to extend my max distance from 35.28mi to 40mi.</p>
-<p>Next up: <a href="../20260112-bridle-trails-50k/">Bridle Trails 50K Winter Race</a> on Jan 10. Onward!</p>
-<p><a href="https://youtu.be/LZhaVOLnfzY">Watch the run →</a></p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_running-activity-7412315483519037440-AbMT">LinkedIn</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20251231-end-of-2025-running-retrospective/</guid>
-  <pubDate>Wed, 31 Dec 2025 08:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20251231-end-of-2025-running-retrospective/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

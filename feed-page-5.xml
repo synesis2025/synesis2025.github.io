@@ -21,7 +21,103 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 16 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 17 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>How Artificial Analysis Builds Its Intelligence Index</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260620-intelligence-benchmarking/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Independent analysis of AI. Image from <a href="https://artificialanalysis.ai/methodology/intelligence-benchmarking">Artificial Analysis</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://artificialanalysis.ai/">Artificial Analysis</a> is an independent benchmarking outfit that ranks language models, and it publishes the <a href="https://artificialanalysis.ai/methodology/intelligence-benchmarking">full methodology</a> behind its main metric, the <strong>Artificial Analysis Intelligence Index</strong>. The page documents every evaluation in the index, how each is weighted and scored, and the exact testing parameters, down to sampling temperature and retry handling.</p>
+<section id="how-the-index-works" class="level2">
+<h2 class="anchored" data-anchor-id="how-the-index-works">How the index works</h2>
+<p>The Intelligence Index (currently version 4.1) is a single 0–100 score built as a weighted average of nine evaluations across four categories. It is a text-only, English-language suite, and Artificial Analysis estimates a 95% confidence interval of under ±1% on the overall score. The nine weights sum to 100%, and the further benchmarks Artificial Analysis runs (multilingual, visual, mathematical, and several legacy evaluations) are reported separately and not counted in the index.</p>
+<ul>
+<li><p><strong>Four stated principles</strong>: every model is run under identical conditions (standardized); answer extraction is built to avoid penalizing valid output variations (unbiased); prompts give instructions without worked examples (zero-shot); and the full method, prompts, and limitations are published (transparent).</p></li>
+<li><p><strong>The nine evaluations and their weights</strong>, grouped by category:</p>
+<ul>
+<li><em>Agents (34%)</em>: <a href="https://arxiv.org/abs/2510.04374">GDPval-AA v2</a> (20%), agentic completion of economically valuable tasks across 44 US occupations, with file outputs ranked into an <a href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo</a>; and <a href="https://arxiv.org/abs/2406.12045">τ³-Banking</a> (14%), a fintech customer-support agent built on Sierra’s <a href="https://sierra.ai/blog/bench-advancing-agent-benchmarking-to-knowledge-and-voice">τ-Knowledge framework</a> that must combine knowledge retrieval with multi-step account changes.</li>
+<li><em>Coding (24%)</em>: <a href="https://github.com/laude-institute/terminal-bench">Terminal-Bench v2.1</a> (16%), 89 terminal tasks spanning software engineering, system administration, data processing, model training, and security, run through an agent in a sandbox; and <a href="https://arxiv.org/abs/2407.13168">SciCode</a> (8%), Python scientific-computing problems scored by unit tests.</li>
+<li><em>Scientific Reasoning (24%)</em>: <a href="https://arxiv.org/abs/2501.14249">Humanity’s Last Exam</a> (12%), 2,158 open-answer frontier academic questions; <a href="https://arxiv.org/abs/2311.12022">GPQA Diamond</a> (6%), 198 graduate-level Google-proof science questions; and <a href="https://critpt.com/">CritPt</a> (6%), 70 unpublished research-level physics problems.</li>
+<li><em>General (18%)</em>: <a href="https://huggingface.co/datasets/ArtificialAnalysis/AA-Omniscience-Public">AA-Omniscience</a> (12%), 6,000 questions over 42 topics scored by an index that rewards correct answers, penalizes hallucinations, and leaves abstentions neutral; and <a href="https://huggingface.co/datasets/ArtificialAnalysis/AA-LCR">AA-LCR</a> (6%), long-context reasoning over roughly 100,000-token document sets.</li>
+</ul></li>
+<li><p><strong>Testing parameters</strong>: temperature is 0 for non-reasoning models and 0.6 for reasoning models unless a lab recommends otherwise. Non-reasoning models get 16,384 output tokens, while reasoning models get their full disclosed budget. Failed API calls retry up to 30 times, and questions that never succeed are reviewed by hand and dropped.</p></li>
+<li><p><strong>Scoring and contamination handling</strong>: most evaluations use pass@1 averaged over one to five repeats, while GDPval-AA v2 uses an Elo from a three-judge panel, fit with a <a href="https://en.wikipedia.org/wiki/Bradley%E2%80%93Terry_model">Bradley-Terry</a> model and anchored to human experts at 1000. Artificial Analysis keeps internal copies of every dataset, and reports cost from provider-side token counts while standardizing performance on a client-side tokenizer.</p></li>
+</ul>
+</section>
+<section id="current-results" class="level2">
+<h2 class="anchored" data-anchor-id="current-results">Current results</h2>
+<p>As of June 2026, the Intelligence Index (v4.1) is led by Claude Fable 5, Claude Opus 4.8, and GPT-5.5, with a long tail of frontier models close behind.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-intelligence-index.webp" class="img-fluid figure-img" data-lightbox-src="results-intelligence-index-full.png"></p>
+<figcaption>The Artificial Analysis Intelligence Index (v4.1): the weighted 0–100 score across all nine evaluations. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
+</figure>
+</div>
+<p>The single score resolves into different profiles underneath, and Artificial Analysis also publishes category sub-indices. The Agentic Index averages the two agent benchmarks, GDPval-AA v2 and τ³-Banking:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-agentic-index.webp" class="img-fluid figure-img" data-lightbox-src="results-agentic-index-full.png"></p>
+<figcaption>The Artificial Analysis Agentic Index: the average of the GDPval-AA v2 and τ³-Banking agent benchmarks. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
+</figure>
+</div>
+<p>The Coding Index averages Terminal-Bench v2.1 and SciCode, and the ranking shifts from the overall order, with GPT-5.5 moving up to second behind Claude Fable 5:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/results-coding-index.webp" class="img-fluid figure-img" data-lightbox-src="results-coding-index-full.png"></p>
+<figcaption>The Artificial Analysis Coding Index: the weighted average of Terminal-Bench v2.1 and SciCode. Image from <a href="https://artificialanalysis.ai/models">Artificial Analysis</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Closed models lead all three indices</strong>: Claude Fable 5, Claude Opus 4.8, and GPT-5.5, all proprietary, take the top three on the overall index and on the agentic and coding sub-indices alike. The strongest open-weight model, GLM-5.2 from Zhipu, reaches fourth on the overall Intelligence Index, about nine points behind the leader. The open weights fall a clearer step behind on the agentic and coding charts, so the gap that has nearly closed on the broad knowledge-and-reasoning mix is still wide on the longer-horizon agentic and coding work.</p>
+<p>All four are reasoning models. Beyond that, disclosure differs sharply:</p>
+<ul>
+<li><strong>Claude Fable 5</strong> (Anthropic): proprietary weights, no published parameter count or architecture.</li>
+<li><strong>Claude Opus 4.8</strong> (Anthropic): proprietary weights, no published parameter count or architecture.</li>
+<li><strong>GPT-5.5</strong> (OpenAI): proprietary weights, no published parameter count or architecture.</li>
+<li><strong>GLM-5.2</strong> (Zhipu): open weights, 753B total parameters, a sparse mixture of experts (256 routed experts plus one shared, 8 active per token, 78 layers).</li>
+</ul></li>
+<li><p><strong>The method has limitations</strong>:</p>
+<ul>
+<li><strong>The weighting is an editorial choice</strong>: the index is a weighted average, and the weights reflect a judgment about what matters rather than a measurement. Agents are weighted most heavily, with GDPval-AA v2 alone a fifth of the score, so anyone comparing models on the one number inherits that bet. <a href="../../posts/20201005-nlp-leaderboard-utility/">Ethayarajh and Jurafsky</a> argued years ago that a leaderboard should let each reader set their own weights instead of shipping one ranking for everyone.</li>
+<li><strong>Several components are public benchmarks</strong>: Humanity’s Last Exam, GPQA Diamond, SciCode, and Terminal-Bench are all openly available, so training-data contamination is a live risk. The defenses are internal copies of every dataset and the evaluations Artificial Analysis built itself, a weaker defense than the post-cutoff, unpublished questions the <a href="../../posts/20260606-benchmarks-in-leipzig/">Leipzig math benchmark</a> used to stay out of the training data.</li>
+<li><strong>An LLM panel grades the heaviest evaluation</strong>: GDPval-AA v2, the largest single component, scores agentic deliverables by an Elo from a panel of three frontier model judges, anchored to human experts at 1000. The panel reduces the bias any single judge would bring, but the score still measures what frontier models agree is good work, which can differ from what a human expert would rank first.</li>
+<li><strong>The compared models are black boxes</strong>: the closed leaders disclose neither parameter count nor architecture, so the index ranks delivered capability without controlling for model size, design, or training compute. Only the open-weight entrants publish those details, and cost per task, which Artificial Analysis reports separately, is the nearest proxy for what a score costs to reach.</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20201005-nlp-leaderboard-utility/">Utility Is in the Eye of the User</a>: the case that benchmark utility is user-specific and leaderboards should let readers set their own weights, a direct counterpoint to collapsing nine evaluations into one fixed-weight index.</li>
+<li><a href="../../posts/20260606-benchmarks-in-leipzig/">Benchmarks in Leipzig</a>: a benchmark built from fresh, post-cutoff, unpublished questions to resist contamination, the stronger defense the public components of this index lack.</li>
+<li><a href="../../posts/20221121-nlp-benchmark-saturation/">Mapping Global Dynamics of Benchmark Creation and Saturation in AI</a>: the create-then-saturate cycle that explains why an index has to keep swapping in harder evaluations to stay informative.</li>
+<li><a href="../../posts/20260423-anthropic-economic-index/">Anthropic Economic Index</a>: another attempt to measure model capability on economically valuable work, and a reminder that a metric designed not to saturate (time horizon) is a different bet than a fixed-question score.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260620-intelligence-benchmarking/</guid>
+  <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>A Juneteenth Run to Lincoln Park</title>
   <dc:creator>Ben </dc:creator>
@@ -3661,35 +3757,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260607-inductive-confidence-machines-regression/</guid>
   <pubDate>Sun, 07 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260607-inductive-confidence-machines-regression/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Secret of Doing Things Every Day</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260607-make-it-not-a-decision/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260607-make-it-not-a-decision/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260607-make-it-not-a-decision/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Casey Neistat, <em>yeah, 730 days no exceptions</em>. <a href="https://www.youtube.com/watch?v=OBtnKCG3QAE&amp;feature=youtu.be">Watch on YouTube</a>.</figcaption>
-</figure>
-</div>
-<p>Humans have <a href="https://en.wikipedia.org/wiki/Bounded_rationality">bounded rationality</a>. The secret of doing something everyday is to make it not a decision.</p>
-<p><a href="https://www.youtube.com/watch?v=OBtnKCG3QAE&amp;feature=youtu.be" class="uri">https://www.youtube.com/watch?v=OBtnKCG3QAE&amp;feature=youtu.be</a></p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116710097498393552">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260607-make-it-not-a-decision/</guid>
-  <pubDate>Sun, 07 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260607-make-it-not-a-decision/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

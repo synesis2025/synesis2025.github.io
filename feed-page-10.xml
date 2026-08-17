@@ -21,7 +21,140 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 16 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 17 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>The Math Behind the Cost of AI Agents</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Cover image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://www.linkedin.com/in/vascoschiavo92/">Vasco Schiavo</a>, writing on the <a href="https://pythagorai.substack.com/">Inference Notes Substack</a>, <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">derives why agent token costs explode</a> and fits the predicted curves against real benchmark traces. The core claim: each turn re-sends the entire conversation history, so total input tokens pile up as a triangular number <img src="https://benjaminhan.net/feed-assets/d27deec524470f16.svg" alt="T(T-1)/2" class="feed-math-inline"/>, quadratic in turns, while output tokens grow linearly.</p>
+<section id="the-growth-law" class="level2">
+<h2 class="anchored" data-anchor-id="the-growth-law">The growth law</h2>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-diagram-colored.png" class="img-fluid figure-img"></p>
+<figcaption>A four-turn conversation, colored by token type: blue cells are input, red cells are output. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<p>Prompt caching does not change the shape of this picture, but it changes which cells are cheap. Green cells below are cached input, billed at a fraction of the fresh rate (typically around 10%). The triangle still grows quadratically, but the dominant term becomes cheap re-reads instead of full-price input, so over the practical turn range the total cost looks linear even though the underlying formula is not.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-diagram-cached.png" class="img-fluid figure-img"></p>
+<figcaption>The same diagram with caching on. Green cells are cached input. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<p>The full with-cache cost formula is <img src="https://benjaminhan.net/feed-assets/8275004afe56f0a9.svg" alt="M \cdot T + c \cdot M \cdot T(T-1)/2" class="feed-math-inline"/>, still quadratic in <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> with the <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/> term just multiplied by the small constant <img src="https://benjaminhan.net/feed-assets/890168619d7adb58.svg" alt="c \cdot M / 2" class="feed-math-inline"/>. The post argues that once caching is deployed, the linear term dominates over the practical turn range, so it fits the cached data with a line rather than a quadratic. The takeaway it pulls out: without caching, cost scales as <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/>; with caching, cost scales as <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/> plus a negligible <img src="https://benjaminhan.net/feed-assets/64ac57c424f0d44c.svg" alt="T^2" class="feed-math-inline"/> correction.</p>
+</section>
+<section id="fits-on-swe-bench" class="level2">
+<h2 class="anchored" data-anchor-id="fits-on-swe-bench">Fits on SWE-bench</h2>
+<p>To test those predictions on real data, the post fits two curve shapes — <img src="https://benjaminhan.net/feed-assets/3c904cdd68df8365.svg" alt="a \cdot t^2" class="feed-math-inline"/> for no-cache and <img src="https://benjaminhan.net/feed-assets/dc09b1b92cb073a0.svg" alt="b \cdot t" class="feed-math-inline"/> for with-cache — against cumulative paid tokens per turn on <a href="https://www.swebench.com/">SWE-bench</a> traces from the <a href="https://www.all-hands.dev/">OpenHands</a> evaluation index, across three models: GPT-5.2, Gemini-3-Flash, and <a href="https://www.anthropic.com/claude/opus">Claude Opus 4.6</a>. Each coefficient has a concrete interpretation:</p>
+<ul>
+<li><img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> — <strong>per-turn verbosity.</strong> How many fresh tokens each turn contributes on average. A large <img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> means the model (or its harness) is pushing a lot of new content per turn.</li>
+<li><img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> — <strong>cache-era marginal cost.</strong> The effective per-turn cost once caching is doing its job. A small <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> means cache hits are carrying most of the load. A large <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> means the cache is not catching much.</li>
+</ul>
+<p>In all three panels below, red is the no-cache median (dashed line = quadratic fit), blue is the with-cache median (dashed line = linear fit), and the pink band is the <a href="https://en.wikipedia.org/wiki/Interquartile_range">interquartile range</a> (IQR) across task instances.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-gpt52-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-gpt52-swebench-full.png"></p>
+<figcaption>GPT-5.2 on SWE-bench, 493 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-gemini-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-gemini-swebench-full.png"></p>
+<figcaption>Gemini-3-Flash on SWE-bench, 500 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/fig-opus-swebench.webp" class="img-fluid figure-img" data-lightbox-src="fig-opus-swebench-full.png"></p>
+<figcaption>Claude Opus 4.6 on SWE-bench, 483 tasks. Image from <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents">Vasco’s Inference Notes post</a>.</figcaption>
+</figure>
+</div>
+<p>The three fits split along both axes:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 21%">
+<col style="width: 21%">
+<col style="width: 21%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th style="text-align: right;"><img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> (per-turn verbosity)</th>
+<th style="text-align: right;">≈ fresh tokens/turn</th>
+<th style="text-align: right;"><img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/> (cache-era marginal cost)</th>
+<th style="text-align: right;">Trajectory length <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>GPT-5.2</td>
+<td style="text-align: right;">0.00050</td>
+<td style="text-align: right;">1,000</td>
+<td style="text-align: right;">0.0095</td>
+<td style="text-align: right;">~75</td>
+</tr>
+<tr class="even">
+<td>Gemini-3-Flash</td>
+<td style="text-align: right;">0.00015</td>
+<td style="text-align: right;">300</td>
+<td style="text-align: right;">0.0086</td>
+<td style="text-align: right;">~175</td>
+</tr>
+<tr class="odd">
+<td>Claude Opus 4.6</td>
+<td style="text-align: right;">0.00046</td>
+<td style="text-align: right;">920</td>
+<td style="text-align: right;">0.0008</td>
+<td style="text-align: right;">~80</td>
+</tr>
+</tbody>
+</table>
+<p>GPT-5.2 and Opus 4.6 are roughly matched on <img src="https://benjaminhan.net/feed-assets/31ebde20db3e41fe.svg" alt="a" class="feed-math-inline"/> (around 1,000 fresh tokens per turn), while Gemini-3-Flash is a third of that, reflecting shorter responses and more compact tool calls. On <img src="https://benjaminhan.net/feed-assets/d2a68add23bd2efd.svg" alt="b" class="feed-math-inline"/>, the three separate sharply: Opus’s <img src="https://benjaminhan.net/feed-assets/ce6523cd7c9cb805.svg" alt="0.0008" class="feed-math-inline"/> is more than 10× shallower than the other two, meaning a higher cache hit rate, less fresh content per turn, or both at Anthropic’s end. That is why, on the Opus panel above, the with-cache line almost disappears into the x-axis against a no-cache peak of 3.7M tokens.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Tension with “Where Claude Code tokens go”.</strong> Reading this alongside <a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code tokens go</a> surfaces a tension. Mnimiy’s proxy measured ~13% of Claude Code cost going to conversation-history re-reads and another ~10% to cache misses on session resume, together about a quarter of spend on the re-read triangle. But the SWE-bench Opus 4.6 fit here puts with-cache marginal cost at <img src="https://benjaminhan.net/feed-assets/b3c8a7c45c3a7052.svg" alt="b = 0.0008" class="feed-math-inline"/>, so flat that re-reads should barely register. The gap is probably the cache-hit-rate assumption: SWE-bench traces one continuous session under near-ideal cache conditions, while real Claude Code usage invalidates the cache constantly — 5-minute timeouts on coffee breaks, <code>CLAUDE.md</code> edits, hook changes, tool reordering — pushing re-reads back to full price and moving the user onto the steeper no-cache curve.</p></li>
+<li><p><strong>IQR variance across the three models.</strong> Fitting to the median across ~500 tasks smooths away the tail that actually burns money, and the post barely addresses how wide that tail is. The no-cache interquartile bands differ sharply. Opus at <img src="https://benjaminhan.net/feed-assets/aea1c177fbb47303.svg" alt="T=80" class="feed-math-inline"/> has a band about 0.8M wide on a 3.7M median — roughly 20% of the median width. Gemini at <img src="https://benjaminhan.net/feed-assets/c54e24720f1f7f8f.svg" alt="T=175" class="feed-math-inline"/> is in a different regime: the median is 8M tokens and the upper quartile reaches 16M, so just the upper half of the IQR equals the median itself. GPT-5.2 sits in between. Some of that is Gemini running longer trajectories, which lets cumulative variance compound. But even at similar turn counts the proportional spread is higher for Gemini, probably because its per-turn token count is more variable: tool calls ranging from small greps to full-file reads, or a subset of tasks dragging into verbose off-path exploration. With Q3 = 2× median, 25% of Gemini sessions cost at least double what the median fit would predict, before you hit true outliers. For anyone using these curves to forecast agent spend, a <img src="https://benjaminhan.net/feed-assets/1df616e9ed9d55d7.svg" alt="p95" class="feed-math-inline"/> cumulative-token curve would be more decision-relevant than the median fit.</p></li>
+<li><p><strong>Gemini’s 2× trajectory length.</strong> Trajectory length itself differs markedly across models, and the post doesn’t explain why. Gemini-3-Flash runs out to <img src="https://benjaminhan.net/feed-assets/a994175ad98086f0.svg" alt="T \approx 175" class="feed-math-inline"/>; GPT-5.2 tops out around <img src="https://benjaminhan.net/feed-assets/2dca9b00c3a4175a.svg" alt="T \approx 75" class="feed-math-inline"/> and Opus 4.6 around <img src="https://benjaminhan.net/feed-assets/597aadc5625c1dc0.svg" alt="T \approx 80" class="feed-math-inline"/>. Even with Gemini’s leaner per-turn verbosity (<img src="https://benjaminhan.net/feed-assets/4dc7e9649f7182d9.svg" alt="\sim 300" class="feed-math-inline"/> tokens/turn), the longer trajectories end up consuming more total tokens: <img src="https://benjaminhan.net/feed-assets/e318b62944dba7b2.svg" alt="\sim 8\text{M}" class="feed-math-inline"/> cumulative no-cache at session end versus <img src="https://benjaminhan.net/feed-assets/68af1fdb47744704.svg" alt="\sim 3.7\text{M}" class="feed-math-inline"/> for Opus. If the tasks are roughly equivalent across runs, that is twice the work to reach comparable outcomes, which would look like a capability gap. But I can’t rule out harness-level differences: different per-model step limits, different tool-call styles (many small reads vs fewer large ones), or different early-exit thresholds could each produce the same pattern without implying anything about the model. Without OpenHands config detail it stays ambiguous. The observation worth holding onto either way: “leaner per turn” doesn’t translate to “cheaper overall” if it costs twice as many turns to finish.</p></li>
+<li><p><strong>The two-line fix anecdote.</strong> The author <a href="https://pythagorai.substack.com/p/the-math-behind-the-cost-of-ai-agents#:~:text=two%2Dline%20fix">notes in passing</a> that the OpenAI cache slope looked several times steeper than theory predicted, traced it to a bug in how their own code was calling OpenAI’s cache API, and shaved the slope down with a two-line fix. That is a useful case for regression-testing cache behavior against a theoretical baseline. Any provider whose cached slope deviates from <img src="https://benjaminhan.net/feed-assets/da0ce2c7dd2cd2b9.svg" alt="c \cdot M" class="feed-math-inline"/> by more than some margin is either misconfigured in your client or mis-documented upstream.</p></li>
+<li><p><strong>Prompt-prefix stability, not just size.</strong> Prompt-prefix stability is what actually decides whether caching works, and the best-practices list treats it as a small detail tucked inside the “keep system prompts clear, concise, and stable” bullet. Rotating system prompts, reordering tool definitions, or appending per-session memory to the front of the context all silently invalidate the cache: a single edit anywhere inside the cached prefix flips the whole thing back to full price. That deserves its own bullet near the top of the list, not a clause inside one about size. The closest comparable analysis at another layer is Reiner Pope’s <a href="../../posts/20260501-how-frontier-llms-trained/">blackboard derivation of frontier LLM economics</a>, which does the same thing one level down at the hardware layer: derive from the formula, calibrate to public prices.</p></li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the empirical companion this post is in direct tension with, measuring real cache-miss spend against the near-flat with-cache fit here.</li>
+<li><a href="../../posts/20260420-opus-47-token-count/">Claude Opus 4.7’s New Tokenizer: ~40% More Tokens Than 4.6</a>: the token-count input to this cost model, where a tokenizer change shifts every term in the quadratic.</li>
+<li><a href="../../posts/20260422-kv-cache-compression/">Sequential KV Cache Compression via Probabilistic Language Tries</a>: attacks the same growing-context cost from the model side, compressing the cache the triangular re-read formula re-bills.</li>
+<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: the long-trajectory agent workflows whose turn counts (<img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/>) drive the quadratic cost analyzed here.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/</guid>
+  <pubDate>Wed, 13 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260513-the-math-behind-the-cost-of-ai-agents/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>ACL 2026 Desk-Rejects Papers with Hallucinated References</title>
   <dc:creator>Ben </dc:creator>
@@ -1674,94 +1807,6 @@
   <guid>https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/</guid>
   <pubDate>Fri, 08 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260508-import-ai-455-automating-ai-research/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Agentic Coding Is a Trap</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://larsfaye.com/articles/agentic-coding-is-a-trap">Lars Faye’s article</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://larsfaye.com/">Lars Faye</a>, a software engineer who runs the <a href="https://confident-coding.com/">Confident Coding Course</a>, <a href="https://larsfaye.com/articles/agentic-coding-is-a-trap">argues</a> that the dominant “orchestrator with sub-agents” coding workflow trades the very critical-thinking skills it depends on for short-term throughput. The piece collects the public evidence of skill atrophy under heavy AI-assisted coding, including two Anthropic studies and on-the-record concerns from a LinkedIn engineering director, then lays out a narrower role for large language models (LLMs) that preserves the underlying capability.</p>
-<section id="what-faye-cites" class="level2">
-<h2 class="anchored" data-anchor-id="what-faye-cites">What Faye cites</h2>
-<p>The argument leans on a long chain of independent sources. Listed in roughly the order Faye reaches for them:</p>
-<ul>
-<li><a href="https://blog.quent.in/blog/2026/03/09/one-more-prompt-the-dopamine-trap-of-agentic-coding/">Quentin — “One More Prompt: the Dopamine Trap of Agentic Coding”</a> — slot-machine framing for the “one more prompt” loop.</li>
-<li><a href="https://margaretstorey.com/blog/2026/02/18/cognitive-debt-revisited/">Margaret Storey — “Cognitive Debt Revisited”</a> — research that AI tooling has been shown to impact critical thinking negatively.</li>
-<li><a href="https://www.media.mit.edu/publications/your-brain-on-chatgpt/">MIT Media Lab — “Your Brain on ChatGPT”</a> — measured cognitive impact of LLM-assisted writing.</li>
-<li><a href="https://www.404media.co/microsoft-study-finds-ai-makes-human-cognition-atrophied-and-unprepared-3/">404 Media on a Microsoft study</a> — Microsoft research finding AI use atrophies human cognition.</li>
-<li><a href="https://simonwillison.net/2026/Feb/15/cognitive-debt/">Simon Willison — “Cognitive Debt”</a> — Faye’s evidence that senior engineers aren’t immune to the pattern.</li>
-<li><a href="https://www.anthropic.com/research/how-ai-is-transforming-work-at-anthropic#and-less-hands-on-practice">Anthropic — “How AI Is Transforming Work at Anthropic”</a> — source of the “paradox of supervision” passage.</li>
-<li><a href="https://www.businessinsider.com/leaders-worry-about-skill-atrophy-due-to-ai-adoption-2025-10">Business Insider — leaders worry about skill atrophy</a> — where Sandor Nyako, Director of Software Engineering at LinkedIn (oversees ~50 engineers), is on the record.</li>
-<li><a href="https://www.anthropic.com/research/AI-assistance-coding-skills">Anthropic — “AI Assistance Coding Skills”</a> — source of the 47% debugging-skill drop.</li>
-<li><a href="https://www.pymnts.com/artificial-intelligence-2/2026/ai-adoption-is-being-measured-in-tokens-but-the-metric-falls-short-experts-say/">PYMNTS — “AI adoption is being measured in tokens, but the metric falls short”</a> — hype around token usage as the productivity metric of choice.</li>
-<li><a href="https://www.linkedin.com/pulse/claudes-outages-show-dark-side-ai-productivity-total-system-lam-osbjc/">Lam (LinkedIn) — “Claude’s Outages Show the Dark Side of AI Productivity”</a> — one of the LinkedIn posts Faye saw during a Claude outage when teams couldn’t work.</li>
-<li><a href="https://www.theverge.com/ai-artificial-intelligence/917380/ai-monetization-anthropic-openai-token-economics-revenue">The Verge — AI monetization / token economics</a> — evidence that model providers are heavily subsidized today.</li>
-<li><a href="https://cheewebdevelopment.com/dont-vibe-code-delegate-responsible-development-with-llms/">Cheewebdevelopment — “Don’t Vibe Code: Delegate”</a> — the source Faye credits for the “delegation utilities” framing.</li>
-<li><a href="https://www.fast.ai/about.html">Jeremy Howard (fast.ai)</a> — quoted: “If you outsource all your thinking to computers, you stop upskilling, learning, and becoming more competent.”</li>
-<li>Five supporting YouTube clips: <a href="https://www.youtube.com/watch?v=pzkwn3hu1Cc">anecdotal developer testimony</a>, <a href="https://youtu.be/IGsbARhERqc?t=501">a recent interview</a>, <a href="https://www.youtube.com/watch?v=cv6rwHTGT5w">AI-enthusiastic senior developers</a>, <a href="https://www.youtube.com/watch?v=_vB0PDzaa7I&amp;t=3299s">Primeagen on vendor capture</a>, and <a href="https://www.youtube.com/watch?v=5HaQnIPrfKk">further on-the-ground reporting</a>.</li>
-</ul>
-</section>
-<section id="fayes-prescription" class="level2">
-<h2 class="anchored" data-anchor-id="fayes-prescription">Faye’s prescription</h2>
-<p>Faye proposes inverting the dominant orchestration pattern: the engineer codes; the model helps with adjacent work. His daily workflow:</p>
-<ul>
-<li><strong>Generate specs and plans with the model, but implement manually.</strong> “I am still manually coding anywhere from 20% to 100%, depending on the task.”</li>
-<li><strong>Write pseudo-code first, then engage the model.</strong> Pseudo-code “closes the distance between the request and the generated code” — the model fills gaps rather than architects.</li>
-<li><strong>Use models as delegation utilities.</strong> Ad-hoc code generation, interactive documentation, research-and-iterate questions — all bounded, all small.</li>
-<li><strong>Never generate more than you can review in one sitting.</strong> If it’s too big, split the task and manually refactor through it.</li>
-<li><strong>Never ask the model to implement something you couldn’t do on your own.</strong> Educational exceptions allowed, and often discarded after.</li>
-<li><strong>TL;DR (Faye’s): “Use them like the Ship’s Computer, not Data.”</strong> A reference tool, not a substitute for the engineer.</li>
-</ul>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The “paradox of supervision” (Faye quotes it from Anthropic) is one slice of a <em>self-undermining</em> loop.</strong> Faye and Anthropic name the contradiction: to supervise the model you need the same skill the model is eroding, but didn’t explicitly close the loop.</p>
-<ul>
-<li>The missing link: as that skill weakens, more decisions slide to the model (some on purpose, some because the human no longer catches the slips), which erodes the skill further, which weakens the next round of supervision.</li>
-<li>The cycle isn’t unbreakable. Faye’s “never generate more than you can review” rule does break it, by keeping each round small enough that the human’s skill stays in use.</li>
-</ul></li>
-<li><p><strong>Restoring the speed-and-comprehension link in agentic tooling is about what we optimize for. Model capability isn’t the bottleneck.</strong> Today’s tools optimize for generated-code volume; they should optimize for <em>human-verifiable diff per unit time</em> instead. <a href="../../posts/20260315-ai-coding-decision-bound/">Decision-Bound Programming</a> makes the same recommendation from a different starting point: when generation is cheap and evaluation is not, the next generation of programming tools should be <em>decision support systems</em>: tooling that narrows the space of options the human must evaluate. The asymmetry itself isn’t new — <a href="../../posts/20260422-proof-generation-vs-digestion/">Terence Tao’s decomposition of mathematical work into <em>generation</em>, <em>verification</em>, and <em>digestion</em></a> names the same problem one field over: AI is racing through the first two while leaving the third (the human’s comprehension) behind. Four concrete shapes narrow the evaluation gap:</p>
-<ul>
-<li><strong>Type-driven generation</strong> — the type checker rules out a class of candidates; the human reads types, not whole functions.</li>
-<li><strong>Test-driven generation</strong> — a passing test suite becomes the checkable signal; the human verifies via the gate.</li>
-<li><strong>Spec-first systems where the model stays at the planning layer</strong> (Faye’s own inversion) — the human decides at the spec level, and trusts the mechanical translation below.</li>
-<li><strong>Domain-specific languages (DSLs) and structured-edit modes</strong> — a smaller grammar is a smaller decision space; the output is cheap to scan.</li>
-</ul>
-<p>Intrinsic non-determinism doesn’t disappear, but in all four the tool absorbs the checking work the human was doing before.</p></li>
-<li><p><strong>Vendor lock-in adds an industry risk to the personal-skill risk.</strong> When entire teams sit idle during a Claude outage, the lock-in has already happened. Token costs are a moving target by design, subsidized today and “nerfed” tomorrow, and the financial exposure piles on top of the cognitive risk. <a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis scenario</a> treats this same compute-cost-as-labor-cost substitution as a macro variable; <a href="../../posts/20260427-cursor-railway-production-wipe/">the Cursor agent that erased PocketOS production data</a> shows the daily-operations failure mode at the other end.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260315-ai-coding-decision-bound/">Journey into Coding with AI [3/4]: Decision-Bound Programming</a>: reaches Faye’s “optimize for human-verifiable diff, not generated volume” conclusion from the generation-cheap-evaluation-expensive asymmetry.</li>
-<li><a href="../../posts/20260130-ai-coding-scaffold-not-substitute/">Anthropic on AI Coding: Scaffold, Not Substitute</a>: the same prescription from Anthropic, with the model as scaffolding around the engineer rather than a replacement for the judgment.</li>
-<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: the token-as-productivity-metric Faye distrusts, broken down into where the tokens actually go once billed.</li>
-<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: the daily-operations failure mode of unsupervised agentic coding that Faye’s “review every diff” rule is meant to prevent.</li>
-<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: treats the compute-cost-as-labor-cost vendor exposure Faye flags as a macro variable.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/</guid>
-  <pubDate>Thu, 07 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260507-agentic-coding-is-a-trap/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

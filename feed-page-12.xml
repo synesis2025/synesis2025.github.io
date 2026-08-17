@@ -21,7 +21,114 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 16 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 17 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/cover.png" class="img-fluid figure-img"></p>
+<figcaption>Spectrum of shared metacognition, from intrinsic (agent runs its own metacognitive loop) through shared (agent and designer split the metacognitive work) to extrinsic (metacognitive loop is fully externally defined). Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Truly Self-Improving Agents Require Intrinsic Metacognitive Learning</em> (ICML 2025) [1], <a href="https://tennisonliu.github.io/">Tennison Liu</a> and <a href="https://www.vanderschaar-lab.com/prof-mihaela-van-der-schaar/">Mihaela van der Schaar</a> at Cambridge argue that almost every current “self-improving” LLM agent leans on hand-designed metacognitive loops, and that genuine, sustained self-improvement requires agents that can themselves evaluate, plan, and adapt their own learning processes.</p>
+<blockquote class="blockquote">
+<p>Self-improving agents aim to continuously acquire new capabilities with minimal supervision. However, current approaches face two key limitations: their self-improvement processes are often rigid, <em>fail to generalize across tasks domains, and struggle to scale with increasing agent capabilities</em>. We argue that effective self-improvement requires intrinsic metacognitive learning, defined as an agent’s intrinsic ability to actively evaluate, reflect on, and adapt its own learning processes. Drawing inspiration from human metacognition, we introduce a formal framework comprising three components: <em>metacognitive knowledge</em> (self-assessment of capabilities, tasks, and learning strategies), <em>metacognitive planning</em> (deciding what and how to learn), and <em>metacognitive evaluation</em> (reflecting on learning experiences to improve future learning). Analyzing existing self-improving agents, we find they <em>rely predominantly on extrinsic metacognitive mechanisms, which are fixed, human-designed loops that limit scalability and adaptability</em>. Examining each component, we contend that many ingredients for intrinsic metacognition are already present. Finally, we explore how to optimally distribute metacognitive responsibilities between humans and agents, and robustly evaluate and improve intrinsic metacognitive learning, key challenges that must be addressed to enable truly sustained, generalized, and aligned self-improvement.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The paper formalizes metacognitive learning as a bi-level process. A metacognitive layer sits above the cognitive layer where task-level learning actually happens, monitoring and regulating it. The metacognitive layer has three components that close a loop: knowledge informs planning, planning produces learning activity, and evaluation feeds back into both.</p>
+<ul>
+<li><strong>Metacognitive knowledge</strong> is the agent’s self-model.
+<ul>
+<li>It comes in three flavors: <em>knowledge of self</em> (what the agent can already do, where its limits lie, what skills it has), <em>knowledge of task</em> (what the current task demands and what would help), and <em>knowledge of strategies</em> (which learning approaches are available and where each tends to apply).</li>
+<li>The biggest threat to this component is hallucination: LLMs can confidently misrepresent their own internal state, including basic facts about which tools they have access to.</li>
+<li>The paper cites recent work showing agents can classify math problems by required solution procedure [2] and identify which training tasks would help them, so the ingredient is at least partially present.</li>
+</ul></li>
+<li><strong>Metacognitive planning</strong> turns that self-model into action through two questions.
+<ul>
+<li><em>What to learn</em> is a task-allocation question, traditionally answered by curriculum learning over a curated task pool [3]. Intrinsic variants replace the human-designed curriculum with internal drivers like curiosity, learnability, and regret, and let agents generate their own tasks rather than draw from a fixed pool [4].</li>
+<li><em>How to learn</em> is a strategy-selection question with two phases:
+<ul>
+<li><em>Exploration</em> (temperature scaling, upper-confidence-bound tree search [5], uncertainty-guided sampling, prompt-based novelty seeking) chooses what experiences the agent gathers.</li>
+<li><em>Learning</em> extracts capabilities from those experiences via in-weight updates (finetuning on self-generated traces, à la STaR [6]), long-term memory writes (episodic experiences, abstract rules, reusable skills as tool functions), or both.</li>
+</ul></li>
+<li>The paper flags this whole component as the most under-developed in current systems: nearly every shipped agent picks one fixed mechanism and applies it uniformly across tasks and over time.</li>
+</ul></li>
+<li><strong>Metacognitive evaluation</strong> closes the loop and has two aspects.
+<ul>
+<li><em>Tracking progress</em> is the ongoing assessment of how learning is going. Held-out benchmarks like MMLU [7] work for well-defined capabilities. LLM-as-judge [8] fills in for fuzzier targets like emotional intelligence, creativity, or interestingness, where no quantifiable metric exists.</li>
+<li><em>Metacognitive reflection</em> is the post-hoc analysis of learning plans, distinct from task-level reflection (Reflexion-style [9]) by operating one level up: it evaluates long-term learning trajectories rather than per-task performance.</li>
+<li>Because it operates over representations of the cognitive process rather than the task itself, metacognitive reflection can in principle be domain-agnostic, given enough domain-specific signal to extract progress from.</li>
+</ul></li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The paper walks three well-known systems through this framework as case studies, ordered by increasing intrinsic-ness:</p>
+<ul>
+<li><strong>STaR</strong> [6] (Zelikman et al., 2022): a reasoning bootstrapping method. Given a small set of problems with reasoning traces plus a larger set with answers only, the agent attempts problems and gets finetuned on any trace that led to a correct answer, then the cycle repeats on harder problems. Almost entirely extrinsic: the agent doesn’t assess its own capabilities, doesn’t choose which tasks to attempt (externally curated), and doesn’t adapt its learning strategy (rationalization with answer hints is fixed). The metacognitive loop sits with the system designer.</li>
+<li><strong>Voyager</strong> [10] (Wang et al., 2023): an LLM-based embodied agent for lifelong learning in Minecraft. It maintains a growing library of executable Python skills and autonomously discovers increasingly complex actions to perform. Partially intrinsic: the agent tracks what it can do (knowledge) and balances exploration against task learnability when picking next goals (planning). The learning strategy stays fixed though: the same exploration-learning loop runs across all tasks. Voyager beats expert-designed curriculum baselines, which the paper takes as evidence the intrinsic components matter.</li>
+<li><strong>Generative Agents</strong> [11] (Park et al., 2023): agents in a Sims-style sandbox that accumulate experiences, form relationships, and develop distinct personas through lived interaction. Most intrinsic of the three. Agents form evolving identities and motivations (knowledge), autonomously plan daily activities (planning), and periodically trigger an abstract reflection, such as recognizing a newfound interest or reinterpreting recent events, that updates their semantic memory and shapes future plans (evaluation). The paper flags the contrast with Reflexion-style [9] techniques: Reflexion reflects at the cognitive level to improve performance on specific tasks; Generative Agents reflect at the metacognitive level, drawing inferences about their own trajectory.</li>
+</ul>
+<p>The arc across the three case studies is how the paper builds its argument: each system is intrinsic on more components than the last, and the paper argues the more-intrinsic systems show more sustained progress in the diversity and novelty of their evolving capabilities. The paper acknowledges these are preliminary observations that still require rigorous, systematic studies to substantiate.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Both limitation claims rest on one example each.</strong> The “lose efficacy” claim cites Song et al.’s 2024 generation-verification-gap finding [12]. The “fail to generalize” claim points at STaR and bootstrapped self-training, which worked in their original domain but didn’t transfer. No new experiments.</p></li>
+<li><p><strong>Every shipped agent is extrinsic in this taxonomy.</strong> The system designer decides what to monitor, what counts as progress, and when to switch strategies. <a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum</a> [13] hand-designs a Co-Regulation Agent with a fixed role and loop position. <a href="../../posts/20260430-rema-meta-think/">ReMA</a> [14] hand-designs the high-low decomposition. The prompt-optimization line (<a href="../../posts/20260430-multi-agent-system-search/">MASS</a>, <a href="../../posts/20260430-metaspo-system-prompt-meta-learning/">MetaSPO</a>, <a href="../../posts/20260430-evoprompt/">EvoPrompt</a>) uses LLMs as inner-loop optimizers but humans fix the search-space structure.</p></li>
+<li><p><strong>“Sustained progress” lacks a cross-system metric.</strong> STaR runs in math/reasoning, Voyager in Minecraft, Generative Agents in a Sims sandbox. A residual learning rate (slope late in training over slope early) gets the y-axis unit-free, but the x-axis stays domain-specific: a STaR training step isn’t a Voyager training step, and Sims days don’t align with Minecraft exploration. The cross-system ordering needs either a shared benchmark or a principled x-axis alignment, neither of which the paper provides.</p></li>
+<li><p><strong>SelfReflect bounds the optimism about LLM metacognitive ingredients.</strong> The paper argues frontier LLMs already exhibit pieces of metacognitive knowledge, planning, and evaluation. Apple’s <a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect</a> [15] finds, across 20 modern models, that LLM self-reports of their own answer distributions don’t match what those models actually sample. So the metacognitive-knowledge ingredient is thinner than the paper’s optimism implies, at least without help from techniques like sample-then-summarize.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://tennisonliu.github.io/">Liu</a>, Tennison, and Mihaela <a href="https://en.wikipedia.org/wiki/Mihaela_van_der_Schaar">van der Schaar</a>. “Truly Self-Improving Agents Require Intrinsic Metacognitive Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2025. arXiv:2506.05109, June 5, 2025. <a href="https://arxiv.org/abs/2506.05109" class="uri">https://arxiv.org/abs/2506.05109</a></li>
+<li><a id="ref-2"></a>Didolkar, Aniket, Anirudh Goyal, Nan Rosemary Ke, Siyuan Guo, Michal Valko, Timothy Lillicrap, Danilo Rezende, Yoshua Bengio, Michael Mozer, and Sanjeev Arora. “Metacognitive Capabilities of LLMs: An Exploration in Mathematical Problem Solving.” <em>arXiv preprint</em> (arXiv:2405.12205), May 20, 2024. <a href="https://arxiv.org/abs/2405.12205" class="uri">https://arxiv.org/abs/2405.12205</a></li>
+<li><a id="ref-3"></a>Bengio, Yoshua, Jérôme Louradour, Ronan Collobert, and Jason Weston. “Curriculum Learning.” <em>International Conference on Machine Learning (ICML)</em>, 2009. <a href="https://dl.acm.org/doi/10.1145/1553374.1553380" class="uri">https://dl.acm.org/doi/10.1145/1553374.1553380</a></li>
+<li><a id="ref-4"></a>Faldor, Maxence, Jenny Zhang, Antoine Cully, and Jeff Clune. “OMNI-EPIC: Open-endedness via Models of human Notions of Interestingness with Environments Programmed in Code.” <em>arXiv preprint</em> (arXiv:2405.15568), May 24, 2024. <a href="https://arxiv.org/abs/2405.15568" class="uri">https://arxiv.org/abs/2405.15568</a></li>
+<li><a id="ref-5"></a>Hao, Shibo, Yi Gu, Haodi Ma, Joshua Jiahua Hong, Zhen Wang, Daisy Zhe Wang, and Zhiting Hu. “Reasoning with Language Model is Planning with World Model.” <em>Conference on Empirical Methods in Natural Language Processing (EMNLP)</em>, 2023. arXiv:2305.14992, May 24, 2023. <a href="https://arxiv.org/abs/2305.14992" class="uri">https://arxiv.org/abs/2305.14992</a></li>
+<li><a id="ref-6"></a><a href="https://ezelikman.com/">Zelikman</a>, Eric, Yuhuai <a href="http://www.cs.toronto.edu/~ywu/">Wu</a>, Jesse <a href="https://cs.stanford.edu/~muj/">Mu</a>, and Noah D. <a href="https://cocolab.stanford.edu/ndg.html">Goodman</a>. “STaR: Bootstrapping Reasoning With Reasoning.” <em>arXiv preprint</em> (arXiv:2203.14465), March 28, 2022. <a href="https://arxiv.org/abs/2203.14465" class="uri">https://arxiv.org/abs/2203.14465</a></li>
+<li><a id="ref-7"></a><a href="https://people.eecs.berkeley.edu/~hendrycks/">Hendrycks, D.</a>, Burns, C., Basart, S., Zou, A., Mazeika, M., Song, D., and Steinhardt, J. “Measuring Massive Multitask Language Understanding.” <em>ICLR 2021</em> (arXiv:2009.03300). <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></li>
+<li><a id="ref-8"></a>Zheng, Lianmin, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric P. Xing, Hao Zhang, Joseph E. Gonzalez, and Ion Stoica. “Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em>, 2023. arXiv:2306.05685, June 9, 2023. <a href="https://arxiv.org/abs/2306.05685" class="uri">https://arxiv.org/abs/2306.05685</a></li>
+<li><a id="ref-9"></a><a href="https://noahshinn.com/">Shinn, N.</a>, <a href="https://federico.codes/">Cassano, F.</a>, Berman, E., <a href="https://meche.mit.edu/people/faculty/AGOPI@MIT.EDU">Gopinath, A.</a>, <a href="https://www.cs.princeton.edu/~karthikn/">Narasimhan, K.</a>, and <a href="https://ysymyth.github.io/">Yao, S.</a>. “Reflexion: Language Agents with Verbal Reinforcement Learning.” <em>NeurIPS 2023</em> (arXiv:2303.11366), March 20, 2023. <a href="https://arxiv.org/abs/2303.11366" class="uri">https://arxiv.org/abs/2303.11366</a></li>
+<li><a id="ref-10"></a>Wang, Guanzhi, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar. “Voyager: An Open-Ended Embodied Agent with Large Language Models.” <em>arXiv preprint</em> (arXiv:2305.16291), May 25, 2023. <a href="https://arxiv.org/abs/2305.16291" class="uri">https://arxiv.org/abs/2305.16291</a></li>
+<li><a id="ref-11"></a>Park, Joon Sung, Joseph C. O’Brien, Carrie J. Cai, Meredith Ringel Morris, Percy Liang, and Michael S. Bernstein. “Generative Agents: Interactive Simulacra of Human Behavior.” <em>arXiv preprint</em> (arXiv:2304.03442), April 7, 2023. <a href="https://arxiv.org/abs/2304.03442" class="uri">https://arxiv.org/abs/2304.03442</a></li>
+<li><a id="ref-12"></a><a href="https://yudasong.github.io/">Song</a>, Yuda, Hanlin <a href="https://hanlin-zhang.com/">Zhang</a>, Carson Eisenach, Sham <a href="https://en.wikipedia.org/wiki/Sham_Kakade">Kakade</a>, Dean <a href="https://deanfoster.net/">Foster</a>, and Udaya <a href="https://udaya.github.io/">Ghai</a>. “Mind the Gap: Examining the Self-Improvement Capabilities of Large Language Models.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2412.02674, December 3, 2024. <a href="https://arxiv.org/abs/2412.02674" class="uri">https://arxiv.org/abs/2412.02674</a></li>
+<li><a id="ref-13"></a><a href="https://www.linkedin.com/in/zedaxu/">Xu</a>, Zeda, Nikolas <a href="https://nikmart.com/">Martelaro</a>, and Christopher <a href="https://cmccomb.com/">McComb</a>. “Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design.” <em>arXiv preprint</em> (arXiv:2603.24768), March 25, 2026. <a href="https://arxiv.org/abs/2603.24768" class="uri">https://arxiv.org/abs/2603.24768</a></li>
+<li><a id="ref-14"></a><a href="https://ziyuwan.github.io/">Wan</a>, Ziyu, Yunxiang Li, Xiaoyu Wen, Yan Song, Hanjing Wang, Linyi <a href="https://leeeeoliu.github.io/">Yang</a>, Mark <a href="https://www.cs.ubc.ca/~schmidtm/">Schmidt</a>, Jun <a href="http://www0.cs.ucl.ac.uk/staff/Jun.Wang/">Wang</a>, Weinan <a href="http://wnzhang.net/">Zhang</a>, Shuyue Hu, and Ying <a href="https://yingwen.io/">Wen</a>. “ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:2503.09501), March 12, 2025. <a href="https://arxiv.org/abs/2503.09501" class="uri">https://arxiv.org/abs/2503.09501</a></li>
+<li><a id="ref-15"></a><a href="https://mkirchhof.github.io/">Kirchhof</a>, Michael, Luca <a href="https://openreview.net/profile?id=~Luca_F%C3%BCger1">Füger</a>, Adam <a href="https://adamgol.me/">Goliński</a>, Eeshan Gunesh Dhekane, Arno <a href="https://arnoblaas.com/">Blaas</a>, Seong Joon <a href="https://seongjoonoh.com/">Oh</a>, and Sinead <a href="https://sinead.github.io/">Williamson</a>. “SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2505.20295, May 26, 2025. <a href="https://arxiv.org/abs/2505.20295" class="uri">https://arxiv.org/abs/2505.20295</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260430-dspy/">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>: the cleanest example of the extrinsic ceiling this paper describes, where humans wire in the modules, metric, and search strategy.</li>
+<li><a href="../../posts/20260430-rema-meta-think/">ReMA: Learning to Meta-think for LLMs with Multi-Agent Reinforcement Learning</a>: a hand-designed high/low metacognitive split, one of the systems this taxonomy classifies as extrinsic on the planning component.</li>
+<li><a href="../../posts/20260519-memskill/">MemSkill: Learning and Evolving Memory Skills for Self-Evolving Agents</a>: a self-evolving agent that pushes toward the intrinsic end by learning which memory operations to apply, rather than running one fixed loop.</li>
+<li><a href="../../posts/20260430-supervising-ralph-wiggum/">Supervising Ralph Wiggum: Exploring a Metacognitive Co-Regulation Agentic AI Loop for Engineering Design</a>: another hand-designed co-regulation loop with a fixed role and position, the kind of extrinsic mechanism the paper argues limits scalability.</li>
+<li><a href="../../posts/20260430-selfreflect-internal-distribution/">SelfReflect: Can LLMs Communicate Their Internal Answer Distribution?</a>: empirical counterweight to the paper’s optimism, finding that the metacognitive-knowledge ingredient is thinner than assumed across 20 models.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/</guid>
+  <pubDate>Thu, 30 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260430-intrinsic-metacognitive-learning/cover.png" medium="image" type="image/png" height="38" width="144"/>
+</item>
 <item>
   <title>System Prompt Optimization with Meta-Learning</title>
   <dc:creator>synesis </dc:creator>
@@ -1628,53 +1735,6 @@
   <guid>https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/</guid>
   <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260424-llms-learn-numbers-similarly/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>How LLMs Actually Work: A Visual Deep Dive</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260424-llm-illustration/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Screenshot from <a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://ynarwal.github.io/how-llms-work/">How LLMs Actually Work</a> by Y. Narwal is an interactive, scroll-driven walkthrough of the LLM training pipeline, from Common Crawl through pre-training, post-training, RAG, and inference, with live diagrams and inline annotations at every stage. It is based on Andrej Karpathy’s technical deep dive.</p>
-<p>The nine sections mirror the canonical build pipeline:</p>
-<ul>
-<li><strong>Downloading the Internet</strong> — Common Crawl plus the filters that turn web sludge into a training corpus.</li>
-<li><strong>Tokenization</strong> — subword units, with a live BPE demo.</li>
-<li><strong>Training the Neural Network</strong> — the Transformer architecture and what each step updates.</li>
-<li><strong>Inference &amp; Token Sampling</strong> — temperature and top-p, with a sampling demo.</li>
-<li><strong>The Internet Simulator</strong> — what the base model is, before any post-training.</li>
-<li><strong>Building the Assistant</strong> — SFT on conversations, the turn token format, RLHF on top.</li>
-<li><strong>Cognitive Quirks of Language Models</strong> — counting letters, arithmetic, hallucination — and where in the pipeline they originate.</li>
-<li><strong>Retrieval-Augmented Generation</strong> — how retrieved context shifts the prediction distribution.</li>
-<li><strong>From Text to Assistant</strong> — closing recap.</li>
-</ul>
-<hr>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260501-how-frontier-llms-trained/">How Frontier LLMs Are Actually Trained and Served</a>: the same end-to-end build-and-serve pipeline, told as a video walkthrough rather than an interactive page.</li>
-<li><a href="../../posts/20250619-karpathy-software-changing-again/">Karpathy: Software Is Changing (Again)</a>: more from Andrej Karpathy, whose technical deep dive this walkthrough is built on.</li>
-<li><a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a>: the same author’s view on where the pipeline these diagrams describe actually stands relative to AGI.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260424-llm-illustration/</guid>
-  <pubDate>Fri, 24 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260424-llm-illustration/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

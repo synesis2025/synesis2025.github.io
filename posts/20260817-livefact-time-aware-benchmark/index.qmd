@@ -1,0 +1,137 @@
+---
+title: "LiveFact: A Dynamic, Time-Aware Benchmark for LLM-Driven Fake News Detection"
+description: "A monthly-refreshed fake-news benchmark that slices evidence by time relative to each event, so a model can be scored on whether it says \"ambiguous\" before the evidence exists."
+author: synesis
+date: "2026-08-17"
+image: cover.jpg
+---
+
+![Figure 1 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *LiveFact: A Dynamic, Time-Aware Benchmark for LLM-Driven Fake News Detection* [[1]](#ref-1) (ACL 2026, pages 11881–11910), [Cheng Xu](https://aclanthology.org/people/cheng-xu/), [Changhong Jin](https://aclanthology.org/people/changhong-jin/), [Yingjie Niu](https://aclanthology.org/people/yingjie-niu/), [Nan Yan](https://aclanthology.org/people/nan-yan-8088/), [Yuke Mei](https://aclanthology.org/people/yuke-mei/), [Shuhao Guan](https://aclanthology.org/people/shuhao-guan/), [Liming Chen](https://aclanthology.org/people/liming-chen/), and [M-Tahar Kechadi](https://aclanthology.org/people/tahar-kechadi/) (University College Dublin, Georgia Tech, Dalian University of Technology, and Bebxy) build a fake-news benchmark that is rebuilt monthly from fresh news events. Each model gets only the evidence that existed a chosen number of days before or after the event it is asked about, so the question becomes whether the model says "ambiguous" when the evidence to decide does not exist yet.
+
+Figure 1 above is the paper's cost-performance summary of the November 2025 release. It puts each model's average score across the benchmark against the dollar cost of one full evaluation run, with marker size for parameter count and color for family: Qwen in blue, Llama in green, DeepSeek in purple, and OpenAI's GPT models as grey diamonds. The shaded band in the upper left is the cheap-and-accurate corner, and the starred point inside it is `Qwen3-30B-A3B-Instruct-2507`, which scores within three points of the best model in the set for about a fourteenth of what `gpt-5.2` costs to evaluate.
+
+Four constructions the post relies on:
+
+- **Benchmark data contamination (BDC)**: the benchmark's test items have been absorbed into a model's pretraining corpus, so a high score can come from recall instead of reasoning. Every static benchmark accumulates this exposure as models are retrained, which is the problem a monthly rebuild is meant to avoid.
+- **Time-sliced evidence set $E^{(\delta)}$**: for an event with headline date $T$, the evidence published no later than $T + \delta$, with $\delta \in \{-3, 0, +3\}$ days. $E^{(-3)}$ is the state of public knowledge three days before the event, $E^{(+3)}$ three days after. The paper calls the $\delta = -3$ condition the "fog of war."
+- **Dual-mode evaluation**: the same prediction is scored against two different ground truths. In *Classification Mode* the target is the claim's eventual factual status, which does not change with $\delta$. In *Inference Mode* the target is what a human expert could justifiably conclude from $E^{(\delta)}$ alone, so a claim that turns out to be *Real* is labeled *Ambiguous* at $\delta = -3$ if the confirming evidence had not appeared yet. Both modes draw from the same three labels, *Real*, *Fake*, and *Ambiguous*.
+- **SSA Factor**: the contamination indicator, $\Delta \times \mathrm{OTR} \times 100$, borrowed from the Semantic Sensitivity Amplifier (SSA) framework the same group published at EMNLP 2025 [[2]](#ref-2). $\Delta$ is the score drop from swapping real named entities for invented ones and $\mathrm{OTR}$ (Overturn Rate) is the share of items whose predicted label changes under that swap. A model whose answers move when only the names move is keying on memorized entities.
+
+> The rapid development of Large Language Models (LLMs) has transformed fake news detection and fact-checking tasks from simple classification to complex reasoning. However, evaluation frameworks have not kept pace. Current benchmarks are static, making them vulnerable to benchmark data contamination (BDC) and ineffective at assessing reasoning under temporal uncertainty. To address this, we introduce *LiveFact* *a continuously updated benchmark that simulates the real-world "fog of war" in misinformation detection*. LiveFact uses *dynamic, temporal evidence sets to evaluate models on their ability to reason with evolving, incomplete information rather than on memorized knowledge*. We propose a *dual-mode evaluation*: *Classification Mode* for final verification and *Inference Mode* for evidence-based reasoning, along with a component to monitor BDC explicitly. Tests with 22 LLMs show that *open-source Mixture-of-Experts models*, such as Qwen3-235B-A22B, now *match or outperform proprietary state-of-the-art systems*. More importantly, our analysis finds a significant "reasoning gap." *Capable models exhibit epistemic humility by recognizing unverifiable claims in early data slices*-an aspect traditional static benchmarks overlook. LiveFact sets a sustainable standard for evaluating robust, temporally aware AI verification.
+
+## Methods
+
+The benchmark is a pipeline that runs on a monthly cycle rather than a dataset that was collected once. Five stages:
+
+- **Event retrieval**: the Google News API is scraped daily at 00:00 GMT for trending items in the World section, then deduplicated and filtered for overlapping storylines and low-relevance items. The November 2025 cycle yielded 737 distinct events.
+- **Time-aware evidence construction**: for each event, Google APIs are queried with hard timestamp bounds at $T-3$, $T$, and $T+3$, producing the three evidence sets $E^{(-3)}$, $E^{(0)}$, and $E^{(+3)}$. Across the 737 events this gathered 25,064 distinct pieces of evidence. To stay inside fair use, only page titles, source names, and publication timestamps are retained, with no article bodies stored or redistributed.
+- **Claim and context generation**: OpenAI's `o4-mini` reads the headline and all time-stamped evidence for an event and writes a background *Context* describing the entities involved, plus a set of claims labeled *Real*, *Fake*, or *Ambiguous*. November 2025 produced 4,392 claims, initially 1,468 *Real*, 1,451 *Fake*, and 1,473 *Ambiguous*.
+- **Human-in-the-loop verification**: annotators check every generated claim against the retrieved evidence and correct inconsistencies. They also set the Inference Mode labels, deciding per time slice whether the available evidence is enough for a human expert to reach the correct verdict.
+- **BDC risk monitoring**: `Qwen3-235B-A22B` performs the entity swap, chosen over an OpenAI model to avoid preference leakage into a benchmark whose claims an OpenAI model wrote. The result is a parallel shifted dataset from which $\Delta$, the Overturn Rate, and the SSA Factor are computed each cycle.
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.webp){fig-align="center" data-lightbox-src="figure2-full.png"}
+
+Figure 2 lays out the three parts side by side:
+
+- **Panel A** is the monthly pipeline above, with the arrow from Stage 5 back into Stage 4 marking the point where the shifted dataset re-enters human review.
+- **Panel B** is the prediction the benchmark asks for, $\hat{y}^{(\delta)} = f_\theta(c, E^{(\delta)}, k)$: the model under test, $f_\theta$, reads the claim $c$, one time-sliced evidence set $E^{(\delta)}$, and the static background context $k$, then emits a verdict $\hat{y}^{(\delta)}$ for that slice. The timeline across the top makes the three evidence sets different objects rather than three samples of one.
+- **Panel C** splits the scoring. The same verdict is compared against a time-invariant target on the left and a time-dependent one on the right, and below that the entity-shift step turns the difference between original and shifted predictions into the SSA Factor.
+
+| Evidence set | Real | Fake | Ambiguous | Total |
+|---|---|---|---|---|
+| $E^{(-3)}$ | 346 | 348 | 3,698 | 4,392 |
+| $E^{(0)}$ | 1,404 | 1,390 | 1,598 | 4,392 |
+| $E^{(+3)}$ | 1,460 | 1,443 | 1,489 | 4,392 |
+
+: Inference Mode label distribution across the three time slices, November 2025. Table 2 from the paper [[1]](#ref-1).
+
+The claim set is fixed at 4,392 items, and only the Inference Mode target moves. Three days before an event, human reviewers judged 3,698 of the 4,392 claims, 84% of them, unresolvable from the evidence then available. By the headline date it falls to 1,598, and three days after to 1,489. The paper is explicit that this makes accuracy unreliable at $\delta = -3$, since always answering *Ambiguous* scores 84% there, which is why macro-F1 is reported alongside it throughout.
+
+## Results
+
+The evaluation setup behind Table 3:
+
+- **Models**: eighteen are evaluated on the November 2025 release, fourteen open-weights across the Qwen3, Llama 3, DeepSeek, Kimi, and GPT-OSS families and four proprietary OpenAI models, spanning 1B to 1T parameters. Table 5's registry lists twenty-two, the extra four appearing only in the appendix training-mode ablation and extended-token runs. Six of the twenty-two are base checkpoints without instruction tuning, three of them among the eighteen scored in Table 3, and Table 5 classes two more of the eighteen, `Qwen3-32B` and `Qwen3-8B`, as hybrid rather than instruction-tuned.
+- **Metrics**: twelve per model, from accuracy and macro-F1 crossed with the two evaluation modes and the three time slices. The reported Avg. is the mean of all twelve.
+- **Decoding**: every model answers under the same protocol, temperature 0, top-p 1.0, and a 128-token generation cap the paper sets to keep verdicts concise, since scoring reads only a `[[LABEL]]` token out of whatever the model produces.
+- **Star rows**: reasoning-trained models spend that budget deliberating and get cut off before the label appears, so they were re-run at 1,024 tokens.
+
+![Table 3 from the paper [[1]](#ref-1).](table3.jpg){fig-align="center"}
+
+The findings:
+
+- **The top of the leaderboard is open-weights** (Table 3, Avg. column). `Qwen3-235B-A22B-Instruct-2507` averages 72.40, `gpt-oss-120b` 72.13, `gpt-5.1` 72.02, and `gpt-5.2` 71.52. `DeepSeek-V3.1` reaches 61.48 with 671B total parameters, below `Qwen3-32B`, a 32B dense model, at 66.03.
+- **A 30B mixture-of-experts model gets within three points at a fourteenth of the cost** (Figure 1). `Qwen3-30B-A3B-Instruct-2507` averages 69.46 for $0.64 per run against $9.27 for `gpt-5.2` (Table 6), and it is the only model inside the shaded region of the cover figure.
+- **Base checkpoints answer *Real* to almost everything** (Table 3, dagger rows). `Llama-3.1-70B`, `Llama-3.2-3B`, and `Llama-3.2-1B` all average near 22, with macro-F1 near 16.7 in Classification Mode across every slice, which is what a single-class prediction produces on a three-class problem. Their confusion matrices in the appendix put nearly all the mass in the *Real* column at every slice and in both modes. The paper attributes the base-model failure to non-compliance with the required `[[LABEL]]` output format, an explanation it documents for `Llama-3.1-8B`, which averages 5.14% in the appendix training-mode ablation and is not one of the eighteen in Table 3.
+- **Reasoning models need a larger output budget** (Table 3, star rows). At the 128-token cap `Kimi-K2-Thinking` averaged 1.76 and the two GPT-OSS models averaged about 26, against 54.60, 72.13, and 57.05 at 1,024 tokens (Table 12). The paper inspected the outputs and found deliberation cut off mid-stream rather than wrong verdicts.
+- **Scores rise sharply once the event happens, then flatten** (Figure 3, panel a). In Classification Mode the Qwen and GPT families climb from the low 50s at $\delta = -3$ to the high 70s at $\delta = 0$, and gain roughly one further point by $\delta = +3$. Almost all the measured difficulty is in the pre-event slice.
+- **Inference Mode recovers most of that drop for some models and not others** (Figure 3, panel b). Where Classification Mode punishes a model for not knowing what had not happened, Inference Mode credits it for saying so, and DeepSeek moves opposite to the rest: highest of the four families at $\delta = -3$ and lowest at $\delta = 0$.
+- **The reasoning gap spans 65 points across the eighteen models** (Figure 4). Taking Inference accuracy minus Classification accuracy at $\delta = -3$, `Llama-3.1-8B-Instruct` gains 38.0 points and `Qwen3-32B` 37.6, while `Llama-3.3-70B-Instruct` loses 21.2 and the three base checkpoints lose 25 to 27. The paper attributes the positive end to recognizing an information void, the negative end among instruction-tuned models to overconfidence, and the negative end among base models to format non-compliance.
+
+![Figure 3 from the paper [[1]](#ref-1).](figure3.png){fig-align="center"}
+
+![Figure 4 from the paper [[1]](#ref-1).](figure4.png){fig-align="center"}
+
+## My Notes
+
+- **The Avg. column supports *match* and nothing more**
+  - The abstract claims open-weights mixture-of-experts models "now match or outperform proprietary state-of-the-art systems." *Match* it supports comfortably. The ordering it does not.
+  - The top three Avg. values span 0.38 points in total, and each is a single run with no confidence interval or repeated seed anywhere in the paper. The binomial standard error on one accuracy near 72% over 4,392 items is about 0.7 points, so the gaps between them are smaller than the noise on any one of the twelve numbers being averaged. The three were not measured under the same conditions either: `gpt-oss-120b` needed 1,024 output tokens to reach 72.13, where `Qwen3-235B-A22B-Instruct-2507` reached 72.40 at 128.
+  - Nor does open versus proprietary divide the top of the table by lab. `gpt-oss-120b`, second at 72.13, is OpenAI's own open-weights release, and `gpt-5.1`, third at 72.02, is OpenAI's proprietary one, 0.11 points apart. The *match* claim holds, but a reader who takes it as open ecosystems catching up to the labs would be reading these rows wrongly, since one lab supplied both sides of that comparison.
+  - The [gap between open and closed weights](/posts/20260627-open-weights-frontier-gap/) has been closing on aggregate indices for a while, and a 0.38-point ordering on one benchmark adds little to what those trend lines already show.
+- **The reasoning gap is computed from the wrong metric**
+  - §3.4 argues that accuracy is misleading at $\delta = -3$ because *Ambiguous* is 84% of the labels there, and that macro-F1 is the metric that "treats all classes equally." Figure 4 then computes the reasoning gap from accuracy at exactly that slice. Recomputed from Table 3's macro-F1 columns, for all eighteen models, in the accuracy order Figure 4 uses:
+
+    | Model | Accuracy gap | Macro-F1 gap |
+    |---|---:|---:|
+    | `Llama-3.1-8B-Instruct` | +38.0 | +23.7 |
+    | `Qwen3-32B` | +37.6 | +21.8 |
+    | `DeepSeek-V3.1` | +34.4 | +16.3 |
+    | `gpt-5.2` | +33.1 | +21.3 |
+    | `gpt-4o` | +25.8 | +10.5 |
+    | `gpt-4o-mini` | +21.9 | +6.9 |
+    | `gpt-5.1` | +16.6 | +6.0 |
+    | `Qwen3-235B-A22B-Instruct-2507` | +14.4 | +5.8 |
+    | `Kimi-K2-Thinking` | +12.2 | -3.3 |
+    | `Qwen3-8B` | +9.5 | +4.6 |
+    | `Qwen3-30B-A3B-Instruct-2507` | +9.3 | +3.0 |
+    | `gpt-oss-120b` | +6.4 | -2.0 |
+    | `gpt-oss-20b` | -6.4 | -10.6 |
+    | `Qwen3-4B-Instruct-2507` | -7.8 | -0.5 |
+    | `Llama-3.3-70B-Instruct` | -21.2 | -5.5 |
+    | `Llama-3.2-1B` | -25.5 | -11.9 |
+    | `Llama-3.2-3B` | -25.5 | -11.8 |
+    | `Llama-3.1-70B` | -26.9 | -14.4 |
+
+  - The order barely moves. Fifteen of the eighteen gaps shrink toward zero, most by half or more, because accuracy at $\delta = -3$ credits a model for agreeing with a label that covers 84% of the items and macro-F1 does not.
+  - Two gaps flip from positive to negative. `Kimi-K2-Thinking` goes from $+12.2$ to $-3.3$ and `gpt-oss-120b` from $+6.4$ to $-2.0$, so both cross out of the group the paper calls uncertainty aware. `Qwen3-4B-Instruct-2507` shrinks from $-7.8$ to $-0.5$, no longer distinguishable from zero, and `gpt-oss-20b` is the one model whose negative gap widens, from $-6.4$ to $-10.6$.
+- **The gap mostly measures how often a model says *Ambiguous***
+  - Whichever metric it uses, the gap is scored at $\delta = -3$ only, so it rewards a model for saying *Ambiguous* before the event and nothing in it tests whether the model gives a definite verdict once the evidence exists. The appendix confusion matrices allow that check, at $\delta = 0$, over the 1,390 claims whose Inference target is *Fake*.
+  - `gpt-5.2` and `Qwen3-32B` come out with nearly the same macro-F1 gap, $+21.3$ and $+21.8$. At $\delta = 0$, `gpt-5.2` answers *Ambiguous* on 11% of the *Fake* claims and `Qwen3-32B` on 62%. The first declines before the evidence exists and gives verdicts once it does. The second declines throughout. The gap scores them the same.
+  - The rate runs from 0% for `Llama-3.1-70B` to 62% for `Qwen3-32B`, and it ranks all eighteen models close to the way the gap ranks them: Spearman $+0.78$ against the accuracy gap and $+0.81$ against the macro-F1 gap, or $+0.63$ and $+0.68$ with the three always-*Real* base checkpoints dropped. A model's gap is largely a restatement of how readily it declines to answer.
+  - `Llama-3.1-8B-Instruct` shows the same conflation from the other side, and it is why the gap does not order models by quality. It holds the largest gap on both metrics while answering *Ambiguous* on only 19% of the *Fake* claims, because at $\delta = 0$ it labels 76% of the genuinely *Ambiguous* claims *Real* instead. It also has the lowest average of any instruction-tuned model at 49.96, while the best overall model is eighth on both gap orderings. [AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) [[3]](#ref-3) reported the same across twenty datasets, that "scaling models is of little use" for abstention. Nothing in either ordering supports the abstract's "capable models exhibit epistemic humility."
+  - Scoring a confidence estimate by [calibration error alone](/posts/20260609-confidence-calibration-metrics/) fails the same way, since a model that answers "0.5" to everything is perfectly calibrated and useless.
+- **A monthly rebuild needs monthly expert review**
+  - The paper's own Limitations section names the binding constraint, expert review to separate *Ambiguous* from *Fake* in Inference Mode. The public record shows what that costs.
+  - Four monthly slices are on [Hugging Face](https://huggingface.co/bebxy), November 2025 through February 2026, with nothing since. The [leaderboard site](https://livefact.bebxy.com/) shows scored results for the first two of them, and its repository was last pushed at the end of July 2026.
+  - A benchmark that stops refreshing becomes the static benchmark whose contamination risk was the reason to build it. The SSA Factor would detect when that has happened, and it is computed per release cycle, so it stops reporting at the same time the cycle does.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Xu, Cheng](https://aclanthology.org/people/cheng-xu/), [Jin, Changhong](https://aclanthology.org/people/changhong-jin/), [Niu, Yingjie](https://aclanthology.org/people/yingjie-niu/), [Yan, Nan](https://aclanthology.org/people/nan-yan-8088/), [Mei, Yuke](https://aclanthology.org/people/yuke-mei/), [Guan, Shuhao](https://aclanthology.org/people/shuhao-guan/), [Chen, Liming](https://aclanthology.org/people/liming-chen/), [Kechadi, M-Tahar](https://aclanthology.org/people/tahar-kechadi/). "LiveFact: A Dynamic, Time-Aware Benchmark for LLM-Driven Fake News Detection." *Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (ACL)*, pages 11881–11910 (arXiv:2604.04815), April 2026. <https://aclanthology.org/2026.acl-long.546/>
+
+2. <a id="ref-2"></a>[Xu, Cheng](https://aclanthology.org/people/cheng-xu/), [Yan, Nan](https://aclanthology.org/people/nan-yan-8088/), [Guan, Shuhao](https://aclanthology.org/people/shuhao-guan/), [Mei, Yuke](https://aclanthology.org/people/yuke-mei/), [Kechadi, Tahar](https://aclanthology.org/people/tahar-kechadi/). "SSA: Semantic Contamination of LLM-Driven Fake News Detection." *Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing (EMNLP)*, pages 14737–14751, November 2025. <https://aclanthology.org/2025.emnlp-main.744/>
+
+3. <a id="ref-3"></a>[Kirichenko, Polina](https://polkirichenko.github.io/), [Ibrahim, Mark](https://www.semanticscholar.org/author/2297128866), [Chaudhuri, Kamalika](https://www.semanticscholar.org/author/2256991985), [Bell, Samuel J.](https://www.semanticscholar.org/author/2366163635) "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions." *NeurIPS 2025 Datasets and Benchmarks Track* (arXiv:2506.09038), June 10, 2025. <https://arxiv.org/abs/2506.09038>
+
+## Related Posts
+
+- [AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions](/posts/20260523-abstentionbench-unanswerable-questions/): measures the same behavior with hand-built unanswerable questions instead of a time cut, and reaches a different conclusion about whether stronger models abstain better.
+- [Why LLMs Still Stumble Over Time](/posts/20260411-llm-temporal-reasoning/): the survey of what breaks when a model has to reason about dates and durations, which is the capability LiveFact's three time slices put under load.
+- [Frontier LLMs Disagree on 67% of Real-World Fact-Checks](/posts/20260720-llm-disagreement/): five frontier models rating fresh real-user claims with no ground truth, the setting LiveFact's human-verified labels are built to replace.
+- [How Far Behind the Closed Frontier Are Open-Weights LLMs?](/posts/20260627-open-weights-frontier-gap/): the open-versus-closed gap traced across eighteen benchmarks, a wider reference point for the 0.38-point ordering at the top of Table 3.
+- [How Artificial Analysis Builds Its Intelligence Index](/posts/20260620-intelligence-benchmarking/): the other way to run a continuously refreshed leaderboard, and what it takes to keep one going once the paper describing it is published.

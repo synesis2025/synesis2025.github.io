@@ -20,7 +20,293 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 16 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 17 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>LiveFact: A Dynamic, Time-Aware Benchmark for LLM-Driven Fake News Detection</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>LiveFact: A Dynamic, Time-Aware Benchmark for LLM-Driven Fake News Detection</em> [1] (ACL 2026, pages 11881–11910), <a href="https://aclanthology.org/people/cheng-xu/">Cheng Xu</a>, <a href="https://aclanthology.org/people/changhong-jin/">Changhong Jin</a>, <a href="https://aclanthology.org/people/yingjie-niu/">Yingjie Niu</a>, <a href="https://aclanthology.org/people/nan-yan-8088/">Nan Yan</a>, <a href="https://aclanthology.org/people/yuke-mei/">Yuke Mei</a>, <a href="https://aclanthology.org/people/shuhao-guan/">Shuhao Guan</a>, <a href="https://aclanthology.org/people/liming-chen/">Liming Chen</a>, and <a href="https://aclanthology.org/people/tahar-kechadi/">M-Tahar Kechadi</a> (University College Dublin, Georgia Tech, Dalian University of Technology, and Bebxy) build a fake-news benchmark that is rebuilt monthly from fresh news events. Each model gets only the evidence that existed a chosen number of days before or after the event it is asked about, so the question becomes whether the model says “ambiguous” when the evidence to decide does not exist yet.</p>
+<p>Figure 1 above is the paper’s cost-performance summary of the November 2025 release. It puts each model’s average score across the benchmark against the dollar cost of one full evaluation run, with marker size for parameter count and color for family: Qwen in blue, Llama in green, DeepSeek in purple, and OpenAI’s GPT models as grey diamonds. The shaded band in the upper left is the cheap-and-accurate corner, and the starred point inside it is <code>Qwen3-30B-A3B-Instruct-2507</code>, which scores within three points of the best model in the set for about a fourteenth of what <code>gpt-5.2</code> costs to evaluate.</p>
+<p>Four constructions the post relies on:</p>
+<ul>
+<li><strong>Benchmark data contamination (BDC)</strong>: the benchmark’s test items have been absorbed into a model’s pretraining corpus, so a high score can come from recall instead of reasoning. Every static benchmark accumulates this exposure as models are retrained, which is the problem a monthly rebuild is meant to avoid.</li>
+<li><strong>Time-sliced evidence set <img src="https://benjaminhan.net/feed-assets/d21947c880f26cde.svg" alt="E^{(\delta)}" class="feed-math-inline"/></strong>: for an event with headline date <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/>, the evidence published no later than <img src="https://benjaminhan.net/feed-assets/88076476a4acdc83.svg" alt="T + \delta" class="feed-math-inline"/>, with <img src="https://benjaminhan.net/feed-assets/26ccdb73e21a3452.svg" alt="\delta \in \{-3, 0, +3\}" class="feed-math-inline"/> days. <img src="https://benjaminhan.net/feed-assets/2840491d4168f204.svg" alt="E^{(-3)}" class="feed-math-inline"/> is the state of public knowledge three days before the event, <img src="https://benjaminhan.net/feed-assets/852699c49d03d528.svg" alt="E^{(+3)}" class="feed-math-inline"/> three days after. The paper calls the <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/> condition the “fog of war.”</li>
+<li><strong>Dual-mode evaluation</strong>: the same prediction is scored against two different ground truths. In <em>Classification Mode</em> the target is the claim’s eventual factual status, which does not change with <img src="https://benjaminhan.net/feed-assets/c2e62a810351cb51.svg" alt="\delta" class="feed-math-inline"/>. In <em>Inference Mode</em> the target is what a human expert could justifiably conclude from <img src="https://benjaminhan.net/feed-assets/d21947c880f26cde.svg" alt="E^{(\delta)}" class="feed-math-inline"/> alone, so a claim that turns out to be <em>Real</em> is labeled <em>Ambiguous</em> at <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/> if the confirming evidence had not appeared yet. Both modes draw from the same three labels, <em>Real</em>, <em>Fake</em>, and <em>Ambiguous</em>.</li>
+<li><strong>SSA Factor</strong>: the contamination indicator, <img src="https://benjaminhan.net/feed-assets/f2c32f413277f493.svg" alt="\Delta \times \mathrm{OTR} \times 100" class="feed-math-inline"/>, borrowed from the Semantic Sensitivity Amplifier (SSA) framework the same group published at EMNLP 2025 [2]. <img src="https://benjaminhan.net/feed-assets/1ba32fc4729c19dc.svg" alt="\Delta" class="feed-math-inline"/> is the score drop from swapping real named entities for invented ones and <img src="https://benjaminhan.net/feed-assets/466b9242b75453fd.svg" alt="\mathrm{OTR}" class="feed-math-inline"/> (Overturn Rate) is the share of items whose predicted label changes under that swap. A model whose answers move when only the names move is keying on memorized entities.</li>
+</ul>
+<blockquote class="blockquote">
+<p>The rapid development of Large Language Models (LLMs) has transformed fake news detection and fact-checking tasks from simple classification to complex reasoning. However, evaluation frameworks have not kept pace. Current benchmarks are static, making them vulnerable to benchmark data contamination (BDC) and ineffective at assessing reasoning under temporal uncertainty. To address this, we introduce <em>LiveFact</em> <em>a continuously updated benchmark that simulates the real-world “fog of war” in misinformation detection</em>. LiveFact uses <em>dynamic, temporal evidence sets to evaluate models on their ability to reason with evolving, incomplete information rather than on memorized knowledge</em>. We propose a <em>dual-mode evaluation</em>: <em>Classification Mode</em> for final verification and <em>Inference Mode</em> for evidence-based reasoning, along with a component to monitor BDC explicitly. Tests with 22 LLMs show that <em>open-source Mixture-of-Experts models</em>, such as Qwen3-235B-A22B, now <em>match or outperform proprietary state-of-the-art systems</em>. More importantly, our analysis finds a significant “reasoning gap.” <em>Capable models exhibit epistemic humility by recognizing unverifiable claims in early data slices</em>-an aspect traditional static benchmarks overlook. LiveFact sets a sustainable standard for evaluating robust, temporally aware AI verification.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The benchmark is a pipeline that runs on a monthly cycle rather than a dataset that was collected once. Five stages:</p>
+<ul>
+<li><strong>Event retrieval</strong>: the Google News API is scraped daily at 00:00 GMT for trending items in the World section, then deduplicated and filtered for overlapping storylines and low-relevance items. The November 2025 cycle yielded 737 distinct events.</li>
+<li><strong>Time-aware evidence construction</strong>: for each event, Google APIs are queried with hard timestamp bounds at <img src="https://benjaminhan.net/feed-assets/1051efdd9720a8d1.svg" alt="T-3" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/5d0e649dcc3af126.svg" alt="T" class="feed-math-inline"/>, and <img src="https://benjaminhan.net/feed-assets/fe82fb0c85a94614.svg" alt="T+3" class="feed-math-inline"/>, producing the three evidence sets <img src="https://benjaminhan.net/feed-assets/2840491d4168f204.svg" alt="E^{(-3)}" class="feed-math-inline"/>, <img src="https://benjaminhan.net/feed-assets/e618c9fae803a9e6.svg" alt="E^{(0)}" class="feed-math-inline"/>, and <img src="https://benjaminhan.net/feed-assets/852699c49d03d528.svg" alt="E^{(+3)}" class="feed-math-inline"/>. Across the 737 events this gathered 25,064 distinct pieces of evidence. To stay inside fair use, only page titles, source names, and publication timestamps are retained, with no article bodies stored or redistributed.</li>
+<li><strong>Claim and context generation</strong>: OpenAI’s <code>o4-mini</code> reads the headline and all time-stamped evidence for an event and writes a background <em>Context</em> describing the entities involved, plus a set of claims labeled <em>Real</em>, <em>Fake</em>, or <em>Ambiguous</em>. November 2025 produced 4,392 claims, initially 1,468 <em>Real</em>, 1,451 <em>Fake</em>, and 1,473 <em>Ambiguous</em>.</li>
+<li><strong>Human-in-the-loop verification</strong>: annotators check every generated claim against the retrieved evidence and correct inconsistencies. They also set the Inference Mode labels, deciding per time slice whether the available evidence is enough for a human expert to reach the correct verdict.</li>
+<li><strong>BDC risk monitoring</strong>: <code>Qwen3-235B-A22B</code> performs the entity swap, chosen over an OpenAI model to avoid preference leakage into a benchmark whose claims an OpenAI model wrote. The result is a parallel shifted dataset from which <img src="https://benjaminhan.net/feed-assets/1ba32fc4729c19dc.svg" alt="\Delta" class="feed-math-inline"/>, the Overturn Rate, and the SSA Factor are computed each cycle.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Figure 2 lays out the three parts side by side:</p>
+<ul>
+<li><strong>Panel A</strong> is the monthly pipeline above, with the arrow from Stage 5 back into Stage 4 marking the point where the shifted dataset re-enters human review.</li>
+<li><strong>Panel B</strong> is the prediction the benchmark asks for, <img src="https://benjaminhan.net/feed-assets/3561349251303fca.svg" alt="\hat{y}^{(\delta)} = f_\theta(c, E^{(\delta)}, k)" class="feed-math-inline"/>: the model under test, <img src="https://benjaminhan.net/feed-assets/fd2323f567b634e7.svg" alt="f_\theta" class="feed-math-inline"/>, reads the claim <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/>, one time-sliced evidence set <img src="https://benjaminhan.net/feed-assets/d21947c880f26cde.svg" alt="E^{(\delta)}" class="feed-math-inline"/>, and the static background context <img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/>, then emits a verdict <img src="https://benjaminhan.net/feed-assets/1c4129e689403eda.svg" alt="\hat{y}^{(\delta)}" class="feed-math-inline"/> for that slice. The timeline across the top makes the three evidence sets different objects rather than three samples of one.</li>
+<li><strong>Panel C</strong> splits the scoring. The same verdict is compared against a time-invariant target on the left and a time-dependent one on the right, and below that the entity-shift step turns the difference between original and shifted predictions into the SSA Factor.</li>
+</ul>
+<table class="caption-top table">
+<caption>Inference Mode label distribution across the three time slices, November 2025. Table 2 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Evidence set</th>
+<th>Real</th>
+<th>Fake</th>
+<th>Ambiguous</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><img src="https://benjaminhan.net/feed-assets/2840491d4168f204.svg" alt="E^{(-3)}" class="feed-math-inline"/></td>
+<td>346</td>
+<td>348</td>
+<td>3,698</td>
+<td>4,392</td>
+</tr>
+<tr class="even">
+<td><img src="https://benjaminhan.net/feed-assets/e618c9fae803a9e6.svg" alt="E^{(0)}" class="feed-math-inline"/></td>
+<td>1,404</td>
+<td>1,390</td>
+<td>1,598</td>
+<td>4,392</td>
+</tr>
+<tr class="odd">
+<td><img src="https://benjaminhan.net/feed-assets/852699c49d03d528.svg" alt="E^{(+3)}" class="feed-math-inline"/></td>
+<td>1,460</td>
+<td>1,443</td>
+<td>1,489</td>
+<td>4,392</td>
+</tr>
+</tbody>
+</table>
+<p>The claim set is fixed at 4,392 items, and only the Inference Mode target moves. Three days before an event, human reviewers judged 3,698 of the 4,392 claims, 84% of them, unresolvable from the evidence then available. By the headline date it falls to 1,598, and three days after to 1,489. The paper is explicit that this makes accuracy unreliable at <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/>, since always answering <em>Ambiguous</em> scores 84% there, which is why macro-F1 is reported alongside it throughout.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The evaluation setup behind Table 3:</p>
+<ul>
+<li><strong>Models</strong>: eighteen are evaluated on the November 2025 release, fourteen open-weights across the Qwen3, Llama 3, DeepSeek, Kimi, and GPT-OSS families and four proprietary OpenAI models, spanning 1B to 1T parameters. Table 5’s registry lists twenty-two, the extra four appearing only in the appendix training-mode ablation and extended-token runs. Six of the twenty-two are base checkpoints without instruction tuning, three of them among the eighteen scored in Table 3, and Table 5 classes two more of the eighteen, <code>Qwen3-32B</code> and <code>Qwen3-8B</code>, as hybrid rather than instruction-tuned.</li>
+<li><strong>Metrics</strong>: twelve per model, from accuracy and macro-F1 crossed with the two evaluation modes and the three time slices. The reported Avg. is the mean of all twelve.</li>
+<li><strong>Decoding</strong>: every model answers under the same protocol, temperature 0, top-p 1.0, and a 128-token generation cap the paper sets to keep verdicts concise, since scoring reads only a <code>[[LABEL]]</code> token out of whatever the model produces.</li>
+<li><strong>Star rows</strong>: reasoning-trained models spend that budget deliberating and get cut off before the label appears, so they were re-run at 1,024 tokens.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/table3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Table 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The findings:</p>
+<ul>
+<li><strong>The top of the leaderboard is open-weights</strong> (Table 3, Avg. column). <code>Qwen3-235B-A22B-Instruct-2507</code> averages 72.40, <code>gpt-oss-120b</code> 72.13, <code>gpt-5.1</code> 72.02, and <code>gpt-5.2</code> 71.52. <code>DeepSeek-V3.1</code> reaches 61.48 with 671B total parameters, below <code>Qwen3-32B</code>, a 32B dense model, at 66.03.</li>
+<li><strong>A 30B mixture-of-experts model gets within three points at a fourteenth of the cost</strong> (Figure 1). <code>Qwen3-30B-A3B-Instruct-2507</code> averages 69.46 for $0.64 per run against $9.27 for <code>gpt-5.2</code> (Table 6), and it is the only model inside the shaded region of the cover figure.</li>
+<li><strong>Base checkpoints answer <em>Real</em> to almost everything</strong> (Table 3, dagger rows). <code>Llama-3.1-70B</code>, <code>Llama-3.2-3B</code>, and <code>Llama-3.2-1B</code> all average near 22, with macro-F1 near 16.7 in Classification Mode across every slice, which is what a single-class prediction produces on a three-class problem. Their confusion matrices in the appendix put nearly all the mass in the <em>Real</em> column at every slice and in both modes. The paper attributes the base-model failure to non-compliance with the required <code>[[LABEL]]</code> output format, an explanation it documents for <code>Llama-3.1-8B</code>, which averages 5.14% in the appendix training-mode ablation and is not one of the eighteen in Table 3.</li>
+<li><strong>Reasoning models need a larger output budget</strong> (Table 3, star rows). At the 128-token cap <code>Kimi-K2-Thinking</code> averaged 1.76 and the two GPT-OSS models averaged about 26, against 54.60, 72.13, and 57.05 at 1,024 tokens (Table 12). The paper inspected the outputs and found deliberation cut off mid-stream rather than wrong verdicts.</li>
+<li><strong>Scores rise sharply once the event happens, then flatten</strong> (Figure 3, panel a). In Classification Mode the Qwen and GPT families climb from the low 50s at <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/> to the high 70s at <img src="https://benjaminhan.net/feed-assets/86de7d0fb7ea11ea.svg" alt="\delta = 0" class="feed-math-inline"/>, and gain roughly one further point by <img src="https://benjaminhan.net/feed-assets/fd7651972cdaef83.svg" alt="\delta = +3" class="feed-math-inline"/>. Almost all the measured difficulty is in the pre-event slice.</li>
+<li><strong>Inference Mode recovers most of that drop for some models and not others</strong> (Figure 3, panel b). Where Classification Mode punishes a model for not knowing what had not happened, Inference Mode credits it for saying so, and DeepSeek moves opposite to the rest: highest of the four families at <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/> and lowest at <img src="https://benjaminhan.net/feed-assets/86de7d0fb7ea11ea.svg" alt="\delta = 0" class="feed-math-inline"/>.</li>
+<li><strong>The reasoning gap spans 65 points across the eighteen models</strong> (Figure 4). Taking Inference accuracy minus Classification accuracy at <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/>, <code>Llama-3.1-8B-Instruct</code> gains 38.0 points and <code>Qwen3-32B</code> 37.6, while <code>Llama-3.3-70B-Instruct</code> loses 21.2 and the three base checkpoints lose 25 to 27. The paper attributes the positive end to recognizing an information void, the negative end among instruction-tuned models to overconfidence, and the negative end among base models to format non-compliance.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/figure3.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The Avg. column supports <em>match</em> and nothing more</strong>
+<ul>
+<li>The abstract claims open-weights mixture-of-experts models “now match or outperform proprietary state-of-the-art systems.” <em>Match</em> it supports comfortably. The ordering it does not.</li>
+<li>The top three Avg. values span 0.38 points in total, and each is a single run with no confidence interval or repeated seed anywhere in the paper. The binomial standard error on one accuracy near 72% over 4,392 items is about 0.7 points, so the gaps between them are smaller than the noise on any one of the twelve numbers being averaged. The three were not measured under the same conditions either: <code>gpt-oss-120b</code> needed 1,024 output tokens to reach 72.13, where <code>Qwen3-235B-A22B-Instruct-2507</code> reached 72.40 at 128.</li>
+<li>Nor does open versus proprietary divide the top of the table by lab. <code>gpt-oss-120b</code>, second at 72.13, is OpenAI’s own open-weights release, and <code>gpt-5.1</code>, third at 72.02, is OpenAI’s proprietary one, 0.11 points apart. The <em>match</em> claim holds, but a reader who takes it as open ecosystems catching up to the labs would be reading these rows wrongly, since one lab supplied both sides of that comparison.</li>
+<li>The <a href="../../posts/20260627-open-weights-frontier-gap/">gap between open and closed weights</a> has been closing on aggregate indices for a while, and a 0.38-point ordering on one benchmark adds little to what those trend lines already show.</li>
+</ul></li>
+<li><strong>The reasoning gap is computed from the wrong metric</strong>
+<ul>
+<li><p>§3.4 argues that accuracy is misleading at <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/> because <em>Ambiguous</em> is 84% of the labels there, and that macro-F1 is the metric that “treats all classes equally.” Figure 4 then computes the reasoning gap from accuracy at exactly that slice. Recomputed from Table 3’s macro-F1 columns, for all eighteen models, in the accuracy order Figure 4 uses:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Model</th>
+<th style="text-align: right;">Accuracy gap</th>
+<th style="text-align: right;">Macro-F1 gap</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Llama-3.1-8B-Instruct</code></td>
+<td style="text-align: right;">+38.0</td>
+<td style="text-align: right;">+23.7</td>
+</tr>
+<tr class="even">
+<td><code>Qwen3-32B</code></td>
+<td style="text-align: right;">+37.6</td>
+<td style="text-align: right;">+21.8</td>
+</tr>
+<tr class="odd">
+<td><code>DeepSeek-V3.1</code></td>
+<td style="text-align: right;">+34.4</td>
+<td style="text-align: right;">+16.3</td>
+</tr>
+<tr class="even">
+<td><code>gpt-5.2</code></td>
+<td style="text-align: right;">+33.1</td>
+<td style="text-align: right;">+21.3</td>
+</tr>
+<tr class="odd">
+<td><code>gpt-4o</code></td>
+<td style="text-align: right;">+25.8</td>
+<td style="text-align: right;">+10.5</td>
+</tr>
+<tr class="even">
+<td><code>gpt-4o-mini</code></td>
+<td style="text-align: right;">+21.9</td>
+<td style="text-align: right;">+6.9</td>
+</tr>
+<tr class="odd">
+<td><code>gpt-5.1</code></td>
+<td style="text-align: right;">+16.6</td>
+<td style="text-align: right;">+6.0</td>
+</tr>
+<tr class="even">
+<td><code>Qwen3-235B-A22B-Instruct-2507</code></td>
+<td style="text-align: right;">+14.4</td>
+<td style="text-align: right;">+5.8</td>
+</tr>
+<tr class="odd">
+<td><code>Kimi-K2-Thinking</code></td>
+<td style="text-align: right;">+12.2</td>
+<td style="text-align: right;">-3.3</td>
+</tr>
+<tr class="even">
+<td><code>Qwen3-8B</code></td>
+<td style="text-align: right;">+9.5</td>
+<td style="text-align: right;">+4.6</td>
+</tr>
+<tr class="odd">
+<td><code>Qwen3-30B-A3B-Instruct-2507</code></td>
+<td style="text-align: right;">+9.3</td>
+<td style="text-align: right;">+3.0</td>
+</tr>
+<tr class="even">
+<td><code>gpt-oss-120b</code></td>
+<td style="text-align: right;">+6.4</td>
+<td style="text-align: right;">-2.0</td>
+</tr>
+<tr class="odd">
+<td><code>gpt-oss-20b</code></td>
+<td style="text-align: right;">-6.4</td>
+<td style="text-align: right;">-10.6</td>
+</tr>
+<tr class="even">
+<td><code>Qwen3-4B-Instruct-2507</code></td>
+<td style="text-align: right;">-7.8</td>
+<td style="text-align: right;">-0.5</td>
+</tr>
+<tr class="odd">
+<td><code>Llama-3.3-70B-Instruct</code></td>
+<td style="text-align: right;">-21.2</td>
+<td style="text-align: right;">-5.5</td>
+</tr>
+<tr class="even">
+<td><code>Llama-3.2-1B</code></td>
+<td style="text-align: right;">-25.5</td>
+<td style="text-align: right;">-11.9</td>
+</tr>
+<tr class="odd">
+<td><code>Llama-3.2-3B</code></td>
+<td style="text-align: right;">-25.5</td>
+<td style="text-align: right;">-11.8</td>
+</tr>
+<tr class="even">
+<td><code>Llama-3.1-70B</code></td>
+<td style="text-align: right;">-26.9</td>
+<td style="text-align: right;">-14.4</td>
+</tr>
+</tbody>
+</table></li>
+<li><p>The order barely moves. Fifteen of the eighteen gaps shrink toward zero, most by half or more, because accuracy at <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/> credits a model for agreeing with a label that covers 84% of the items and macro-F1 does not.</p></li>
+<li><p>Two gaps flip from positive to negative. <code>Kimi-K2-Thinking</code> goes from <img src="https://benjaminhan.net/feed-assets/cf936a5d8cfa0a72.svg" alt="+12.2" class="feed-math-inline"/> to <img src="https://benjaminhan.net/feed-assets/4b1b58da88b3a934.svg" alt="-3.3" class="feed-math-inline"/> and <code>gpt-oss-120b</code> from <img src="https://benjaminhan.net/feed-assets/082860c24ca594ca.svg" alt="+6.4" class="feed-math-inline"/> to <img src="https://benjaminhan.net/feed-assets/29fa2f48bfb6a5d4.svg" alt="-2.0" class="feed-math-inline"/>, so both cross out of the group the paper calls uncertainty aware. <code>Qwen3-4B-Instruct-2507</code> shrinks from <img src="https://benjaminhan.net/feed-assets/6206ebc6ae94c708.svg" alt="-7.8" class="feed-math-inline"/> to <img src="https://benjaminhan.net/feed-assets/74ed19c649288e32.svg" alt="-0.5" class="feed-math-inline"/>, no longer distinguishable from zero, and <code>gpt-oss-20b</code> is the one model whose negative gap widens, from <img src="https://benjaminhan.net/feed-assets/0eb2222094f5e150.svg" alt="-6.4" class="feed-math-inline"/> to <img src="https://benjaminhan.net/feed-assets/15c4fac577c819aa.svg" alt="-10.6" class="feed-math-inline"/>.</p></li>
+</ul></li>
+<li><strong>The gap mostly measures how often a model says <em>Ambiguous</em></strong>
+<ul>
+<li>Whichever metric it uses, the gap is scored at <img src="https://benjaminhan.net/feed-assets/d683ef9650ee8f09.svg" alt="\delta = -3" class="feed-math-inline"/> only, so it rewards a model for saying <em>Ambiguous</em> before the event and nothing in it tests whether the model gives a definite verdict once the evidence exists. The appendix confusion matrices allow that check, at <img src="https://benjaminhan.net/feed-assets/86de7d0fb7ea11ea.svg" alt="\delta = 0" class="feed-math-inline"/>, over the 1,390 claims whose Inference target is <em>Fake</em>.</li>
+<li><code>gpt-5.2</code> and <code>Qwen3-32B</code> come out with nearly the same macro-F1 gap, <img src="https://benjaminhan.net/feed-assets/1bdf93a3237e2240.svg" alt="+21.3" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/dd511651d0a64c4b.svg" alt="+21.8" class="feed-math-inline"/>. At <img src="https://benjaminhan.net/feed-assets/86de7d0fb7ea11ea.svg" alt="\delta = 0" class="feed-math-inline"/>, <code>gpt-5.2</code> answers <em>Ambiguous</em> on 11% of the <em>Fake</em> claims and <code>Qwen3-32B</code> on 62%. The first declines before the evidence exists and gives verdicts once it does. The second declines throughout. The gap scores them the same.</li>
+<li>The rate runs from 0% for <code>Llama-3.1-70B</code> to 62% for <code>Qwen3-32B</code>, and it ranks all eighteen models close to the way the gap ranks them: Spearman <img src="https://benjaminhan.net/feed-assets/49b5bc0ada1ed2c8.svg" alt="+0.78" class="feed-math-inline"/> against the accuracy gap and <img src="https://benjaminhan.net/feed-assets/ce33f02d5f40f51b.svg" alt="+0.81" class="feed-math-inline"/> against the macro-F1 gap, or <img src="https://benjaminhan.net/feed-assets/be8e86065565c5cc.svg" alt="+0.63" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/2d201718a2af5254.svg" alt="+0.68" class="feed-math-inline"/> with the three always-<em>Real</em> base checkpoints dropped. A model’s gap is largely a restatement of how readily it declines to answer.</li>
+<li><code>Llama-3.1-8B-Instruct</code> shows the same conflation from the other side, and it is why the gap does not order models by quality. It holds the largest gap on both metrics while answering <em>Ambiguous</em> on only 19% of the <em>Fake</em> claims, because at <img src="https://benjaminhan.net/feed-assets/86de7d0fb7ea11ea.svg" alt="\delta = 0" class="feed-math-inline"/> it labels 76% of the genuinely <em>Ambiguous</em> claims <em>Real</em> instead. It also has the lowest average of any instruction-tuned model at 49.96, while the best overall model is eighth on both gap orderings. <a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench</a> [3] reported the same across twenty datasets, that “scaling models is of little use” for abstention. Nothing in either ordering supports the abstract’s “capable models exhibit epistemic humility.”</li>
+<li>Scoring a confidence estimate by <a href="../../posts/20260609-confidence-calibration-metrics/">calibration error alone</a> fails the same way, since a model that answers “0.5” to everything is perfectly calibrated and useless.</li>
+</ul></li>
+<li><strong>A monthly rebuild needs monthly expert review</strong>
+<ul>
+<li>The paper’s own Limitations section names the binding constraint, expert review to separate <em>Ambiguous</em> from <em>Fake</em> in Inference Mode. The public record shows what that costs.</li>
+<li>Four monthly slices are on <a href="https://huggingface.co/bebxy">Hugging Face</a>, November 2025 through February 2026, with nothing since. The <a href="https://livefact.bebxy.com/">leaderboard site</a> shows scored results for the first two of them, and its repository was last pushed at the end of July 2026.</li>
+<li>A benchmark that stops refreshing becomes the static benchmark whose contamination risk was the reason to build it. The SSA Factor would detect when that has happened, and it is computed per release cycle, so it stops reporting at the same time the cycle does.</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://aclanthology.org/people/cheng-xu/">Xu, Cheng</a>, <a href="https://aclanthology.org/people/changhong-jin/">Jin, Changhong</a>, <a href="https://aclanthology.org/people/yingjie-niu/">Niu, Yingjie</a>, <a href="https://aclanthology.org/people/nan-yan-8088/">Yan, Nan</a>, <a href="https://aclanthology.org/people/yuke-mei/">Mei, Yuke</a>, <a href="https://aclanthology.org/people/shuhao-guan/">Guan, Shuhao</a>, <a href="https://aclanthology.org/people/liming-chen/">Chen, Liming</a>, <a href="https://aclanthology.org/people/tahar-kechadi/">Kechadi, M-Tahar</a>. “LiveFact: A Dynamic, Time-Aware Benchmark for LLM-Driven Fake News Detection.” <em>Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (ACL)</em>, pages 11881–11910 (arXiv:2604.04815), April 2026. <a href="https://aclanthology.org/2026.acl-long.546/" class="uri">https://aclanthology.org/2026.acl-long.546/</a></p></li>
+<li><p><a id="ref-2"></a><a href="https://aclanthology.org/people/cheng-xu/">Xu, Cheng</a>, <a href="https://aclanthology.org/people/nan-yan-8088/">Yan, Nan</a>, <a href="https://aclanthology.org/people/shuhao-guan/">Guan, Shuhao</a>, <a href="https://aclanthology.org/people/yuke-mei/">Mei, Yuke</a>, <a href="https://aclanthology.org/people/tahar-kechadi/">Kechadi, Tahar</a>. “SSA: Semantic Contamination of LLM-Driven Fake News Detection.” <em>Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing (EMNLP)</em>, pages 14737–14751, November 2025. <a href="https://aclanthology.org/2025.emnlp-main.744/" class="uri">https://aclanthology.org/2025.emnlp-main.744/</a></p></li>
+<li><p><a id="ref-3"></a><a href="https://polkirichenko.github.io/">Kirichenko, Polina</a>, <a href="https://www.semanticscholar.org/author/2297128866">Ibrahim, Mark</a>, <a href="https://www.semanticscholar.org/author/2256991985">Chaudhuri, Kamalika</a>, <a href="https://www.semanticscholar.org/author/2366163635">Bell, Samuel J.</a> “AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions.” <em>NeurIPS 2025 Datasets and Benchmarks Track</em> (arXiv:2506.09038), June 10, 2025. <a href="https://arxiv.org/abs/2506.09038" class="uri">https://arxiv.org/abs/2506.09038</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260523-abstentionbench-unanswerable-questions/">AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions</a>: measures the same behavior with hand-built unanswerable questions instead of a time cut, and reaches a different conclusion about whether stronger models abstain better.</li>
+<li><a href="../../posts/20260411-llm-temporal-reasoning/">Why LLMs Still Stumble Over Time</a>: the survey of what breaks when a model has to reason about dates and durations, which is the capability LiveFact’s three time slices put under load.</li>
+<li><a href="../../posts/20260720-llm-disagreement/">Frontier LLMs Disagree on 67% of Real-World Fact-Checks</a>: five frontier models rating fresh real-user claims with no ground truth, the setting LiveFact’s human-verified labels are built to replace.</li>
+<li><a href="../../posts/20260627-open-weights-frontier-gap/">How Far Behind the Closed Frontier Are Open-Weights LLMs?</a>: the open-versus-closed gap traced across eighteen benchmarks, a wider reference point for the 0.38-point ordering at the top of Table 3.</li>
+<li><a href="../../posts/20260620-intelligence-benchmarking/">How Artificial Analysis Builds Its Intelligence Index</a>: the other way to run a continuously refreshed leaderboard, and what it takes to keep one going once the paper describing it is published.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/</guid>
+  <pubDate>Mon, 17 Aug 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260817-livefact-time-aware-benchmark/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>How AI Text Watermarking Works</title>
   <dc:creator>synesis </dc:creator>
@@ -2674,58 +2960,6 @@ Each wrapper is published in both Chinese and English, and the raw strings are i
   <guid>https://benjaminhan.net/posts/20260727-running-in-circles/</guid>
   <pubDate>Mon, 27 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260727-running-in-circles/image-1.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>CMU Impression After ~20 Years</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>My son was attending Carnegie Mellon’s summer camp – alma mater for my wife and me – so we gave ourselves a “campus reunion” the day before! Familiar streets, familiar buildings, and so many fond memories – can’t believe it’s been 20 years already!</p>
-<p>In particular we paid a visit to Newell Simon Hall – my old academic home! Guess who greeted us when we stepped right inside NSH? Valerie now has a new name: Tank! 😆 Twenty years on and it’s still here! Also took a picture of my old office 4611 and the NSH atrium, where we had so many TGIFs! It was a blast!</p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-9.jpeg" class="img-fluid" data-lightbox-src="image-9-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-10.jpeg" class="img-fluid" data-lightbox-src="image-10-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-11.jpeg" class="img-fluid" data-lightbox-src="image-11-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-12.jpeg" class="img-fluid" data-lightbox-src="image-12-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-13.jpeg" class="img-fluid" data-lightbox-src="image-13-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-14.jpeg" class="img-fluid" data-lightbox-src="image-14-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-15.jpeg" class="img-fluid" data-lightbox-src="image-15-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-16.jpeg" class="img-fluid" data-lightbox-src="image-16-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-17.jpeg" class="img-fluid" data-lightbox-src="image-17-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-18.jpeg" class="img-fluid" data-lightbox-src="image-18-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-19.jpeg" class="img-fluid" data-lightbox-src="image-19-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-20.jpeg" class="img-fluid" data-lightbox-src="image-20-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-21.jpeg" class="img-fluid" data-lightbox-src="image-21-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-22.jpeg" class="img-fluid" data-lightbox-src="image-22-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-23.jpeg" class="img-fluid" data-lightbox-src="image-23-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-24.jpeg" class="img-fluid" data-lightbox-src="image-24-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-25.jpeg" class="img-fluid" data-lightbox-src="image-25-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-26.jpeg" class="img-fluid" data-lightbox-src="image-26-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-27.jpeg" class="img-fluid" data-lightbox-src="image-27-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-28.jpeg" class="img-fluid" data-lightbox-src="image-28-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-29.jpeg" class="img-fluid" data-lightbox-src="image-29-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-30.jpeg" class="img-fluid" data-lightbox-src="image-30-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-31.jpeg" class="img-fluid" data-lightbox-src="image-31-full.jpeg"></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/</guid>
-  <pubDate>Sun, 26 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-20.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
