@@ -22,6 +22,106 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Sun, 16 Aug 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>How AI Text Watermarking Works</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260816-ai-text-watermarking/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260816-ai-text-watermarking/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260816-ai-text-watermarking/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>The same words, coloured green and red as only the key-holder can see them. Image from <a href="https://declaude.org/watermarking/">declaude</a>.</figcaption>
+</figure>
+</div>
+<p>Plain text lacks a clear spot for hidden signals. The characters themselves hold no extra data, and metadata disappears when you copy and paste. <a href="https://j11y.io/">James Padolsey</a>’s <a href="https://declaude.org/watermarking/">visual explainer</a> shows where the mark goes instead: into which word the model picks when several would do equally well. The explanation is broken into five steps, each with an interactive figure that lets you roll dice. The piece accompanies <a href="https://declaude.org/">declaude</a>, a tool the author created to rewrite AI-generated text into plain prose.</p>
+<p>The question stopped being theoretical this month. Google has marked text from the Gemini app since 2024 through <a href="https://deepmind.google/science/synthid/">SynthID</a>, and <a href="https://support.claude.com/en/articles/16266773-how-claude-marks-ai-generated-content">Claude models</a> released from August 2026 onward mark inside the model, worldwide, with older models to follow. Both companies are answering the same EU transparency rule, and they have read its scope differently.</p>
+<p>The reaction was fast and unfriendly. Nobody argues that the mechanism fails to work. The arguments are about who ends up marked, what the marking costs the prose, and whether a rule that binds only the people who cannot evade it is worth having.</p>
+<section id="how-the-mark-works" class="level2">
+<h2 class="anchored" data-anchor-id="how-the-mark-works">How the mark works</h2>
+<ul>
+<li><p><strong>The model chooses between several valid options</strong>: When producing text, a model does not have one fixed next word. It works from a ranked list of candidates that have assigned probabilities. Often, two or three distinct words can each produce a correct sentence. A page of text contains hundreds of such cases. This flexibility provides capacity because the sentence stays functional no matter which candidate is chosen.</p></li>
+<li><p><strong>A secret key influences the selection</strong>: in the original method from <a href="https://arxiv.org/abs/2301.10226">Kirchenbauer et al.</a> [1] (ICML 2023), a keyed hash splits the shortlist into a green half and a red half. Words placed in the green half get a slight boost in their probability. Two reasons keep this alteration concealed. The boost is modest enough that red words continue to be selected often. The green and red groups are also recomputed at each position using the words that appeared just before. Consequently, a particular word can be green in some contexts and red in others. Google’s <a href="https://www.nature.com/articles/s41586-024-08025-4">SynthID-Text</a> [2] (<em>Nature</em> 2024), the system now in use, swaps the probability bonus for a keyed elimination bracket applied to sampled candidates. It is calibrated so that the expected probability of a word, averaged over the key’s randomness, stays equal to the original model output. <a href="https://scottaaronson.blog/?p=6823">Scott Aaronson’s scheme</a>, developed at OpenAI, produces the sampling randomness directly from the key.</p></li>
+<li><p><strong>Detection is arithmetic on the key</strong>: the system does not look at the prose itself. The detector recalculates the green or red label for each position and tallies the green tokens. When the text is unmarked or is evaluated with an incorrect key, the count remains close to fifty percent. A slight bias only reaches statistical significance after many positions. Therefore short passages are hard to classify. The teaching model described in the explainer needs 1,500 words to reach a green rate of about 55%.</p></li>
+<li><p><strong>Only unbroken stretches of the original phrasing count</strong>: a position’s color depends on the preceding words. That position supplies evidence only if a short window of the original phrasing is still present. Rewriting the text eliminates evidence at the change points while keeping the original sections unchanged. Typical paraphrasing lowers the signal but does not erase it. <a href="https://arxiv.org/abs/2306.04634">Kirchenbauer et al.</a> [3] (ICLR 2024) reported that text heavily paraphrased by humans still activates a detector once 800 tokens are present, with a 1e-5 false-positive rate. Eliminating the mark demands a rewrite that contains no original phrasing. When evaluating open versions of the KGW and EXP schemes in <a href="https://arxiv.org/abs/2405.10051">MarkLLM</a> [4] with the declaude full-rewrite method, roughly 0.5% of windows persist. Detection then falls from near certainty to random chance. The explainer models the residual evidence as <img src="https://benjaminhan.net/feed-assets/00d3da13c66c024a.svg" alt="z \approx f\sqrt{N}z_1" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/3fa5972d2b8cba33.svg" alt="f" class="feed-math-inline"/> denotes the surviving fraction, <img src="https://benjaminhan.net/feed-assets/2b0b78320edc69e7.svg" alt="N" class="feed-math-inline"/> the document length, and <img src="https://benjaminhan.net/feed-assets/6a67a6db34e3bb8b.svg" alt="z_1" class="feed-math-inline"/> the per-token strength.</p></li>
+</ul>
+</section>
+<section id="what-it-means-in-practice" class="level2">
+<h2 class="anchored" data-anchor-id="what-it-means-in-practice">What it means in practice</h2>
+<p>The explainer concludes with five consequences that often contradict common assumptions about watermarking:</p>
+<ul>
+<li><strong>Verification depends on the provider.</strong> Teachers, editors, and third-party detection sites cannot run the test. It needs a secret key or a service that the key-holder operates. Google presently provides an early-access SynthID detection portal, and Anthropic says its own tools are still under development.</li>
+<li><strong>Watermarking differs from AI detection.</strong> Products such as GPTZero try to determine authorship by analyzing writing styles. A watermark test is a particular statistical calculation that needs the private key.</li>
+<li><strong>A positive result shows handling instead of authorship.</strong> Anthropic documentation says that human-written text will be marked when Claude proofreads or translates it. A negative result offers little information since older models and extensive editing both yield clean scores for AI-generated content.</li>
+<li><strong>Short or restricted text holds almost no mark.</strong> Evidence accumulates with length, so a brief passage leaves a signal too weak to call. Where the next word is close to predictable, as in computer code, quotes, or fact lists, there is barely any room to encode information at all.</li>
+<li><strong>Only some designs withstand rewriting.</strong> Methods that assign colors to words according to their identity instead of their context are more resistant to paraphrasing. However, an attacker can eventually discover a fixed coloring scheme by gathering enough samples. For watermarks embedded in meaning rather than specific words, the explainer notes that the only known countermeasure is rewriting the text from an outline.</li>
+</ul>
+</section>
+<section id="what-the-rule-actually-asks-for" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-rule-actually-asks-for">What the rule actually asks for</h2>
+<p><a href="https://artificialintelligenceact.eu/article/50/">Article 50(2)</a> of the EU AI Act requires providers of systems generating synthetic text to mark that output in a machine-readable format. The same provision then carves out an exception. The obligation “shall not apply to the extent the AI systems perform an assistive function for standard editing or do not substantially alter the input data provided by the deployer or the semantics thereof.” It binds providers, and it does not oblige every person who uses AI to announce it.</p>
+<p>The accompanying <a href="https://digital-strategy.ec.europa.eu/en/policies/code-practice-ai-generated-content">Code of Practice on Transparency of AI-Generated Content</a> is reported to add three conditions:</p>
+<ul>
+<li>It applies only to text longer than 200 tokens, roughly 150 words.</li>
+<li>Providers must forbid watermark removal in their terms of service.</li>
+<li>The mark should survive ordinary handling such as screenshots, scanning, copy-and-paste, and translation.</li>
+</ul>
+<p>Anthropic’s implementation is broader than the exception would require. Marking happens at the model level, worldwide, across every product, which means it also covers the assistive editing the provision sets aside. Its <a href="https://support.claude.com/en/articles/16266773-how-claude-marks-ai-generated-content">help-center article</a> announced the change without describing the method. A <a href="https://www.anthropic.com/news/claude-text-watermark">second post</a> published a day later gives the mechanism and confirms Claude uses “a version of the SynthID-Text approach.”</p>
+</section>
+<section id="the-objection" class="level2">
+<h2 class="anchored" data-anchor-id="the-objection">The objection</h2>
+<p>Two critiques landed within days, and they attack different things.</p>
+<p><a href="https://blog.j11y.io/2026-08-12_Anthropics-weak-watermarks-appease-a-weak-law/">Padolsey’s companion post</a> argues the law fails on its own terms, because it binds only people who cannot circumvent it. He expects that group to overlap with the people who most need the help, “disabled and neurodivergent individuals, or those in circumstances that afford them less time and capacity for the ordinary expenditure of cognitive effort involved in prose-writing.”</p>
+<p>His analogy is the calculator. A sum from a brain and a sum from a calculator are treated alike, and spellcheckers raised no alarm. Singling out assistance “only once the tool becomes capable enough to compose a whole sentence is not a principled boundary. It is a moral premium placed on difficulty itself.” His verdict on the blanket implementation is that it produces “a signal broad enough to implicate harmless and assistive use, yet fragile enough to be removed by a motivated person through substantial recomposition.”</p>
+<p><a href="https://daringfireball.net/2026/08/anthropics_watermark_text_adulteration_in_claude_is_a_perversion_of_writing">John Gruber</a> attacks the technique itself. No two synonyms mean the same thing, so a keyed nudge between them is a change in meaning however small, and the trade-off buys the writer nothing in speed, cost, or quality. He calls Anthropic’s “imperceptible” and “doesn’t change the meaning, quality, or readability” language false. What bothers him most is the consequence for a reader: with a secret key steering the choices, “we have no idea whether it completed to ‘mango and bananas’ because <em>bananas</em> was determined to be the best next token, or because <em>bananas</em> is in the ‘green’ bucket of words. It calls every single word choice into question.”</p>
+<p>Both providers answer with measurement. Anthropic reports no impact on content, creativity, or readability in internal testing. The <em>Nature</em> paper [2] ran the larger experiment, comparing roughly 20 million watermarked and unwatermarked Gemini responses: thumbs-up rates differed by 0.01% and thumbs-down rates by 0.02%, both statistically insignificant. Gruber’s reply is that the instrument cannot see the effect he is describing, since nobody downvotes a response over <em>bananas</em> instead of <em>pineapple</em>.</p>
+<p>Whether a strong watermark is achievable at all is a separate question. Zhang and colleagues [5] give an impossibility result for strong watermarking of generative models, and Sadasivan and colleagues [6] show paraphrase attacks defeating a range of detectors. Work continues on marks that survive recomposition by keying on meaning rather than wording [7], which is the family the explainer says only outline-level regeneration defeats.</p>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><p><strong>Anthropic’s key cannot detect other companies’ text</strong>: people ask first whether this can keep machine text out of a corpus, whether that corpus is training data, a journal’s submission pile, or a marketplace’s listings. Anthropic rules that out. Its key answers exactly one question: “What is the likelihood this was partly written by Claude?” It also “can’t tell whether the text was written by a different AI (even if that other AI uses watermarking, it would have a different key).” Screening all AI text would take every provider’s key, or every provider’s checking service.</p></li>
+<li><p><strong>Exam answers are the hardest case to check</strong>: the documents that trigger AI-writing accusations are the ones the mark covers worst. A short essay answer, a paragraph pasted into a longer document, a code snippet, and a block of quoted facts all leave too little signal to call. A <a href="../../posts/20260711-take-home-midterm-final/">record-low in-person final at Brown</a> is the kind of case people want a provenance signal for, and a timed exam answer is close to the worst case for one.</p></li>
+<li><p><strong>Only Anthropic’s marking covers the API</strong>: on Google’s own developer forum, a Google-titled responder <a href="https://discuss.ai.google.dev/t/does-gemini-api-text-output-carry-synthid-watermarking-gemini-2-5-flash-lite-gemini-3-1-flash-lite-eu-ai-act-art-50-2/177241">told an EU game developer</a> on August 5, 2026 that Gemini API text is not SynthID-watermarked. Native text watermarking, the responder added, “is not planned at the moment.” The explainer calls this a documented exception, though the documentation is a forum reply. Anthropic went the other way, reaching the API and the cloud resellers. So one obligation produced opposite answers on the interface developers actually build against: with Claude you can point at the provider’s marking, and with the Gemini API you implement Article 50(2) yourself.</p></li>
+<li><p><strong>The wash was measured on the weaker schemes</strong>: the <em>Nature</em> paper [2] reports SynthID-Text beating both KGW and EXP on detectability at equal text length. Those two are what the full-rewrite test ran against, and SynthID-Text is what both production systems use. So the erasure result comes from the baselines the deployed scheme was built to beat, and nobody outside the providers can repeat it on production output.</p></li>
+<li><p><strong>Nothing technical prevents a key per account</strong>: the mechanism does not require one key per provider. A key that varied by account would work the same way, and it would identify the customer behind a passage as well as the model. Anthropic addresses this. The watermark “carries no identifying information and can’t be traced to a specific person, organization, or chat,” and nothing in it or its key would let anyone recover information about a user or their chats. The scheme itself does not supply that guarantee. Anthropic’s configuration choice does.</p></li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Kirchenbauer, J., Geiping, J., Wen, Y., Katz, J., Miers, I., Goldstein, T. “A Watermark for Large Language Models.” <em>ICML 2023</em> (arXiv:2301.10226). <a href="https://arxiv.org/abs/2301.10226" class="uri">https://arxiv.org/abs/2301.10226</a></li>
+<li><a id="ref-2"></a>Dathathri, S., See, A., Ghaisas, S., Huang, P.-S., McAdam, R., Welbl, J., Bachani, V., Kaskasoli, A., Stanforth, R., Matejovicova, T., Hayes, J., Vyas, N., et al.&nbsp;“Scalable watermarking for identifying large language model outputs.” <em>Nature</em> 634, October 23, 2024. The SynthID-Text paper. <a href="https://www.nature.com/articles/s41586-024-08025-4" class="uri">https://www.nature.com/articles/s41586-024-08025-4</a></li>
+<li><a id="ref-3"></a>Kirchenbauer, J., Geiping, J., Wen, Y., Shu, M., Saifullah, K., Kong, K., Fernando, K., Saha, A., Goldblum, M., Goldstein, T. “On the Reliability of Watermarks for Large Language Models.” <em>ICLR 2024</em> (arXiv:2306.04634). <a href="https://arxiv.org/abs/2306.04634" class="uri">https://arxiv.org/abs/2306.04634</a></li>
+<li><a id="ref-4"></a>Pan, L., Liu, A., He, Z., Gao, Z., Zhao, X., Lu, Y., Zhou, B., Liu, S., Hu, X., Wen, L., King, I., Yu, P. S. “MarkLLM: An Open-Source Toolkit for LLM Watermarking.” <em>EMNLP 2024 Demo</em> (arXiv:2405.10051). <a href="https://arxiv.org/abs/2405.10051" class="uri">https://arxiv.org/abs/2405.10051</a></li>
+<li><a id="ref-5"></a>Zhang, H., Edelman, B. L., Francati, D., Venturi, D., Ateniese, G., Barak, B. “Watermarks in the Sand: Impossibility of Strong Watermarking for Generative Models.” <em>ICML 2024</em> (arXiv:2311.04378). <a href="https://arxiv.org/abs/2311.04378" class="uri">https://arxiv.org/abs/2311.04378</a></li>
+<li><a id="ref-6"></a>Sadasivan, V. S., Kumar, A., Balasubramanian, S., Wang, W., Feizi, S. “Can AI-Generated Text be Reliably Detected?” <em>Transactions on Machine Learning Research</em> (arXiv:2303.11156). <a href="https://arxiv.org/abs/2303.11156" class="uri">https://arxiv.org/abs/2303.11156</a></li>
+<li><a id="ref-7"></a>Schäfer, J., Pilaszewicz, C., Wunder, G. “Robust Text Watermarking for Large Language Models via Dual Semantic Embeddings.” <em>arXiv preprint</em> (arXiv:2606.31602), June 30, 2026. <a href="https://arxiv.org/abs/2606.31602" class="uri">https://arxiv.org/abs/2606.31602</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260705-pangram-ai-detection-accuracy/">AI Detectors Are Reliable Enough to Be Dangerous</a>: the style-based detection this explainer defines itself against, and the argument that partial accuracy at scale is the more dangerous kind.</li>
+<li><a href="../../posts/20260711-take-home-midterm-final/">A Take-Home Midterm, ChatGPT, and a Record-Low In-Person Final</a>: the classroom case a provenance signal is supposed to settle, on text short enough that a watermark would leave little evidence.</li>
+<li><a href="../../posts/20260704-its-not-x-its-y/">It’s Not X, It’s Y</a>: spotting AI prose by its verbal tics, the approach a key-gated statistical count is meant to replace.</li>
+<li><a href="../../posts/20260626-papertrail/">PaperTrail: A Claim-Evidence Interface for Grounding Provenance in LLM-based Scholarly Q&amp;A</a>: a study where finer-grained provenance lowered readers’ trust without changing how much they relied on the output, a caution for what a detection portal would change.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260816-ai-text-watermarking/</guid>
+  <pubDate>Sun, 16 Aug 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260816-ai-text-watermarking/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>HM #90: Durability Test #2</title>
   <dc:creator>Ben </dc:creator>
   <link>https://benjaminhan.net/posts/20260816-half-marathon-90-durability-test-2/?utm_source=rss&amp;utm_medium=feed</link>
@@ -2626,49 +2726,6 @@ Each wrapper is published in both Chinese and English, and the raw strings are i
   <guid>https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/</guid>
   <pubDate>Sun, 26 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260726-cmu-impression-after-20-years/image-20.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>HM #89: Exploring Pittsburgh North Shore</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>This #LongRunSunday I ran my 89th HM on the Three Rivers Heritage Trail in Pittsburgh! An EZ 14.01mi at 9’46”/mi, EG 413ft with HR 131/143 and VO₂max 54.2. Consumed 2 gels, 8oz electrolyte and 4 salt tablets, ingesting every 4mi. Stopped frequently for photos, also got slightly lost a couple times!</p>
-<p>In the past 3 days I officially exhausted the riverside trails at South Side and North Shore westbound — ran them all to the first points of closure. 36.54mi in 4 days, not bad!</p>
-<p>Highlight of the run: a large group sitting on a locked down bridge to practice yoga, with a DJ truck blasting some kind of New Age music. I guess they really have too many bridges in Pittsburgh!</p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-5.jpeg" class="img-fluid" data-lightbox-src="image-5-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-9.jpeg" class="img-fluid" data-lightbox-src="image-9-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-10.jpeg" class="img-fluid" data-lightbox-src="image-10-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-11.jpeg" class="img-fluid" data-lightbox-src="image-11-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-12.jpeg" class="img-fluid" data-lightbox-src="image-12-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-13.jpeg" class="img-fluid" data-lightbox-src="image-13-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-14.jpeg" class="img-fluid" data-lightbox-src="image-14-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-15.jpeg" class="img-fluid" data-lightbox-src="image-15-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-16.jpeg" class="img-fluid" data-lightbox-src="image-16-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-17.jpeg" class="img-fluid" data-lightbox-src="image-17-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-18.jpeg" class="img-fluid" data-lightbox-src="image-18-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-19.jpeg" class="img-fluid" data-lightbox-src="image-19-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-20.jpeg" class="img-fluid" data-lightbox-src="image-20-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-21.jpeg" class="img-fluid" data-lightbox-src="image-21-full.jpeg"></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/</guid>
-  <pubDate>Sun, 26 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260726-half-marathon-89-pittsburgh-north-shore/image-19.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
