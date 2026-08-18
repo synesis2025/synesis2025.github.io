@@ -1,0 +1,124 @@
+---
+title: "CRAG — Comprehensive RAG Benchmark"
+description: "A 4,409-question RAG benchmark with frozen web pages, a mock knowledge graph, and 38 mock APIs, scored on a metric that penalizes hallucination more than it rewards a correct answer."
+author: synesis
+date: "2026-08-18"
+image: cover.jpg
+---
+
+![Figure 4 from the paper [[1]](#ref-1).](cover.jpg){fig-align="center"}
+
+In *CRAG — Comprehensive RAG Benchmark* [[1]](#ref-1) (NeurIPS 2024 Datasets and Benchmarks Track), [Xiao Yang](https://dblp.org/pid/57/3385.html), [Kai Sun](https://dblp.org/pid/09/1171-6.html), [Hao Xin](https://dblp.org/pid/41/82.html), and [Yushi Sun](https://dblp.org/pid/203/9664.html) (equal contribution), with [Xin Luna Dong](https://dblp.org/pid/d/XinLunaDong.html) as last author and 22 co-authors from Meta and [HKUST](https://hkust.edu.hk/), release 4,409 factual questions paired with a frozen retrieval world: up to 50 full web pages per question, a mock knowledge graph of 2.6 million entities, and 38 mock APIs. Retrieval-augmented generation is scored on a metric that subtracts hallucinations from correct answers, and on that metric no straightforward RAG configuration beats prompting GPT-4 Turbo with no retrieval at all.
+
+Four constructions the post uses throughout:
+
+- **The four answer labels and the *truthfulness* score**: a response is *perfect* (correct, nothing hallucinated), *acceptable* (useful, minor errors), *missing* ("I don't know," an error, or a request to clarify), or *incorrect*. The four labels score $1$, $0.5$, $0$, and $-1$, and truthfulness is the mean over the evaluation set. The automatic evaluation uses only *accurate*, *incorrect*, and *missing*, so every truthfulness figure in Table 5 is exactly accuracy minus hallucination, to within rounding. The negative weight on *incorrect* is the design decision that makes CRAG's primary metric behave differently from accuracy: a system can raise its accuracy and lower its truthfulness in the same step.
+- **The three tasks**, each nesting inside the next. *Task 1* supplies five web pages per question and tests answer generation alone. *Task 2* adds the mock APIs over the mock knowledge graph, testing whether a system can query structured data and merge it with text. *Task 3* supplies 50 web pages instead of five plus the APIs, which adds ranking to the test, since more pages hold both more answers and more noise.
+- **Dynamism**: how fast the answer to a question changes. The four buckets are *real-time*, *fast-changing*, *slow-changing*, and *static*, and they are distributed 10%, 13%, 23%, and 54% across the benchmark. Finance is 42% real-time, and Movie is 76% static.
+- **Popularity**: whether a question's entity is *head*, *torso*, or *tail*, sampled from the knowledge graph following the Head-to-Tail method [[2]](#ref-2) by four of the same authors. The 1,984 knowledge-graph questions split almost evenly, 661 head, 658 torso, 665 tail, so the popularity slices are the same size by construction rather than by accident.
+
+> Retrieval-Augmented Generation (RAG) has recently emerged as a promising solution to alleviate Large Language Model (LLM)'s deficiency in lack of knowledge. Existing RAG datasets, however, do not adequately represent the diverse and dynamic nature of real-world Question Answering (QA) tasks. To bridge this gap, we introduce *the Comprehensive RAG Benchmark (CRAG), a factual question answering benchmark of 4,409 question-answer pairs and mock APIs to simulate web and Knowledge Graph (KG) search*. CRAG is designed to encapsulate *a diverse array of questions across five domains and eight question categories, reflecting varied entity popularity from popular to long-tail, and temporal dynamisms ranging from years to seconds*. Our evaluation of this benchmark highlights the gap to fully trustworthy QA. Whereas *most advanced LLMs achieve $\leq 34\%$ accuracy on CRAG, adding RAG in a straightforward manner improves the accuracy only to 44%*. *State-of-the-art industry RAG solutions only answer 63% of questions without any hallucination*. CRAG also reveals much lower accuracy in answering questions regarding facts with higher dynamism, lower popularity, or higher complexity, suggesting future research directions. The CRAG benchmark laid the groundwork for a *KDD Cup 2024 challenge* and attracted thousands of participants and submissions. We commit to maintaining CRAG to serve research communities in advancing RAG solutions and general QA solutions. CRAG is [available](https://github.com/facebookresearch/CRAG/) at https://github.com/facebookresearch/CRAG/.
+
+## Methods
+
+The questions come from two sources. Knowledge-graph questions start from 600-plus hand-written templates over selected entity types and relations, filled by sampling head, torso, and tail entities; that produces 1,984 questions. Web questions start from annotators writing what a user might plausibly ask ("most popular action movies in 2023") and building the answer from the search results; that produces 2,425. Every ground truth is checked by hand. Both halves span five domains — Finance, Sports, Music, Movie, and Open — and eight question types.
+
+| Question type | What it asks for |
+|---|---|
+| Simple | a fact unlikely to change, such as a birth date or a book's authors |
+| Simple with condition | a simple fact under a constraint, such as a stock price on a given date |
+| Set | a set of entities, such as the continents in the southern hemisphere |
+| Comparison | a comparison between two entities, such as who started performing earlier |
+| Aggregation | a count or total over retrieved results, such as how many Oscars an actor won |
+| Multi-hop | a chain across several facts, such as who acted in a director's latest film |
+| Post-processing-heavy | reasoning over the retrieved facts, such as how many days someone served |
+| False premise | a question resting on something untrue, such as naming an album that does not exist |
+
+: The eight CRAG question types. Table 2 from the paper [[1]](#ref-1), condensed.
+
+Simple and simple-with-condition together are 43% of the benchmark, so the six complex types share the remaining 57% and each is sized to be measurable on its own. The paper states that most slices are large enough for a margin of error under 5% at 95% confidence.
+
+The retrieval side is what separates CRAG from a question list. For each question, the question text went to the Brave Search API and up to 50 full HTML pages were stored, 220,000 pages in total. The release also includes mock knowledge graphs holding the public data the questions were generated from, plus randomly chosen same-type entities and deliberate hard negatives with confusable names, "phantom" as a distractor for "phantom of the opera." Thirty-eight mock APIs expose that graph through calls with named parameters, `get_price_history(ticker)` and the like. Web and knowledge-graph snapshots were taken at the same moment the real-time questions were posed, so the whole retrieval world is one consistent frozen instant.
+
+| Benchmark | Web | KG | Mock API | Dynamic | Torso/tail | Beyond Wikipedia | Questions |
+|---|---|---|---|---|---|---|---|
+| QALD-10 | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | 0.8K |
+| MS MARCO | ✓ | ✗ | ✗ | not explicitly | not explicitly | ✓ | 100K |
+| Natural Questions | ✓ | ✗ | ✗ | not explicitly | not explicitly | ✗ | 323K |
+| RGB [[3]](#ref-3) | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | 1K |
+| FreshLLMs [[4]](#ref-4) | ✗ | ✗ | ✗ | ✓ | ✗ | ✓ | 0.6K |
+| CRAG | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 4.4K |
+
+: CRAG against existing factual-QA benchmarks. Table 1 from the paper [[1]](#ref-1).
+
+CRAG is two orders of magnitude smaller than Natural Questions and MS MARCO, and the argument for it is the column count rather than the row count. It is the only entry that combines web retrieval, knowledge-graph search, mock APIs, questions whose answers move, deliberate coverage of unpopular entities, and sources outside Wikipedia.
+
+![Figure 2 from the paper [[1]](#ref-1).](figure2.png){fig-align="center"}
+
+Figure 2 measures whether the frozen corpus can answer its own questions, by asking Llama 3 70B Instruct whether the retrieved pages contain enough to answer, given the question and the ground truth. Two curves: page snippets alone reach 64.4% recall at 50 pages, and full page content reaches 84.6%, a gap of about 20 points that is the case for parsing HTML rather than stopping at the search-result summary. Both curves are steep and then flat, with the top five pages already at 69.4%. That the ceiling is 85% rather than 100% is deliberate: a system that cannot answer the remaining 15% should say so, which is what the *missing* label and the zero score exist to reward.
+
+Scoring uses both human grading and a two-step automatic evaluation. If the answer matches the ground truth exactly it counts as accurate. Otherwise two evaluator models, `gpt-3.5-turbo-0125` and `llama-3-70B-instruct`, judge it accurate, incorrect, or missing, and the reported numbers average the two. Using two evaluators from different families is a guard against a model preferring its own output. Against human grading the automatic method reaches F1 of 94.7% with ChatGPT and 98.9% with Llama 3. The data splits 30% validation, 30% public test, 40% private, with the private split reserved for the KDD Cup leaderboard.
+
+## Results
+
+The first experiment runs on the 1,335-question public test set. Prompts encourage brief answers and explicitly invite "I don't know" when confidence is low, which matters given that a missing answer scores zero and an incorrect one scores $-1$. Eight models were tried, and the paper reports the two strongest, Llama 3 70B Instruct and GPT-4 Turbo. Context windows are fixed per model rather than per task, 4K tokens of web text and 2K of knowledge-graph results for these two, filled by concatenating page snippets in their original order. Entity extraction for the API calls uses `llama-3-8B-instruct` with in-context examples.
+
+![Table 5 from the paper [[1]](#ref-1).](table5.jpg){fig-align="center"}
+
+The findings:
+
+- **Accuracy climbs with each task** (Table 5). GPT-4 Turbo goes 33.5% with no retrieval, 35.9% on Task 1, 41.3% on Task 2, 43.6% on Task 3. Llama 3 70B Instruct climbs the same way, from 32.3% to 40.6%. Each step adds a few points: web pages, then structured data, then ranking over a larger candidate set.
+- **Truthfulness does not follow accuracy** (Table 5, last column). GPT-4 Turbo scores 20.0 with no retrieval and 7.7, 16.2, and 13.4 across the three RAG tasks, so every retrieval configuration is worse than none. Llama 3 70B Instruct moves the other way, 3.4 to 4.5 to 8.3 to 9.1. The mechanism is visible one column left: GPT-4 Turbo's hallucination rate more than doubles from 13.5% to 28.2% on Task 1, because retrieval converts answers it would have declined to give into answers grounded in the wrong passage.
+- **GPT-4 Turbo's missing rate falls from 53% to 36%** (Table 5, Missing column). Unaided, GPT-4 Turbo declines to answer 53.0% of questions. With five web pages it declines only 35.9% of the time, and roughly all of the recovered volume lands in the hallucination column rather than the accuracy column.
+- **Structured data is the only step that improves both numbers** (Table 5, Task 1 against Task 2). Adding the mock APIs takes GPT-4 Turbo from 35.9% to 41.3% accuracy while cutting hallucination from 28.2% to 25.1%, which the paper attributes to knowledge-graph facts being brief and precise.
+- **Ranking loses over 30% of the retrieved answers** (§5.1). Over 30% of questions have their ground truth in the retrieved web pages but outside the context window, which is why Task 3's 50 pages beat Task 2's five despite bringing more noise with them.
+- **Retrieval helps unpopular entities and hurts popular ones** (§5.1 and Figure 3(c)). GPT-4 Turbo's unaided truthfulness falls from 21% on head entities to 11% on torso to 8% on tail. Adding retrieval lifts torso by 7 points and tail by 6 but lowers head by 4. For well-known entities the model's stored knowledge is better than what retrieval brings it.
+
+![Figure 3 from the paper [[1]](#ref-1).](figure3.png){fig-align="center"}
+
+Figure 3 breaks the same two models into four panels, unaided against full Task 3 retrieval. Negative bars are systems that hallucinate more than they answer correctly, and there are many of them. Panel (b) is the clearest: at *real-time* dynamism, Llama 3 70B Instruct goes from $-1$ unaided to $-15$ with retrieval, and GPT-4 Turbo from $0$ to $-5$. Panel (d) holds the largest single move anywhere in the figure. On *false premise* questions, GPT-4 Turbo goes from $+23$ unaided to $-37$ with web and knowledge-graph context, a 60-point collapse. Panels (a) and (c) show the two directions coexisting: retrieval is worth 20 to 30 points on Music, Movie, and Open domain questions, and worth less than nothing on Finance and Sports.
+
+![Table 6 from the paper [[1]](#ref-1).](table6.jpg){fig-align="center"}
+
+The second experiment queried five deployed systems with the same questions and graded the answers by hand:
+
+- **Copilot Pro leads the five deployed systems** (Table 6). Copilot Pro reaches 50.6 truthfulness with 62.6% perfect answers, then Gemini Advanced at 49.3, ChatGPT Plus at 41.5, Meta SG at 41.4, and Perplexity.ai at 34.9. The paper notes these are not strictly comparable to Table 5, which used automatic rather than human grading and different retrieval access.
+- **Hallucination stays between 16% and 25% for all five** (Table 6, Hall. column). No deployed system has solved the problem that makes truthfulness diverge from accuracy. The best is Meta SG at 16.0% and the worst Perplexity.ai at 25.3%.
+- **The most truthful system is also the slowest** (Table 6, Latency column). Copilot Pro takes 11.6 seconds per answer, Meta SG 3.4 seconds with mid-table truthfulness, so the five systems occupy visibly different points on the same trade-off.
+- **Three of the five score negative on real-time questions** (cover figure, panel b). Gemini Advanced scores $-3$, Perplexity.ai $-6$, and ChatGPT Plus $-7$, against Copilot Pro at $2$ and Meta SG at $8$. Fast-changing questions are better but still thin, from $-5$ to $20$.
+- **Set and false-premise questions flip from negative to positive** (cover figure, panel d). Both types were badly negative for straightforward RAG and are comfortably positive for every deployed system, set answers from 55 to 68 and false premises from 36 to 72. Whatever the deployed systems do about premises and completeness is not in the straightforward baseline.
+
+## My Notes
+
+- **RAGuard found the same pattern eight months later**: no straightforward RAG configuration here passes the 20% truthfulness that GPT-4 Turbo reaches unaided (§5.1). [RAGuard](https://arxiv.org/abs/2502.16101) [[5]](#ref-5) <!-- crosslink-todo: /posts/20260814-raguard-misleading-retrievals/ --> reported in February 2025 that every one of eight models scored below its own no-retrieval baseline on political fact-checking, and that the strongest zero-context model lost the most. The two use different corpora and different domains.
+- **Only the structured source improved both scores**: Task 2 is the only step in Table 5 where accuracy rises and hallucination falls together, and that holds for both models. [OKGQA](https://arxiv.org/abs/2410.08085) [[6]](#ref-6) <!-- crosslink-todo: /posts/20260818-okgqa-knowledge-graphs-trustworthy/ --> (ACL 2025) put the two retrieval sources side by side on open-ended questions: knowledge-graph triplets took GPT-4o's FActScore from 55.4% with no external knowledge to 72.6%, and the graph-based methods beat IRCoT, a Wikipedia-paragraph baseline, on correctness and on both factuality metrics, SAFE and FActScore, which the authors attribute to the irrelevant and conflicting passages that come with retrieved text. The same paper's perturbed-graph variant is the caveat: the advantage narrows as the graph degrades, so it depends on how clean the graph is.
+- **Retrieval hurts false-premise questions most**: a question about an album that does not exist still retrieves plenty of true material about the artist, and topically on-target material looks like corroboration of a premise it never addresses. That is the likely mechanism behind Figure 3(d)'s 60-point collapse. [AbstentionBench](/posts/20260523-abstentionbench-unanswerable-questions/) [[7]](#ref-7) treats false premises as one of five categories where a model should decline, and finds reasoning fine-tuning degrades that behaviour. CRAG points at a second way to lose it, and the paper does not say how the deployed systems avoid it.
+- **Deployed systems lose their edge on images**: the paper promised multi-modal and multi-turn extensions, and CRAG-MM [[8]](#ref-8) delivered them in October 2025 and hosted KDD Cup 2025. On its single-turn questions straightforward RAG reaches 32% truthfulness and deployed industry systems also reach 32%, so the gap Table 6 shows here is gone in the new modality.
+
+---
+
+## References
+
+1. <a id="ref-1"></a>[Yang, Xiao](https://dblp.org/pid/57/3385.html), [Sun, Kai](https://dblp.org/pid/09/1171-6.html), [Xin, Hao](https://dblp.org/pid/41/82.html), [Sun, Yushi](https://dblp.org/pid/203/9664.html), [Bhalla, Nikita](https://dblp.org/pid/293/7067.html), [Chen, Xiangsen](https://dblp.org/pid/320/8968.html), [Choudhary, Sajal](https://dblp.org/pid/205/3107.html), [Gui, Rongze Daniel](https://dblp.org/pid/380/3563.html), [Jiang, Ziran Will](https://dblp.org/pid/380/2782.html), [Jiang, Ziyu](https://dblp.org/pid/232/9728.html), [Kong, Lingkun](https://dblp.org/pid/66/3214.html), [Moran, Brian](https://dblp.org/pid/42/6114.html), [Wang, Jiaqi](https://dblp.org/pid/44/740.html), [Xu, Yifan Ethan](https://dblp.org/pid/245/7578.html), [Yan, An](https://dblp.org/pid/37/10133.html), [Yang, Chenyu](https://dblp.org/pid/177/3158.html), [Yuan, Eting](https://dblp.org/pid/143/6082.html), [Zha, Hanwen](https://dblp.org/pid/219/1743.html), [Tang, Nan](https://dblp.org/pid/27/104-1.html), [Chen, Lei](https://dblp.org/pid/c/LeiChen0002.html), [Scheffer, Nicolas](https://dblp.org/pid/53/8052.html), [Liu, Yue](https://dblp.org/pid/74/1932.html), [Shah, Nirav](https://dblp.org/pid/38/6647.html), [Wanga, Rakesh](https://dblp.org/pid/380/2092.html), [Kumar, Anuj](https://dblp.org/pid/78/4454.html), [Yih, Wen-tau](https://dblp.org/pid/07/7129.html), [Dong, Xin Luna](https://dblp.org/pid/d/XinLunaDong.html). "CRAG — Comprehensive RAG Benchmark." *NeurIPS 2024 Datasets and Benchmarks Track* (arXiv:2406.04744), June 7, 2024. <https://arxiv.org/abs/2406.04744>
+
+2. <a id="ref-2"></a>[Sun, Kai](https://dblp.org/pid/09/1171-6.html), [Xu, Yifan Ethan](https://dblp.org/pid/245/7578.html), [Zha, Hanwen](https://dblp.org/pid/219/1743.html), [Liu, Yue](https://dblp.org/pid/74/1932.html), [Dong, Xin Luna](https://dblp.org/pid/d/XinLunaDong.html). "Head-to-Tail: How Knowledgeable are Large Language Models (LLMs)? A.K.A. Will LLMs Replace Knowledge Graphs?" *Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (NAACL-HLT)*, pages 311–325 (arXiv:2308.10168), 2024. <https://arxiv.org/abs/2308.10168>
+
+3. <a id="ref-3"></a>[Chen, Jiawei](https://dblp.org/pid/03/1390-11.html), [Lin, Hongyu](https://dblp.org/pid/166/1761.html), [Han, Xianpei](https://dblp.org/pid/57/2368.html), [Sun, Le](https://dblp.org/pid/78/5897-1.html). "Benchmarking Large Language Models in Retrieval-Augmented Generation." *Proceedings of the AAAI Conference on Artificial Intelligence*, volume 38, pages 17754–17762 (arXiv:2309.01431), 2024. <https://arxiv.org/abs/2309.01431>
+
+4. <a id="ref-4"></a>[Vu, Tu](https://dblp.org/pid/186/7716.html), [Iyyer, Mohit](https://dblp.org/pid/148/9178.html), [Wang, Xuezhi](https://dblp.org/pid/70/4090-2.html), [Constant, Noah](https://dblp.org/pid/217/3091.html), [Wei, Jerry W.](https://dblp.org/pid/234/9076.html), [Wei, Jason](https://dblp.org/pid/02/11220.html), [Tar, Chris](https://dblp.org/pid/188/6414.html), [Sung, Yun-Hsuan](https://dblp.org/pid/94/7823.html), et al. "FreshLLMs: Refreshing Large Language Models with Search Engine Augmentation." *Findings of the Association for Computational Linguistics: ACL 2024*, pages 13697–13720 (arXiv:2310.03214), 2024. <https://arxiv.org/abs/2310.03214>
+
+5. <a id="ref-5"></a>[Zeng, Linda](https://dblp.org/pid/386/7380.html), [Gupta, Rithwik](https://dblp.org/pid/372/8657.html), [Motwani, Divij](https://dblp.org/pid/400/7086.html), [Zhang, Yi](https://dblp.org/pid/64/6544-1.html), [Yang, Diji](https://dblp.org/pid/234/1212.html). "Worse than Zero-shot? A Fact-Checking Dataset for Evaluating the Robustness of RAG Against Misleading Retrievals." *NeurIPS 2025 Datasets and Benchmarks Track* (arXiv:2502.16101), February 22, 2025. <https://arxiv.org/abs/2502.16101>
+
+6. <a id="ref-6"></a>[Sui, Yuan](https://dblp.org/pid/161/7324-1.html), [He, Yufei](https://dblp.org/pid/145/8957.html), [Ding, Zifeng](https://dblp.org/pid/283/5849.html), [Hooi, Bryan](https://dblp.org/pid/169/9975.html). "Can Knowledge Graphs Make Large Language Models More Trustworthy? An Empirical Study Over Open-ended Question Answering." *Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (ACL)*, pages 12685–12701 (arXiv:2410.08085), 2025. <https://arxiv.org/abs/2410.08085>
+
+7. <a id="ref-7"></a>[Kirichenko, Polina](https://polkirichenko.github.io/), [Ibrahim, Mark](https://www.semanticscholar.org/author/2297128866), [Chaudhuri, Kamalika](https://www.semanticscholar.org/author/2256991985), [Bell, Samuel J.](https://www.semanticscholar.org/author/2366163635) "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions." *NeurIPS 2025 Datasets and Benchmarks Track* (arXiv:2506.09038), June 10, 2025. <https://arxiv.org/abs/2506.09038>
+
+8. <a id="ref-8"></a>[Wang, Jiaqi](https://dblp.org/pid/44/740.html), [Yang, Xiao](https://dblp.org/pid/57/3385.html), [Sun, Kai](https://dblp.org/pid/09/1171-6.html), [Suresh, Parth](https://dblp.org/pid/226/2013.html), [Sharma, Sanat](https://dblp.org/pid/319/5544.html), et al. "CRAG-MM: Multi-modal Multi-turn Comprehensive RAG Benchmark." *arXiv preprint* (arXiv:2510.26160), October 30, 2025. <https://arxiv.org/abs/2510.26160>
+
+## Related Posts
+
+- [AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions](/posts/20260523-abstentionbench-unanswerable-questions/): measures the behaviour CRAG's *missing* label rewards, on a benchmark built from unanswerable questions rather than from a scoring rule.
+- [From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification](/posts/20260731-relevance-to-utility/): trains the retriever on what the generator does with what it reads, which is the training-time version of the ranking problem CRAG isolates in Task 3.
+- [AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web](/posts/20260507-averitec/): the fact-checking analogue, where a verdict scores only if the evidence behind it clears a similarity bar against the annotators' own.
+- [Semantic Entropy Detects Hallucinations in Free-Form Text Generation](/posts/20260505-semantic-entropy/): the other way to keep hallucinations out of a score, reading the model's output distribution instead of grading the answer after the fact.
+- [How Artificial Analysis Builds Its Intelligence Index](/posts/20260620-intelligence-benchmarking/): what it takes to keep a benchmark running past its paper, which CRAG has now done across two KDD Cups.

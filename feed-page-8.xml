@@ -21,7 +21,98 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Mon, 17 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Tue, 18 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>ProgramBench: Can Language Models Rebuild Programs From Scratch?</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>ProgramBench evaluates models on their ability to write software projects from scratch. Given a program (e.g.&nbsp;an executable) and its documentation, a software engineering agent must produce source code and a build script that reconstructs the original program’s behavior. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>ProgramBench: Can Language Models Rebuild Programs From Scratch?</em> [1], <a href="https://scholar.google.com/citations?user=71G11ksAAAAJ">John Yang</a>, Kilian Lieret, <a href="https://scholar.google.com/citations?user=LeHa8psAAAAJ">Ofir Press</a>, and nine co-authors from Meta, Stanford, and Harvard introduce a 200-task benchmark that asks coding agents to reconstruct an open-source program from its compiled executable and documentation alone.</p>
+<p>Each task starts from a real GitHub repository written in a compiled language. The authors compile the project, generate a behavioral test suite by running a software engineering agent (<a href="https://swe-agent.com/">SWE-agent</a>) against the reference executable, then strip the source and tests, leaving only the binary and the docs. The model under test then receives the same starting point and must write source code and a build script whose compiled output passes the hidden tests. The 200 tasks span CLI utilities to large systems including FFmpeg, SQLite, and the PHP interpreter, with no constraint on language, file structure, or build system; every architectural decision is the model’s.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/figure2.png" class="img-fluid figure-img"></p>
+<figcaption>ProgramBench task collection pipeline. To turn a GitHub repository into a task, the authors use a SWE-agent to compile an executable, generate behavioral tests, and strip away implementation details, leaving the binary and documentation as the starting point. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<blockquote class="blockquote">
+<p>Turning ideas into full software projects from scratch has become a popular use case for language models. Agents are being deployed to seed, maintain, and grow codebases over extended periods with minimal human oversight. Such settings require models to make high-level software architecture decisions. However, existing benchmarks measure focused, limited tasks such as fixing a single bug or developing a single, specified feature. We therefore introduce <em>ProgramBench to measure the ability of software engineering agents to develop software holisitically</em> [sic]. In ProgramBench, <em>given only a program and its documentation, agents must architect and implement a codebase that matches the reference executable’s behavior</em>. End-to-end behavioral tests are generated via agent-driven fuzzing, enabling evaluation without prescribing implementation structure. Our 200 tasks range from compact CLI tools to widely used software such as FFmpeg, SQLite, and the PHP interpreter. We evaluate 9 LMs and find that <em>none fully resolve any task, with the best model passing 95% of tests on only 3% of tasks</em>. Models favor monolithic, single-file implementations that diverge sharply from human-written code.</p>
+</blockquote>
+<p>What the paper reports: across nine frontier models from Anthropic, Google, and OpenAI, no task is fully resolved by any model. Claude Opus 4.7 leads on the relaxed “% Almost” metric (≥95% of tests passing) at 3.0% of tasks. Claude Opus 4.6 follows at 2.5% and Claude Sonnet 4.6 at 1.6%. Every other model registers 0% on both metrics. The median test pass rate across all 1,800 leaderboard runs is 32%, but the gap from “partial credit” to “fully resolved” is wide and uniform across models.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>Per-task pass rates for the 40 most-starred repositories show difficulty is largely model-agnostic: simpler CLI utilities fall on the left of every model’s row, while complex systems like FFmpeg and the PHP interpreter remain unsolved across the board.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/figure5.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In a separate ablation, the authors gave one model per provider unrestricted internet access and used a 9-judge LM-as-a-judge pipeline to flag trajectories that looked up source code or wrapped the reference executable. Cheating was widespread: 20–36% of tasks flagged for the three stronger models, with source-code lookup accounting for 79–95% of violations. Detection was unreliable too: judges disagreed on 40–57% of tasks. The authors take this as grounds for keeping internet access disabled by default.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/table3.png" class="img-fluid figure-img"></p>
+<figcaption>Table 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In §5.2, the codebases models produce do not look like the human-written originals. Across trajectories, a single edit accounts for the majority of the final solution, with GPT 5.4 committing a median 96% of its code in one turn.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/figure12.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 12 from the paper [1].</figcaption>
+</figure>
+</div>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Distance to recursive self-improvement.</strong> <a href="../../posts/20260526-recursive-superintelligence-launch/">Recursive Superintelligence’s $4B bet</a> assumes agents that can rebuild and improve their own systems. ProgramBench is a direct test of that capability one rung down: reconstruct one specified program from its executable and documentation, with full architectural latitude. Nine frontier models score 0% fully resolved on 200 mostly small open-source projects, and the cheating ablation suggests part of what looks like reasoning capability in deployed coding agents is source-code retrieval.</li>
+<li><strong>From-scratch vs localized repair.</strong> Yang and Press were also on the <a href="https://www.swebench.com/">SWE-bench</a> [2] author list in 2024, the bug-fix benchmark where frontier agents now resolve a majority of issues against an existing scaffold. On ProgramBench they resolve zero. Bug-fix benchmarks reward pattern-matching against existing structure, but ProgramBench requires inventing the structure. Agent-progress numbers from bug-fix benchmarks don’t extrapolate to from-scratch coding.</li>
+<li><strong>Architectural numbers for Faye’s case.</strong> <a href="../../posts/20260507-agentic-coding-is-a-trap/">Lars Faye</a> argued last week that the orchestrator-with-sub-agents workflow puts growing distance between the engineer and the code, and that catching issues at the architectural level is what a skilled developer is for. ProgramBench supplies numbers from the architectural-quality side: across 1,800 trajectories, models favor monolithic, single-file implementations, and GPT 5.4 commits a median 96% of its lines in one turn (Figure 12).</li>
+<li><strong>Agent-fuzzed test suites couple evaluator and evaluated.</strong> Each task’s behavioral tests are generated by running a SWE-agent against the reference executable, the same class of system being scored. The paper audits over-specification (§8.3.4) and reports test line coverage comparable to native suites (§5). Neither check isolates the systematic blindspots a fuzzing agent shares with the agent it scores. Whatever a fuzzing agent fails to imagine, such as malformed encodings or unusual flag combinations, is invisible in the score.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a><a href="https://scholar.google.com/citations?user=71G11ksAAAAJ">Yang</a>, J., Lieret, K., Ma, J., Thakkar, P., Pedchenko, D., Sootla, S., McMilin, E., Yin, P., Hou, R., Synnaeve, G., <a href="https://scholar.google.com/citations?user=j9jhYqQAAAAJ">Yang</a>, D., and <a href="https://scholar.google.com/citations?user=LeHa8psAAAAJ">Press</a>, O. “ProgramBench: Can Language Models Rebuild Programs From Scratch?” <em>arXiv preprint</em> (arXiv:2605.03546), May 5, 2026. <a href="https://arxiv.org/abs/2605.03546" class="uri">https://arxiv.org/abs/2605.03546</a></p></li>
+<li><p><a id="ref-2"></a>Jimenez, C. E., <a href="https://scholar.google.com/citations?user=71G11ksAAAAJ">Yang</a>, J., Wettig, A., Yao, S., Pei, K., <a href="https://scholar.google.com/citations?user=LeHa8psAAAAJ">Press</a>, O., and Narasimhan, K. “SWE-bench: Can Language Models Resolve Real-World GitHub Issues?” <em>International Conference on Learning Representations (ICLR)</em> (arXiv:2310.06770), 2024. <a href="https://arxiv.org/abs/2310.06770" class="uri">https://arxiv.org/abs/2310.06770</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260526-recursive-superintelligence-launch/">Recursive Superintelligence’s $4B Bet on Self-Improving AI</a>: the recursive-self-improvement bet this benchmark tests one rung down, where nine frontier models fully resolve zero tasks.</li>
+<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: Lars Faye’s architectural-quality argument, for which ProgramBench supplies the numbers on monolithic single-file outputs and one-turn code dumps.</li>
+<li><a href="../../posts/20260529-autocodebench/">AutoCodeBench: Large Language Models are Automatic Code Benchmark Generators</a>: another agent-built code benchmark where frontier models top out low, and a contrast in how the test suite is generated.</li>
+<li><a href="../../posts/20260422-overzealous-coding-models/">Overzealous Coding Models</a>: a related failure of architectural judgment, models doing too much in one sweep rather than the disciplined edits a from-scratch rebuild needs.</li>
+<li><a href="../../posts/20260528-claude-code-large-codebases/">How Claude Code Works in Large Codebases: Best Practices and Where to Start</a>: the harness-side answer to from-scratch difficulty, the scaffolding that real coding agents lean on where ProgramBench strips it away.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/</guid>
+  <pubDate>Tue, 26 May 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260526-programbench-rebuild-from-scratch/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Recursive Superintelligence’s $4B Bet on Self-Improving AI</title>
   <dc:creator>synesis </dc:creator>
@@ -2519,43 +2610,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/</guid>
   <pubDate>Thu, 21 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260521-lake-union-its-been-a-while/cover.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Hassabis: Use AI to Do More, Not Lay People Off</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260520-hassabis-ai-no-layoffs/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260520-hassabis-ai-no-layoffs/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260520-hassabis-ai-no-layoffs/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Demis Hassabis, CEO of Google DeepMind. Image from <a href="https://www.wired.com/story/demis-hassabis-ai-layoffs-deepmind-google-io/">WIRED</a>.</figcaption>
-</figure>
-</div>
-<p>In a <a href="https://www.wired.com/story/demis-hassabis-ai-layoffs-deepmind-google-io/">WIRED interview</a> ahead of Google I/O, <a href="https://en.wikipedia.org/wiki/Demis_Hassabis">Demis Hassabis</a>, CEO of Google DeepMind, pushed back on the idea that more capable AI coding models mean fewer engineers. Even while talking up Gemini 3.5 Flash’s agentic coding (translating codebases, fixing deep bugs, writing operating systems from scratch), he said he had no idea why people predict doom for software developers, and suggested some of those predictions may have an ulterior motive like raising money.</p>
-<p>His argument is that when engineers become three or four times more productive, the response should be to do three or four times more, not to cut headcount. He called companies that replace developers with AI short on imagination, and said Alphabet has a backlog of ideas, from drug discovery to game design, it would happily staff with the freed-up capacity. The interview ran alongside Google’s I/O announcements, including the Antigravity coding tool and Gemini 3.5 Flash, as Google works to close the developer-adoption gap with Anthropic’s Claude and OpenAI’s Codex.</p>
-<hr>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20230203-ai-job-automation-augmentation/">Will AI Take Your Job? It’s Not So Simple</a>: the automation-versus-augmentation framing that Hassabis’s “do more” position lands squarely on the augmentation side of.</li>
-<li><a href="../../posts/20230321-gpts-are-gpts-labor-market-impact/">GPTs Are GPTs: Labor Market Impact of Large Language Models</a>: the labor-market exposure estimates that set the stakes for the layoffs-versus-expansion debate.</li>
-<li><a href="../../posts/20250619-karpathy-software-changing-again/">Karpathy: Software Is Changing (Again)</a>: a complementary read on how AI shifts what engineers do rather than whether they exist.</li>
-<li><a href="../../posts/20260119-burning-out-with-ai-coding-agents/">Humans Need Rest, Even When Machines Don’t</a>: a counterweight, since “do three or four times more” is the very expectation that burns coding-agent users out.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260520-hassabis-ai-no-layoffs/</guid>
-  <pubDate>Wed, 20 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260520-hassabis-ai-no-layoffs/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
