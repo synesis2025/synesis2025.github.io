@@ -23,6 +23,162 @@
 <generator>quarto-1.9.37</generator>
 <lastBuildDate>Tue, 18 Aug 2026 07:00:00 GMT</lastBuildDate>
 <item>
+  <title>TRINITY: An Evolved LLM Coordinator</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>Trinity (bold, rightmost in each panel) tops every single-model and multi-agent baseline across MATH500, MMLU, RLPR, and LiveCodeBench, approaching the per-question-best oracle. Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>TRINITY: An Evolved LLM Coordinator</em> [1] (ICLR 2026), <a href="https://www.semanticscholar.org/author/2397339171">Jinglue Xu</a>, <a href="https://www.semanticscholar.org/author/2326487319">Qi Sun</a>, <a href="https://www.semanticscholar.org/author/2396352279">Peter Schwendeman</a>, <a href="https://www.semanticscholar.org/author/2396336821">Stefan Nielsen</a>, <a href="https://www.semanticscholar.org/author/2326294214">Edoardo Cetin</a>, and <a href="https://www.semanticscholar.org/author/2326422916">Yujin Tang</a> (Sakana AI, University of Michigan, and Institute of Science Tokyo) train a 0.6B <em>coordinator</em> that learns to delegate each turn of a query to one of seven larger LLMs and assign it a role, instead of answering the query itself.</p>
+<blockquote class="blockquote">
+<p>Combining diverse foundation models is promising, but weight-merging is limited by mismatched architectures and closed APIs. Trinity addresses this with <em>a lightweight coordinator that orchestrates collaboration among large language models (LLMs)</em>. The coordinator, comprising a compact language model (approximately <img src="https://benjaminhan.net/feed-assets/3e35e2941f157930.svg" alt="0.6" class="feed-math-inline"/>B parameters) and a lightweight head (approximately <img src="https://benjaminhan.net/feed-assets/003856bcc103f21a.svg" alt="10" class="feed-math-inline"/>K parameters), is optimized with an <em>evolutionary strategy</em> for efficient and adaptive delegation. Trinity processes queries over multiple turns, where at each turn the coordinator <em>assigns one of three roles (Thinker, Worker, or Verifier) to a selected LLM</em>, effectively offloading complex skill acquisition from the coordinator itself. Experiments show that Trinity consistently outperforms individual models and existing methods across coding, math, reasoning, and domain knowledge tasks, and generalizes robustly to out-of-distribution tasks. On standard benchmarks, Trinity achieves state-of-the-art results, including <em>a score of 86.2% on LiveCodeBench</em>. Theoretical and empirical analyses identify two main factors behind this performance: (1) the coordinator’s hidden-state representations provide rich contextualization of inputs, and (2) under high dimensionality and strict budget constraints, <em>the separable Covariance Matrix Adaptation Evolution Strategy</em> offers advantages over reinforcement learning, imitation learning, and random search by exploiting potential <em>block-<img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>-separability</em>.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>The contribution is a small, cheap-to-train coordinator placed in front of a pool of larger models, deciding who does what each turn. The harder problem is how to train it, because the right decision has no labels. The paper rules out supervised fine-tuning and reinforcement learning in turn, then trains the coordinator with a black-box evolution strategy.</p>
+<section id="the-coordinator" class="level3">
+<h3 class="anchored" data-anchor-id="the-coordinator">The coordinator</h3>
+<ul>
+<li><strong>A 0.6B coordinator with a ~10K-parameter head.</strong> Two pieces are trained on top of a frozen Qwen3-0.6B small language model (SLM):
+<ul>
+<li><strong>The selection head.</strong> A lightweight head (~10K parameters) runs beside the SLM’s usual language-model head. At each turn it reads the hidden state at the penultimate output-token position and emits two sets of logits: one selects an LLM from the pool, the other assigns it a <em>role</em>.</li>
+<li><strong>Singular value fine-tuning (SVF).</strong> The other trained piece rescales the singular values of the SLM’s weight matrices, leaving the rest of the base model frozen. SVF is carried over from the same group’s earlier <a href="../../posts/20260629-transformer-squared/"><em>Transformer-Squared</em></a> [2], which adapts a model by rescaling existing singular values rather than adding new parameters. Transformer² trained those scales with reinforcement learning. Trinity keeps the parametrization but swaps in an evolution strategy, for the reasons in the next section.</li>
+</ul></li>
+<li><strong>Three roles, assigned per turn.</strong> A query runs over up to five turns. On each turn the chosen LLM is cast as a <em>Thinker</em> (decompose the problem), a <em>Worker</em> (perform a step), or a <em>Verifier</em> (check the running answer and flag edge cases), and a message-processing module injects the matching role prompt before the call. Figure 1 walks through a depreciation problem: a Thinker decomposes it on turn 1, a Worker computes on turn 2, a Verifier checks the result on turn 3.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/figure1.webp" class="img-fluid figure-img" data-lightbox-src="figure1-full.png"></p>
+<figcaption>The coordination architecture (left) and a worked three-turn example (right): a compact SLM plus a lightweight head select an LLM and a role each turn, then route the role-specific prompt to the chosen model. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/figure2.webp" class="img-fluid figure-img" data-lightbox-src="figure2-full.png"></p>
+<figcaption>The coordinator’s parametrization: the lightweight head runs beside the base model’s LM head and reads the penultimate output-token hidden state, emitting one set of logits to select an LLM and another to assign a role. The singular-value scales of the SLM’s weight matrices (red diagonals) are also fine-tuned. Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>A linear head is enough, because the representation is already separable.</strong> A linear SVM sorts the SLM’s penultimate-token hidden states into the four task types at 100%, far above the 25% chance line (Figure 5). With the representation that well-structured, a small linear head has enough signal to read off coordination decisions.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/figure5.webp" class="img-fluid figure-img" data-lightbox-src="figure5-full.png"></p>
+<figcaption>Task-type separability of the SLM’s penultimate-token hidden states. Left: a linear SVM separates the four task types at 100%, far above the 25% chance line. Right: t-SNE shows the same four types as clean clusters. Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="why-an-evolution-strategy-not-rl-or-sft" class="level3">
+<h3 class="anchored" data-anchor-id="why-an-evolution-strategy-not-rl-or-sft">Why an evolution strategy, not RL or SFT</h3>
+<p>This is the paper’s central design choice. The coordinator’s target, which LLM to call and which role to assign each turn, has no ground truth. The only signal is a binary pass/fail reward earned by running the full multi-turn pipeline end to end, so there is nothing to fit with supervised learning directly. The paper works through the alternatives:</p>
+<ul>
+<li><strong>Synthetic labels plus SFT: ruled out by cost.</strong> One option is to manufacture labels, running the whole pool on each question and taking the per-question-best model, then fine-tuning on them. That is feasible for a single step but explodes in the multi-turn setting (up to five turns, seven models, three roles), where the paper estimates label generation at roughly <img src="https://benjaminhan.net/feed-assets/4c3a43cdd45751bf.svg" alt="10^{11}" class="feed-math-inline"/> LLM calls.</li>
+<li><strong>Reinforcement learning: ruled out by low-signal gradients.</strong> REINFORCE is the natural label-free optimizer, but the ~10K parameters are weakly coupled, so each one barely moves the scalar reward. Under a binary reward and a tight budget its per-parameter gradients are too low-signal to learn from, and random search does worse, collapsing onto a single agent and role.</li>
+<li><strong>The choice: separable CMA-ES.</strong> SVF fixes <em>which</em> parameters move, the singular-value scales plus the head. The optimizer is <em>how</em> they move: Trinity searches that parameter vector with the separable <a href="../../posts/20260629-cma-es-primer/">Covariance Matrix Adaptation Evolution Strategy</a> (sep-CMA-ES), keeping a Gaussian over the parameters, sampling candidate vectors, scoring each by running the coordinator, and shifting the Gaussian toward the ones that scored better. It needs no labels and no gradient, and because it ranks whole parameter vectors instead of estimating a per-parameter gradient, it sidesteps the exact low-signal problem that makes REINFORCE ineffective here.
+<ul>
+<li><strong>Block-<img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/>-separability lets the cheap diagonal variant suffice.</strong> The paper argues the objective splits into near-independent blocks, one per agent and role choice, that interact only weakly. The <img src="https://benjaminhan.net/feed-assets/5f348ca27a30b2c4.svg" alt="\epsilon" class="feed-math-inline"/> in the name bounds how much residual coupling remains across blocks. When that coupling is small, a diagonal covariance gives up almost nothing against a full one, so the cheap <img src="https://benjaminhan.net/feed-assets/365579f8b6aa11b4.svg" alt="O(n)" class="feed-math-inline"/> sep-CMA-ES matches a full-covariance search that would cost <img src="https://benjaminhan.net/feed-assets/caab106d41dfeaed.svg" alt="O(n^2)" class="feed-math-inline"/>.</li>
+</ul></li>
+</ul>
+<p>The ablation in the Results section makes the choice concrete: at matched budget, sep-CMA-ES clears the REINFORCE, random-search, and SFT baselines on every in-distribution task.</p>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>Trinity coordinates a pool of seven LLMs: three closed (GPT-5, Gemini 2.5 Pro, Claude 4 Sonnet) and four open (Gemma 3 27B-IT, DeepSeek-R1-Distill-Qwen-32B, and Qwen3-32B in direct and reasoning modes). It is trained and evaluated on four in-distribution tasks (MATH500 [3], MMLU [4], RLPR [5], and LiveCodeBench [6]) and tested zero-shot on four held-out tasks (AIME 2025 [7], BigCodeBench [8], MT-Bench [9], and GPQA-Diamond [10]). The baselines:</p>
+<ul>
+<li>each single model at its base budget and at a 5× context budget</li>
+<li>single-model five-turn self-reflection</li>
+<li>multi-agent methods: Mixture-of-Agents, RouterDC, and Smoothie</li>
+</ul>
+<p>A per-question-best oracle (the union of correct answers across all seven models) marks the ceiling no coordinator over this pool can pass.</p>
+<ul>
+<li><strong>Beats every single model and multi-agent baseline in-distribution.</strong> On the four training tasks Trinity tops all baselines (Figure 3, the cover) and comes close to the per-question-best oracle on MATH500 (0.88 against 0.91), MMLU (0.92 against 0.97), and LiveCodeBench (0.61 against 0.65). The gap to the oracle is widest on RLPR (0.41 against 0.61) [1].</li>
+<li><strong>Generalizes zero-shot to held-out tasks.</strong> Averaged over the four held-out tasks (Table 1), Trinity scores 54.21, ahead of the strongest single models Gemini 2.5 Pro (52.34) and GPT-5 (51.07). It takes the top spot on AIME (50.00), MT-Bench (9.60), and GPQA-Diamond (76.82), and ties for first on BigCodeBench (35.80) [1].</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/table1.webp" class="img-fluid figure-img" data-lightbox-src="table1-full.png"></p>
+<figcaption>Results on the four held-out tasks, best per column in bold. Trinity (bottom row) posts the best average at 54.21, tops AIME, MT-Bench, and GPQA-Diamond, and ties Claude 4 Sonnet on BigCodeBench. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Sets a LiveCodeBench record unconstrained.</strong> In the unconstrained setting (Figure 4), Trinity reaches a pass@1 of 86.2% on LiveCodeBench V6 (newly released questions spanning January to April 2025), a new state of the art, and the score rises with the per-query turn budget.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>LiveCodeBench at full power: Trinity reaches a state-of-the-art pass@1 of 86.2% (top), and the score increases as the per-query turn budget grows (bottom). Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<ul>
+<li><strong>Every component contributes to the score.</strong> An ablation on the in-distribution tasks removes one piece at a time (Table 2): dropping the singular-value fine-tuning, the Thinker role, the tri-role selection, or the penultimate-token readout each lowers Trinity’s average, and Trinity outscores all three closed single models head-to-head [1].</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Trinity (top) against four ablations and the three closed single models on the in-distribution tasks. Removing the singular-value fine-tuning, the Thinker role, the tri-role selection, or the penultimate-token readout each lowers the average, and Trinity beats all three single models. Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The evolution strategy beats their RL baseline at matched budget.</strong> Trinity’s optimizer comparison runs the same coordinator under four training methods at matched budget: REINFORCE scores 0.25 on LiveCodeBench and 0.46 on MATH500, while sep-CMA-ES reaches 0.62 and 0.88 [1]. That ordering matches a long-standing finding that evolution strategies stay competitive with policy-gradient reinforcement learning when the reward is sparse or binary [11]. It fits the regime here: a high-dimensional search over ~10K weakly coupled parameters, where REINFORCE’s per-parameter gradients are too low-signal to learn from, against a pass/fail task reward. Sakana ships this evolution-trained coordinator as <a href="../../posts/20260629-fugu-release/">Sakana Fugu</a> [12], the everyday model in the product’s two-model line: Fugu builds on Trinity, while the heavier Fugu-Ultra builds on the RL-trained <a href="../../posts/20260629-conductor-llm-orchestrator/">Conductor</a> [15]. The two are separate models behind one endpoint rather than two stages of one orchestrator.</li>
+<li><strong>The 0.6B coordinator adds almost no capability of its own.</strong> It trains only the ~10K head and freezes the base model, so the answer quality comes from the frontier models it calls. Trinity therefore cannot beat the per-question-best oracle, the best any single model in the pool already gets right. It applies the routing idea behind a <a href="../../posts/20260429-frontier-model-lower-bill/">cost-routing triager</a> to quality, and has the same limitation: it helps only when a capable model is already in the pool.</li>
+<li><strong>The coordinator builds the agentic graph dynamically, turn by turn.</strong> Choosing an LLM and a role at each turn is the same as constructing the multi-agent topology on the fly: every step adds the next node for that specific query, rather than running a structure fixed in advance. Trinity is one of several recent systems that learn this structure rather than hand-build it: <a href="../../posts/20260430-multi-agent-system-search/">MASS</a> searches prompts and topologies offline into a fixed design [13], <a href="../../posts/20260520-adaptive-collaboration-mapo/">MAPO</a> trains a policy for when to defer [14], and Sakana’s own pair builds it online, by reinforcement learning in <a href="../../posts/20260629-conductor-llm-orchestrator/">Conductor</a> [15] and by an evolution strategy here, then ships both behind one endpoint in <a href="../../posts/20260629-fugu-release/">Sakana Fugu</a> [12].</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “TRINITY: An Evolved LLM Coordinator.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04695, December 4, 2025. <a href="https://arxiv.org/abs/2512.04695" class="uri">https://arxiv.org/abs/2512.04695</a></li>
+<li><a id="ref-2"></a><a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “Transformer-Squared: Self-adaptive LLMs.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2501.06252, January 9, 2025. <a href="https://arxiv.org/abs/2501.06252" class="uri">https://arxiv.org/abs/2501.06252</a></li>
+<li><a id="ref-3"></a>Lightman, Hunter, Kosaraju, Vineet, Burda, Yura, Edwards, Harri, Baker, Bowen, Lee, Teddy, Leike, Jan, Schulman, John, Sutskever, Ilya, and Cobbe, Karl. “Let’s Verify Step by Step.” <em>International Conference on Learning Representations (ICLR)</em>, 2024. arXiv:2305.20050, May 31, 2023. <a href="https://arxiv.org/abs/2305.20050" class="uri">https://arxiv.org/abs/2305.20050</a></li>
+<li><a id="ref-4"></a>Hendrycks, Dan, Burns, Collin, Basart, Steven, Zou, Andy, Mazeika, Mantas, Song, Dawn, and Steinhardt, Jacob. “Measuring Massive Multitask Language Understanding.” <em>International Conference on Learning Representations (ICLR)</em>, 2021. arXiv:2009.03300, September 7, 2020. <a href="https://arxiv.org/abs/2009.03300" class="uri">https://arxiv.org/abs/2009.03300</a></li>
+<li><a id="ref-5"></a>Yu, Tianyu, Ji, Bo, Wang, Shouli, Yao, Shu, Wang, Zefan, Cui, Ganqu, Yuan, Lifan, Ding, Ning, Yao, Yuan, Liu, Zhiyuan, Sun, Maosong, and Chua, Tat-Seng. “RLPR: Extrapolating RLVR to General Domains without Verifiers.” <em>arXiv preprint</em> (arXiv:2506.18254), June 23, 2025. <a href="https://arxiv.org/abs/2506.18254" class="uri">https://arxiv.org/abs/2506.18254</a></li>
+<li><a id="ref-6"></a>Jain, Naman, Han, King, Gu, Alex, Li, Wen-Ding, Yan, Fanjia, Zhang, Tianjun, Wang, Sida, Solar-Lezama, Armando, Sen, Koushik, and Stoica, Ion. “LiveCodeBench: Holistic and Contamination Free Evaluation of Large Language Models for Code.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2403.07974, March 12, 2024. <a href="https://arxiv.org/abs/2403.07974" class="uri">https://arxiv.org/abs/2403.07974</a></li>
+<li><a id="ref-7"></a>Veeraboina, Hemish. “AIME Problem Set 1983–2024.” 2023. <a href="https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination" class="uri">https://en.wikipedia.org/wiki/American_Invitational_Mathematics_Examination</a></li>
+<li><a id="ref-8"></a>Zhuo, Terry Yue, Vu, Minh Chien, Chim, Jenny, Hu, Han, Yu, Wenhao, Widyasari, Ratnadira, et al.&nbsp;“BigCodeBench: Benchmarking Code Generation with Diverse Function Calls and Complex Instructions.” <em>International Conference on Learning Representations (ICLR)</em>, 2025. arXiv:2406.15877, June 22, 2024. <a href="https://arxiv.org/abs/2406.15877" class="uri">https://arxiv.org/abs/2406.15877</a></li>
+<li><a id="ref-9"></a>Bai, Ge, Liu, Jie, Bu, Xingyuan, He, Yancheng, Liu, Jiaheng, Zhou, Zhanhui, Lin, Zhuoran, Su, Wenbo, Ge, Tiezheng, Zheng, Bo, and Ouyang, Wanli. “MT-Bench-101: A Fine-Grained Benchmark for Evaluating Large Language Models in Multi-Turn Dialogues.” <em>Association for Computational Linguistics (ACL)</em>, 2024. arXiv:2402.14762, February 22, 2024. <a href="https://arxiv.org/abs/2402.14762" class="uri">https://arxiv.org/abs/2402.14762</a></li>
+<li><a id="ref-10"></a>Rein, David, Hou, Betty Li, Stickland, Asa Cooper, Petty, Jackson, Pang, Richard Yuanzhe, Dirani, Julien, Michael, Julian, and Bowman, Samuel R. “GPQA: A Graduate-Level Google-Proof Q&amp;A Benchmark.” <em>Conference on Language Modeling (COLM)</em>, 2024. arXiv:2311.12022, November 20, 2023. <a href="https://arxiv.org/abs/2311.12022" class="uri">https://arxiv.org/abs/2311.12022</a></li>
+<li><a id="ref-11"></a>Salimans, Tim, Ho, Jonathan, Chen, Xi, Sidor, Szymon, and Sutskever, Ilya. “Evolution Strategies as a Scalable Alternative to Reinforcement Learning.” <em>arXiv preprint</em> (arXiv:1703.03864), March 10, 2017. <a href="https://arxiv.org/abs/1703.03864" class="uri">https://arxiv.org/abs/1703.03864</a></li>
+<li><a id="ref-12"></a>Tang, Yujin, Cetin, Edoardo, Xu, Jinglue, Sun, Qi, Nielsen, Stefan, Richard, Vincent, Goda, Haruto, Tymchenko, Iaroslav, Nguyen, Nhan, Lee, Hyunin, Ashiga, Mari, Kotyan, Shashank, Kuroki, So, and Clanuwat, Tarin. “Sakana Fugu Technical Report.” <em>arXiv preprint</em> (arXiv:2606.21228), June 19, 2026. <a href="https://arxiv.org/abs/2606.21228" class="uri">https://arxiv.org/abs/2606.21228</a></li>
+<li><a id="ref-13"></a><a href="https://hanzhou032.github.io/">Zhou</a>, H., <a href="https://xingchen.one/">Wan</a>, X., Sun, R., <a href="https://www.hamidpalangi.com/">Palangi</a>, H., Iqbal, S., <a href="https://sites.google.com/site/ivanvulic/">Vulić</a>, I., <a href="https://sites.google.com/site/annakorhonen/">Korhonen</a>, A., <a href="https://www.sercanarik.com/">Arık</a>, S. Ö. “Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2502.02533, February 4, 2025. <a href="https://arxiv.org/abs/2502.02533" class="uri">https://arxiv.org/abs/2502.02533</a></li>
+<li><a id="ref-14"></a>Yang, Wei, <a href="https://defucao.github.io/">Cao</a>, Defu, Pang, Jiacheng, Weng, Muyan, and <a href="https://viterbi-web.usc.edu/~yanliu/">Liu</a>, Yan. “Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs with Continual Learning.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2603.07972, March 9, 2026. <a href="https://arxiv.org/abs/2603.07972" class="uri">https://arxiv.org/abs/2603.07972</a></li>
+<li><a id="ref-15"></a><a href="https://www.semanticscholar.org/author/2396336821">Nielsen</a>, Stefan, <a href="https://www.semanticscholar.org/author/2326294214">Cetin</a>, Edoardo, <a href="https://www.semanticscholar.org/author/2396352279">Schwendeman</a>, Peter, <a href="https://www.semanticscholar.org/author/2326487319">Sun</a>, Qi, <a href="https://www.semanticscholar.org/author/2397339171">Xu</a>, Jinglue, and <a href="https://www.semanticscholar.org/author/2326422916">Tang</a>, Yujin. “Learning to Orchestrate Agents in Natural Language with the Conductor.” <em>International Conference on Learning Representations (ICLR)</em>, 2026. arXiv:2512.04388, December 4, 2025. <a href="https://arxiv.org/abs/2512.04388" class="uri">https://arxiv.org/abs/2512.04388</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: the same group’s sibling, which learns coordination by reinforcement learning at 7B rather than the evolution strategy Trinity runs on a 0.6B head.</li>
+<li><a href="../../posts/20260629-fugu-release/">Sakana Fugu: One Model to Command Them All</a>: the product whose two models extend this pair separately — the everyday Fugu builds on Trinity, the quality-first Fugu-Ultra builds on Conductor — behind one endpoint.</li>
+<li><a href="../../posts/20260629-cma-es-primer/">A Primer on the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)</a>: the standing primer on the optimizer Trinity is trained with, covering what sep-CMA-ES is, why it beats gradient methods in this low-budget regime, and the diagonal variant Trinity uses.</li>
+<li><a href="../../posts/20260430-multi-agent-system-search/">Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies</a>: searches the prompts and topologies of a multi-agent system offline, the design Trinity instead learns online.</li>
+<li><a href="../../posts/20260520-adaptive-collaboration-mapo/">Adaptive Collaboration with Humans: Metacognitive Policy Optimization for Multi-Agent LLMs</a>: trains a policy for when to defer, the delegation decision Trinity’s coordinator makes every turn.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: catalogs how multi-agent pipelines break, the failure modes a learned coordinator has to route around.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/</guid>
+  <pubDate>Mon, 29 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260629-trinity-llm-coordinator/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
+<item>
   <title>Transformer²: Self-Adaptive LLMs</title>
   <dc:creator>synesis </dc:creator>
   <link>https://benjaminhan.net/posts/20260629-transformer-squared/?utm_source=rss&amp;utm_medium=feed</link>
@@ -1789,60 +1945,6 @@
   <guid>https://benjaminhan.net/posts/20260621-my-84th-half-marathon/</guid>
   <pubDate>Sun, 21 Jun 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260621-my-84th-half-marathon/image-7.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Estonia Intends to Recognize AI Agents With Digital IDs</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>A page from a 1979 internal IBM training manual. Image via <a href="https://simonwillison.net/2025/Feb/3/a-computer-can-never-be-held-accountable/">Simon Willison</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://www.theregister.com/ai-and-ml/2026/06/18/estonia-intends-to-recognize-ai-agents-with-digital-ids/">The Register</a> reports that Estonia plans to give AI agents their own digital identities, so an agent acting for a person can be verified and audited. The primary source is a <a href="https://www.valitsus.ee/en/news/prime-minister-michal-estonia-become-first-country-create-digital-identities-ai-agents">statement from the Estonian Government Office</a>: at the second meeting of the <a href="http://eesti.ai">Eesti.ai</a> advisory board on 17 June 2026, the board agreed to move forward with digital identities for AI agents, which it calls an “AI ID.” Prime Minister <a href="https://en.wikipedia.org/wiki/Kristen_Michal">Kristen Michal</a> put the goal in terms of one question:</p>
-<blockquote class="blockquote">
-<p>In the future, AI will increasingly carry out digital tasks on our behalf, compiling reports, preparing declarations or interacting with information systems. To that end, it must be clear who is acting on whose behalf with what rights, and who is ultimately responsible.</p>
-</blockquote>
-<p>What the <a href="https://www.valitsus.ee/en/news/prime-minister-michal-estonia-become-first-country-create-digital-identities-ai-agents">proposal</a> says:</p>
-<ul>
-<li><strong>Scoped, controllable authority.</strong> An agent acting for a person or company is given limited and controllable powers, instead of the person granting an AI assistant access to all of their rights, services, and data.</li>
-<li><strong>Per-action permissioning.</strong> The statement is concrete about granularity: it must be possible to specify whether an agent may only view data, prepare a document, draw up a payment, or act solely within a set financial limit.</li>
-<li><strong>Built on the existing e-state.</strong> The government positions the AI ID as the next layer on the trust infrastructure that already runs the country: a national digital identity, the X-Road data-exchange layer, and legally binding digital signatures.</li>
-<li><strong>A commitment, with the mechanics still open.</strong> This is an agreement to proceed, reached at an advisory-board meeting. The authorization and delegation mechanics are not defined, and the “first country in the world” claim is conditional on acting “quickly, and smartly.”</li>
-</ul>
-<p>The Register places the move in a wider scramble over who answers for an agent’s actions. Argentina’s president <a href="https://www.ft.com/content/f93022fe-43f7-437d-abd8-06c457c0a43c">Javier Milei</a> has endorsed “non-human corporations” run by software with limited liability. In commerce, <a href="https://www.target.com/c/terms-conditions/-/N-4sr7l">Target’s terms</a> now treat actions by an agent you authorized as transactions you made, while <a href="https://www.americanexpress.com/en-us/newsroom/articles/innovation/american-express-debuts-agentic-commerce-experiences--ace--devel.html">American Express</a> goes the other way and promises to cover customers when an authorized agent makes a purchase in error. The piece also revives the line from <a href="https://www.ibm.com/think/insights/ai-decision-making-where-do-businesses-draw-the-line">IBM’s 1979 training manual</a>, that a computer can never be held accountable and so must never make a management decision, and notes that courts are filling the gap anyway, holding <a href="https://www.cbc.ca/news/canada/british-columbia/air-canada-chatbot-lawsuit-1.7116416">Air Canada</a> liable for bad chatbot advice.</p>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>A digital ID is really about who to blame.</strong> A software agent can’t be punished the way a person can, as <a href="https://arxiv.org/abs/2508.08544">Mark Riedl and Deven Desai</a> point out: you can fine or jail a human, not a piece of software. So an AI ID doesn’t make the agent answerable. It records who authorized the agent and how much it was allowed to do, so there is finally a clear human to hold responsible when something goes wrong. The commerce terms above are early, ad hoc stabs at the same problem. A national identity layer would settle it the same way every time.</p></li>
-<li><p><strong>Estonia can be first because the hard part is already built.</strong> The AI ID is an increment on e-Estonia’s <a href="https://e-estonia.com/solutions/estonian-e-identity/">digital identity</a>, <a href="https://e-estonia.com/solutions/interoperability-services/x-road/">X-Road data exchange</a>, and digital signatures, not a greenfield project. The same fact makes the “first country” claim credible and the approach hard to copy elsewhere: a state without an e-government foundation would have to stand up the identity layer before it could scope an agent’s powers at all.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260427-cursor-railway-production-wipe/">A Cursor Agent Erased a Company’s Production Data in 9 Seconds</a>: the harm case that per-action scoping is meant to prevent, an agent with unscoped authority taking a catastrophic, state-changing action.</li>
-<li><a href="../../posts/20260618-policy-on-the-ai-exponential/">Policy on the AI Exponential</a>: Dario Amodei’s argument that policy is outrun by capability. Estonia is a government moving early, at the identity-infrastructure layer rather than the model layer.</li>
-<li><a href="../../posts/20260428-openai-agi-principles/">OpenAI’s Five Principles for AGI</a>: private labs publishing voluntary values statements, in contrast to a state building enforceable identity and permission infrastructure for agents.</li>
-<li><a href="../../posts/20230423-agentic-ai-llm-planning-challenges/">The Core Challenges Facing Agentic AI Today</a>: the capability backdrop to delegating real authority, why handing autonomous agents open-ended tasks was already fraught before they could spend money on your behalf.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/</guid>
-  <pubDate>Sat, 20 Jun 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260620-estonia-intends-to-recognize-ai-agents-with-di/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
