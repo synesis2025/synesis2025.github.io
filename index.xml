@@ -20,7 +20,1018 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Tue, 18 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 19 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Jeff Dean: Important Trends in AI</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260819-jeff-dean-lecture/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Thumbnail for Jeff Dean’s Princeton CS Distinguished Colloquium of February 10, 2026. <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0">Watch on YouTube</a></figcaption>
+</figure>
+</div>
+<p><a href="https://en.wikipedia.org/wiki/Jeff_Dean">Jeff Dean</a>, Chief Scientist for <a href="https://research.google/">Google Research</a> and <a href="https://deepmind.google/">Google DeepMind</a> and a co-lead of <a href="https://deepmind.google/models/gemini/">Gemini</a>, gave the <a href="https://www.cs.princeton.edu/">Princeton CS</a> Distinguished Colloquium on February 10, 2026. His title was “Important Trends in AI: How Did We Get Here, What Can We Do Now, and Where are We Headed?” The talk runs 78 minutes. About 40 of them are a chronological tour of the advances that produced current models, most of which he either worked on or sat next to. The rest is Gemini, the logistics of a thousand-author project, and four audience questions.</p>
+<p>Six months after this talk, on August 5, 2026, <a href="https://www.wired.com/story/jeff-dean-google-discovery-loop-startup/">Dean announced he was leaving Google</a> after almost 27 years. He is now CEO of Discovery Loop, a public benefit corporation set up to automate the scientific method itself across chip design, biology, drug discovery, and material design. Three colleagues left with him: <a href="https://en.wikipedia.org/wiki/Sanjay_Ghemawat">Sanjay Ghemawat</a>, his collaborator on much of Google’s core infrastructure, plus <a href="https://en.wikipedia.org/wiki/Oriol_Vinyals">Oriol Vinyals</a> and <a href="https://en.wikipedia.org/wiki/Quoc_V._Le">Quoc Le</a>, two of the three researchers he credits by name in this lecture for the sequence-to-sequence work. Google took a stake and agreed to supply compute for the first year.</p>
+<p>The talk, in brief:</p>
+<ul>
+<li><strong>Scale and architecture multiply rather than add.</strong> His summary of the last 13 or 14 years: 20× from scale times 50× from better architectures is a thousand-fold improvement, and both terms have kept delivering.</li>
+<li><strong>His 1990 undergraduate thesis was model-parallel and data-parallel training</strong>, under the names “pattern partitioned” and “pipelined.” The speedup curves tapered off because he held the model size fixed while adding processors, and he then left the subject alone for 25 years.</li>
+<li><strong>The TPU program started from one back-of-envelope calculation</strong>: a billion users talking to a good speech model three minutes a day would have required doubling the number of computers Google had.</li>
+<li><strong>Silent data corruption is treated as a first-class training problem</strong>, with per-layer gradient-norm monitoring, automatically triggered deterministic replay to separate bad hardware from bad batches, and hot spares swapped into a synchronous job mid-run.</li>
+<li><strong>Gemini’s IMO gold medal came with more specialization than the talk describes.</strong> It solved five of six problems. The public record adds reinforcement-learning training on multi-step reasoning data, a corpus of high-quality solutions, and IMO-specific instructions, while the talk describes an out-of-the-box model given a large thinking budget.</li>
+<li><strong>Inference efficiency is where he expects the next gains</strong>, along with attending to a trillion tokens through learned retrieval instead of a larger context window.</li>
+<li><strong>Slope beats absolute score</strong> in his answer to an audience member who asked what to do with a thousand TPUs. Run the same idea at three tiny sizes and read the trend: an idea below the baseline with a good slope is more interesting than one that starts above it and decays.</li>
+</ul>
+<p>The video has no chapter markers, so the <strong>enriched transcript at the bottom of this post</strong> has its own outline: 11 sections and 61 topic subsections, each section linking to its YouTube timestamp. It also adds hyperlinks on first mention, bracketed acronym expansions, and editor’s notes on the handful of claims worth checking. The outline is in the right-hand sidebar.</p>
+<p>Dean presents slides throughout, and the audio alone does not always say what is on them. 65 slides are captured below, each placed near the point in the transcript where he speaks to it and captioned with a link to that moment in the video. The Q&amp;A has none, since the camera stays on the room.</p>
+<p>Section outline (jump to the enriched transcript below, or watch on YouTube):</p>
+<ul>
+<li>0:00:12 — Introduction (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=12s">YouTube</a>)</li>
+<li>0:02:56 — Four observations about where AI is (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=176s">YouTube</a>)</li>
+<li>0:05:00 — Neural nets, backpropagation, and a 1990 undergraduate thesis (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=300s">YouTube</a>)</li>
+<li>0:08:00 — Scaling up: DistBelief, word2vec, seq2seq, and the first TPUs (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=480s">YouTube</a>)</li>
+<li>0:22:30 — Transformers, sparsity, and the training substrate (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1350s">YouTube</a>)</li>
+<li>0:36:15 — Chain of thought, distillation, RL, and speculative decoding (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2175s">YouTube</a>)</li>
+<li>0:47:20 — Gemini (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2840s">YouTube</a>)</li>
+<li>1:01:20 — Organizing a thousand-author effort (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3680s">YouTube</a>)</li>
+<li>1:05:30 — Where this is headed (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3930s">YouTube</a>)</li>
+<li>1:08:35 — Shaping AI, and conclusion (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=4115s">YouTube</a>)</li>
+<li>1:11:25 — Audience Q&amp;A (<a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=4285s">YouTube</a>)</li>
+</ul>
+<section id="transcript" class="level2">
+<h2 class="anchored" data-anchor-id="transcript">Transcript</h2>
+<p>Built from the talk’s <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0">YouTube auto-captions</a>. Section boundaries, topic subsections, punctuation, capitalization, and paragraph breaks are all editorial: the video ships without chapter markers and auto-captions arrive without punctuation. Fillers, repeated words, and false starts are trimmed, so this is lightly edited rather than strictly verbatim, but nothing is paraphrased, summarized, or reordered. Caption mishearings of names and technical terms are fixed silently (<code>Andrew Ng</code>, <code>Ilya Sutskever</code>, <code>Oriol Vinyals</code>, <code>Quoc Le</code>, <code>ImageNet</code>, <code>ISCA</code>, <code>HBM</code>, <code>JAX</code>, <code>LMArena</code>, <code>GSM8K</code>, <code>Nano Banana</code>, <code>bonza</code>, <code>LiDAR</code>, <code>Waymo</code>, <code>CACM</code>, <code>processors</code>), and one award name too garbled to recover is reconstructed in brackets. Speaker labels appear in the introduction and the Q&amp;A. The lecture body is one speaker, so it has none.</p>
+<section id="ch-introduction" class="level3">
+<h3 class="anchored" data-anchor-id="ch-introduction"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=12s">0:00:12 — Introduction</a></h3>
+<p><strong>Kai Li:</strong> Good afternoon. It’s not 4:30 yet, but since the room is already full, I’ll just start doing introduction to save some time. Okay. It’s a real pleasure to introduce Jeff Dean, a chief scientist for Google Research and the Google DeepMind, and also he’s a co-lead of Gemini project.</p>
+<p>I would say before the now famous Jeff Dean at Google era, I actually met Jeff in the 90s when Jeff was in <a href="https://en.wikipedia.org/wiki/Digital_Equipment_Corporation">Digital Western Research</a>, and so I can confirm is not overnight success story. <em>Jeff has been quietly exceptional for a very long time.</em></p>
+<p>Jeff’s bio you probably read in the flyer reads a little bit like a guided tour of modern computing, from large-scale information retrieval, operating system, distributed system, compilers. And then if that wasn’t enough, the second career is that AI machine, you know, ML accelerator, vision model, low-level software — I’m going to not upgrade Chrome right now [laughter] — and also distillation, neural network architecture search, large language multimodal model, and application ranging from chip design to healthcare, translation, and so on.</p>
+<p>So one of my favorite details of Jeff is that he did his undergraduate thesis on neural networks, and which means two things I think. First, he worked on neural network before it was cool. And second, he has the rare distinction being able to say I like neural network before Google made it popular. Okay, maybe Jeff did that to himself.</p>
+<p>But if you’re wondering what takes to be good, to have a good research taste, apparently the answer is start early to be Jeff. So along the way Jeff has received the <a href="https://awards.acm.org/acm-prize">ACM Prize in Computing</a>, [IEEE John von Neumann] Medal. He’s a <a href="https://awards.acm.org/fellows">ACM fellow</a>, a member of US <a href="https://www.nae.edu/">National Academy of Engineering</a> and <a href="https://www.amacad.org/">American Academy of Arts and Sciences</a>.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Editor’s note.</strong> The award name after the ACM Prize in Computing is garbled beyond recovery in the captions (“ite medal”), and the bracketed reconstruction above is inferred from Dean’s actual award record rather than heard: he received the IEEE John von Neumann Medal in 2021 and the ACM Prize in Computing in 2012.</p>
+</div>
+</div>
+</section>
+<section id="ch-four-observations" class="level3">
+<h3 class="anchored" data-anchor-id="ch-four-observations"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=176s">0:02:56 — Four observations about where AI is</a></h3>
+<p><strong>Kai Li:</strong> So, we’re very fortunate to have him to give us the distinguished lecture today. Please join me to welcome Jeff.</p>
+<p><strong>Jeff Dean:</strong> All right. [applause] Thank you very much for that kind introduction and for hosting me. I’m unexpectedly in town and Kai said, “Hey, you want to come by and give a talk?” So, I’m delighted to be here.</p>
+<p>And I’m going to talk to you about what’s happening in AI. I don’t know if you’ve noticed, but it’s a thing these days. And we have many people at Google working on this area. So, I’m presenting the work of not just my work, but many, many people at Google and elsewhere.</p>
+<section id="computers-can-now-see-hear-and-read" class="level4">
+<h4 class="anchored" data-anchor-id="computers-can-now-see-hear-and-read">Computers can now see, hear, and read</h4>
+<p>So, a few observations which may not come as a huge surprise to you. So machine learning and AI have really changed our expectations of what is possible with computers. You know, if you think back 10, 15 years ago, computers couldn’t see very well. They couldn’t really understand speech all that well. They definitely couldn’t understand language very well.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-012.jpg" class="img-fluid figure-img"></p>
+<figcaption>The four observations the talk opens with. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=227s">0:03:47</a>.</figcaption>
+</figure>
+</div>
+<p>And now we have tools that enable computers to interact with people in a much more natural style because they understand the modalities that people understand and want to communicate with.</p>
+</section>
+<section id="scale-times-algorithms-20-and-50-make-1000" class="level4">
+<h4 class="anchored" data-anchor-id="scale-times-algorithms-20-and-50-make-1000">Scale times algorithms: 20× and 50× make 1000×</h4>
+<p>And along the way, increasing scale of larger amounts of compute, larger amounts of data, and more larger scale models have delivered better results nearly continuously for the last sort of 13 or 14 years. This has been the trend and seems to be holding up even today.</p>
+<p>In addition to scale, algorithmic and sort of model architecture improvements have also provided massive improvements as well. And <em>these two things multiply together</em>, right? If you can have much larger scale and much better model architectures that are able to learn more per floating point operation, those things together mean instead of 20x from scale, you have 20x from scale and 50x from algorithms and you end up with a thousandx better thing than you had not that long ago.</p>
+</section>
+</section>
+<section id="ch-early-thesis" class="level3">
+<h3 class="anchored" data-anchor-id="ch-early-thesis"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=300s">0:05:00 — Neural nets, backpropagation, and a 1990 undergraduate thesis</a></h3>
+<p>Also, the kinds of computations we want to run and the hardware in which we want to run them are changing dramatically.</p>
+<p>So four observations which are maybe not surprising. First, neural nets and <a href="https://en.wikipedia.org/wiki/Gradient_descent">gradient descent</a>. These seem to be key building blocks for how do you actually build truly intelligent computer systems.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-013.jpg" class="img-fluid figure-img"></p>
+<figcaption>Section title. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=313s">0:05:13</a>.</figcaption>
+</figure>
+</div>
+<section id="not-new-ideas-the-70s-the-80s-and-an-intro-lecture-in-1990" class="level4">
+<h4 class="anchored" data-anchor-id="not-new-ideas-the-70s-the-80s-and-an-intro-lecture-in-1990">Not new ideas: the 70s, the 80s, and an intro lecture in 1990</h4>
+<p>And they’re not new ideas. They’re things that have been around for a long time. They were invented in the 70s and 80s. And there was actually a lot of excitement about them in the late 80s and early 90s.</p>
+<p>I first ran across them in an intro lecture where I was introduced to <a href="https://en.wikipedia.org/wiki/Neural_network_(machine_learning)">neural networks</a> roughly like this. You know, we have this kind of nice very abstracted away version of how we think real life neurons behave, where you have a bunch of inputs, you do some processing, and you decide are you going to fire or not, and what strength are you going to fire, and you have connections of these things.</p>
+<p>And then <a href="https://en.wikipedia.org/wiki/Backpropagation">back propagation</a> is a really nice algorithm that enables you to adjust the weights on the edges of all these connections in order to make the model behave more in the way that you want it to behave, where you give it a bunch of examples and back propagation enables you to make the model learn the behavior you want.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-014.jpg" class="img-fluid figure-img"></p>
+<figcaption>Backpropagation as the second key building block, with the gradient-descent plots beside it. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=361s">0:06:01</a>.</figcaption>
+</figure>
+</div>
+<p>So I saw these as an undergrad in 1990 and I got super excited and I said, “Oh wow, that seems like a really good abstraction. It feels like it’s a trainable thing and it can learn almost anything.”</p>
+</section>
+<section id="h-thesis" class="level4">
+<h4 class="anchored" data-anchor-id="h-thesis">A senior thesis that was model parallelism and data parallelism</h4>
+<p>And at that time we were not using very large neural networks because we had really pathetically wimpy computers. But I said, “Oh, maybe if we use the parallel computer in the department, we could train much bigger neural networks. That would be great. Maybe we just need to use 32 computers instead of one and then we could train really impressive neural nets. That would be nice.”</p>
+<p>So, I did it. I asked the professor who introduced the neural networks topic in one of the classes I was taking if I could do a senior thesis with him, <a href="https://cse.umn.edu/cs/vipin-kumar">Vipin Kumar</a>. And he said, “Sure.”</p>
+<p>So I played around with two different approaches for training neural networks in parallel. One is <em>this is what you would now call model parallel and data parallel training</em>. But I called them pattern partitioned and pipelined approach.</p>
+<p>And these speed up curves are interesting but they taper off because I did the stupid thing. I didn’t make the model bigger and bigger as I increase the number of processors. I just made it much harder to parallelize with a fixed size model.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/thesis-1990.jpg" class="img-fluid figure-img"></p>
+<figcaption>The 1990 senior thesis and its Fig. 2, where both parallel approaches flatten away from the dotted linear-speedup line as processors are added. The network was three layers of 10, 21, and 10 neurons. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=460s">0:07:40</a>.</figcaption>
+</figure>
+</div>
+<p>But I sort of filed that away as like, oh, that’s an interesting abstraction and it seems like something I should pay attention to. But then I ignored it for the next 25 years.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-016.jpg" class="img-fluid figure-img"></p>
+<figcaption>Section title for the 15-year tour. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=475s">0:07:55</a>.</figcaption>
+</figure>
+</div>
+</section>
+</section>
+<section id="ch-scaling-up" class="level3">
+<h3 class="anchored" data-anchor-id="ch-scaling-up"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=480s">0:08:00 — Scaling up: DistBelief, word2vec, seq2seq, and the first TPUs</a></h3>
+<p>Okay. So now I’m going to give you a whirlwind tour of a bunch of advances in the field of ML that have happened in the last 15 years that are really all combined together to produce today’s most sophisticated models. How did these today’s models come to be? Well, it was through advancements like the ones I’m going to describe.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-017.jpg" class="img-fluid figure-img"></p>
+<figcaption>DistBelief: model parallelism across a network, data parallelism across replicas, and the parameter servers between them. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=504s">0:08:24</a>.</figcaption>
+</figure>
+</div>
+<section id="bumping-into-andrew-ng-in-a-micro-kitchen" class="level4">
+<h4 class="anchored" data-anchor-id="bumping-into-andrew-ng-in-a-micro-kitchen">Bumping into Andrew Ng in a micro kitchen</h4>
+<p>So, the origin of my getting back to working on neural nets at Google was I bumped into <a href="https://www.andrewng.org/">Andrew Ng</a>, who’s a Stanford faculty member, in one of our micro kitchens and I said, “Oh, what are you doing here?” He’s like, “I’m not sure yet, because I just started a week ago. But my students at Stanford are doing interesting things with training neural networks for speech and vision.”</p>
+<p>I’m like, “Oh, that’s cool. We should train really big neural networks,” because we actually had quite a lot of computers in those days. And I said, “Oh, why don’t we try training very, very large neural networks?”</p>
+</section>
+<section id="asynchronous-replicas-and-parameter-servers-theoretically-wrong-but-it-worked" class="level4">
+<h4 class="anchored" data-anchor-id="asynchronous-replicas-and-parameter-servers-theoretically-wrong-but-it-worked">Asynchronous replicas and parameter servers: “theoretically wrong” but it worked</h4>
+<p>And so we built <a href="https://papers.nips.cc/paper_files/paper/2012/hash/6aca97005c68f1206823815f66102863-Abstract.html">a software system</a> [1] that enabled us to express neural network and connectivity of those neural networks and do both model and data parallel training across many, many computers. And that enabled us to train neural networks that were <em>50 to 100 times larger</em> than the largest ones we could find anyone talking about.</p>
+<p>And we had a way of doing this where we had actually many, many asynchronous replicas of the model getting updates of what the current parameters of the model were, churning away on their local batch of examples, computing a gradient and sending it to this distributed set of parameter servers in order to update the parameters of the model.</p>
+<p>This is, because it’s asynchronous, definitely not the right mathematical thing, because in the meantime the model parameters have moved from the other replicas giving the parameter servers updates to the parameters. But it seemed to work, so we were sort of happy anyway despite it being sort of theoretically wrong.</p>
+</section>
+<section id="cat-neurons-from-10-million-unlabeled-youtube-frames" class="level4">
+<h4 class="anchored" data-anchor-id="cat-neurons-from-10-million-unlabeled-youtube-frames">Cat neurons from 10 million unlabeled YouTube frames</h4>
+<p>And one of the first things we trained was a very large model to do <a href="https://arxiv.org/abs/1112.6209">completely unsupervised learning</a> [2] on 10 million random YouTube frames. And interestingly, we had a kind of a locally connected neural network for computer vision that would use a reconstruction loss.</p>
+<p>So we try to take a high level representation of the neurons at the highest level of the model and then try to reconstruct the pixels that have been given as input, and because that bottleneck layer forced the model to sort of learn higher level abstractions than the actual raw pixels.</p>
+<p>What we ended up finding was at the top level of this model, <em>some of the neurons had learned to be sensitive to whether or not there was a face of a cat in the image</em>. Some of them learned to be sensitive to whether there was a face. Some were sensitive to, you know, is this the outline of a person. All without being told any of these images contained any of those kinds of objects. So it’s kind of neat to see that you could learn these high level abstractions and representations from a purely unsupervised objective.</p>
+</section>
+<section id="a-70-relative-improvement-on-imagenet-22k" class="level4">
+<h4 class="anchored" data-anchor-id="a-70-relative-improvement-on-imagenet-22k">A 70% relative improvement on ImageNet 22k</h4>
+<p>What we could then do is use the initialization of this unsupervised training in order to train with a supervised method to try to do computer vision image classification. And we used, unfortunately we used, the 22,000 category version of <a href="https://www.image-net.org/">ImageNet</a>, which is a more thinly traded version than the 1000 category one that most people are most familiar with.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-018.jpg" class="img-fluid figure-img"></p>
+<figcaption>The cat neuron, and the ImageNet 22K table showing 15.8% with unsupervised pretraining against a 9.3% state of the art. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=698s">0:11:38</a>.</figcaption>
+</figure>
+</div>
+<p>But we got a 70% relative improvement in ImageNet 22k state-of-the-art by initializing with our unsupervised model and then doing supervised learning on the training set for that data set, which is quite a large relative improvement. So we were happy with that and we saw that scale really mattered.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-019.jpg" class="img-fluid figure-img"></p>
+<figcaption>word2vec, with the king/queen and walking/walked direction examples. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=747s">0:12:27</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="word2vec-nearby-words-cluster-and-directions-mean-something" class="level4">
+<h4 class="anchored" data-anchor-id="word2vec-nearby-words-cluster-and-directions-mean-something">word2vec: nearby words cluster, and directions mean something</h4>
+<p>We also started to do a bunch of work in using neural networks for language tasks. And one of the things we found was that even relatively simple models where you have <a href="https://arxiv.org/abs/1301.3781">a vector-based representation of words or phrases</a> [3], so that you have a nice thousand or 500 dimensional representation of each word or token, and have relatively shallow models.</p>
+<p>So in fact we had just the embedding vector, and then we would use the embedding vector of the word to try to predict nearby words. That was one of the approaches we tried.</p>
+<p>And what we found was that if you apply this to lots of text and use this training objective, you end up with nearby words in the high-dimensional space tend to be related ones. So like cat and puma and tiger are all low distance in the high-dimensional space. And also that <em>directions are meaningful</em>. So you go in the same direction to change the gender of a word in a gendered language regardless of what word you start with. King and queen.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-020.jpg" class="img-fluid figure-img"></p>
+<figcaption>Sequence to sequence learning, with the encoder state initializing the decoder. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=823s">0:13:43</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="seq2seq-an-lstm-encoders-final-state-as-the-decoders-initial-state" class="level4">
+<h4 class="anchored" data-anchor-id="seq2seq-an-lstm-encoders-final-state-as-the-decoders-initial-state">seq2seq: an LSTM encoder’s final state as the decoder’s initial state</h4>
+<p>A year or two later, three of my colleagues <a href="https://en.wikipedia.org/wiki/Ilya_Sutskever">Ilya Sutskever</a>, <a href="https://en.wikipedia.org/wiki/Oriol_Vinyals">Oriol Vinyals</a> and <a href="https://en.wikipedia.org/wiki/Quoc_V._Le">Quoc Le</a> <a href="https://arxiv.org/abs/1409.3215">used a neural encoder</a> [4] using an <a href="https://en.wikipedia.org/wiki/Long_short-term_memory">LSTM</a> [long short-term memory] to essentially be able to learn an encoder for one sequence and then a decoder for a different sequence.</p>
+<p>And when you initialize the state of the LSTM by running the encoder, that ends up sort of capturing the things that have occurred in that input sequence and enables the model to then use that initial state to then do a good job of predicting the target sequence.</p>
+<p>So the canonical example use case of this is language translation, where maybe you have a bunch of English-French sentence pairs that mean the same thing and the input sentence is English. And so when you’re training you try to decode the French sentence and you get a supervised learning objective for every token or for every word. And then when you’re trying to translate a new sentence you just use the encoder to encode the LSTM state and then decode from that state in order to produce the translated French.</p>
+</section>
+<section id="h-tpu-origin" class="level4">
+<h4 class="anchored" data-anchor-id="h-tpu-origin">The back-of-envelope calculation that started the TPU program</h4>
+<p>So as we saw more and more success of neural networks, and in particular scaling up neural networks for problems in computer vision, speech recognition and language, we were starting to both get excited but also a bit worried about how we would actually deploy these much better models.</p>
+<p>So this is kind of the origin of how we started to create our own <a href="https://cloud.google.com/tpu">tensor processing unit</a> chip program. I did this back of the envelope calculation and said, okay, we have this really nice high quality speech recognition model. It has the error rate for speech recognition which is a huge improvement. It’s sort of equivalent to <em>20 years of speech research in like six months</em> since we started the project, by training just a very large, not particularly sophisticated model architecture. It’s like an eight layer fully connected neural net just trained on a lot of data.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-021.jpg" class="img-fluid figure-img"></p>
+<figcaption>The back-of-envelope slide itself, from an internal infrastructure review in May 2013: a billion users at three minutes of speech a day works out to roughly 20 million core days per day. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=902s">0:15:02</a>.</figcaption>
+</figure>
+</div>
+<p>And that back of the envelope calculation said <em>if we wanted to deploy this to a scenario where we had a billion users talking to this model 3 minutes a day, we would need to double the number of computers Google had</em>. And that didn’t seem very tenable for rolling out a better speech recognition system.</p>
+<p>So that really convinced us that exploring much more specialized computational devices for doing neural network inference and later neural network training was going to be a fruitful path. And so this sort of bootstrap got us to really approach that with conviction and started up a chip design team in order to build these chips.</p>
+</section>
+<section id="tpuv1-reduced-precision-and-a-handful-of-linear-algebra-operations" class="level4">
+<h4 class="anchored" data-anchor-id="tpuv1-reduced-precision-and-a-handful-of-linear-algebra-operations">TPUv1: reduced precision and a handful of linear-algebra operations</h4>
+<p>And then the first chip emerged two years later, as hardware projects tend to do. They take a little while, but we eventually produced <a href="https://arxiv.org/abs/1704.04760">the TPUv1 chip</a> [5], which took advantage of two really nice properties of neural networks.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-022.jpg" class="img-fluid figure-img"></p>
+<figcaption>TPUv1 at 92 teraops, inference only, exploiting reduced precision and a handful of linear-algebra operations. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1009s">0:16:49</a>.</figcaption>
+</figure>
+</div>
+<p>The first is that reduced precision is fine, especially for inference. So you’re perfectly happy with about seven or eight bits of precision, not 16 or 32 or 64 as most people are thinking about in terms of floating-point computation things.</p>
+<p>And also that nearly all of the models we were exploring were made up of different combinations of a handful of specific kinds of linear algebra operations. You know, things like matrix multiplies are at the heart of them, and then certain kinds of dot products and normalization and scaling.</p>
+<p>But if you think about most of the machine learning algorithms of today, different rearrangements of those kinds of operations mean that you can build an accelerator that is capable of very high performance reduced precision linear algebra and that can be applicable to a pretty wide range of neural networks. And it’s much more efficient because that’s all it needs to do. It doesn’t need to do anything else. <em>It doesn’t need to run Microsoft Word or Chrome or anything else.</em></p>
+<p>And so TPUv1 turned out to be 15 to 30x faster than contemporary CPUs and GPUs and 30 to 80 times more energy efficient than contemporary CPUs and GPUs. And it’s also now the most cited paper in <a href="https://www.iscaconf.org/">ISCA</a>’s [International Symposium on Computer Architecture] 50-year history.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-023.jpg" class="img-fluid figure-img"></p>
+<figcaption>TPU pods: thousands of chips on a custom high-speed network. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1115s">0:18:35</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="optical-interconnect-and-racks-you-can-swap-mid-run" class="level4">
+<h4 class="anchored" data-anchor-id="optical-interconnect-and-racks-you-can-swap-mid-run">Optical interconnect and racks you can swap mid-run</h4>
+<p>So we then turned the chip design team’s attention to the training problem, because we felt like being able to scale up training more than we were able to on CPUs and GPUs was going to be important. And so this is where the focus has been for quite a while.</p>
+<p>And we’ve now produced many, many generations of TPUs that are essentially machine learning supercomputers, right? It’s more than just a single chip, unlike TPUv1. Instead it’s lots and lots of chips connected with a custom high-speed interconnect that enables us to distribute model training over those chips and communicate both activations and parameter updates and gradient updates across that custom interconnect.</p>
+<p>Version four introduced this funky thing where we have an optical interconnect for racks of these accelerators. So, there’s a rack of 64 accelerators and <em>we can make it seem as though that rack of 64 accelerators is right next to another rack of 64 accelerators even though they’re 100 meters across the data center floor</em>.</p>
+<p>And if that rack fails, we can swap in another rack and make it seem as though this rack is now right next to that one in terms of the net topology. Which is important. As you get more and more scale, you end up with failures. And so you want to be able to reconfigure things like that.</p>
+</section>
+<section id="reading-the-generation-table-tpuv4-to-ironwood" class="level4">
+<h4 class="anchored" data-anchor-id="reading-the-generation-table-tpuv4-to-ironwood">Reading the generation table: TPUv4 to Ironwood</h4>
+<p>And so we’ve seen continual hardware performance scaling. So if you look at TPUv4 here on the left column, the peak flops per chip is about 275 teraflops. The max pod size was 4,896 chips, and now we’re sort of at roughly double that pod size and much, much more <a href="https://en.wikipedia.org/wiki/High_Bandwidth_Memory">HBM</a> [high-bandwidth memory] and much more memory bandwidth and many more flops per chip.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/tpu-generations.jpg" class="img-fluid figure-img"></p>
+<figcaption>The table Dean reads from: TPU v4 (2022), v5p (2023), and Ironwood (2025) at 4,896 / 8,960 / 9,216 chips per pod and 275 / 459 / 4,614 TFLOPS per chip, with Ironwood’s pod at ~3600× TPU v2. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1215s">0:20:15</a>.</figcaption>
+</figure>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Editor’s note.</strong> Two things about that table. Ironwood is Google’s <em>seventh</em>-generation TPU: the sixth is <a href="https://cloud.google.com/blog/products/compute/introducing-trillium-sixth-generation-tpu">Trillium</a>, announced at Google I/O in May 2024 and generally available that December, and it is the generation the table skips, going v5p straight to Ironwood. Dean flags the numbering as confusing in the same breath, since Google dropped the “v7” branding for Ironwood. Separately, the TPU v4 pod size shown as 4,896 is <a href="https://cloud.google.com/tpu/docs/v4">documented by Google as 4,096 chips</a>, and the <a href="https://arxiv.org/abs/2304.01433">TPU v4 paper</a> cited on Dean’s own earlier slide also gives 4,096. The transcript reproduces the figure he read off the slide.</p>
+</div>
+</div>
+<p>If you compare the peak performance per pod, which is sort of the largest network configuration we have of the custom interconnect, the TPUv2 pod is 1x and the most recent sort of v6 — but now we’ve stopped numbering them, sadly, it’s harder to keep track of, but <a href="https://cloud.google.com/blog/products/ai-machine-learning/ironwood-tpus-generally-available">Ironwood</a> is the sixth generation of TPUs — is about 3600 times the performance per pod of TPUv2. And it’s also much more energy efficient, so about 30x better flops per watt, which is what you ultimately care about.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-025.jpg" class="img-fluid figure-img"></p>
+<figcaption>The same scaling in energy terms, roughly 30x better flops per watt than TPU v2. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1263s">0:21:03</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-026.jpg" class="img-fluid figure-img"></p>
+<figcaption>TensorFlow, PyTorch, and JAX. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1279s">0:21:19</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="tensorflow-pytorch-and-jax" class="level4">
+<h4 class="anchored" data-anchor-id="tensorflow-pytorch-and-jax">TensorFlow, PyTorch, and JAX</h4>
+<p>The other thing that has happened in the last 15 years is open source tools have really enabled the whole community to build using the same pieces of abstraction and software libraries, and the community can work on sort of improving those tools as well.</p>
+<p>So we developed a software called <a href="https://www.tensorflow.org/">TensorFlow</a> based on our initial lessons from the sort of 2011 to 2014 era with an internal software library that we were using to parallelize computations across many computers and train large models and do inference.</p>
+<p>And then more recently various people at <a href="https://about.meta.com/">Meta</a> and elsewhere introduced <a href="https://pytorch.org/">PyTorch</a>, and then another group of people at Google have introduced a more functional style paradigm computation called <a href="https://github.com/jax-ml/jax">JAX</a>. All of these are great systems, and we have been using JAX for our Gemini training and it’s been great.</p>
+</section>
+</section>
+<section id="ch-transformers-sparsity" class="level3">
+<h3 class="anchored" data-anchor-id="ch-transformers-sparsity"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1350s">0:22:30 — Transformers, sparsity, and the training substrate</a></h3>
+<section id="why-lstms-dont-parallelize-one-state-update-per-token" class="level4">
+<h4 class="anchored" data-anchor-id="why-lstms-dont-parallelize-one-state-update-per-token">Why LSTMs don’t parallelize: one state update per token</h4>
+<p>And then in 2017 a number of my colleagues worked on <a href="https://arxiv.org/abs/1706.03762">coming up with a better architecture</a> [6] than the sort of recurrent LSTMs that were kind of the state-of-the-art models for language at the time.</p>
+<p>And the observation they had was really, in an LSTM you have a vector of state of sort of the current representation of the state, and then when you advance one token at a time you update that state, and there’s a sophisticated thing that updates the state, and then you go on to the next word and you update the state again. And so as you progress through say a hundred words of a sentence you update the state a 100 times.</p>
+<p>And there’s two problems with that. One is you have this sequential process. Every word you have to wait for the update of the state, and there’s a sequential dependency on that state being ready before you can go on to update the state for the next word. So, it’s not very parallelizable, which is not good on modern hardware.</p>
+<p>And the other thing is you’re trying to force all the things you went through into a single vector, that you have all the things you might want to remember from the things you went through in a single vector, rather than just saving all the vectors you went through and then being able to look at them as you wish later in the sort of language modeling process.</p>
+</section>
+<section id="save-the-vectors-and-learn-where-to-look" class="level4">
+<h4 class="anchored" data-anchor-id="save-the-vectors-and-learn-where-to-look">Save the vectors and learn where to look</h4>
+<p>So the key observation in the transformer model is <em>let’s save all those vectors, or some representation of those vectors, and then pay attention to them in a way where we have a learnable attention mechanism</em>.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-027.jpg" class="img-fluid figure-img"></p>
+<figcaption>Test loss against parameter count, with the Transformer curves below the one, two, and four-layer LSTMs at every scale. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1449s">0:24:09</a>.</figcaption>
+</figure>
+</div>
+<p>And what they were able to show was that compared to LSTMs of one, two or four layers in red there, the test loss on the y-axis went down considerably using a transformer, and no matter what model scale you looked at. So sort of <em>10 to 100x less compute and 10 times smaller model</em> gave you with a transformer roughly the same quality as you would get with an LSTM that’s much larger.</p>
+</section>
+<section id="self-supervised-learning-there-is-a-lot-of-text-in-the-world" class="level4">
+<h4 class="anchored" data-anchor-id="self-supervised-learning-there-is-a-lot-of-text-in-the-world">Self-supervised learning: there is a lot of text in the world</h4>
+<p>In 2018, I think people really started to take seriously the idea, well, I guess in the word2vec work we were already sort of doing that, but in 2018, really looking at how could you do language modeling at scale with self-supervised data. And just the observation there’s a lot of text in the world.</p>
+<p>And so self-supervised learning on this text can give you almost unlimited amounts of training data where you know the right answer, right? Like you have text and then you hide the next word and you try to guess the next word, and if you guess it correctly that gives you a sort of a one, and if you guess it wrong that gives you a clear error signal that you can propagate into improving the model, so that in such settings you will guess better next time. And so this is really one of the major reasons that these chat and language models have gotten so good.</p>
+</section>
+<section id="autoregressive-against-fill-in-the-blank" class="level4">
+<h4 class="anchored" data-anchor-id="autoregressive-against-fill-in-the-blank">Autoregressive against fill-in-the-blank</h4>
+<p>And so there are two kinds of training objectives that people typically use. One is called autoregressive, where you get to look at the prefix, everything to the left, and try to predict the next word. So “Princeton blank,” you know, that word is a little bit hard to predict. Could be Princeton New Jersey, could be Princeton University. “Princeton University blank.” That one’s hard to predict as well. “Is cold in the blank,” that one’s a little easier to predict. So that’s autoregressive.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-028.jpg" class="img-fluid figure-img"></p>
+<figcaption>The two self-supervised objectives, worked on “Princeton University is cold in the ___” for autoregressive and on a masked sentence for fill-in-the-blank. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1576s">0:26:16</a>.</figcaption>
+</figure>
+</div>
+<p>And then <a href="https://arxiv.org/abs/1810.04805">fill in the blank</a> [7] is where you get to have a training objective where you just hide, you get to look in both directions and you hide some of the words and you try to force the model to guess the missing words that you’ve hidden. And again, you get this nice sophisticated, you know, very, very crisp error signal that you can use to train the model. And you can just train on lots and lots of text, either of the objectives.</p>
+<p>The fill-in-the-blank one tends to be used to build representations that give you a good representation of a bunch of text, but you can’t really use it for a chatbot because you don’t have the things to the right. So you have to sort of end up using mostly autoregressive models for conversational applications, but fill-in-the-blank also has some good uses.</p>
+</section>
+<section id="vision-transformers-against-resnet-152" class="level4">
+<h4 class="anchored" data-anchor-id="vision-transformers-against-resnet-152">Vision Transformers against ResNet-152</h4>
+<p>In 2021 a number of other of my colleagues <a href="https://arxiv.org/abs/2010.11929">applied transformers to computer vision</a> [8]. At that time the sort of state-of-the-art was to use various kinds of convolutional models, which have these kind of local receptive fields, and then you build up and share the parameters among different positions in the image. And instead you can just apply a transformer based model to the same problem.</p>
+<p>And what they found was again you get a much better, you know, if you look at the TPU core days to reach certain levels of accuracy, the TPU core days are much lower and the accuracy is higher compared with say <a href="https://arxiv.org/abs/1512.03385">ResNet</a> [9] 152, which was kind of a good state-of-the-art model at the time.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-029.jpg" class="img-fluid figure-img"></p>
+<figcaption>Vision Transformers, with what the attention mechanism looks at and the benchmark table against ResNet and EfficientNet. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1680s">0:28:00</a>.</figcaption>
+</figure>
+</div>
+<p>And the other nice thing is you can kind of see what the attention mechanism is paying attention to. So it gives you a little bit of model interpretation of like what is it paying attention to in order to make a say a classification prediction that that middle one is an airplane.</p>
+</section>
+<section id="sparse-models-the-part-that-thinks-about-shakespeare-stays-off" class="level4">
+<h4 class="anchored" data-anchor-id="sparse-models-the-part-that-thinks-about-shakespeare-stays-off">Sparse models: the part that thinks about Shakespeare stays off</h4>
+<p>Another area that we have done a bunch of work in, including myself, is in <a href="https://arxiv.org/abs/1701.06538">sparse models</a> [10]. In a dense model you have a bunch of parameters in the model and every inference or every token you activate the entire model in order to make the prediction for that example.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-030.jpg" class="img-fluid figure-img"></p>
+<figcaption>The sparsely-gated mixture-of-experts layer, and the perplexity-against-compute chart the A-or-B choice is read off: (A) about 8x less training compute for the same accuracy, or (B) a better model for the same compute. The slide credits Shazeer et al., ICLR 2017 [10]. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1694s">0:28:14</a>.</figcaption>
+</figure>
+</div>
+<p>And that seems kind of, that’s not how our brains work, right? We have very different pieces of our brains that are useful for different kinds of things. And we activate the right part. So <em>while I’m worried about the garbage truck backing up at my car, some parts of my brain are active and the part that thinks about Shakespearean poetry is not active</em>.</p>
+<p>So with sparse models the idea is we want to have different pieces of the model that are good at different kinds of things, and then be able to automatically learn not just those experts but also learn the routing mechanism to learn which pieces of the model to actually activate for those different examples.</p>
+</section>
+<section id="choice-a-or-choice-b-8-less-training-compute-or-a-better-model" class="level4">
+<h4 class="anchored" data-anchor-id="choice-a-or-choice-b-8-less-training-compute-or-a-better-model">Choice A or choice B: 8× less training compute, or a better model</h4>
+<p>And so it gives the model much larger capacity but still keeps the inference cost relatively low, because you’re only activating a small number of the parameters in the model. And importantly, it gives you an 8x reduction in training compute for the same accuracy. That’s choice A there.</p>
+<p>Or you could choose to spend the same amount on training the model and get a much better model, right? Same amount of compute. That would be choice B there. And often these kinds of things you choose a bit of A and B and end up kind of somewhere there.</p>
+<p>But this has been a really important tool for making our model better and better over time, is having <a href="https://arxiv.org/abs/2101.03961">sparsity</a> [11] be part of the mix. There’s a whole litany of work that both I and my colleagues have done in this general area looking at various aspects of how to do the routing, you know, how many experts do you have.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-031.jpg" class="img-fluid figure-img"></p>
+<figcaption>The sparse-model bibliography, from Shazeer 2017 through DiPaCo in 2024. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1799s">0:29:59</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="pathways-one-python-process-driving-tens-of-thousands-of-chips" class="level4">
+<h4 class="anchored" data-anchor-id="pathways-one-python-process-driving-tens-of-thousands-of-chips">Pathways: one Python process driving tens of thousands of chips</h4>
+<p>Another thing we’ve been working on is building up abstractions for distributed ML computations. So <a href="https://arxiv.org/abs/2203.12533">Pathways</a> [12] is a system we started working on quite a while ago that really wants to abstract away this pile of accelerators underneath your computation and <em>give the researcher the illusion that you just have a giant computer with tens of thousands of chips attached to it</em>, and you can mostly just focus on the machine learning computations you’re trying to express.</p>
+<p>And underneath the covers, Pathways does a bunch of work to manage how to communicate the machine learning computation you’ve expressed amongst all these chips. And so it will, for example, use within one of these pods, it will use the custom TPU interconnect. When you go across the pod boundary in the same data center building, it will use the data center network. When you go across buildings in the same data center campus, it will use the purple network link. And when you go across perhaps widely distributed metro regions, it will use the sort of wide area network links.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-032.jpg" class="img-fluid figure-img"></p>
+<figcaption>Pathways spanning buildings and regions, with the whole training process driven from one Python process. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1891s">0:31:31</a>.</figcaption>
+</figure>
+</div>
+<p>And then when you actually put JAX on top of Pathways, what that means is that we can drive the entire training process from a single Python process on one host. So that Python process says, “Oh great, I have access to these many thousands of TPU chips,” and I can run this computation, and Pathways kind of deals with what happens when different pieces of the system fail and swapping in new parts, new hardware under the covers.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-033.jpg" class="img-fluid figure-img"></p>
+<figcaption>Silent data corruption introduced, alongside the “Cores that don’t count” paper. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1923s">0:32:03</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="h-sdc" class="level4">
+<h4 class="anchored" data-anchor-id="h-sdc">Silent data corruption, sometimes temperature-dependent</h4>
+<p>Another thing that tends to happen when you run at increasingly large scale is sadly not all chips or machines or network cards or cables work as designed. That’s a very sad but true state of the world.</p>
+<p>And in particular, some of them don’t just fail in ways that you can just like detect them immediately and replace them. They sometimes non-deterministically sort of produce incorrect results silently, and sometimes that’s related to dynamic conditions like <em>the temperature of the rack at that particular moment</em>.</p>
+<p>This is really challenging when you’re running independent compute on these things, but it’s really worse when you’re trying to have all these chips perform as a single orchestrated machine learning training computation where everything is synchronous, and this can quickly spread bad results. So like if one of these things flips one of the bits in the exponent field of your gradient, all of a sudden you’ll get 10 to the 20th propagating as a gradient instead of 0.2, and that makes you very, very sad.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-034.jpg" class="img-fluid figure-img"></p>
+<figcaption>A gradient-norm spike that was caused by silent data corruption. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=1998s">0:33:18</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="gradient-norm-spikes-and-replaying-a-step-to-find-out-why" class="level4">
+<h4 class="anchored" data-anchor-id="gradient-norm-spikes-and-replaying-a-step-to-find-out-why">Gradient-norm spikes, and replaying a step to find out why</h4>
+<p>And so we monitor during the training process all kinds of metrics about the health of our model. And in particular, you can look at, for example, the norm of the gradient at every layer of the model and see are you seeing spikes in that. So here’s an example of a spike due to one of these silent data corruption things.</p>
+<p>Now not all spikes are necessarily due to these kinds of machine issues. Here’s another spike. There is no SDC. This is just some particular batch of examples that contain something that caused a very large gradient to occur. And it’s a little hard to discern those things.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/sdc-anomaly.jpg" class="img-fluid figure-img"></p>
+<figcaption>A gradient-norm anomaly with no silent data corruption behind it, which is the case that makes the two hard to tell apart. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2025s">0:33:45</a>.</figcaption>
+</figure>
+</div>
+<p>So one of the ways we do this is <em>we have deterministic replay that we trigger automatically</em>. So if we see a gradient spike, then we will effectively replay that step or the last few steps and see if we get the same answer. And if we get the same answer, we conclude, well, that’s probably okay. That was probably due to the data, not due to hardware errors. But if the hardware errors are causing the issue, then hopefully we get a different answer the next time.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-038.jpg" class="img-fluid figure-img"></p>
+<figcaption>The opposite failure: corruption detected by replay while the gradient norm stayed in its normal range. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2073s">0:34:33</a>.</figcaption>
+</figure>
+</div>
+<p>And you can also have cases where we don’t get a gradient spike but there is actually silent data corruption happening, but it doesn’t cause a very large spike in the gradient, and so that is sort of benign to the model even though we didn’t detect it. So all kinds of things can happen. It’s very fun.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-039.jpg" class="img-fluid figure-img"></p>
+<figcaption>How Pathways handles it, with an SDC checker on the idle chips and a hot spare swapped in for the defective machine. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2096s">0:34:56</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="hot-spares-and-an-sdc-checker-running-on-the-idle-chips" class="level4">
+<h4 class="anchored" data-anchor-id="hot-spares-and-an-sdc-checker-running-on-the-idle-chips">Hot spares, and an SDC checker running on the idle chips</h4>
+<p>The Pathways system is part of the way in which we transparently handle these things. So for example, let’s say these blue pods or slices of pods are currently part of our synchronous training jobs. We have these seven blue things. We have a hot spare in gray, and then we have another hot spare and we’re running an SDC checker. So we have a continuous thing that we’re running even on the idle chips in order to try to weed out bad hardware before we’re actually starting to use it.</p>
+<p>The defective machine causes one of these silent data corruptions. The SDC checker identifies this because we replayed and detected that there was a mismatch in the answers when we ran them twice. And we can pinpoint which pod it is and which chips. We can evict that thing and then use the hot spare to now replace it transparently in the training process and continue on our merry way. Send that thing to our repairs team and hopefully they can figure out in more detail what’s going on.</p>
+</section>
+</section>
+<section id="ch-inference-techniques" class="level3">
+<h3 class="anchored" data-anchor-id="ch-inference-techniques"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2175s">0:36:15 — Chain of thought, distillation, RL, and speculative decoding</a></h3>
+<section id="chain-of-thought-what-your-fourth-grade-math-teacher-told-you" class="level4">
+<h4 class="anchored" data-anchor-id="chain-of-thought-what-your-fourth-grade-math-teacher-told-you">Chain of thought: what your fourth grade math teacher told you</h4>
+<p>Okay. In 2022, thinking longer at inference time became more of a thing. And in particular the observation was that <a href="https://arxiv.org/abs/2201.11903">if you prompt the model to show more of its work</a> [13] on an example problem and then ask it to solve a similar kind of problem.</p>
+<p>You know, if you just asked the answer, please give me the answer, in this example you prompted the model with one example problem and you said the answer is nine. And then you gave it the problem you really care about, and the model will sort of model that behavior and say that the answer is 50, and it actually gets this problem wrong.</p>
+<p>But if you give the model a worked out example, then the model will tend to work out in the same similar way the individual steps to get through the actual problem solving process and be more likely to give you the correct answer, right? Which is kind of nice. <em>This is what your fourth grade math teacher told you, and it’s nice to see that ML models behave the same way.</em></p>
+</section>
+<section id="every-token-is-a-pass-through-the-model-so-answer-length-is-compute" class="level4">
+<h4 class="anchored" data-anchor-id="every-token-is-a-pass-through-the-model-so-answer-length-is-compute">Every token is a pass through the model, so answer length is compute</h4>
+<p>And one way to view this is you’re actually giving the model more compute to think at inference time, right? Because every token it needs to generate is a pass through the model. And so you can think of the length of the answer as some proportional aspect of how much compute is devoted to producing the answer.</p>
+<p>And what you see is that as the model gets to a certain scale, when you encourage it with chain of thought prompting, you get pretty large increases in the solving rate of <a href="https://arxiv.org/abs/2110.14168">GSM8K</a> [14]. Remember, this is like eighth grade math problems like the ones here. John has five rabbits. He gets two more. Maybe that’s not eighth grade, that should be more like fifth grade or second grade. But anyway, these are pretty simple problems, but we were very excited in 2022 about high rates of accuracy improvements on those kinds of problems. Remember that.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/chain-of-thought.jpg" class="img-fluid figure-img"></p>
+<figcaption>Standard prompting against chain-of-thought prompting on GSM8K, where the two only separate past roughly 100 billion parameters. The worked examples on the slide are Shawn’s toys and John’s dogs. The rabbits are Dean’s own paraphrase. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2280s">0:38:00</a>.</figcaption>
+</figure>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Editor’s note.</strong> GSM8K’s “8K” counts problems rather than grades: the dataset holds 8,500 grade-school math word problems, per the paper that introduced it [14]. Dean’s on-the-fly correction toward “fifth grade or second grade” is closer than his first pass at “eighth grade.”</p>
+</div>
+</div>
+</section>
+<section id="distillation-a-probability-distribution-beats-a-single-right-answer" class="level4">
+<h4 class="anchored" data-anchor-id="distillation-a-probability-distribution-beats-a-single-right-answer">Distillation: a probability distribution beats a single right answer</h4>
+<p>Another thing we worked on was <a href="https://arxiv.org/abs/1503.02531">distillation</a> [15], where you can effectively use a powerful teacher model to make a smaller and cheaper student model from the more sophisticated predictions that the larger model can make.</p>
+<p>And in particular, like if you’re doing language modeling, “perform the concerto for blank,” right, so the true answer in this case was violin, and that’s what your training methodology would use as the signal to give you a supervised learning signal.</p>
+<p>But if you have a really good model already, what that teacher model can give you is a probability distribution over the likely next words. So it could be violin, could be piano, could be trumpet. <em>It’s almost certainly not airplane, right? Unless there’s new concertos I don’t know about.</em> And so that gives a really rich gradient signal at the very top of the model that gives it much more information than just did you get violin or not, which is what the sort of non-distilled loss would give you.</p>
+</section>
+<section id="of-the-training-data-nearly-the-full-models-accuracy" class="level4">
+<h4 class="anchored" data-anchor-id="of-the-training-data-nearly-the-full-models-accuracy">3% of the training data, nearly the full model’s accuracy</h4>
+<p>And so this enables you to get a lot of the capability of a very large model into a much smaller model, and also to do so with much less data perhaps.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-041.jpg" class="img-fluid figure-img"></p>
+<figcaption>Distillation, with the concerto example and the speech table where soft targets on 3% of the data reach 57.0% test frame accuracy against the baseline’s 44.5%. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2384s">0:39:44</a>.</figcaption>
+</figure>
+</div>
+<p>So in the initial experiments in the paper, we were looking at a speech recognition problem. And so we had a baseline where we used 100% of the training set and got a training frame accuracy of 63.4% and a test frame accuracy of 58.9%.</p>
+<p>But if you drop the baseline to use just 3% of the training data, then you overfit on that. So you have 67% training frame accuracy but your test frame accuracy plummets to 44.5%. But if you use the soft targets with distillation you get quite a nice training frame accuracy, actually even better than the baseline on the 100% of the training data, with just 3% of the training data, and <em>your test frame accuracy is nearly as good as the full model trained on 100% of the data</em>.</p>
+<p>So this is a really key technique for effectively enabling you to morph any shaped model into another shape model, often a larger model into a smaller model. This is for example what we use in Gemini to go from the Pro-scale model into a Flash-scale model.</p>
+</section>
+<section id="reinforcement-learning-to-elicit-the-behaviors-you-want" class="level4">
+<h4 class="anchored" data-anchor-id="reinforcement-learning-to-elicit-the-behaviors-you-want">Reinforcement learning to elicit the behaviors you want</h4>
+<p>And then in the last four or five years I would say <a href="https://en.wikipedia.org/wiki/Reinforcement_learning">reinforcement learning</a> has become much more important in eliciting the desired properties that these models have.</p>
+<p>And so given a pre-trained model where you’ve just exposed it to a whole bunch of training data of text, that model has a bunch of capabilities in it, but often you want to help steer the capabilities of these models a bit.</p>
+<p>So in particular, you want to maybe encourage behaviors that you want in the way in which the model responds. You might like a certain style of response. You might like to prefer certain length responses for certain kinds of things. You might want safety properties to be put into the model. So don’t engage in these kinds of topics, or say something like this in these scenarios. And you also want to enhance the capabilities by showing the model how to tackle more complex problems.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-042.jpg" class="img-fluid figure-img"></p>
+<figcaption>Where reinforcement learning gets its reward signal, and the open question about non-verifiable domains. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2528s">0:42:08</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="where-the-reward-signal-comes-from" class="level4">
+<h4 class="anchored" data-anchor-id="where-the-reward-signal-comes-from">Where the reward signal comes from</h4>
+<p>And so one of the key questions when you use reinforcement learning is <em>where does the reward signal come from?</em> But these do dramatically improve the model capability in a lot of domains. And the reward signals, turns out, can come from lots of different places.</p>
+<p>So one is you can use <a href="https://arxiv.org/abs/1706.03741">human feedback</a> [16]. You know, do you like A or B as an answer for this kind of question, and have humans evaluate that and give a reward. Or is this a good answer for this question? They can say yes or no. Those kinds of things can be very effective at making the model’s behavior change pretty dramatically with even relatively few examples.</p>
+<p>You can also use reinforcement learning from machine feedback, where you have machine feedback from a different model, so often called a reward model. Maybe you can prompt the reward model saying please say whether you prefer response A or B for question Q, and then you generate two responses from your base model and then you ask the reward model which one do you like better, and that gives you a reward signal.</p>
+</section>
+<section id="verifiable-domains-and-the-open-question-of-the-rest" class="level4">
+<h4 class="anchored" data-anchor-id="verifiable-domains-and-the-open-question-of-the-rest">Verifiable domains, and the open question of the rest</h4>
+<p>You can also do RL in verifiable domains like math or coding, and you can for example generate proofs or solutions to be checked with a theorem prover and give a positive reward when the model produces a correct proof for the problem you’re trying to solve. You can generate code for coding things where you now have a reward for does the code even compile? Does the code compile and pass the unit test? You get more reward.</p>
+<p>So these really help a lot in both math and coding but also in kind of adjacent areas like more sophisticated reasoning and planning in adjacent domains.</p>
+<p>I think there’s a nice open research question of <em>how do you improve the effectiveness of RL in non-verifiable domains, and where do you get interesting reward signals from?</em> Those are things that I think are pretty open and ripe for lots of cool approaches.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-043.jpg" class="img-fluid figure-img"></p>
+<figcaption>Speculative decoding’s three claims: 2x to 3x faster, no architecture change or retraining, and an identical output distribution. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2639s">0:43:59</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="speculative-decoding-decoding-from-a-large-model-is-memory-bound" class="level4">
+<h4 class="anchored" data-anchor-id="speculative-decoding-decoding-from-a-large-model-is-memory-bound">Speculative decoding: decoding from a large model is memory bound</h4>
+<p>In 2023, a few of my colleagues came up with this really nice method for <a href="https://arxiv.org/abs/2211.17192">making inference faster</a> [17].</p>
+<p>One of the problems with the autoregressive decoding is, in order to have the attention mechanism have the state it needs when you’re prefilling. So if you have an input of a thousand tokens, that you can do completely in parallel. But now if you’re going to try to start generating a response, you generate the first token, and then when you finish generating the first token, you can now look at that token and be able to now generate the next token, because you need the attention state for that previous token in order to actually generate the next token.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-046.jpg" class="img-fluid figure-img"></p>
+<figcaption>The two observations it rests on, that decoding is memory bound and that some tokens are far easier to predict than the square root of seven. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2705s">0:45:05</a>.</figcaption>
+</figure>
+</div>
+<p>So it’s a very sequential process, a little bit like the problem we had with LSTMs where you have this sequential decoding phase. And so speculative decoding is a nice approach, and you change only the decoding algorithm. <em>You don’t have to retrain your model. You have no architecture changes, no retraining, and you’re guaranteed to have the identical output distribution.</em></p>
+<p>Okay. So the observation is decoding from very large transformer models is memory bound. So the hardware can do way more floating-point operations than it can transfer all the weights of your model into the multiplier unit in order to do the single token of decoding you want to be able to do.</p>
+</section>
+<section id="some-tokens-are-easy-a-drafter-plus-a-parallel-check" class="level4">
+<h4 class="anchored" data-anchor-id="some-tokens-are-easy-a-drafter-plus-a-parallel-check">Some tokens are easy: a drafter plus a parallel check</h4>
+<p>Observation two is that some tokens are a lot easier to predict than others. So, “can you tell me what the square root of seven is? Sure, the square root of seven is blank.” Right? That last token is really, really hard for the model to predict. But a lot of the other ones are very easy for the model to predict. Like after the question mark, it can probably make a prediction of four or five tokens and get some of them correct. In particular, some prefix of them correct.</p>
+<p>And so the idea is you have a fast drafter model where you don’t need the full sophistication of a much larger model, and you can quickly generate the next say eight tokens and then have the target large model check them in parallel. This effectively gives you a batch size now of, instead of one, a batch size of eight. And <em>if you accept on average four and a half of those eight tokens, then you’ve made your compute efficiency much, much better</em>.</p>
+<p>So here’s an animation of how this works. If you just try decoding with a large slow model at the top, you’re decoding one token at a time. And instead if you have a small model at the bottom that’s drafting sequences of four tokens at a time, and then the larger model — I’m going to run that again. Okay. So now watch the bottom thing. The drafter is generating the yellow things, and then the upper model is accepting the prefix of them that is correct according to what it wanted to generate based on its own probability distribution.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/speculative-decoding.jpg" class="img-fluid figure-img"></p>
+<figcaption>The animation mid-run. The drafter has proposed “is the change in color. The leaves start”, and the large model has accepted the green prefix and rejected the orange tail. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2810s">0:46:50</a>.</figcaption>
+</figure>
+</div>
+<p>So this actually helps quite a lot in improving the efficiency of inference in these models.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-048.jpg" class="img-fluid figure-img"></p>
+<figcaption>The summary matrix, from inference algorithms down to the TPU generations. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2829s">0:47:09</a>.</figcaption>
+</figure>
+</div>
+<p>Okay. So a whole bunch of things have come together in order to actually make these modern models work well. You know, lots of innovations in the inference algorithms, in the training algorithms, model architecture, software.</p>
+</section>
+</section>
+<section id="ch-gemini" class="level3">
+<h3 class="anchored" data-anchor-id="ch-gemini"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2840s">0:47:20 — Gemini</a></h3>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-049.jpg" class="img-fluid figure-img"></p>
+<figcaption>Section title. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2854s">0:47:34</a>.</figcaption>
+</figure>
+</div>
+<section id="this-is-stupid-why-dont-we-all-work-together" class="level4">
+<h4 class="anchored" data-anchor-id="this-is-stupid-why-dont-we-all-work-together">“This is stupid, why don’t we all work together”</h4>
+<p>Okay. So now we get to <a href="https://deepmind.google/models/gemini/">Gemini</a> [18]. So the sort of origin of Gemini was we actually had multiple separate groups at Google looking at language models, looking at sort of creating multimodal models of various kinds, and <em>I sort of said this is stupid, why don’t we all work together</em> and have, instead of fragmenting our compute and our ideas, let’s all work together and build a single kind of model that is multimodal that has a lot of compute investment behind a more singular effort.</p>
+<p>And that’s the sort of origin of the Gemini project. And so we started this in February 2023 with a bunch of collaborators from Google DeepMind, Google Research and the rest of Google. And our goal is really train the world’s best multimodal models and use them in all the places we can.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-050.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Gemini project: started February 2023, with the release timeline through Gemini 3 in November 2025. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2895s">0:48:15</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-051.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the Gemini report, showing interleaved text, image, audio, and video in one input sequence. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2924s">0:48:44</a>.</figcaption>
+</figure>
+</div>
+<p>And so we’ve produced in that time a number of different sort of iterations of Gemini generations, 1, 1.5, 2, 2.5, and most recently 3.</p>
+</section>
+<section id="multimodal-from-the-start-including-non-human-modalities" class="level4">
+<h4 class="anchored" data-anchor-id="multimodal-from-the-start-including-non-human-modalities">Multimodal from the start, including non-human modalities</h4>
+<p>And one of the things we wanted was for the model to be multimodal from the start. In particular, we think it’s really important that it deal with language, with audio, with images, and with video, as well as other non-human modalities like, in more recent Gemini versions we’ve been including some small amounts of say LiDAR data or robotic control data, because <em>you want to at least expose the model to the idea that these kinds of data exist</em>.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-052.jpg" class="img-fluid figure-img"></p>
+<figcaption>Gemini as a list of everything already described in the talk. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=2987s">0:49:47</a>.</figcaption>
+</figure>
+</div>
+<p>And then initially in the early Gemini versions we had an image decoder and a text decoder. More recently we’ve added audio decoders and video decoders, so that we have a single unified model that can reason over input sequences that are mixes of any of these modalities. So you can give it like an image and some text that describes the image or what you want the model to pay attention to, and maybe you have video and some audio, and you can also produce any of those things as output in an interleaved way if you want.</p>
+</section>
+<section id="everything-in-the-talk-so-far-in-one-system" class="level4">
+<h4 class="anchored" data-anchor-id="everything-in-the-talk-so-far-in-one-system">Everything in the talk so far, in one system</h4>
+<p>And as I said, we’re basically building on lots of these different advances. So we use TPUs, we use model parallel and data parallel training and cross data center training. We have fast and automated detection of the SDC errors. We use Pathways, we use JAX, we use distributed representation of words similar to word2vec or the sequence to sequence work.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-053.jpg" class="img-fluid figure-img"></p>
+<figcaption>Gemini 2.0, announced by Dean. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3084s">0:51:24</a>.</figcaption>
+</figure>
+</div>
+<p>We use transformers. Our models are sparse typically. We distill from larger models into smaller models. We use chain of thought decoding and more sophisticated versions of that. Speculative decoding is really important. We use SFT [supervised fine-tuning] and various kinds of RL, and a bunch of other things I didn’t have time to talk about.</p>
+</section>
+<section id="long-context-crisp-input-against-muddled-parameters" class="level4">
+<h4 class="anchored" data-anchor-id="long-context-crisp-input-against-muddled-parameters">Long context: crisp input against muddled parameters</h4>
+<p>One of the things we’ve been working on for a while is making our <a href="https://arxiv.org/abs/2403.05530">context length</a> [19] large, because we think the information in the context window for the model is really useful.</p>
+<p>You know, unlike tokens in the training data, where you’ve sort of taken trillions of tokens of training data and stirred them together into hundreds of billions of parameters but it’s all a little bit muddled and fuzzy, <em>the information in the context window of the model, the input that you give it, is very crisp because you haven’t mixed it with anything else</em>.</p>
+<p>It’s sort of like I see these 900 pages of text you gave me and I can like look at different parts of it and summarize and combine and pull out little pieces of it when I’m decoding. And so extending the context window to very large lengths has been something we’ve been working on and we think is important.</p>
+</section>
+<section id="the-pro-and-flash-ladder-this-generations-flash-beats-last-generations-pro" class="level4">
+<h4 class="anchored" data-anchor-id="the-pro-and-flash-ladder-this-generations-flash-beats-last-generations-pro">The Pro and Flash ladder: this generation’s Flash beats last generation’s Pro</h4>
+<p>One of the things we’ve tried to keep up with in every release of Gemini since the earliest ones is that we have different scales of models. We have a Pro-scale model which is the highest quality model. And then we have a Flash-scale model that is ideally as close to that Pro-scale model as we can get it.</p>
+<p>And in particular, we also want <em>that Flash-scale model to be better than the previous generation’s Pro model</em>, right? And so we’ve been able to keep that up for three, four generations now, which we’re pretty happy with. Because it means that the highest end thing that is perhaps slower and more expensive for a lot of use cases suddenly becomes more affordable six months from now, because it now has that capability in the Flash-scale model.</p>
+<p>Gemini 2.5 Pro we released in March I guess, with quite good results.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-054.jpg" class="img-fluid figure-img"></p>
+<figcaption>Gemini 2.5 Pro at number one on the Arena leaderboard in March 2025, with what was then the largest score jump. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3136s">0:52:16</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="h-imo" class="level4">
+<h4 class="anchored" data-anchor-id="h-imo">A gold medal at the IMO</h4>
+<p>We’ve also been working on mathematical problem solving. And in July of last year we competed in the <a href="https://www.imo-official.org/">International Mathematical Olympiad</a>, the IMO, and <em>we got five out of six problems correct, which is a gold medal score</em>. We were quite happy with that.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-055.jpg" class="img-fluid figure-img"></p>
+<figcaption>The IMO result: five of six problems, 35 of 42 points, inside the 4.5-hour limit, quoted from the IMO president. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3146s">0:52:26</a>.</figcaption>
+</figure>
+</div>
+<p>And we did it, we competed the previous year with a more sophisticated kind of jury-rigged mathematically specialized model that used <a href="https://lean-lang.org/">Lean</a> and theorem provers and various things like that.</p>
+<p>For this year we used just an out-of-the-box Gemini Pro-scale model with a high inference thinking time budget in order to tackle these problems. So we were pretty happy that we didn’t have the sort of, and we also had in the previous year we had a different model for geometry problems and things like that. So we were happy to have a single general purpose model that is the same one we offered to users was able to solve and get a gold medal at the IMO.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Editor’s note.</strong> <a href="https://deepmind.google/discover/blog/advanced-version-of-gemini-with-deep-think-officially-achieves-gold-medal-standard-at-the-international-mathematical-olympiad/">Google DeepMind’s announcement</a> describes a more specialized setup than “an out-of-the-box Gemini Pro-scale model with a high inference thinking time budget.” The IMO 2025 result came from an advanced version of Gemini Deep Think, a reasoning mode that explores several solution paths in parallel. That Deep Think version was further trained “on novel reinforcement learning techniques that can leverage more multi-step reasoning, problem-solving and theorem-proving data.” It was also given access to a corpus of high-quality mathematics solutions and IMO-specific hints in its instructions. The score was 35 of 42 points across five of six problems, inside the 4.5-hour limit. Dean’s contrast with the prior year holds: IMO 2024’s silver medal came from AlphaProof and AlphaGeometry 2, which needed problems hand-translated into Lean and took two to three days of computation.</p>
+</div>
+</div>
+</section>
+<section id="beyond-gsm8k-bonza-functions" class="level4">
+<h4 class="anchored" data-anchor-id="beyond-gsm8k-bonza-functions">Beyond GSM8K: bonza functions</h4>
+<p>Just to give you a sense of how far we’ve come in mathematics. Remember back to Fred had five rabbits and then he got two more. Okay, so this is one of the IMO problems. And you can see all the five correct solutions of the problems we did there. But this is one of the problems.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-056.jpg" class="img-fluid figure-img"></p>
+<figcaption>The bonza-function proof from Problem 3, with the lemma, the construction, and the bound Dean describes. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3253s">0:54:13</a>.</figcaption>
+</figure>
+</div>
+<p>And you can see this is sort of fairly sophisticated mathematical style writing and formatting of proofs and so on. And we established an upper bound. We had another lemma. We constructed and made a lower bound. And then we proved that f of n is less than or equal to 4n for all bonza functions, which was part of the introduction of the problem. So <em>like this is now quite a bit beyond GSM8K</em>, I would say. I mean it’s not research level mathematics yet, but you can see.</p>
+</section>
+<section id="gemini-3-and-what-an-elo-score-on-lmarena-measures" class="level4">
+<h4 class="anchored" data-anchor-id="gemini-3-and-what-an-elo-score-on-lmarena-measures">Gemini 3, and what an Elo score on LMArena measures</h4>
+<p>And then our Gemini 3 model release happened in November of this year, where we were pretty happy with a lot of the benchmark results.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-057.jpg" class="img-fluid figure-img"></p>
+<figcaption>Gemini 3 Pro against Gemini 2.5 Pro, Claude Sonnet 4.5, and GPT-5.1 across the benchmark set. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3283s">0:54:43</a>.</figcaption>
+</figure>
+</div>
+<p>But also we were happy with where it landed in one of the ways that you evaluate these models in the wild, which is you can use this setup called <a href="https://lmarena.ai/">LMArena</a> where people see responses from two anonymized models and then they say which one is better, and from lots of pairwise for their particular prompt, right, like people can go say can you please help me solve this mathematical problem, or can you help me produce a recipe for my French onion soup or something.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-058.jpg" class="img-fluid figure-img"></p>
+<figcaption>Gemini 3 Pro’s Arena results across categories. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3296s">0:54:56</a>.</figcaption>
+</figure>
+</div>
+<p>And then people grade A or B, which is better, <em>like going to the ophthalmologist</em>. And through a lot of those evaluations you can get a sense of the relative strength of different models, and that’s where you get an <a href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo</a> score, a little bit like a chess ranking.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Editor’s note.</strong> Gemini 3 Pro shipped on November 18, 2025, about three months before this February 2026 talk, so “November of this year” means the preceding November.</p>
+</div>
+</div>
+</section>
+<section id="search-ai-mode-the-model-generates-the-interface" class="level4">
+<h4 class="anchored" data-anchor-id="search-ai-mode-the-model-generates-the-interface">Search AI Mode: the model generates the interface</h4>
+<p>So one of the things we’ve been working on is <a href="https://blog.google/products/search/ai-mode-search/">search and AI mode</a>. We actually want these models to be able to produce the UI that the user will see.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-059.jpg" class="img-fluid figure-img"></p>
+<figcaption>The generative-UI demo Dean fought the Wi-Fi to load. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3366s">0:56:06</a>.</figcaption>
+</figure>
+</div>
+<p>I’m not sure this is going to work. Am I on the Wi-Fi? I might not be on the Wi-Fi. This is going to make me sad. All right, let’s enable the hotspot. That’s probably easier than logging into. One moment. Sorry. Okay. Come on. Oh, there we go. Okay, great. Go there. Go there. Yay. Thank you, T-Mobile. Okay. [laughter]</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-063.jpg" class="img-fluid figure-img"></p>
+<figcaption>The demo running: a research page on RNA transcription alongside AI Mode. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3404s">0:56:44</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-064.jpg" class="img-fluid figure-img"></p>
+<figcaption>The query typed into AI Mode: “show me how rna polymerase works, what are the stages of”. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3411s">0:56:51</a>.</figcaption>
+</figure>
+</div>
+<p>All right. So this is basically they put in a sort of researchy textbooky thing about some biological thing, and now they said show me how this works. And what it’s done is created an interactive visualization of the material there, and you can use sliders to control the visualization and get a sense of the topics you’re trying to learn about, which is pretty nice. You can see how this would be really useful for educational things.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-065.jpg" class="img-fluid figure-img"></p>
+<figcaption>What the model generated in response, an interactive visualization with its own controls. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3423s">0:57:03</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="handwritten-recipe-cards-to-a-bilingual-website" class="level4">
+<h4 class="anchored" data-anchor-id="handwritten-recipe-cards-to-a-bilingual-website">Handwritten recipe cards to a bilingual website</h4>
+<p>Here’s another example. What this couple has is a bunch of recipes in English and Korean in handwritten pieces of their. Oh, I will actually since we have closed.</p>
+<p>And so they basically are taking things like that. They’re asking Gemini to take all those recipes and say translate and transcribe them in English and Korean. And then it has, any Korean speakers can maybe validate the English translation. Okay, so now they’re going to say, “Please create me a bilingual website using these recipes.” Okay, so there we go. And then we added some automatically generated images, and this is a website that was created from that.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-066.jpg" class="img-fluid figure-img"></p>
+<figcaption>The handwritten Korean and English recipes, turned into a bilingual website. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3509s">0:58:29</a>.</figcaption>
+</figure>
+</div>
+<p>So I think one of the things about this is that this kind of sophisticated model will enable a lot of people who maybe don’t have the skills to write software to get things that they want in software form. So <em>I think we’re going to have a lot more software in the world than we have now</em>. Just kind of a cute example, but I think it’s good to pay attention to what these models can do and the sophistication level of the coding and problem solving they can do.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-067.jpg" class="img-fluid figure-img"></p>
+<figcaption>Reactions to Gemini 3 Pro, including a 3D LEGO editor built in one shot. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3530s">0:58:50</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-068.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Nano Banana Pro launch, built on Gemini 3. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3534s">0:58:54</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-069.jpg" class="img-fluid figure-img"></p>
+<figcaption>A blueprint turned into a realistic 3D rendering of the house. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3559s">0:59:19</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="nano-banana-pro-and-thinking-in-pixel-space" class="level4">
+<h4 class="anchored" data-anchor-id="nano-banana-pro-and-thinking-in-pixel-space">Nano Banana Pro, and thinking in pixel space</h4>
+<p>I’ll skip that. Generative models for images and for video have also been improving quite rapidly I would say. So we had an initial release of something called <a href="https://blog.google/technology/ai/nano-banana-pro/">Nano Banana</a>, and then we made a much more computationally expensive but higher quality version called Nano Banana Pro.</p>
+<p>And so as examples of things, you can start with that blueprint and say please make a realistic 3D image from the blueprint. You can see how this would be quite useful for visualizing different architectural things. You can say please annotate the original transformer architectural diagram with the important things that happen in different parts of the diagram. You can see if you’re reading a research paper, getting a visualization of that could be pretty useful.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-070.jpg" class="img-fluid figure-img"></p>
+<figcaption>The original Transformer architecture diagram, annotated by the model. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3573s">0:59:33</a>.</figcaption>
+</figure>
+</div>
+<p>You can actually <em>view thinking in pixel space</em>. So here the input image is this sort of ball and ramp problem, and tell me which bucket the ball lands in, use images to solve it step by step. Right? So you can now actually see the model will generate a series of images of its reasoning.</p>
+<p>So it goes from there. Step one, ball rolls there. Step two, the ball rolls on to three. And then step three, the ball rolls on to five. And then step four, it ends up in bucket B. And so you can sort of see how your own problem solving probably makes these mental images of what’s going to happen. And the model is able to do that and actually render that.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/pixel-space.jpg" class="img-fluid figure-img"></p>
+<figcaption>The ball-and-ramp problem solved in four rendered images, ending in bucket B. The slide is a screenshot of a post by <a href="https://dblp.org/pid/125/4062.html">Mostafa Dehghani</a>, whom Dean does not name aloud. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3630s">1:00:30</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-072.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Wright Flyer annotated with its stats, including the 605-pound weight Dean remarks on. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3637s">1:00:37</a>.</figcaption>
+</figure>
+</div>
+<p>This is like an example. You can annotate Orville Wright’s airplane with different stats. I guess 605 pounds. That’s interesting. Didn’t realize it was quite so heavy.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-073.jpg" class="img-fluid figure-img"></p>
+<figcaption>The solar system chart, each planet annotated with one fact. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3652s">1:00:52</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-074.jpg" class="img-fluid figure-img"></p>
+<figcaption>The replies pointing out that Pluto was missing. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3659s">1:00:59</a>.</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-075.jpg" class="img-fluid figure-img"></p>
+<figcaption>Dean’s answer, re-rendered at 21:9 with Pluto added and the demoted-planet joke the model wrote. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3667s">1:01:07</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="wheres-pluto" class="level4">
+<h4 class="anchored" data-anchor-id="wheres-pluto">Where’s Pluto?</h4>
+<p>You know, I tweeted this out as an example of what it can do when we initially launched Nano Banana Pro, and a bunch of people got very sad. [laughter] So, no Pluto, where’s Pluto? So, I said, “Okay, okay. <em>I too am a child of the nine planet era.</em> Make this image 2:19 to add Pluto and add a humorous comment.” So it decided to add the quote “former planet, got demoted to dwarf planet status, still grumpy about it.” And he said perfect, we are so back.</p>
+</section>
+</section>
+<section id="ch-organizing" class="level3">
+<h3 class="anchored" data-anchor-id="ch-organizing"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3680s">1:01:20 — Organizing a thousand-author effort</a></h3>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-076.jpg" class="img-fluid figure-img"></p>
+<figcaption>Section title. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3693s">1:01:33</a>.</figcaption>
+</figure>
+</div>
+<section id="listing-the-authors-takes-several-pages" class="level4">
+<h4 class="anchored" data-anchor-id="listing-the-authors-takes-several-pages">Listing the authors takes several pages</h4>
+<p>Okay, I want to touch a little bit on how we organize a big effort like Gemini. And in particular, this is a large effort. <em>I’m now a co-author on a paper with more than a thousand</em> — our reports are long. Even just listing the authors takes quite a lot of pages. We always try to spell something funny in the first few words of the author names.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-077.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Gemini author list, which runs to several pages. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3712s">1:01:52</a>.</figcaption>
+</figure>
+</div>
+<p>So when you have that many people trying to work together on something, you need a little bit of structure. So we have overall leads, we have program management and product management that help kind of assess, help us be organized, but also help us figure out from a product standpoint, what do we want our next generation models to do?</p>
+</section>
+<section id="the-sub-areas-from-on-device-to-longer-term-research" class="level4">
+<h4 class="anchored" data-anchor-id="the-sub-areas-from-on-device-to-longer-term-research">The sub-areas, from on-device to longer-term research</h4>
+<p>And then we have a bunch of different sub areas that are really, really critical to making Gemini work well. So one is model development, so in terms of both pre-training and post-training and RL, things like that. We have a version of Gemini that runs on device on our <a href="https://store.google.com/category/phones">Pixel</a> phones. So that has somewhat different characteristics and somewhat different aspects of training data and capabilities needed.</p>
+<p>In terms of capabilities, we have a bunch of areas like safety and vision, audio, code, agents, internationalization that we care a lot about.</p>
+<p>And then core areas like what data should we train on? How can we get the highest quality data we can for the token budget we have for training our next model? How do we know if we’re doing a good job across lots of different capabilities? Infrastructure, which is like how do we make the training process work well? How do we make the serving infrastructure work well? The codebase. And then longer term research that is meant to feed in good ideas for Gemini N plus 2 or Gemini N plus 3 that will intersect at the right time.</p>
+</section>
+<section id="three-hours-a-day-that-work-for-everyone" class="level4">
+<h4 class="anchored" data-anchor-id="three-hours-a-day-that-work-for-everyone">Three hours a day that work for everyone</h4>
+<p>And we have people spread out all over the world. So we have about a third of the people in the Bay Area, a third in London and a third in many other places. So, New York City, Paris, Boston, Zurich, Bangalore.</p>
+<p><em>Time zones are super annoying. Not much we can do about it.</em> But the golden hours between California, West Coast, and London, Europe, there’s about three hours a day that are not too terrible for anyone. And so that’s kind of nice. But that does mean you have to have asynchronous ways of working that work well.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-078.jpg" class="img-fluid figure-img"></p>
+<figcaption>How the effort is organized: Google Chat spaces, more than 5,000 numbered RFCs, and leaderboards against common baselines. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3857s">1:04:17</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="internal-requests-for-comment" class="level4">
+<h4 class="anchored" data-anchor-id="internal-requests-for-comment">5,000 internal requests for comment</h4>
+<p>And so there’s lots and lots of large and small discussion groups, chat rooms, Google chat spaces. So I’m in 200 of these.</p>
+<p>We have a request for comment kind of internal document or tech reporty like thing, which is a semiformal way of getting feedback. You know, knowing what other people are working on, jotting down an idea.</p>
+<p>They range in sophistication from early stage idea I’m thinking about, I want comments on, to I’ve done an exhaustive exploration of 10 different variants of this idea, which one should we put in the next version of Gemini. <em>They’re numbered sequentially and I just looked, we now have more than 5,000 of these.</em> So there’s quite a lot of internal requests for comments that are ranging in complexity from a single page thing to something that would be a tech report or a paper.</p>
+</section>
+<section id="leaderboards-common-baselines-and-promoting-what-survives" class="level4">
+<h4 class="anchored" data-anchor-id="leaderboards-common-baselines-and-promoting-what-survives">Leaderboards, common baselines, and promoting what survives</h4>
+<p>And then leaderboards and common baselines enable us to make data-driven decisions about how do we improve the model. So we have lots of rounds of experimentation. You do many, many more experiments at small scale and only progress things that seem promising to medium and large scale. And every so often we incorporate say successful experiments demonstrated at larger scale into a new candidate baseline and then we repeat. And that seems to have worked pretty well.</p>
+</section>
+</section>
+<section id="ch-forward-looking" class="level3">
+<h3 class="anchored" data-anchor-id="ch-forward-looking"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3930s">1:05:30 — Where this is headed</a></h3>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-079.jpg" class="img-fluid figure-img"></p>
+<figcaption>The agent-collaboration questions, including what HCI paradigm suits managing 50 virtual assistants. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3941s">1:05:41</a>.</figcaption>
+</figure>
+</div>
+<section id="managing-a-team-of-50-virtual-assistants" class="level4">
+<h4 class="anchored" data-anchor-id="managing-a-team-of-50-virtual-assistants">Managing a team of 50 virtual assistants</h4>
+<p>Sorry, a few forward-looking thoughts. I mean I think one area that’s going to be really important is how do humans and AI agents collaborate to get stuff done, right? Like currently a lot of the uses of these models are you have a single person sitting down with an interactive chatbot interface doing stuff.</p>
+<p>But in the future it seems like more work is going to happen where the human is coordinating the activities of a dozen or hundred AI agents doing stuff on their behalf, where the human has probably weakly specified what it is they want. <em>How can we give the right HCI [human-computer interaction] paradigm for managing a team of 50 of these virtual assistants?</em> How can the agents themselves cooperate to accomplish things? What will this enable? I think these are all pretty interesting directions.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-080.jpg" class="img-fluid figure-img"></p>
+<figcaption>The trillion-token proposal: hybrid systems with learned retrieval over large corpora, plus the uses he wants it for. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=3995s">1:06:35</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="a-trillion-tokens-instead-of-a-million" class="level4">
+<h4 class="anchored" data-anchor-id="a-trillion-tokens-instead-of-a-million">A trillion tokens instead of a million</h4>
+<p>I think the million tokens of context is quite useful, and that gives you a thousand pages of text or hours of video or whatever. But it seems like it’d be even more useful to be able to <em>attend to a trillion tokens of stuff rather than a million</em>.</p>
+<p>And so I think hybrid systems with learned retrieval algorithms over large corpora, and then maybe lightweight models that can be used to assess how relevant are these 30,000 documents I retrieved to the thing I’m trying to do, and then put the maybe hundred things you actually think are really, really important into the context window. And maybe precomputation from a computer systems perspective to make this all efficient and fast.</p>
+<p>I think there’d be a lot of uses for this. Personalized Gemini. I’d love it if I could attend to all of my email state and photos and so on, with my permission of course. Web search, multimodal search and retrieval, like searching all the YouTube videos. Coding agents, like every coding agent at Google, it’d be nice if it attended to the whole Google codebase for every Google developer.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-081.jpg" class="img-fluid figure-img"></p>
+<figcaption>The inference-efficiency argument, ending on AI-designed chips and pointing at his December 2024 chip-design talk. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=4063s">1:07:43</a>.</figcaption>
+</figure>
+</div>
+</section>
+<section id="inference-efficiency-and-using-ai-to-design-the-chips" class="level4">
+<h4 class="anchored" data-anchor-id="inference-efficiency-and-using-ai-to-design-the-chips">Inference efficiency, and using AI to design the chips</h4>
+<p>And then forward-looking, I think inference efficiency is going to be really critical, right? Like the training cost of these models is very large and you need a lot of chips. But going forward more and more inference is going to happen, and more and more agents using these things in sophisticated ways and interacting with other agents that themselves are doing inference.</p>
+<p>So specialized hardware designed purely for inference is going to be important. Again, I think model and algorithmic improvements for efficient inference are going to be important. Low latency for these inference cases is a huge plus. <em>It’s just much more enjoyable to use something that responds in 100 milliseconds than 5 seconds.</em></p>
+<p>And I believe in the future that <a href="https://www.nature.com/articles/s41586-021-03544-w">AI applied to automating chip design</a> [20] is going to be one of the ways in which we get much more efficient inference hardware. I have a whole talk on this, but essentially it’s use learning as much as possible, and RL.</p>
+</section>
+</section>
+<section id="ch-shaping-ai" class="level3">
+<h3 class="anchored" data-anchor-id="ch-shaping-ai"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=4115s">1:08:35 — Shaping AI, and conclusion</a></h3>
+<section id="seven-domains-and-a-paper-with-its-own-website" class="level4">
+<h4 class="anchored" data-anchor-id="seven-domains-and-a-paper-with-its-own-website">Seven domains, and a paper with its own website</h4>
+<p>Okay. I have, sorry I’m running over, I have two more slides here. One of the other things that we did in the last couple years is we got together a group of co-authors thinking about <a href="https://arxiv.org/abs/2412.02730">what are the impacts of AI in many different domains of the world</a> [21], not just computer science. And we wanted to look at what these impacts might be, both positive and negative.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-082.jpg" class="img-fluid figure-img"></p>
+<figcaption>The Shaping AI paper in its three forms: the arXiv preprint, Patterson’s Economist editorial, and the CACM cover article. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=4183s">1:09:43</a>.</figcaption>
+</figure>
+</div>
+<p>And so we identified seven domains we thought would be pretty dramatically impacted by AI. So employment, education, healthcare, misinformation, media, entertainment, governance and national security, and AI for science. And then we went out and we interviewed a bunch of domain experts in these areas, and in particular tried to find people we thought would have interesting perspectives on one or more of these domain areas. And then we wrote up what we learned from chatting with the domain experts as well as our own thoughts.</p>
+<p>And so we produced a long arXiv paper which <em>not that many people have read</em>. So we have a shorter version in <a href="https://cacm.acm.org/">CACM</a>, and <a href="https://people.eecs.berkeley.edu/~pattrsn/">Dave Patterson</a>, one of the co-authors, wrote a nice one-page editorial on the Economist. And this is all available on <a href="https://shapingai.com/">shapingai.com</a>. I think this is a pretty interesting paper. I think it has some good insights into what will the impact of AI beyond say employment and technology transitions. As one example, <em>it’s the only paper I have with its own website</em>.</p>
+</section>
+<section id="conclusion" class="level4">
+<h4 class="anchored" data-anchor-id="conclusion">Conclusion</h4>
+<p>Okay. In conclusion, I think AI models like Gemini and products built with them are becoming really important and powerful tools for the things we try to do every day. Further research and innovation is going to continue this trend. It’s going to have a dramatic impact in many of the areas that I just mentioned in the Shaping AI paper, healthcare, education, science, all kinds of things.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/slide-083.jpg" class="img-fluid figure-img"></p>
+<figcaption>The closing slide. Slide at <a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=4243s">1:10:43</a>.</figcaption>
+</figure>
+</div>
+<p>It potentially makes really deep expertise, like these models are really good in some areas, and it makes that available to many people all over the world, which is a pretty powerful capability. And done well, I think our AI assisted future is going to be really bright. All right.</p>
+</section>
+</section>
+<section id="ch-qa" class="level3">
+<h3 class="anchored" data-anchor-id="ch-qa"><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0&amp;t=4285s">1:11:25 — Audience Q&amp;A</a></h3>
+<section id="whats-your-biggest-fear-about-ai" class="level4">
+<h4 class="anchored" data-anchor-id="whats-your-biggest-fear-about-ai">“What’s your biggest fear about AI?”</h4>
+<p><strong>Audience member:</strong> What’s your biggest fear about AI?</p>
+<p><strong>Jeff Dean:</strong> My biggest fear of AI? I mean, I think there’s a whole range of views on safety of AI systems and so on. You know, <em>I’m sort of of the view that those are a little overblown</em>. I think like careful engineering of what we allow AI systems to do will enable us to have safe deployment of these systems even though they are quite capable.</p>
+<p>You know, I think misinformation is one that I’m worried about in the nearer term, because that seems like now we can create incredibly realistic video and audio things that are hard to distinguish even for super sophisticated people and with a lot of time to look at them. So that seems like one area that I think will be a worry.</p>
+<p>And I think also just how do we manage the impact of AI being able to do things that previously it wasn’t able to do, and how do we make sure that people are prepared for those transitions and can learn to use these new tools and can be more productive and more effective using these tools, than what could happen, which is all of a sudden people suddenly can’t do that because it’s been.</p>
+</section>
+<section id="hallucinations-at-the-limits-of-a-long-context" class="level4">
+<h4 class="anchored" data-anchor-id="hallucinations-at-the-limits-of-a-long-context">Hallucinations at the limits of a long context</h4>
+<p><strong>Joey:</strong> I’m Joey. I’m a senior in computer science. I had a question about hallucinations and specifically like long behavior, especially as we’re getting more workflows and like longer contexts. We know that like even though past models claim to have one million context window, at the limits of that 1 million context window the retention and like quality of responses, beyond simply adding search into the language model, what are other ways that Gemini has been prioritizing decreasing especially more like critical applications like.</p>
+<p><strong>Jeff Dean:</strong> Yeah, I mean I would say one of the key techniques is instead of just generating a single answer, having multiple rollouts of potential answers and then having the model itself look at those rollouts and assess which one it thinks is most, or which pieces of them it thinks are most likely correct.</p>
+<p>That essentially is using much more inference time compute, or chain of thought style thinking. Those kinds of things can definitely decrease the rate of hallucinations. I mean that’s sort of the kind of approach we use in some of the IMO work, where <em>you really can’t afford to hallucinate because you need to prove this problem, one of these six problems, correct</em>.</p>
+<p>And so that has been quite a good tool to rely on. But that also brings back the question of inference efficiency, because you’d really like for every answer to produce 16 answers and look at them and decide which ones you want to throw out and which ones you want to keep.</p>
+</section>
+<section id="llms-against-the-emerging-world-models" class="level4">
+<h4 class="anchored" data-anchor-id="llms-against-the-emerging-world-models">LLMs against the emerging world models</h4>
+<p><strong>Audience member:</strong> I’m curious what’s your point of view of LLMs versus the emerging world models that are coming up or being worked on from a research.</p>
+<p><strong>Jeff Dean:</strong> Yeah, I mean I think world models are really just do you understand multiple modalities and how the world works from a physics perspective and so on. You know, I think a lot of our Gemini models are actually pretty good at doing world models.</p>
+<p>You know, if you look at the <a href="https://deepmind.google/discover/blog/genie-3-a-new-frontier-for-world-models/">Genie 3</a> releases, those are built on top of Gemini models and enable you to generate fairly sophisticated imaginary worlds with text prompts and then control interaction in that world. So you can move left, move right, jump, move forward and move back. And <em>it maintains consistency with the world that it has created. And if you turn left and then turn back right, the things that were there are still there.</em> So that’s an important thing.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Editor’s note.</strong> DeepMind’s Genie 3 announcement presents it as the third model in the Genie line of world models, after Genie 1 and Genie 2, and does not describe it as built on Gemini. The relationship Dean states here is not part of the public material.</p>
+</div>
+</div>
+<p>You know, we’re actually collaborating with our <a href="https://waymo.com/">Waymo</a> colleagues, because that enables them to create long-tail training cases in simulation. So you can say, please make a scenario where <em>an elephant appears in the middle of the road</em>, and that enables you to create dozens and dozens of test cases that are really hard to actually have occur in the real world. And you can see how the car behaves. And it actually even synthesizes the LiDAR data that the system would have, enabling you to get better safety properties.</p>
+</section>
+<section id="h-small-scale" class="level4">
+<h4 class="anchored" data-anchor-id="h-small-scale">What to research with a thousand TPUs</h4>
+<p><strong>Host:</strong> Maybe one more question, Jeff, you can. [laughter]</p>
+<p><strong>Audience member:</strong> All right, not high not low but middle. Hi. I guess like the last question, research. I’m kind of curious what type of research you think we should work on about a thousand TPUs, because a few of the directions we talked about are like pretty data intensive.</p>
+<p><strong>Jeff Dean:</strong> Yeah.</p>
+<p><strong>Audience member:</strong> What do you think we can do to help the AI forward?</p>
+<p><strong>Jeff Dean:</strong> Yeah. I mean, I think a lot of the kinds of work we do from a research perspective start as investigations at very small scale, right? And so I think where you can be quite effective is trying lots of different things that maybe you’re not training on a thousand accelerators, but you’re demonstrating at small scale this idea has legs. Right? Like there’s all kinds of problems in say continual learning or different model architectures.</p>
+<p>And in particular one of the things we do is we run extremely extremely small, extremely small, and small. And we look at the trend of those things, because <em>that trend is often more indicative of importance than exactly where it falls relative to the current baseline state-of-the-art</em> of our extra extra small or extra small or small model.</p>
+<p>Right? If the slope, if it’s below the baseline, but the slope looks good, that’s a really interesting idea. If it’s above the baseline at the absolute smallest scale but rapidly plummeting below the baseline even at the small scale, that’s less interesting.</p>
+<p>And so I think where people who don’t have access to large scale compute can really do a great job is focusing on solutions that are quite different and quite interesting and not stress about getting state-of-the-art results. And I think we as a community also should say <em>this is very different and unique and doesn’t achieve state-of-the-art results but it looks interesting at small scale</em>. Like we should, as conference reviewers or whatever, celebrate that kind of thing than something that gets an incremental improvement on state-of-the-art by tweaking one little thing that is actually not that interesting. Question. Okay. [applause]</p>
+<hr>
+</section>
+</section>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p><strong>Talk and source</strong></p>
+<ul>
+<li><a href="https://www.youtube.com/watch?v=UTTeXZrpMR0">Distinguished Colloquium: Jeff Dean, February 10, 2026</a> (1h 18m, Princeton University Computer Science) — “Important Trends in AI: How Did We Get Here, What Can We Do Now, and Where are We Headed?”</li>
+<li><a href="https://www.cs.princeton.edu/events">Princeton CS Distinguished Colloquium series</a></li>
+</ul>
+<p><strong>People</strong></p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Jeff_Dean">Jeff Dean</a> — Chief Scientist, Google Research and Google DeepMind, co-lead of Gemini</li>
+<li><a href="https://www.cs.princeton.edu/~li/">Kai Li</a> — Princeton CS, introduced the talk</li>
+<li><a href="https://www.andrewng.org/">Andrew Ng</a> — the micro-kitchen conversation that restarted Dean’s neural-network work</li>
+<li><a href="https://cse.umn.edu/cs/vipin-kumar">Vipin Kumar</a> — Dean’s undergraduate thesis advisor</li>
+<li><a href="https://en.wikipedia.org/wiki/Ilya_Sutskever">Ilya Sutskever</a>, <a href="https://en.wikipedia.org/wiki/Oriol_Vinyals">Oriol Vinyals</a>, <a href="https://en.wikipedia.org/wiki/Quoc_V._Le">Quoc Le</a> — the sequence-to-sequence work</li>
+<li><a href="https://people.eecs.berkeley.edu/~pattrsn/">David Patterson</a> — co-author on the Shaping AI paper and the Economist editorial</li>
+</ul>
+<p><strong>Concepts and background</strong></p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Neural_network_(machine_learning)">Neural networks</a>, <a href="https://en.wikipedia.org/wiki/Backpropagation">backpropagation</a>, <a href="https://en.wikipedia.org/wiki/Gradient_descent">gradient descent</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Long_short-term_memory">Long short-term memory</a> (LSTM)</li>
+<li><a href="https://en.wikipedia.org/wiki/Reinforcement_learning">Reinforcement learning</a></li>
+<li><a href="https://en.wikipedia.org/wiki/High_Bandwidth_Memory">High-bandwidth memory</a> (HBM)</li>
+<li><a href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo rating system</a></li>
+<li><a href="https://www.image-net.org/">ImageNet</a>, <a href="https://www.iscaconf.org/">ISCA</a>, <a href="https://lean-lang.org/">Lean</a></li>
+<li><a href="https://www.imo-official.org/">International Mathematical Olympiad</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Digital_Equipment_Corporation">DEC Western Research Laboratory</a> — where Kai Li first met Dean</li>
+</ul>
+<p><strong>Companies, products, and models</strong></p>
+<ul>
+<li><a href="https://research.google/">Google Research</a>, <a href="https://deepmind.google/">Google DeepMind</a>, <a href="https://about.meta.com/">Meta</a></li>
+<li><a href="https://deepmind.google/models/gemini/">Gemini</a>, <a href="https://blog.google/products/search/ai-mode-search/">Search AI Mode</a>, <a href="https://blog.google/technology/ai/nano-banana-pro/">Nano Banana Pro</a>, <a href="https://deepmind.google/discover/blog/genie-3-a-new-frontier-for-world-models/">Genie 3</a>, <a href="https://store.google.com/category/phones">Pixel</a></li>
+<li><a href="https://deepmind.google/discover/blog/advanced-version-of-gemini-with-deep-think-officially-achieves-gold-medal-standard-at-the-international-mathematical-olympiad/">Gemini Deep Think at the IMO</a></li>
+<li><a href="https://cloud.google.com/tpu">Cloud TPU</a>, <a href="https://cloud.google.com/blog/products/compute/introducing-trillium-sixth-generation-tpu">Trillium (sixth generation)</a>, <a href="https://cloud.google.com/blog/products/ai-machine-learning/ironwood-tpus-generally-available">Ironwood (seventh generation)</a></li>
+<li><a href="https://www.tensorflow.org/">TensorFlow</a>, <a href="https://pytorch.org/">PyTorch</a>, <a href="https://github.com/jax-ml/jax">JAX</a></li>
+<li><a href="https://lmarena.ai/">LMArena</a>, <a href="https://waymo.com/">Waymo</a></li>
+<li><a href="https://shapingai.com/">shapingai.com</a> — the Shaping AI paper’s website, and <a href="https://cacm.acm.org/">CACM</a> for the short version</li>
+</ul>
+<p><strong>Papers and technical reports</strong></p>
+<ol type="1">
+<li><a id="ref-1"></a>Dean, Jeffrey, Corrado, Greg S., Monga, Rajat, Chen, Kai, Devin, Matthieu, Le, Quoc V., Mao, Mark Z., Ranzato, Marc’Aurelio, Senior, Andrew, Tucker, Paul, Yang, Ke, Ng, Andrew Y. “Large Scale Distributed Deep Networks.” <em>NIPS 2012</em>. <a href="https://papers.nips.cc/paper_files/paper/2012/hash/6aca97005c68f1206823815f66102863-Abstract.html" class="uri">https://papers.nips.cc/paper_files/paper/2012/hash/6aca97005c68f1206823815f66102863-Abstract.html</a></li>
+<li><a id="ref-2"></a>Le, Quoc V., Ranzato, Marc’Aurelio, Monga, Rajat, Devin, Matthieu, Chen, Kai, Corrado, Greg S., Dean, Jeff, Ng, Andrew Y. “Building High-level Features Using Large Scale Unsupervised Learning.” <em>ICML 2012</em> (arXiv:1112.6209), December 29, 2011. <a href="https://arxiv.org/abs/1112.6209" class="uri">https://arxiv.org/abs/1112.6209</a></li>
+<li><a id="ref-3"></a>Mikolov, Tomas, Chen, Kai, Corrado, Greg, Dean, Jeffrey. “Efficient Estimation of Word Representations in Vector Space.” <em>arXiv preprint</em> (arXiv:1301.3781), January 16, 2013. <a href="https://arxiv.org/abs/1301.3781" class="uri">https://arxiv.org/abs/1301.3781</a></li>
+<li><a id="ref-4"></a>Sutskever, Ilya, Vinyals, Oriol, Le, Quoc V. “Sequence to Sequence Learning with Neural Networks.” <em>NIPS 2014</em> (arXiv:1409.3215), September 10, 2014. <a href="https://arxiv.org/abs/1409.3215" class="uri">https://arxiv.org/abs/1409.3215</a></li>
+<li><a id="ref-5"></a>Jouppi, Norman P., Young, Cliff, Patil, Nishant, Patterson, David, et al.&nbsp;“In-Datacenter Performance Analysis of a Tensor Processing Unit.” <em>ISCA 2017</em> (arXiv:1704.04760), April 16, 2017. <a href="https://arxiv.org/abs/1704.04760" class="uri">https://arxiv.org/abs/1704.04760</a></li>
+<li><a id="ref-6"></a>Vaswani, Ashish, Shazeer, Noam, Parmar, Niki, Uszkoreit, Jakob, Jones, Llion, Gomez, Aidan N., Kaiser, Łukasz, Polosukhin, Illia. “Attention Is All You Need.” <em>NIPS 2017</em> (arXiv:1706.03762), June 12, 2017. <a href="https://arxiv.org/abs/1706.03762" class="uri">https://arxiv.org/abs/1706.03762</a></li>
+<li><a id="ref-7"></a>Devlin, Jacob, Chang, Ming-Wei, Lee, Kenton, Toutanova, Kristina. “BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.” <em>NAACL 2019</em> (arXiv:1810.04805), October 11, 2018. <a href="https://arxiv.org/abs/1810.04805" class="uri">https://arxiv.org/abs/1810.04805</a></li>
+<li><a id="ref-8"></a>Dosovitskiy, Alexey, Beyer, Lucas, Kolesnikov, Alexander, Weissenborn, Dirk, et al.&nbsp;“An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale.” <em>ICLR 2021</em> (arXiv:2010.11929), October 22, 2020. <a href="https://arxiv.org/abs/2010.11929" class="uri">https://arxiv.org/abs/2010.11929</a></li>
+<li><a id="ref-9"></a>He, Kaiming, Zhang, Xiangyu, Ren, Shaoqing, Sun, Jian. “Deep Residual Learning for Image Recognition.” <em>CVPR 2016</em> (arXiv:1512.03385), December 10, 2015. <a href="https://arxiv.org/abs/1512.03385" class="uri">https://arxiv.org/abs/1512.03385</a></li>
+<li><a id="ref-10"></a>Shazeer, Noam, Mirhoseini, Azalia, Maziarz, Krzysztof, Davis, Andy, Le, Quoc, Hinton, Geoffrey, Dean, Jeff. “Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer.” <em>ICLR 2017</em> (arXiv:1701.06538), January 23, 2017. <a href="https://arxiv.org/abs/1701.06538" class="uri">https://arxiv.org/abs/1701.06538</a></li>
+<li><a id="ref-11"></a>Fedus, William, Zoph, Barret, Shazeer, Noam. “Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity.” <em>JMLR</em> (arXiv:2101.03961), January 11, 2021. <a href="https://arxiv.org/abs/2101.03961" class="uri">https://arxiv.org/abs/2101.03961</a></li>
+<li><a id="ref-12"></a>Barham, Paul, Chowdhery, Aakanksha, Dean, Jeff, Ghemawat, Sanjay, et al.&nbsp;“Pathways: Asynchronous Distributed Dataflow for ML.” <em>MLSys 2022</em> (arXiv:2203.12533), March 23, 2022. <a href="https://arxiv.org/abs/2203.12533" class="uri">https://arxiv.org/abs/2203.12533</a></li>
+<li><a id="ref-13"></a>Wei, Jason, Wang, Xuezhi, Schuurmans, Dale, Bosma, Maarten, Ichter, Brian, Xia, Fei, Chi, Ed, Le, Quoc, Zhou, Denny. “Chain-of-Thought Prompting Elicits Reasoning in Large Language Models.” <em>NeurIPS 2022</em> (arXiv:2201.11903), January 28, 2022. <a href="https://arxiv.org/abs/2201.11903" class="uri">https://arxiv.org/abs/2201.11903</a></li>
+<li><a id="ref-14"></a>Cobbe, Karl, Kosaraju, Vineet, Bavarian, Mohammad, Chen, Mark, et al.&nbsp;“Training Verifiers to Solve Math Word Problems.” <em>arXiv preprint</em> (arXiv:2110.14168), October 27, 2021. <a href="https://arxiv.org/abs/2110.14168" class="uri">https://arxiv.org/abs/2110.14168</a></li>
+<li><a id="ref-15"></a>Hinton, Geoffrey, Vinyals, Oriol, Dean, Jeff. “Distilling the Knowledge in a Neural Network.” <em>NIPS 2014 Deep Learning Workshop</em> (arXiv:1503.02531), March 9, 2015. <a href="https://arxiv.org/abs/1503.02531" class="uri">https://arxiv.org/abs/1503.02531</a></li>
+<li><a id="ref-16"></a>Christiano, Paul F., Leike, Jan, Brown, Tom B., Martic, Miljan, Legg, Shane, Amodei, Dario. “Deep Reinforcement Learning from Human Preferences.” <em>NIPS 2017</em> (arXiv:1706.03741), June 12, 2017. <a href="https://arxiv.org/abs/1706.03741" class="uri">https://arxiv.org/abs/1706.03741</a></li>
+<li><a id="ref-17"></a>Leviathan, Yaniv, Kalman, Matan, Matias, Yossi. “Fast Inference from Transformers via Speculative Decoding.” <em>ICML 2023</em> (arXiv:2211.17192), November 30, 2022. <a href="https://arxiv.org/abs/2211.17192" class="uri">https://arxiv.org/abs/2211.17192</a></li>
+<li><a id="ref-18"></a>Gemini Team, Google. “Gemini: A Family of Highly Capable Multimodal Models.” <em>arXiv preprint</em> (arXiv:2312.11805), December 19, 2023. <a href="https://arxiv.org/abs/2312.11805" class="uri">https://arxiv.org/abs/2312.11805</a></li>
+<li><a id="ref-19"></a>Gemini Team, Google. “Gemini 1.5: Unlocking Multimodal Understanding Across Millions of Tokens of Context.” <em>arXiv preprint</em> (arXiv:2403.05530), March 8, 2024. <a href="https://arxiv.org/abs/2403.05530" class="uri">https://arxiv.org/abs/2403.05530</a></li>
+<li><a id="ref-20"></a>Mirhoseini, Azalia, Goldie, Anna, Yazgan, Mustafa, Jiang, Joe Wenjie, et al.&nbsp;“A Graph Placement Methodology for Fast Chip Design.” <em>Nature</em> 594, 207–212, June 9, 2021. <a href="https://www.nature.com/articles/s41586-021-03544-w" class="uri">https://www.nature.com/articles/s41586-021-03544-w</a></li>
+<li><a id="ref-21"></a>Cuéllar, Mariano-Florentino, Dean, Jeff, Doshi-Velez, Finale, Hennessy, John, Konwinski, Andy, Koyejo, Sanmi, Moiloa, Pelonomi, Pierson, Emma, Patterson, David. “Shaping AI’s Impact on Billions of Lives.” <em>arXiv preprint</em> (arXiv:2412.02730), December 3, 2024. <a href="https://arxiv.org/abs/2412.02730" class="uri">https://arxiv.org/abs/2412.02730</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260501-how-frontier-llms-trained/">How Frontier LLMs Are Actually Trained and Served</a> — Reiner Pope, an ex-Google TPU architect, derives the training and serving economics of this exact hardware from public prices and a blackboard. The outside view of the machine Dean describes from inside.</li>
+<li><a href="../../posts/20260511-the-inference-shift/">The Inference Shift</a> — Ben Thompson on agentic inference as a memory-hierarchy workload. The industry-structure counterpart to Dean’s closing bet on inference efficiency and inference-specific silicon.</li>
+<li><a href="../../posts/20241108-transformers-world-models/">How Well Can Transformers Build World Models?</a> — the GSM8K robustness result that complicates Dean’s rabbit-arithmetic-to-IMO progress arc, and a direct answer to the world-models question from the Q&amp;A.</li>
+<li><a href="../../posts/20251018-karpathy-agi-decade-away/">Karpathy: AGI Is Still a Decade Away</a> — another enriched talk transcript from a principal who built much of the stack, and a considerably more cautious read on timelines than this one.</li>
+<li><a href="../../posts/20260713-llm-distillation-quantification/">Quantification of Large Language Model Distillation</a> — distillation measured from the outside, where Dean presents it as the routine Pro-to-Flash production step.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260819-jeff-dean-lecture/</guid>
+  <pubDate>Wed, 19 Aug 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260819-jeff-dean-lecture/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Young Adults in the U.S. Are Increasingly Wary of AI</title>
   <dc:creator>synesis </dc:creator>
@@ -2987,138 +3998,6 @@ Each wrapper is published in both Chinese and English, and the raw strings are i
   <guid>https://benjaminhan.net/posts/20260730-context-bombs/</guid>
   <pubDate>Thu, 30 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260730-context-bombs/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260730-self-reflective-program-search/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260730-self-reflective-program-search/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
-<figcaption>The self-query REPL on the right, where the context is a variable and successive program steps slice it and query the model on what they pull out. The uncertainty-guided search on the left, where eight sampled programs are filtered by plurality vote and then ranked on verbalized confidence against reasoning length. Figure 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context</em> [1] (arXiv preprint, March 2026), <a href="https://dblp.org/pid/269/9531">Keivan Alizadeh</a>, <a href="https://dblp.org/pid/281/9859">Parshin Shojaee</a>, <a href="https://dblp.org/pid/70/6244">Minsik Cho</a>, and <a href="https://dblp.org/pid/21/9988.html">Mehrdad Farajtabar</a> (Apple) report that Recursive Language Models get their long-context gains from programmatic access to the context rather than from recursion, and that ranking eight sampled programs by the model’s own uncertainty signals matches or exceeds recursive RLM.</p>
-<blockquote class="blockquote">
-<p>Long-context handling remains a core challenge for language models: even with extended context windows, models often fail to reliably extract, reason over, and use the information across long contexts. Recent works like Recursive Language Models (RLM) have approached this challenge by agentic way of decomposing long contexts into recursive sub-calls through programmatic interaction at inference. While promising, the success of RLM critically depends on how these context-interaction programs are selected, which has remained largely unexplored. In this paper, we study this problem and <em>introduce SRLM, a framework that augments programmatic context interaction with uncertainty-aware Self-Reflection</em>. SRLM leverages three intrinsic signals: <em>self consistency, reasoning length, and verbalized confidence</em>. These serve as complementary indicators of a model’s internal uncertainty, and the model uses them to evaluate and compare candidate context-interaction programs. Extensive experiments across diverse benchmark datasets, context lengths, and backbone models, show that SRLM consistently outperforms state-of-the-art baselines, <em>yielding up to 22% improvement over RLM under the same time budget</em>. Our findings show that <em>recursion itself is not the primary driver of performance in RLM</em>, and a simple self-reflective program search can match or surpass RLM without requiring self-query or explicit recursion mechanisms. We find that for context lengths within the model’s window, <em>RLMs with recursion often degrade performance relative to the base model</em>, whereas SRLM yields consistent gains across both short and long contexts. We also find that RLM is less effective in tasks with semantically intensive nature, where heuristic program search is insufficient and broader contextual understanding is required, while self-reflection in SRLM provides a semantic signal that better steers reasoning in these scenarios.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<p>SRLM (Self-Reflective Program Search for Long Context) keeps the part of Recursive Language Models (RLM) [2] that externalizes the context and makes the part that recurses optional. The long context is loaded as a variable inside a sandboxed Python read-eval-print loop (<a href="https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop">REPL</a>), and the model writes short programs that slice, search, and aggregate over that variable, printing intermediate results back into its own prompt. In RLM a program may also issue recursive sub-calls, handing a slice of the context to a fresh copy of the model as a tool. SRLM does not require those sub-calls, and adds a selection step instead: for each query the model samples <img src="https://benjaminhan.net/feed-assets/6ec65ac16b56e3cb.svg" alt="K = 8" class="feed-math-inline"/> independent programs, then ranks them using three signals computed from its own generations, with no verifier, reward model, or labels. A <em>program</em> here is one complete multi-step interaction, <img src="https://benjaminhan.net/feed-assets/305de77854c473a5.svg" alt="p = (p_{1}, \ldots, p_{T})" class="feed-math-inline"/>, where each <img src="https://benjaminhan.net/feed-assets/47b874307492224e.svg" alt="p_{t}" class="feed-math-inline"/> is a single executable step. The paper also calls <img src="https://benjaminhan.net/feed-assets/8e304a1c8b691111.svg" alt="p" class="feed-math-inline"/> a <em>trajectory</em>, since the two fine-grained signals below are only definable over its steps.</p>
-<p>The three signals:</p>
-<ul>
-<li><strong>Self-consistency</strong> [3]: the plurality answer across the eight programs. Those disagreeing with it are discarded, leaving a <em>candidate set</em> <img src="https://benjaminhan.net/feed-assets/85718177be2321ab.svg" alt="\mathcal{S}" class="feed-math-inline"/>. This is a coarse signal: it looks only at final answers, so two programs that reached the same answer by very different routes are indistinguishable.</li>
-<li><strong>Verbalized confidence</strong> [4]: a suffix appended to the RLM prompt asks the model to emit <code>{"confidence": ν}</code> with <img src="https://benjaminhan.net/feed-assets/f551fd468a7c25b7.svg" alt="\nu \in (0, 100]" class="feed-math-inline"/> at every step. A program’s score is <img src="https://benjaminhan.net/feed-assets/a6074f9e6af659b3.svg" alt="\mathrm{VC}(p) = \sum_{t} \log(\nu_{t} / 100)" class="feed-math-inline"/>, which is at most zero and approaches zero when the model reports high confidence at every step.</li>
-<li><strong>Reasoning trace length</strong> [5]: <img src="https://benjaminhan.net/feed-assets/bb4bc366b77e94f8.svg" alt="\mathrm{Len}(p)" class="feed-math-inline"/>, the total reasoning and output tokens across a program’s steps, taken as a proxy for how much deliberation the answer required. Unlike verbalized confidence it needs no elicitation, so it is not exposed to miscalibration in what the model says about itself.</li>
-</ul>
-<p>The last two combine into one score, <img src="https://benjaminhan.net/feed-assets/8a6a7ea9445669e4.svg" alt="s(p) = \mathrm{VC}(p) \cdot \mathrm{Len}(p)" class="feed-math-inline"/>, and the winner is <img src="https://benjaminhan.net/feed-assets/60ca8d2099fa7f08.svg" alt="p^{*} = \arg\max_{p \in \mathcal{S}} s(p)" class="feed-math-inline"/>. Since <img src="https://benjaminhan.net/feed-assets/05e6d8cc9bd94262.svg" alt="\mathrm{VC}(p) \le 0" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/de19c76fdedbc488.svg" alt="\mathrm{Len}(p) &gt; 0" class="feed-math-inline"/>, the product is at most zero, and the maximum goes to the program that is both confident and short. §2.2.2 also states that lower values of <img src="https://benjaminhan.net/feed-assets/115c4e19f71b1930.svg" alt="s(p)" class="feed-math-inline"/> are better, which contradicts its own <img src="https://benjaminhan.net/feed-assets/1d4bd562b62ba91d.svg" alt="\arg\max" class="feed-math-inline"/>. The signs settle it for the maximum. Nothing in the loop rewrites a program: the eight are generated once, in parallel, and the score only picks among them.</p>
-<p>Figure 1, above, puts the two halves side by side. On the right is the self-query REPL, where the context arrives as a variable and three successive steps of one program (the figure labels them Program 1, 2 and 3) pull out a slice, analyze the policy options inside it, and produce a final evaluation, each optionally calling the model again on the text it just assembled. On the left is the search. The first panel shows nine sampled programs with their answers, six kept by plurality vote and three discarded. The second places the survivors on axes of verbalized confidence and reasoning length, with the selected program in the high-confidence, short-trace corner. The third compares the accuracy of RLM against each signal added on its own and then all three together.</p>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>The evaluation reuses RLM’s own benchmark suite and then extends it. The setup:</p>
-<ul>
-<li><strong>BrowseComp+</strong> [6]: <a href="https://huggingface.co/datasets/Tevatron/browsecomp-plus">BrowseComp-Plus</a> in full, 150 multi-hop questions answered against a fixed corpus of 1,000 documents, 6M to 11M tokens per task.</li>
-<li><strong>OOLONG</strong> [7]: an aggregation benchmark whose answers need most of the context rather than one buried fact, on the <code>trec_coarse</code> synthetic split at 131K tokens across 50 tasks.</li>
-<li><strong>LongBench-v2 CodeQA</strong> [8]: 50 multiple-choice code-repository questions from 23K to 4.2M tokens.</li>
-<li><strong>Two extended sweeps</strong>: the full OOLONG synthetic split from 1K to 4M tokens (about 650 tasks, 50 per length), and the full LongBench-v2 across all six of its domains (about 500 tasks). These target the paper’s own questions about context length and task semantics.</li>
-<li><strong>Backbones</strong>: <a href="https://openai.com/index/introducing-gpt-5/">GPT-5</a> at medium reasoning effort, with GPT-5-mini as the sub-model for recursive calls, and the open-weight <a href="https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct">Qwen3-Coder-480B-A35B</a>.</li>
-<li><strong>Baselines</strong>: the base model on the raw context, CodeAct [9] with an <a href="https://en.wikipedia.org/wiki/Okapi_BM25">Okapi BM25</a> retriever, CodeAct with sub-calls, a summarization agent, and RLM with and without sub-calls.</li>
-<li><strong>Protocol</strong>: 600 seconds per program step, at most 30 steps, and GPT-5-mini judging answers for semantic equivalence rather than string match. Every RLM row in Table 1 is marked † for the authors’ own replication, and the original RLM numbers are not reported alongside.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/table1.jpg" class="img-fluid figure-img" data-lightbox-src="table1-full.jpg"></p>
-<figcaption>Table 1 from the paper [1].</figcaption>
-</figure>
-</div>
-<p>The findings:</p>
-<ul>
-<li><strong>Best configuration on every benchmark, under both backbones</strong> (Table 1). With Qwen3-Coder-480B, SRLM reaches 64.9 on LongBench-v2 CodeQA, 59.7 on BrowseComp+ and 51.8 on OOLONG, against 59.8, 37.1 and 45.7 for RLM. The abstract’s “up to 22%” is the 22.6-point BrowseComp+ gap on this backbone.</li>
-<li><strong>Under GPT-5 the sub-calls mostly hurt</strong> (Table 1). RLM without sub-calls beats recursive RLM on LongBench-v2 CodeQA (65.2 against 59.5) and BrowseComp+ (89.7 against 86.0), losing only on OOLONG (50.5 against 53.0). The best GPT-5 configurations overall are both non-recursive: SRLM without sub-calls at 74.1 and 94.6.</li>
-<li><strong>Recursion costs time it does not earn back</strong> (Figure 3). Under both backbones, SRLM without sub-calls reaches higher accuracy than RLM at lower wall-clock time. The eight programs run in parallel, so sampling eight instead of one barely moves the clock.</li>
-<li><strong>Short contexts are where RLM falls below the base model</strong> (Figure 2). On OOLONG with GPT-5 under 131K tokens, RLM averages 0.9 points below the base model and RLM without sub-calls 6.8 below, while SRLM is 5.4 above. Past 131K the gaps widen to 11.9 above base for RLM and 28.5 for SRLM. On LongBench-v2 with GPT-5 under 131K, both RLM variants are about 8 points below base and both SRLM variants a little over 1 point below.</li>
-<li><strong>The advantage of recursion is concentrated in search-shaped domains</strong> (Figure 4). Across the six LongBench-v2 domains, RLM gains most on Code Repository QA and Structured Data QA, the two whose contexts are modular and indexable. On Dialogue History QA the base model scores highest of all five configurations, at 69 against 66 for SRLM and about 61 for both RLM variants.</li>
-<li><strong>One signal accounts for nearly all of it</strong> (Figure 5, top row). Self-consistency used alone comes within 1.2 to 2.0 points of the full three-signal combination on all three benchmarks: 45.2 against 47.2 on OOLONG, 60.5 against 61.7 on LongBench-v2, and 73.4 against 74.3 on BrowseComp+. Figure 5 gives these as bars with truncated y-axes, so read them to about half a point. The per-bin heatmaps in the bottom row show why the paper wants all three: accuracy is not monotone in verbalized confidence or in trace length on its own.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/figure3.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 3 from the paper [1].</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/figure2.jpg" class="img-fluid figure-img" data-lightbox-src="figure2-full.jpg"></p>
-<figcaption>Figure 2 from the paper [1].</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/figure4.png" class="img-fluid figure-img"></p>
-<figcaption>Figure 4 from the paper [1].</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/figure5.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 5 from the paper [1].</figcaption>
-</figure>
-</div>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><strong>The difference is best-of-eight selection</strong>: with recursion enabled on both sides, everything separating SRLM from RLM is that SRLM samples eight programs and keeps one. The three uncertainty signals are the ranking function.
-<ul>
-<li><strong>The paper calls it revision.</strong> §3.6 says SRLM “relies on implicit uncertainty-guided self-reflection to revise and refine its context-interaction programs,” but §2.2 only scores finished candidates. Actual revision has a poor record: Huang et al.&nbsp;found that prompting a model to reconsider its own answer without external feedback lowers accuracy across three reasoning benchmarks [10]. The paper does not cite it.</li>
-<li><strong>The ranking function is worth a point or two.</strong> The 22.6-point headline is measured against RLM running a single program, so most of that gap is the move from one sample to eight. At matched <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> the self-consistency-only row of the ablation is plain majority voting from 2022 [3], and it comes in 1.2 to 2.0 points below the full combination. Both numbers are in the paper, but never next to each other.</li>
-</ul></li>
-<li><strong>Recursion and sub-model capability are not separated</strong>: under GPT-5 the recursive sub-calls go to GPT-5-mini, so turning sub-calls on routes sub-questions to a weaker model, and turning them off keeps every read inside GPT-5. The paper names no sub-model for Qwen3-Coder-480B, and no smaller variant of it appears in the setup, so it is presumably calling itself. Every negative recursion increment in Table 1 is on the GPT-5 rows, which fits a weak sub-model as well as it fits the disruption §3.4 attributes to recursion. The claim that recursion contributes only a small share of the gain is unaffected, since §3.6 argues it on Qwen. The stronger reading, that recursion is a liability, needs a run the paper does not have: GPT-5 as its own sub-model.</li>
-<li><strong>Wall clock is not the budget most readers pay</strong>: the parity claim is wall-clock, and it holds only because the eight programs run in parallel. The conclusion names token control as future work, but the paper reports no counts anywhere. On a metered API the cost is close to eight times the generation of a single RLM program, on contexts of 6M to 11M tokens.</li>
-<li><strong>The combination rule is fixed</strong>: the ranking of the three signals moves with both task and backbone. Verbalized confidence alone scores about two points above the full combination for GPT-5 on BrowseComp+ in the no-sub-call runs, and is the weakest of the three on OOLONG. The score <img src="https://benjaminhan.net/feed-assets/8a6a7ea9445669e4.svg" alt="s(p) = \mathrm{VC}(p) \cdot \mathrm{Len}(p)" class="feed-math-inline"/> has nothing to tune. Fitting a per-task or learned selector would be cheap, since both signals are already computed for every sampled program.</li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a><a href="https://dblp.org/pid/269/9531">Alizadeh, K.</a>, <a href="https://dblp.org/pid/281/9859">Shojaee, P.</a>, <a href="https://dblp.org/pid/70/6244">Cho, M.</a>, <a href="https://dblp.org/pid/21/9988.html">Farajtabar, M.</a> “Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context.” <em>arXiv preprint</em> (arXiv:2603.15653), March 7, 2026. <a href="https://arxiv.org/abs/2603.15653" class="uri">https://arxiv.org/abs/2603.15653</a></li>
-<li><a id="ref-2"></a><a href="https://dblp.org/pid/389/8697">Zhang, A. L.</a>, <a href="https://dblp.org/pid/26/6037">Kraska, T.</a>, <a href="https://omarkhattab.com/">Khattab, O.</a> “Recursive Language Models.” <em>arXiv preprint</em> (arXiv:2512.24601), December 31, 2025. <a href="https://arxiv.org/abs/2512.24601" class="uri">https://arxiv.org/abs/2512.24601</a></li>
-<li><a id="ref-3"></a>Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., Zhou, D. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR 2023</em> (arXiv:2203.11171), March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
-<li><a id="ref-4"></a>Xiong, M., Hu, Z., Lu, X., Li, Y., Fu, J., He, J., Hooi, B. “Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs.” <em>ICLR 2024</em> (arXiv:2306.13063), June 22, 2023. <a href="https://arxiv.org/abs/2306.13063" class="uri">https://arxiv.org/abs/2306.13063</a></li>
-<li><a id="ref-5"></a><a href="https://dblp.org/pid/239/8389">Devic, S.</a>, Peale, C., Bradley, A., Williamson, S., Nakkiran, P., Gollakota, A. “Trace Length is a Simple Uncertainty Signal in Reasoning Models.” <em>arXiv preprint</em> (arXiv:2510.10409), October 12, 2025. <a href="https://arxiv.org/abs/2510.10409" class="uri">https://arxiv.org/abs/2510.10409</a></li>
-<li><a id="ref-6"></a>Chen, Z., Ma, X., Zhuang, S., Nie, P., Zou, K., Liu, A., Green, J., Patel, K., Meng, R., Su, M., Sharifymoghaddam, S., Li, Y., Hong, H., Shi, X., Liu, X., Thakur, N., Zhang, C., Gao, L., Chen, W., Lin, J. “BrowseComp-Plus: A More Fair and Transparent Evaluation Benchmark of Deep-Research Agent.” <em>arXiv preprint</em> (arXiv:2508.06600), August 8, 2025. <a href="https://arxiv.org/abs/2508.06600" class="uri">https://arxiv.org/abs/2508.06600</a></li>
-<li><a id="ref-7"></a>Bertsch, A., Pratapa, A., Mitamura, T., Neubig, G., Gormley, M. R. “Oolong: Evaluating Long Context Reasoning and Aggregation Capabilities.” <em>arXiv preprint</em> (arXiv:2511.02817), November 4, 2025. <a href="https://arxiv.org/abs/2511.02817" class="uri">https://arxiv.org/abs/2511.02817</a></li>
-<li><a id="ref-8"></a>Bai, Y., Tu, S., Zhang, J., Peng, H., Wang, X., Lv, X., Cao, S., Xu, J., Hou, L., Dong, Y., Tang, J., Li, J. “LongBench v2: Towards Deeper Understanding and Reasoning on Realistic Long-context Multitasks.” <em>arXiv preprint</em> (arXiv:2412.15204), December 19, 2024. <a href="https://arxiv.org/abs/2412.15204" class="uri">https://arxiv.org/abs/2412.15204</a></li>
-<li><a id="ref-9"></a>Wang, X., Chen, Y., Yuan, L., Zhang, Y., Li, Y., Peng, H., Ji, H. “Executable Code Actions Elicit Better LLM Agents.” <em>ICML 2024</em> (arXiv:2402.01030), February 1, 2024. <a href="https://arxiv.org/abs/2402.01030" class="uri">https://arxiv.org/abs/2402.01030</a></li>
-<li><a id="ref-10"></a>Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X., Zhou, D. “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em> (arXiv:2310.01798), October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260625-adas/">Automated Design of Agentic Systems</a>: the same search-over-programs paradigm, with a meta agent writing candidate scaffolds instead of a scorer picking among sampled ones.</li>
-<li><a href="../../posts/20260516-cannot-self-correct/">Large Language Models Cannot Self-Correct Reasoning Yet</a>: the negative result on intrinsic revision that SRLM’s selection-only mechanism sidesteps.</li>
-<li><a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback</a>: the evidence that verbalized confidence is usable at all, which the second of SRLM’s three signals depends on.</li>
-<li><a href="../../posts/20260522-metacognitive-harness/">LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</a>: another test-time scaffold built on a model’s self-assessment rather than an external verifier.</li>
-<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: uses recursive self-calls as its test-time scaling mechanism, the one this paper finds contributes little on long context.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260730-self-reflective-program-search/</guid>
-  <pubDate>Thu, 30 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260730-self-reflective-program-search/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

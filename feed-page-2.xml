@@ -21,7 +21,139 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Tue, 18 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 19 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260730-self-reflective-program-search/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260730-self-reflective-program-search/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/cover.jpg" class="img-fluid figure-img" data-lightbox-src="cover-full.jpg"></p>
+<figcaption>The self-query REPL on the right, where the context is a variable and successive program steps slice it and query the model on what they pull out. The uncertainty-guided search on the left, where eight sampled programs are filtered by plurality vote and then ranked on verbalized confidence against reasoning length. Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context</em> [1] (arXiv preprint, March 2026), <a href="https://dblp.org/pid/269/9531">Keivan Alizadeh</a>, <a href="https://dblp.org/pid/281/9859">Parshin Shojaee</a>, <a href="https://dblp.org/pid/70/6244">Minsik Cho</a>, and <a href="https://dblp.org/pid/21/9988.html">Mehrdad Farajtabar</a> (Apple) report that Recursive Language Models get their long-context gains from programmatic access to the context rather than from recursion, and that ranking eight sampled programs by the model’s own uncertainty signals matches or exceeds recursive RLM.</p>
+<blockquote class="blockquote">
+<p>Long-context handling remains a core challenge for language models: even with extended context windows, models often fail to reliably extract, reason over, and use the information across long contexts. Recent works like Recursive Language Models (RLM) have approached this challenge by agentic way of decomposing long contexts into recursive sub-calls through programmatic interaction at inference. While promising, the success of RLM critically depends on how these context-interaction programs are selected, which has remained largely unexplored. In this paper, we study this problem and <em>introduce SRLM, a framework that augments programmatic context interaction with uncertainty-aware Self-Reflection</em>. SRLM leverages three intrinsic signals: <em>self consistency, reasoning length, and verbalized confidence</em>. These serve as complementary indicators of a model’s internal uncertainty, and the model uses them to evaluate and compare candidate context-interaction programs. Extensive experiments across diverse benchmark datasets, context lengths, and backbone models, show that SRLM consistently outperforms state-of-the-art baselines, <em>yielding up to 22% improvement over RLM under the same time budget</em>. Our findings show that <em>recursion itself is not the primary driver of performance in RLM</em>, and a simple self-reflective program search can match or surpass RLM without requiring self-query or explicit recursion mechanisms. We find that for context lengths within the model’s window, <em>RLMs with recursion often degrade performance relative to the base model</em>, whereas SRLM yields consistent gains across both short and long contexts. We also find that RLM is less effective in tasks with semantically intensive nature, where heuristic program search is insufficient and broader contextual understanding is required, while self-reflection in SRLM provides a semantic signal that better steers reasoning in these scenarios.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>SRLM (Self-Reflective Program Search for Long Context) keeps the part of Recursive Language Models (RLM) [2] that externalizes the context and makes the part that recurses optional. The long context is loaded as a variable inside a sandboxed Python read-eval-print loop (<a href="https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop">REPL</a>), and the model writes short programs that slice, search, and aggregate over that variable, printing intermediate results back into its own prompt. In RLM a program may also issue recursive sub-calls, handing a slice of the context to a fresh copy of the model as a tool. SRLM does not require those sub-calls, and adds a selection step instead: for each query the model samples <img src="https://benjaminhan.net/feed-assets/6ec65ac16b56e3cb.svg" alt="K = 8" class="feed-math-inline"/> independent programs, then ranks them using three signals computed from its own generations, with no verifier, reward model, or labels. A <em>program</em> here is one complete multi-step interaction, <img src="https://benjaminhan.net/feed-assets/305de77854c473a5.svg" alt="p = (p_{1}, \ldots, p_{T})" class="feed-math-inline"/>, where each <img src="https://benjaminhan.net/feed-assets/47b874307492224e.svg" alt="p_{t}" class="feed-math-inline"/> is a single executable step. The paper also calls <img src="https://benjaminhan.net/feed-assets/8e304a1c8b691111.svg" alt="p" class="feed-math-inline"/> a <em>trajectory</em>, since the two fine-grained signals below are only definable over its steps.</p>
+<p>The three signals:</p>
+<ul>
+<li><strong>Self-consistency</strong> [3]: the plurality answer across the eight programs. Those disagreeing with it are discarded, leaving a <em>candidate set</em> <img src="https://benjaminhan.net/feed-assets/85718177be2321ab.svg" alt="\mathcal{S}" class="feed-math-inline"/>. This is a coarse signal: it looks only at final answers, so two programs that reached the same answer by very different routes are indistinguishable.</li>
+<li><strong>Verbalized confidence</strong> [4]: a suffix appended to the RLM prompt asks the model to emit <code>{"confidence": ν}</code> with <img src="https://benjaminhan.net/feed-assets/f551fd468a7c25b7.svg" alt="\nu \in (0, 100]" class="feed-math-inline"/> at every step. A program’s score is <img src="https://benjaminhan.net/feed-assets/a6074f9e6af659b3.svg" alt="\mathrm{VC}(p) = \sum_{t} \log(\nu_{t} / 100)" class="feed-math-inline"/>, which is at most zero and approaches zero when the model reports high confidence at every step.</li>
+<li><strong>Reasoning trace length</strong> [5]: <img src="https://benjaminhan.net/feed-assets/bb4bc366b77e94f8.svg" alt="\mathrm{Len}(p)" class="feed-math-inline"/>, the total reasoning and output tokens across a program’s steps, taken as a proxy for how much deliberation the answer required. Unlike verbalized confidence it needs no elicitation, so it is not exposed to miscalibration in what the model says about itself.</li>
+</ul>
+<p>The last two combine into one score, <img src="https://benjaminhan.net/feed-assets/8a6a7ea9445669e4.svg" alt="s(p) = \mathrm{VC}(p) \cdot \mathrm{Len}(p)" class="feed-math-inline"/>, and the winner is <img src="https://benjaminhan.net/feed-assets/60ca8d2099fa7f08.svg" alt="p^{*} = \arg\max_{p \in \mathcal{S}} s(p)" class="feed-math-inline"/>. Since <img src="https://benjaminhan.net/feed-assets/05e6d8cc9bd94262.svg" alt="\mathrm{VC}(p) \le 0" class="feed-math-inline"/> and <img src="https://benjaminhan.net/feed-assets/de19c76fdedbc488.svg" alt="\mathrm{Len}(p) &gt; 0" class="feed-math-inline"/>, the product is at most zero, and the maximum goes to the program that is both confident and short. §2.2.2 also states that lower values of <img src="https://benjaminhan.net/feed-assets/115c4e19f71b1930.svg" alt="s(p)" class="feed-math-inline"/> are better, which contradicts its own <img src="https://benjaminhan.net/feed-assets/1d4bd562b62ba91d.svg" alt="\arg\max" class="feed-math-inline"/>. The signs settle it for the maximum. Nothing in the loop rewrites a program: the eight are generated once, in parallel, and the score only picks among them.</p>
+<p>Figure 1, above, puts the two halves side by side. On the right is the self-query REPL, where the context arrives as a variable and three successive steps of one program (the figure labels them Program 1, 2 and 3) pull out a slice, analyze the policy options inside it, and produce a final evaluation, each optionally calling the model again on the text it just assembled. On the left is the search. The first panel shows nine sampled programs with their answers, six kept by plurality vote and three discarded. The second places the survivors on axes of verbalized confidence and reasoning length, with the selected program in the high-confidence, short-trace corner. The third compares the accuracy of RLM against each signal added on its own and then all three together.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The evaluation reuses RLM’s own benchmark suite and then extends it. The setup:</p>
+<ul>
+<li><strong>BrowseComp+</strong> [6]: <a href="https://huggingface.co/datasets/Tevatron/browsecomp-plus">BrowseComp-Plus</a> in full, 150 multi-hop questions answered against a fixed corpus of 1,000 documents, 6M to 11M tokens per task.</li>
+<li><strong>OOLONG</strong> [7]: an aggregation benchmark whose answers need most of the context rather than one buried fact, on the <code>trec_coarse</code> synthetic split at 131K tokens across 50 tasks.</li>
+<li><strong>LongBench-v2 CodeQA</strong> [8]: 50 multiple-choice code-repository questions from 23K to 4.2M tokens.</li>
+<li><strong>Two extended sweeps</strong>: the full OOLONG synthetic split from 1K to 4M tokens (about 650 tasks, 50 per length), and the full LongBench-v2 across all six of its domains (about 500 tasks). These target the paper’s own questions about context length and task semantics.</li>
+<li><strong>Backbones</strong>: <a href="https://openai.com/index/introducing-gpt-5/">GPT-5</a> at medium reasoning effort, with GPT-5-mini as the sub-model for recursive calls, and the open-weight <a href="https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct">Qwen3-Coder-480B-A35B</a>.</li>
+<li><strong>Baselines</strong>: the base model on the raw context, CodeAct [9] with an <a href="https://en.wikipedia.org/wiki/Okapi_BM25">Okapi BM25</a> retriever, CodeAct with sub-calls, a summarization agent, and RLM with and without sub-calls.</li>
+<li><strong>Protocol</strong>: 600 seconds per program step, at most 30 steps, and GPT-5-mini judging answers for semantic equivalence rather than string match. Every RLM row in Table 1 is marked † for the authors’ own replication, and the original RLM numbers are not reported alongside.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/table1.jpg" class="img-fluid figure-img" data-lightbox-src="table1-full.jpg"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>The findings:</p>
+<ul>
+<li><strong>Best configuration on every benchmark, under both backbones</strong> (Table 1). With Qwen3-Coder-480B, SRLM reaches 64.9 on LongBench-v2 CodeQA, 59.7 on BrowseComp+ and 51.8 on OOLONG, against 59.8, 37.1 and 45.7 for RLM. The abstract’s “up to 22%” is the 22.6-point BrowseComp+ gap on this backbone.</li>
+<li><strong>Under GPT-5 the sub-calls mostly hurt</strong> (Table 1). RLM without sub-calls beats recursive RLM on LongBench-v2 CodeQA (65.2 against 59.5) and BrowseComp+ (89.7 against 86.0), losing only on OOLONG (50.5 against 53.0). The best GPT-5 configurations overall are both non-recursive: SRLM without sub-calls at 74.1 and 94.6.</li>
+<li><strong>Recursion costs time it does not earn back</strong> (Figure 3). Under both backbones, SRLM without sub-calls reaches higher accuracy than RLM at lower wall-clock time. The eight programs run in parallel, so sampling eight instead of one barely moves the clock.</li>
+<li><strong>Short contexts are where RLM falls below the base model</strong> (Figure 2). On OOLONG with GPT-5 under 131K tokens, RLM averages 0.9 points below the base model and RLM without sub-calls 6.8 below, while SRLM is 5.4 above. Past 131K the gaps widen to 11.9 above base for RLM and 28.5 for SRLM. On LongBench-v2 with GPT-5 under 131K, both RLM variants are about 8 points below base and both SRLM variants a little over 1 point below.</li>
+<li><strong>The advantage of recursion is concentrated in search-shaped domains</strong> (Figure 4). Across the six LongBench-v2 domains, RLM gains most on Code Repository QA and Structured Data QA, the two whose contexts are modular and indexable. On Dialogue History QA the base model scores highest of all five configurations, at 69 against 66 for SRLM and about 61 for both RLM variants.</li>
+<li><strong>One signal accounts for nearly all of it</strong> (Figure 5, top row). Self-consistency used alone comes within 1.2 to 2.0 points of the full three-signal combination on all three benchmarks: 45.2 against 47.2 on OOLONG, 60.5 against 61.7 on LongBench-v2, and 73.4 against 74.3 on BrowseComp+. Figure 5 gives these as bars with truncated y-axes, so read them to about half a point. The per-bin heatmaps in the bottom row show why the paper wants all three: accuracy is not monotone in verbalized confidence or in trace length on its own.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/figure3.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 3 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/figure2.jpg" class="img-fluid figure-img" data-lightbox-src="figure2-full.jpg"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/figure4.png" class="img-fluid figure-img"></p>
+<figcaption>Figure 4 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260730-self-reflective-program-search/figure5.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 5 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The difference is best-of-eight selection</strong>: with recursion enabled on both sides, everything separating SRLM from RLM is that SRLM samples eight programs and keeps one. The three uncertainty signals are the ranking function.
+<ul>
+<li><strong>The paper calls it revision.</strong> §3.6 says SRLM “relies on implicit uncertainty-guided self-reflection to revise and refine its context-interaction programs,” but §2.2 only scores finished candidates. Actual revision has a poor record: Huang et al.&nbsp;found that prompting a model to reconsider its own answer without external feedback lowers accuracy across three reasoning benchmarks [10]. The paper does not cite it.</li>
+<li><strong>The ranking function is worth a point or two.</strong> The 22.6-point headline is measured against RLM running a single program, so most of that gap is the move from one sample to eight. At matched <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> the self-consistency-only row of the ablation is plain majority voting from 2022 [3], and it comes in 1.2 to 2.0 points below the full combination. Both numbers are in the paper, but never next to each other.</li>
+</ul></li>
+<li><strong>Recursion and sub-model capability are not separated</strong>: under GPT-5 the recursive sub-calls go to GPT-5-mini, so turning sub-calls on routes sub-questions to a weaker model, and turning them off keeps every read inside GPT-5. The paper names no sub-model for Qwen3-Coder-480B, and no smaller variant of it appears in the setup, so it is presumably calling itself. Every negative recursion increment in Table 1 is on the GPT-5 rows, which fits a weak sub-model as well as it fits the disruption §3.4 attributes to recursion. The claim that recursion contributes only a small share of the gain is unaffected, since §3.6 argues it on Qwen. The stronger reading, that recursion is a liability, needs a run the paper does not have: GPT-5 as its own sub-model.</li>
+<li><strong>Wall clock is not the budget most readers pay</strong>: the parity claim is wall-clock, and it holds only because the eight programs run in parallel. The conclusion names token control as future work, but the paper reports no counts anywhere. On a metered API the cost is close to eight times the generation of a single RLM program, on contexts of 6M to 11M tokens.</li>
+<li><strong>The combination rule is fixed</strong>: the ranking of the three signals moves with both task and backbone. Verbalized confidence alone scores about two points above the full combination for GPT-5 on BrowseComp+ in the no-sub-call runs, and is the weakest of the three on OOLONG. The score <img src="https://benjaminhan.net/feed-assets/8a6a7ea9445669e4.svg" alt="s(p) = \mathrm{VC}(p) \cdot \mathrm{Len}(p)" class="feed-math-inline"/> has nothing to tune. Fitting a per-task or learned selector would be cheap, since both signals are already computed for every sampled program.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a><a href="https://dblp.org/pid/269/9531">Alizadeh, K.</a>, <a href="https://dblp.org/pid/281/9859">Shojaee, P.</a>, <a href="https://dblp.org/pid/70/6244">Cho, M.</a>, <a href="https://dblp.org/pid/21/9988.html">Farajtabar, M.</a> “Recursive Language Models Meet Uncertainty: The Surprising Effectiveness of Self-Reflective Program Search for Long Context.” <em>arXiv preprint</em> (arXiv:2603.15653), March 7, 2026. <a href="https://arxiv.org/abs/2603.15653" class="uri">https://arxiv.org/abs/2603.15653</a></li>
+<li><a id="ref-2"></a><a href="https://dblp.org/pid/389/8697">Zhang, A. L.</a>, <a href="https://dblp.org/pid/26/6037">Kraska, T.</a>, <a href="https://omarkhattab.com/">Khattab, O.</a> “Recursive Language Models.” <em>arXiv preprint</em> (arXiv:2512.24601), December 31, 2025. <a href="https://arxiv.org/abs/2512.24601" class="uri">https://arxiv.org/abs/2512.24601</a></li>
+<li><a id="ref-3"></a>Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., Zhou, D. “Self-Consistency Improves Chain of Thought Reasoning in Language Models.” <em>ICLR 2023</em> (arXiv:2203.11171), March 21, 2022. <a href="https://arxiv.org/abs/2203.11171" class="uri">https://arxiv.org/abs/2203.11171</a></li>
+<li><a id="ref-4"></a>Xiong, M., Hu, Z., Lu, X., Li, Y., Fu, J., He, J., Hooi, B. “Can LLMs Express Their Uncertainty? An Empirical Evaluation of Confidence Elicitation in LLMs.” <em>ICLR 2024</em> (arXiv:2306.13063), June 22, 2023. <a href="https://arxiv.org/abs/2306.13063" class="uri">https://arxiv.org/abs/2306.13063</a></li>
+<li><a id="ref-5"></a><a href="https://dblp.org/pid/239/8389">Devic, S.</a>, Peale, C., Bradley, A., Williamson, S., Nakkiran, P., Gollakota, A. “Trace Length is a Simple Uncertainty Signal in Reasoning Models.” <em>arXiv preprint</em> (arXiv:2510.10409), October 12, 2025. <a href="https://arxiv.org/abs/2510.10409" class="uri">https://arxiv.org/abs/2510.10409</a></li>
+<li><a id="ref-6"></a>Chen, Z., Ma, X., Zhuang, S., Nie, P., Zou, K., Liu, A., Green, J., Patel, K., Meng, R., Su, M., Sharifymoghaddam, S., Li, Y., Hong, H., Shi, X., Liu, X., Thakur, N., Zhang, C., Gao, L., Chen, W., Lin, J. “BrowseComp-Plus: A More Fair and Transparent Evaluation Benchmark of Deep-Research Agent.” <em>arXiv preprint</em> (arXiv:2508.06600), August 8, 2025. <a href="https://arxiv.org/abs/2508.06600" class="uri">https://arxiv.org/abs/2508.06600</a></li>
+<li><a id="ref-7"></a>Bertsch, A., Pratapa, A., Mitamura, T., Neubig, G., Gormley, M. R. “Oolong: Evaluating Long Context Reasoning and Aggregation Capabilities.” <em>arXiv preprint</em> (arXiv:2511.02817), November 4, 2025. <a href="https://arxiv.org/abs/2511.02817" class="uri">https://arxiv.org/abs/2511.02817</a></li>
+<li><a id="ref-8"></a>Bai, Y., Tu, S., Zhang, J., Peng, H., Wang, X., Lv, X., Cao, S., Xu, J., Hou, L., Dong, Y., Tang, J., Li, J. “LongBench v2: Towards Deeper Understanding and Reasoning on Realistic Long-context Multitasks.” <em>arXiv preprint</em> (arXiv:2412.15204), December 19, 2024. <a href="https://arxiv.org/abs/2412.15204" class="uri">https://arxiv.org/abs/2412.15204</a></li>
+<li><a id="ref-9"></a>Wang, X., Chen, Y., Yuan, L., Zhang, Y., Li, Y., Peng, H., Ji, H. “Executable Code Actions Elicit Better LLM Agents.” <em>ICML 2024</em> (arXiv:2402.01030), February 1, 2024. <a href="https://arxiv.org/abs/2402.01030" class="uri">https://arxiv.org/abs/2402.01030</a></li>
+<li><a id="ref-10"></a>Huang, J., Chen, X., Mishra, S., Zheng, H. S., Yu, A. W., Song, X., Zhou, D. “Large Language Models Cannot Self-Correct Reasoning Yet.” <em>ICLR 2024</em> (arXiv:2310.01798), October 3, 2023. <a href="https://arxiv.org/abs/2310.01798" class="uri">https://arxiv.org/abs/2310.01798</a></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260625-adas/">Automated Design of Agentic Systems</a>: the same search-over-programs paradigm, with a meta agent writing candidate scaffolds instead of a scorer picking among sampled ones.</li>
+<li><a href="../../posts/20260516-cannot-self-correct/">Large Language Models Cannot Self-Correct Reasoning Yet</a>: the negative result on intrinsic revision that SRLM’s selection-only mechanism sidesteps.</li>
+<li><a href="../../posts/20260610-just-ask-calibration/">Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback</a>: the evidence that verbalized confidence is usable at all, which the second of SRLM’s three signals depends on.</li>
+<li><a href="../../posts/20260522-metacognitive-harness/">LLMs Know When They Know, but Do Not Act on It: A Metacognitive Harness for Test-time Scaling</a>: another test-time scaffold built on a model’s self-assessment rather than an external verifier.</li>
+<li><a href="../../posts/20260629-conductor-llm-orchestrator/">Learning to Orchestrate Agents in Natural Language with the Conductor</a>: uses recursive self-calls as its test-time scaling mechanism, the one this paper finds contributes little on long context.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260730-self-reflective-program-search/</guid>
+  <pubDate>Thu, 30 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260730-self-reflective-program-search/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Anatomy of a Frontier Lab Agent Intrusion</title>
   <dc:creator>synesis </dc:creator>
@@ -1248,133 +1380,6 @@
   <guid>https://benjaminhan.net/posts/20260713-gpt-5-6-has-landed/</guid>
   <pubDate>Mon, 13 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260713-gpt-5-6-has-landed/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Benchmarking Coding Agents on Databricks’ Multi-Million-Line Codebase</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>The engineering team at <a href="https://www.databricks.com/">Databricks</a>, including CTO <a href="https://cs.stanford.edu/~matei/">Matei Zaharia</a>, <a href="https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase">published</a> the results of an internal benchmark that scores coding agents on real tasks drawn from their own multi-million-line codebase, rather than on public suites.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Cost versus performance on the Databricks internal benchmark, with models and harnesses spread across a Pareto frontier. Image from <a href="https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase">Databricks</a>.</figcaption>
-</figure>
-</div>
-<p>What the article reports:</p>
-<ul>
-<li><strong>Method</strong>: real merged pull requests turned into graded tasks.
-<ul>
-<li>Sources: recent human-written PRs across 10+ languages (Scala, Rust, TypeScript, Go, Python, Bazel, Protobuf).</li>
-<li>Each PR description rewritten to state the goal without the solution, with the test files held out.</li>
-<li>Pass = the held-out tests pass, with every sample hand-checked and some tests rewritten to grade behavior instead of exact string match.</li>
-<li>Scored by those tests, not an LLM judge, because a judge “rewards sounding right over being right.”</li>
-</ul></li>
-<li><strong>Three capability tiers</strong>: models and harnesses clustered by overall pass rate.
-<ul>
-<li>Top, 82–90%: Opus 4.8, <a href="https://z.ai/">GLM 5.2</a>, and GPT-5.5 in its stronger settings.</li>
-<li>Middle, 71–82%: Sonnet 5, Sonnet 4.6, most GPT-5.5 configurations.</li>
-<li>Bottom, 51–60%: GPT-5.4-mini, Haiku 4.5.</li>
-<li>No single vendor owns the frontier: the best quality-per-dollar points span OpenAI, Anthropic, and open models.</li>
-</ul></li>
-<li><strong>Most real work is routine</strong>: task complexity from logged coding sessions.
-<ul>
-<li>7.6% trivial, 19.3% low, 61.1% medium, only 12.1% high.</li>
-<li>Flag flips and config edits don’t need the most capable model, yet it was the default everywhere, and the biggest efficiency gain came from routing cheaper models to easier work.</li>
-</ul></li>
-<li><strong>Open models arrived</strong>: GLM 5.2 landed in the top capability tier, statistically tied with Opus 4.8 on quality while costing $1.28/task against Opus’s $1.94.</li>
-<li><strong>Token price mispredicts task cost</strong>: Sonnet 5 is about 1.7× cheaper per token than Opus 4.8, but cost $2.09/task versus Opus’s $1.94 and scored six points lower (81% vs 87%), because it read more and ran longer, burning 1.9× the tokens.</li>
-<li><strong>Harness choice moved cost as much as model choice</strong>: the same model at the same thinking effort cost up to 2× more through one harness than another at equal quality, driven by how much context each harness re-fed the model per turn (see the Pi section below).</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/capability-tiers.png" class="img-fluid figure-img"></p>
-<figcaption>Overall pass rate against cost per task, with the models and harnesses falling into three capability tiers. Image from <a href="https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase">Databricks</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/task-complexity.png" class="img-fluid figure-img"></p>
-<figcaption>Share of Databricks’ logged AI coding sessions by task complexity: most of the work is medium or below. Image from <a href="https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase">Databricks</a>.</figcaption>
-</figure>
-</div>
-<section id="the-pi-harness" class="level2">
-<h2 class="anchored" data-anchor-id="the-pi-harness">The Pi Harness</h2>
-<p>In the benchmark, every model was run two ways: through its native harness (Claude Code for the Anthropic models, Codex for the OpenAI models) and through <a href="https://pi.dev/">Pi</a>, a minimal open-source harness, at the same model and the same thinking effort. Pi matched the native harnesses on quality for less money, for two reasons:</p>
-<ul>
-<li><strong>Less context per task</strong>: Pi re-fed the model far fewer tokens: a median 236k for Opus 4.8 against Claude Code’s 742k (3.2× less), and 665k for GPT-5.5 against Codex’s 1,235k (1.9× less). It kept a tighter working set and finished tasks in fewer runs.</li>
-<li><strong>Lower cost at matching quality</strong>: the saving ran 1.2× to 2.1× per task. Opus 4.8 at high effort cost 2.08× less through Pi while scoring within two points (85% vs 87%), and at extra-high effort it was 1.46× cheaper while scoring two points higher (90% vs 88%). The gap narrowed only at max effort, where the native harness pulled ahead on quality.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/context-per-task.png" class="img-fluid figure-img"></p>
-<figcaption>Total context re-fed to the model per task, Pi versus each model’s native harness. Image from <a href="https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase">Databricks</a>.</figcaption>
-</figure>
-</div>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/harness-efficiency.png" class="img-fluid figure-img"></p>
-<figcaption>Cost per task through Pi versus each model’s native harness, at matched quality. Image from <a href="https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase">Databricks</a>.</figcaption>
-</figure>
-</div>
-<p>Databricks’ reading is that the harness deserves the same scrutiny as the model, because it can move the bill more than the model does. That is why the team invested in <a href="https://omnigent.ai/">Omnigent</a>, a meta-harness meant to make swapping models and harnesses routine rather than a rewrite each time.</p>
-<p>Some background on Pi, since it earned its place here. It is a terminal-based coding agent that calls itself a “minimal agent harness”, where the core stays small and you reshape it through extensions, skills, and shared packages rather than working around fixed features.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/pi.png" class="img-fluid figure-img"></p>
-<figcaption>Pi’s own framing of what it is. Image from <a href="https://pi.dev/">pi.dev</a>.</figcaption>
-</figure>
-</div>
-<ul>
-<li><strong>Who built it</strong>: Earendil Inc.</li>
-<li><strong>Free or commercial</strong>: free and open source under the MIT license, installed from npm as <code>@earendil-works/pi-coding-agent</code>. You bring your own model access, a provider subscription or an API key, so the only running cost is model usage.</li>
-<li><strong>Versus Claude Code and Codex</strong>:
-<ul>
-<li><strong>Provider-agnostic</strong>: Claude Code is tied to Anthropic’s models and Codex to OpenAI’s, while Pi speaks to 15+ providers and hundreds of models (Anthropic, OpenAI, Google, Bedrock, Mistral, Groq, xAI, OpenRouter, Ollama, among others) and switches between them mid-session.</li>
-<li><strong>Ships far less by design</strong>: sub-agents, plan mode, permission gates, and built-in MCP, which the other two include out of the box, are left out of Pi’s core and added back only if you want them.</li>
-</ul></li>
-<li><strong>Selling points</strong>:
-<ul>
-<li>A minimal system prompt that keeps token use low (the effect measured above).</li>
-<li>Tree-structured sessions you can rewind, branch, and share.</li>
-<li>A scriptable print/JSON mode plus an SDK for embedding.</li>
-<li>Direct control over what enters the context window.</li>
-</ul></li>
-<li><strong>Where to start</strong>: run <code>curl -fsSL https://pi.dev/install.sh | sh</code> or the npm install above, then <code>pi</code> in a project directory. The <a href="https://pi.dev/docs/">docs</a> walk through setup.</li>
-</ul>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>A realistic sandbox can leak the answer</strong>: early scores looked too good because agents with shell access walked <em>forward</em> through the worktree’s git history to the merged commit that held it. Databricks fixed it by cutting the working copy off from the repository for each run. When the eval environment is a real repo, the solution is usually already inside it, so the setup has to remove it.</p></li>
-<li><p><strong>A private PR backlog is uncontaminated evaluation data</strong>: public suites like <a href="https://www.swebench.com/">SWE-bench</a> decay as their tasks leak into training corpora, while a team’s own merged PRs are graded by tests that team already wrote and are absent from any model’s training set. The eval advantage has quietly become a data-ownership advantage, which is the same pressure driving the <a href="../../posts/20260627-open-weights-frontier-gap/">open-weights capability gap</a> toward workload-specific measurement over leaderboards.</p></li>
-<li><p><strong>Procurement should ask “which harness,” not just “which model”</strong>: the industry tracks model leaderboards obsessively and treats the harness as plumbing, yet at fixed model and fixed quality the harness moved cost more than 2×. That puts real weight behind the <a href="../../posts/20260626-harness-engineering/">harness-engineering</a> thesis that the scaffold is where much of the leverage now lives, and it matches the per-turn context accounting in <a href="../../posts/20260503-where-claude-code-tokens-go/">where Claude Code tokens go</a>.</p></li>
-<li><p><strong>Per-token pricing is the wrong budgeting unit</strong>: effective cost is tokens times reasoning efficiency, and reasoning efficiency is workload-specific, so a published price cannot tell you what a task will cost. Only running your own tasks can. The Sonnet-versus-Opus inversion is the example: Sonnet burned more tokens over more turns despite the lower token price. <a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The math behind the cost of AI agents</a> derives why: the context piling up each turn, not the per-token rate, sets what a task costs.</p></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260626-harness-engineering/">Harness Engineering</a>: argues the agent scaffold is where much of the current leverage is, which the 2× harness-driven cost gap here makes concrete.</li>
-<li><a href="../../posts/20260627-open-weights-frontier-gap/">How Far Behind the Closed Frontier Are Open-Weights LLMs?</a>: the open-versus-closed gap that GLM 5.2’s top-tier finish speaks to directly.</li>
-<li><a href="../../posts/20260513-the-math-behind-the-cost-of-ai-agents/">The Math Behind the Cost of AI Agents</a>: derives why agent token cost grows with each turn, and this post supplies the empirical per-task counterpart.</li>
-<li><a href="../../posts/20260503-where-claude-code-tokens-go/">Where Claude Code Tokens Go</a>: per-turn context accounting that explains why harness context management moves the bill.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/</guid>
-  <pubDate>Mon, 13 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260713-databricks-coding-agent-benchmark/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
