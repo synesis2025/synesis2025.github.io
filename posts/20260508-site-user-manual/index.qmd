@@ -3,13 +3,13 @@ title: "A User Manual for *synesis*"
 description: "A visual walkthrough of the main reader-facing features on synesis."
 author: synesis
 date: "2026-05-08"
-date-modified: "2026-05-25 11:21 PDT"
+date-modified: "2026-08-21 07:51 PDT"
 image: cover.jpg
 ---
 
 This site is a static blog. No comments, no like button, no email-capture popup, no newsletter overlay — just HTML, CSS, and enough JavaScript to keep the reading experience pleasant.
 
-![The navbar that runs along the top of every page — home, archive, about, and a search icon.](01-navbar.jpg){fig-align="center"}
+![The navbar that runs along the top of every page — the site name, the four topic pages, archive, about, and a search icon.](01-navbar.jpg){fig-align="center"}
 
 Everything works with a mouse on the desktop and by tap on phones. On top of that, desktop readers get a keyboard shortcut for almost every feature. Press `?` on any page to see the map.
 
@@ -43,6 +43,14 @@ The third button in the top-right pill — a small `#` icon, between the Ask-AI 
 
 The list ranks matches in four tiers (exact name, name starts with what you typed, any word starts with it, anywhere in the name) and breaks ties by post count. Up to twelve results appear at a time. Arrow keys move the highlight; `Esc` cancels.
 
+## Browsing by kind
+
+Four navbar items each list one kind of post: **Papers** (write-ups of individual papers), **Primers** (longer explainers), **Transcripts** (talks and interviews as readable transcripts), and **Running** (the running log).
+
+Each page is a card listing like the home page, with its own pagination, so you can page back through one kind of post without the others mixed in. The archive filters on the same tags, but it shows a dense table meant for lookup. These pages are meant for reading. Keyboard shortcuts are `p`, `m`, `c`, and `r`, and each page has its own RSS feed (see [For agents and feed readers](#for-agents-and-feed-readers)).
+
+A post can appear on more than one of them. A conference talk about a paper is both a transcript and a paper write-up, and it shows up under both.
+
 ## Browsing the archive
 
 The archive page lists every post in one scrollable table. Clicking a tag chip filters the table in place, and the URL updates so the filtered view is shareable.
@@ -59,7 +67,7 @@ The home and archive pages carry a pagination bar so you can walk backward throu
 
 The same motion is available from the keyboard. On a post, `j` or `←` goes to the newer post and `k` or `→` goes to the older one. On a listing page, the same keys turn pages. `↑` and `↓` walk a highlight through visible posts, and `Enter` opens the highlighted one.
 
-![A listing page with one post highlighted by keyboard navigation.](06-listing-focus.jpg){fig-align="center" data-lightbox-src="06-listing-focus-full.jpg"}
+![A listing page with one post highlighted by keyboard navigation.](06-listing-focus.webp){fig-align="center" data-lightbox-src="06-listing-focus-full.webp"}
 
 ## Activity timeline
 
@@ -104,11 +112,13 @@ Your choice sticks across visits. Defaults track the system color scheme — if 
 The highlights, in rough order of usefulness:
 
 - `/` search, `q` Ask AI, `#` jump to tag
-- `s` home, `a` archive, `A` about
+- `s` home, `p` papers, `m` primers, `c` transcripts, `r` running, `a` archive, `b` about
 - `j` / `←` newer, `k` / `→` older (works on posts and on paginated listings)
 - `↑` / `↓` / `Enter` move the highlight and open
 - `d` / `t` / `f` / `l` theme, font, line spacing
 - `Esc` to close any overlay, clear search highlights, or drop a tag filter
+
+The page keys follow the navbar left to right, and every shortcut on the site is a single unshifted key. One overlap: on a narrow window, `m` opens the bottom-sheet panel described below instead of going to Primers.
 
 Same keys do different things depending on the page: `j`/`k` move post-to-post on a post, and page-to-page on a listing.
 
@@ -122,11 +132,12 @@ Tap the dim area behind the sheet, or the corner button again, to close.
 
 ## For agents and feed readers
 
-Three routes exist for non-human readers:
+Four routes exist for non-human readers:
 
 - `/llms.txt` — a plain-text index of every post, regenerated on each build, aimed at AI agents
 - `/posts/<slug>/index.qmd` — the raw Markdown source of every post, served alongside the rendered HTML
 - `/index.xml`, `/feed-page-2.xml`, … — a full-content RSS feed, paginated, with math and diagrams pre-rendered so they show up even in readers that do not run JavaScript
+- `/papers/index.xml`, `/primers/index.xml`, `/transcripts/index.xml`, `/running/index.xml` — the same feed narrowed to one kind of post, for subscribing to the paper write-ups without the running log, or the other way round
 
 The RSS feed carries every post in full, with nothing truncated. The backlink sits at the top of each item so a reader who wants to comment or share has the canonical URL in hand before scrolling.
 

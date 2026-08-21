@@ -116,7 +116,7 @@
 }
 
 /* Pre-paint gate: hide the entire header until flattenNav() has rebuilt
-   the navbar into .navbar-3row AND update() has landed the first
+   the navbar into .navbar-row AND update() has landed the first
    measurement (both happen atomically at end-of-body, flipping
    body.navbar-ready). Without this rule, the browser paints Quarto's
    default Bootstrap layout first — brand on the left, Archive/About
@@ -146,8 +146,8 @@ html.js-navbar body:not(.navbar-ready) #quarto-header {
 .navbar .nav-link:hover {
   color: color-mix(in srgb, var(--bs-emphasis-color) 75%, transparent) !important;
 }
-/* Treat synesis / Archive / About as equals — same font size, weight,
-   and padding — so the three items read as a uniform row, not brand +
+/* Treat the brand and every nav item as equals — same font size, weight,
+   and padding — so the row reads as uniform, not brand +
    secondary nav. Bootstrap's default .navbar-brand font-size (1.25rem)
    would otherwise make synesis stand out from the nav links. Padding
    and margin use !important because the theme override link sits after
@@ -171,7 +171,7 @@ html.js-navbar body:not(.navbar-ready) #quarto-header {
   margin-right: auto !important;
 }
 
-/* Always-expanded navbar: Archive/About render inline at every width,
+/* Always-expanded navbar: every nav item renders inline at every width,
    never collapsing into a hamburger. Bootstrap's `.navbar-expand-lg`
    only auto-expands at ≥992px, so without these overrides the toggler
    reappears between 768–991px during viewport resizes. Current page
@@ -189,12 +189,13 @@ html.js-navbar body:not(.navbar-ready) #quarto-header {
   gap: 0.75rem;
 }
 
-/* Unified navbar layout (all viewports): synesis → Archive → About
-   laid out left-to-right in natural widths. If the three items' combined
+/* Unified navbar layout (all viewports): synesis → Papers → Primers →
+   Transcripts → Running → Archive → About, laid out left-to-right in
+   natural widths. If the items' combined
    width exceeds the viewport (narrow phones, tiny accessibility-zoom
    contexts) the bar scrolls horizontally; scrollbar hidden cross-browser
    so the bar stays visually clean. `display: contents` unwraps Quarto's
-   intermediate .navbar-collapse / .navbar-nav wrappers so the three items
+   intermediate .navbar-collapse / .navbar-nav wrappers so the items
    are direct flex children of the container. Search (top-right) and
    dark-mode toggle (bottom-right) float as fixed-position circles —
    their CSS below pulls them out of the navbar flow entirely. */
@@ -239,19 +240,28 @@ html.js-navbar body:not(.navbar-ready) #quarto-header {
 .navbar .nav-item {
   list-style: none !important;
 }
-/* Order: synesis → Archive → About. Quarto emits nav items in the order
-   they appear under `navbar.left` in _quarto.yml, so Archive is
-   nth-child(1) and About is nth-child(2). */
+/* Order: brand, then the nav items in `navbar.left` order (Papers,
+   Primers, Transcripts, Running, Archive, About). Quarto emits nav items
+   in that order, so nth-child(N) maps to the Nth entry in _quarto.yml.
+   These rules only govern the pre-flatten and no-JS paint: flattenNav
+   (navbar-content-align.html) moves the links out of <ul>.navbar-nav
+   entirely, after which source order in the new wrapper decides. Kept in
+   sync with the item count so a JS-off visitor still sees the intended
+   order. */
 .navbar .navbar-brand-container { order: 1; margin: 0 !important; }
 .navbar .navbar-nav .nav-item:nth-child(1) { order: 2; }
 .navbar .navbar-nav .nav-item:nth-child(2) { order: 3; }
+.navbar .navbar-nav .nav-item:nth-child(3) { order: 4; }
+.navbar .navbar-nav .nav-item:nth-child(4) { order: 5; }
+.navbar .navbar-nav .nav-item:nth-child(5) { order: 6; }
+.navbar .navbar-nav .nav-item:nth-child(6) { order: 7; }
 
-/* flattenNav (navbar-content-align.html) builds a fresh .navbar-3row
-   wrapper inside .navbar-container holding the brand link + 2 nav
-   links, side-by-side left-to-right. Horizontal scroll on overflow,
-   scrollbar hidden — the bar stays clean when the three items
+/* flattenNav (navbar-content-align.html) builds a fresh .navbar-row
+   wrapper inside .navbar-container holding the brand link + every nav
+   link, side-by-side left-to-right. Horizontal scroll on overflow,
+   scrollbar hidden — the bar stays clean when the items
    overflow on narrow widths. */
-.navbar-3row {
+.navbar-row {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -265,10 +275,10 @@ html.js-navbar body:not(.navbar-ready) #quarto-header {
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
 }
-.navbar-3row::-webkit-scrollbar {
+.navbar-row::-webkit-scrollbar {
   display: none;
 }
-.navbar-3row > a {
+.navbar-row > a {
   margin: 0;
   padding: 0;
   flex: 0 0 auto;
@@ -412,7 +422,16 @@ html.page-home #title-block-header,
 html.page-archive #title-block-header,
 html.page-about #title-block-header,
 html.page-home-bucket #title-block-header,
-html.page-archive-bucket #title-block-header {
+html.page-archive-bucket #title-block-header,
+/* Topic surfaces (Papers, Primers, …) suppress their H1 for the same
+   reason home and archive do: every listing surface should read
+   identically, and the underlined navbar item already says which one
+   you're on. The `title:` in the generated
+   frontmatter still drives <title>, Open Graph, and the feed name — it's
+   only the on-page block that's hidden. See
+   docs/plans/plan-topic-surfaces.md. */
+html.page-topic #title-block-header,
+html.page-topic-bucket #title-block-header {
   display: none;
 }
 
@@ -429,7 +448,13 @@ html.page-archive .navbar .nav-link[href$="archive/index.html"],
 html.page-archive .navbar .nav-link[href$="/archive/"],
 html.page-archive-bucket .navbar .nav-link[href$="archive/index.html"],
 html.page-archive-bucket .navbar .nav-link[href$="/archive/"],
-html.page-about .navbar .nav-link[href$="about.html"] {
+html.page-about .navbar .nav-link[href$="about.html"],
+/* Topic surfaces (Papers, Primers, Transcripts, Running) mark their own
+   link with .nav-current in _includes/navbar-content-align.html rather
+   than adding two href-suffix selectors per surface here. The JS prefix-
+   matches the path, so a bucket page (/papers/page/3/) underlines its
+   surface too. See docs/plans/plan-topic-surfaces.md. */
+.navbar .nav-link.nav-current {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 5px;
@@ -797,18 +822,27 @@ body.quarto-dark .quarto-listing-default .quarto-post .listing-date a {
   opacity: 0.7;
 }
 
-/* Home post-tile titles. Shares the post-page h1 cap (24px) so the
+/* Card-listing post-tile titles. Shares the post-page h1 cap (24px) so the
    feed title and the article headline read at one scale, while still
-   being clearly the dominant element on each card. Fluid below 1200px. */
-html.page-home .quarto-listing-default .quarto-post .listing-title,
-html.page-home .quarto-listing-default .quarto-post .listing-title a {
+   being clearly the dominant element on each card. Fluid below 1200px.
+
+   Deliberately NOT scoped to a `html.page-*` class. `.quarto-listing-default`
+   is emitted only by card listings — home, home buckets, and each topic
+   surface with its buckets — while archive uses `type: table` and so can't
+   match. The rule used to carry an `html.page-home` prefix, which silently
+   left home's own `/page/<K>/` pages (and later every topic surface)
+   rendering Quarto's larger default title size. Keeping the scope on the
+   listing type instead means any future card surface inherits the cap
+   automatically. */
+.quarto-listing-default .quarto-post .listing-title,
+.quarto-listing-default .quarto-post .listing-title a {
   font-size: calc(1.14rem + 0.48vw);
   font-weight: 500;
   line-height: 1.2;
 }
 @media (min-width: 1200px) {
-  html.page-home .quarto-listing-default .quarto-post .listing-title,
-  html.page-home .quarto-listing-default .quarto-post .listing-title a {
+  .quarto-listing-default .quarto-post .listing-title,
+  .quarto-listing-default .quarto-post .listing-title a {
     font-size: 1.5rem;
   }
 }
@@ -3428,7 +3462,7 @@ html[data-line-spacing="loose"] blockquote {
    width and otherwise punches out beyond the content column on long
    equations (worst offenders ~280–300 chars of TeX). Horizontal scroll on
    overflow is the same pattern used elsewhere in this file for code
-   blocks, tables, and the navbar-3row chip strip. The padding-block keeps
+   blocks, tables, and the navbar-row chip strip. The padding-block keeps
    a thin scrollbar from clipping descenders. The phone-size shrink keeps
    mid-length equations from triggering scroll at all in the common case. */
 mjx-container[display="true"] {

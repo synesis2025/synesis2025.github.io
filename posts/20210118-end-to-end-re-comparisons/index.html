@@ -245,7 +245,7 @@ window.__tagCountsReady = fetch('/tag-counts.json?v=96048798b7')
      Two <script> blocks: synchronous bootstrap globals, then async
      fetch of /post-index.json. See the generator's docstring for
      the byte-stability rationale and the consumer contract. -->
-<script>window.__copyrightRange="2017–2026";window.__bucketSizes={"home": {"size": 25, "overflow": 12}, "archive": {"size": 50, "overflow": 25}};</script>
+<script>window.__copyrightRange="2017–2026";window.__bucketSizes={"home": {"size": 25, "overflow": 12, "base": "/"}, "archive": {"size": 50, "overflow": 25, "base": "/archive/"}, "papers": {"size": 25, "overflow": 12, "base": "/papers/", "tag": "paper"}, "primers": {"size": 25, "overflow": 12, "base": "/primers/", "tag": "primer"}, "transcripts": {"size": 25, "overflow": 12, "base": "/transcripts/", "tag": "transcript"}, "running": {"size": 25, "overflow": 12, "base": "/running/", "tag": "running"}};window.__navShortcuts=[{"key": "s", "label": "Home", "href": "/"}, {"key": "p", "label": "Papers", "href": "/papers/"}, {"key": "m", "label": "Primers", "href": "/primers/"}, {"key": "c", "label": "Transcripts", "href": "/transcripts/"}, {"key": "r", "label": "Running", "href": "/running/"}, {"key": "a", "label": "Archive", "href": "/archive/"}, {"key": "b", "label": "About", "href": "/about.html"}];</script>
 <script>
 window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
   .then(function (r) { return r.json(); })
@@ -265,11 +265,11 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
 </script>
 <script>
 // Tag <html> with `page-home` / `page-archive` / `page-about` / `page-post`
-// based on the current URL path. Runs synchronously in <head> so the class
-// is present before the body parses, letting styles.css hide the page-title
-// block on these landing pages without any visible flash. Also used to
-// underline the current item in the navbar and to scope mobile-aside
-// behavior per surface.
+// / `page-topic` + `page-<surface>` based on the current URL path. Runs
+// synchronously in <head> so the class is present before the body parses,
+// letting styles.css hide the page-title block on these landing pages
+// without any visible flash. Also used to underline the current item in
+// the navbar and to scope mobile-aside behavior per surface.
 //
 // Also adds `html.js-navbar` so the CSS visibility gate on #quarto-header
 // (see `body:not(.navbar-ready)` rule in styles.css) only applies when
@@ -308,7 +308,40 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
   // Individual post pages. /posts/<slug>/ or /drafts/<slug>/. Used by
   // mobile-aside.html to surface the TOC disclosure and label it "Contents".
   else if (/^\/(posts|drafts)\/[^/]+$/.test(path)) cls = 'page-post';
-  if (cls) document.documentElement.classList.add(cls);
+
+  // Topic surfaces (Papers, Primers, Transcripts, Running). Their dirs
+  // are read from window.__bucketSizes — inlined synchronously by the
+  // post-index.html shim, which precedes this partial in
+  // _quarto.yml's include-in-header — so this stays in lockstep with
+  // site_config.TOPIC_SURFACES instead of hand-copying a dir list.
+  // A surface entry is identifiable by carrying a `tag` (home and
+  // archive don't). Each match adds two classes: a generic `page-topic`
+  // / `page-topic-bucket` for rules that apply to all four, plus a
+  // per-surface one. See docs/plans/plan-topic-surfaces.md.
+  if (!cls) {
+    var sizes = window.__bucketSizes || {};
+    for (var key in sizes) {
+      if (!sizes[key] || !sizes[key].tag || !sizes[key].base) continue;
+      var dir = sizes[key].base.replace(/^\/+|\/+$/g, '');
+      if (!dir) continue;
+      if (path === '/' + dir) {
+        cls = 'page-topic page-' + key;
+        break;
+      }
+      if (new RegExp('^/' + dir + '/page/\\d+$').test(path)) {
+        cls = 'page-topic-bucket page-' + key + '-bucket';
+        break;
+      }
+    }
+  }
+
+  // classList.add() rejects a string containing a space, so split — the
+  // topic branches above assign two classes at once.
+  if (cls) {
+    cls.split(' ').forEach(function (c) {
+      if (c) document.documentElement.classList.add(c);
+    });
+  }
 
   var slugMatch = window.location.pathname.match(/\/(?:posts|drafts)\/([^/]+)\//);
   window.__currentSlug = slugMatch ? slugMatch[1] : null;
@@ -397,34 +430,44 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
 
   /**
    * Parse the current bucket number out of `location.pathname`.
-   * Matches `/page/<K>/` (home) and `/archive/page/<K>/` (archive).
+   * Matches one optional leading directory segment before `page/<K>/`,
+   * which covers all three surface shapes: `/page/<K>/` (home),
+   * `/archive/page/<K>/` (archive), and `/<topic>/page/<K>/` (Papers,
+   * Primers, Transcripts, Running — see docs/plans/plan-topic-surfaces.md).
+   * The surface itself is read from the nav placeholder's `data-surface`,
+   * so this only has to yield the number.
    * Returns `null` for landing pages or any non-bucket URL — callers
    * typically interpret null as "= highest K" (landing resolves to the
-   * newest bucket via paginate-home.py's max-items sync).
+   * newest bucket via the paginators' max-items sync).
    * @returns {number | null}
    */
   window.currentBucketFromPath = function () {
-    var m = location.pathname.match(/^\/(?:archive\/)?page\/(\d+)\/?$/);
+    var m = location.pathname.match(/^\/(?:[\w-]+\/)?page\/(\d+)\/?$/);
     return m ? parseInt(m[1], 10) : null;
   };
 
   /**
    * Build the URL for bucket K on the given surface. The highest K
    * (== totalBuckets) lives at the surface's landing page, not at
-   * /page/K/ — paginate-home.py syncs index.qmd's max-items to the
+   * /page/K/ — the paginators sync each landing's max-items to the
    * newest bucket's fill so landing renders the same posts as the
    * highest-numbered bucket. Linking K to /page/K/ would create a
    * duplicate URL for the same content.
-   * @param {"home" | "archive"} surface
+   *
+   * The surface's landing path comes from `__bucketSizes[surface].base`
+   * (baked by post-index.py from site_config.py), so adding a surface
+   * needs no change here. The literals are a last-resort fallback for a
+   * stale cached page whose shim predates the `base` field.
+   * @param {string} surface  "home" | "archive" | a topic-surface key
    * @param {number} k
    * @param {number} totalBuckets
    * @returns {string}
    */
   window.surfaceBucketUrl = function (surface, k, totalBuckets) {
-    if (k === totalBuckets) {
-      return surface === 'archive' ? '/archive/' : '/';
-    }
-    return surface === 'archive' ? '/archive/page/' + k + '/' : '/page/' + k + '/';
+    var cfg = (window.__bucketSizes || {})[surface] || {};
+    var base = cfg.base || (surface === 'archive' ? '/archive/' : '/');
+    if (k === totalBuckets) return base;
+    return base + 'page/' + k + '/';
   };
 
   /**
@@ -593,7 +636,7 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
 <link rel="https://llmstxt.org/" type="text/plain" href="../../llms.txt">
 
 
-<link rel="stylesheet" href="../../styles.f8164a55bf.css">
+<link rel="stylesheet" href="../../styles.e6eab26cee.css">
 <meta property="og:title" content="Stop Incorrect Comparisons in End-to-End Relation Extraction – synesis">
 <meta property="og:description" content="Taillé et al at EMNLP 2020 — what are we measuring, what are we comparing to, what’s not explicated.">
 <meta property="og:image" content="https://benjaminhan.net/posts/20210118-end-to-end-re-comparisons/cover.jpg">
@@ -784,6 +827,22 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
 </button>
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../papers/index.html"> 
+<span class="menu-text">Papers</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../primers/index.html"> 
+<span class="menu-text">Primers</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../transcripts/index.html"> 
+<span class="menu-text">Transcripts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../running/index.html"> 
+<span class="menu-text">Running</span></a>
+  </li>  
   <li class="nav-item">
     <a class="nav-link" href="../../archive/index.html"> 
 <span class="menu-text">Archive</span></a>
@@ -1245,6 +1304,21 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
   var filterCategory = null;   // string when filter mode active, else null
   var fullPostIndex = null;    // cached after __postIndexReady resolves
 
+  // Items this surface paginates. Topic surfaces (Papers, Primers, …)
+  // carry a `tag` in __bucketSizes and paginate only the posts holding
+  // it; home and archive have no `tag` and paginate the whole corpus.
+  // Branching on the field's presence rather than on a surface-name list
+  // keeps this generic as surfaces are added — see
+  // docs/plans/plan-topic-surfaces.md. Mirror of the same helper in
+  // keyboard-shortcuts.html, which needs the count for j/k paging.
+  function surfaceItemCount(surfaceCfg) {
+    if (!fullPostIndex) return 0;
+    if (!surfaceCfg || !surfaceCfg.tag) return fullPostIndex.length;
+    return fullPostIndex.filter(function (p) {
+      return p.categories && p.categories.indexOf(surfaceCfg.tag) !== -1;
+    }).length;
+  }
+
   function bucketUrl(k) {
     if (filterCategory !== null) {
       var enc = encodeURIComponent(filterCategory);
@@ -1427,8 +1501,10 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
     }
     // Unfiltered (or non-archive surface). Overflow-aware total count:
     // totalBuckets = closed + 1 (the open bucket) whenever there's ≥1 post.
+    // The count is surface-scoped: tag-filtered on a topic surface, the
+    // full index on home/archive.
     filterCategory = null;
-    var t = window.tile(fullPostIndex.length, bucketSize, overflow);
+    var t = window.tile(surfaceItemCount(surfaceCfg), bucketSize, overflow);
     totalBuckets = t.newestFill > 0 ? t.closed + 1 : 0;
     currentBucket = window.currentBucketFromPath();
     centerBucket = null;
@@ -4647,16 +4723,63 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
 //   ?         → toggle help overlay listing all shortcuts
 //   s         → home page (/) — `s` for "synesis"
 //   a         → archive page (/archive/)
-//   A         → about page (/about.html)
+//   b         → about page (/about.html) — `b` as in a-b-out
+//   p i c r   → topic surfaces: Papers, Primers, Transcripts, Running
 //   d         → toggle light / dark theme
 //   t         → cycle Bootswatch theme (within current light/dark mode)
 //   j  or ←  → newer post (post pages) · newer bucket (listing pages)
 //   k  or →  → older post · older bucket
 //   ↑ or ↓   → focus previous / next post in the listing (home/archive)
 //   Enter    → open the focused post
+//
+// Every binding is unshifted — no shortcut on this site depends on the
+// Shift state. The nav keys (s a b p i c r) are NOT hardcoded here: they
+// come from `window.__navShortcuts`, generated by _scripts/post-index.py
+// from site_config.TOPIC_SURFACES, and the same array renders the help
+// overlay's single nav row. See docs/plans/plan-topic-surfaces.md.
+//
 // All shortcuts are no-ops while typing in inputs/textareas/contenteditable.
 (function () {
   function go(href) { location.href = href; }
+
+  // -- Navbar shortcuts ----------------------------------------------
+  // `window.__navShortcuts` is `[{key, label, href}, …]`, generated by
+  // _scripts/post-index.py from site_config.TOPIC_SURFACES and inlined
+  // synchronously by the post-index.html shim, so it's available before
+  // any keystroke can arrive. Two consumers: the keydown handler below
+  // and navHelpRows() — keeping them on one array is what stops the help
+  // overlay from drifting out of sync with the bindings.
+  //
+  // Returns the href for `key`, or null if it isn't a nav shortcut.
+  // Exact (case-sensitive) match on purpose even though every configured
+  // key is lowercase: that way a Shift+P never silently triggers `p`.
+  function navShortcutFor(key) {
+    var list = window.__navShortcuts;
+    if (!Array.isArray(list)) return null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].key === key) return list[i].href;
+    }
+    return null;
+  }
+
+  // -- Surface item totals -------------------------------------------
+  // A topic surface paginates only the posts carrying its tag, so its
+  // bucket total comes from a filtered count rather than the whole post
+  // index. `__bucketSizes[surface].tag` is present only on topic
+  // surfaces; home and archive count the full corpus. Mirror of the
+  // same helper in pagination.html — both read the shim, so they can't
+  // disagree about which surfaces are tag-scoped.
+  function surfaceItemCount(surfaceCfg) {
+    if (!Array.isArray(window.__postIndex)) return 0;
+    if (!surfaceCfg || !surfaceCfg.tag) return window.__postIndex.length;
+    var tag = surfaceCfg.tag;
+    var n = 0;
+    for (var i = 0; i < window.__postIndex.length; i++) {
+      var cats = window.__postIndex[i].categories;
+      if (cats && cats.indexOf(tag) !== -1) n++;
+    }
+    return n;
+  }
 
   // Returns true if the active listing category filter was cleared, so
   // the caller (Esc handler) knows to consume the keypress.
@@ -4898,7 +5021,9 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
       }
 
       // Unfiltered: overflow-aware total. totalBuckets = closed + 1.
-      var t = window.tile(window.__postIndex.length, bucketSize, overflow);
+      // On a topic surface the count is the tag-filtered subset, not the
+      // whole index — see surfaceItemCount().
+      var t = window.tile(surfaceItemCount(surfaceCfg), bucketSize, overflow);
       var totalBuckets = t.newestFill > 0 ? t.closed + 1 : 0;
       if (totalBuckets <= 1) return false;
       // Landing resolves to the highest K (paginate-*.py max-items sync).
@@ -4927,6 +5052,33 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
   // Help overlay: built once on first open, then toggled.
   var helpEl = null;
   var helpTrap = null;
+
+  // Navbar destinations, built from __navShortcuts so the panel can't
+  // drift from the live bindings. Emitted as TWO <dt>/<dd> pairs rather
+  // than one: seven keys in a single <dt> would widen the <dl>'s
+  // `max-content` key column and squeeze every other row's description.
+  //
+  // The split point is the same on both sides, so keys stay aligned with
+  // their labels line-for-line — the whole reason not to just let one long
+  // row wrap, which would break the positional pairing the other rows use.
+  // Order is the navbar's own left-to-right order (post-index.py emits it
+  // that way), so the two lines read straight off the bar.
+  function navHelpRows() {
+    var list = window.__navShortcuts;
+    if (!Array.isArray(list) || !list.length) return '';
+    var half = Math.ceil(list.length / 2);
+    var chunks = [list.slice(0, half), list.slice(half)];
+    return chunks.filter(function (c) { return c.length; }).map(function (chunk) {
+      var keys = chunk.map(function (n) {
+        return '<kbd>' + escapeHtml(n.key) + '</kbd>';
+      }).join(' | ');
+      var labels = chunk.map(function (n) {
+        return escapeHtml(n.label);
+      }).join(' | ');
+      return '<dt>' + keys + '</dt><dd>' + labels + '</dd>';
+    }).join('');
+  }
+
   function buildHelp() {
     var el = document.createElement('div');
     el.className = 'kbd-help';
@@ -4941,7 +5093,7 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
           '<dt><kbd>?</kbd></dt><dd>Show | hide this help</dd>' +
           '<dt><kbd>/</kbd> | <kbd>q</kbd></dt><dd>Search | Ask AI about this page <span class="kbd-help-scope">(deep-links to AI providers)</span></dd>' +
           '<dt><kbd>#</kbd></dt><dd>Jump to tag</dd>' +
-          '<dt><kbd>s</kbd> | <kbd>a</kbd> | <kbd>A</kbd></dt><dd>Home | Archive | About</dd>' +
+          navHelpRows() +
           '<dt><kbd>d</kbd> | <kbd>t</kbd> | <kbd>f</kbd> | <kbd>l</kbd></dt><dd>Toggle light/dark mode | cycle theme | font | line spacing</dd>' +
           '<dt><kbd>\u2193</kbd> or <kbd>\u2191</kbd></dt><dd>Move highlight through items</dd>' +
           '<dt><kbd>j</kbd> or <kbd>\u2190</kbd></dt><dd>Newer post | page</dd>' +
@@ -5056,9 +5208,18 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
     }
 
     if (k === '?') { toggleHelp(); e.preventDefault(); e.stopImmediatePropagation(); return; }
-    if (k === 's') { e.preventDefault(); e.stopImmediatePropagation(); go('/'); return; }
-    if (k === 'a') { e.preventDefault(); e.stopImmediatePropagation(); go('/archive/'); return; }
-    if (k === 'A') { e.preventDefault(); e.stopImmediatePropagation(); go('/about.html'); return; }
+
+    // Navbar destinations, table-driven from the generated shim (see the
+    // header comment). stopImmediatePropagation keeps Quarto's search
+    // autocomplete from also seeing the keystroke — it used to intercept
+    // `s` before we dropped that trigger in _quarto.yml.
+    var navTarget = navShortcutFor(k);
+    if (navTarget) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      go(navTarget);
+      return;
+    }
 
     if (k === 'd') {
       var toggle = document.querySelector('.quarto-color-scheme-toggle');
@@ -6080,7 +6241,7 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
   // anything on a Save-Data connection is skipped entirely.
   //
   // Attached inside flattenNav via attachPrefetch(a) as each link is
-  // moved into the final .navbar-3row — scoping is exactly the three
+  // moved into the final .navbar-row — scoping is exactly the three
   // navbar links, so we don't need event delegation or selector tests
   // on every document-wide pointer event.
   var prefetched = Object.create(null);
@@ -6114,32 +6275,64 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
                        { passive: true });
   }
 
-  // --- Rebuild navbar into a single 3-item flex row ---
+  // --- Mark the active topic-surface nav item ---
+  // Home / Archive / About get their underline from `html.page-*` CSS
+  // selectors that match on href suffix (see styles.css). That pattern
+  // doesn't extend cleanly to four more surfaces — each would need two
+  // selectors × two page classes — so topic links are marked here
+  // instead, with one CSS rule for `.nav-current`.
+  //
+  // Prefix match, not equality: /papers/page/3/ must underline Papers
+  // too. Dirs come from `__bucketSizes` (a `tag` field marks a topic
+  // surface), so this needs no edit when a surface is added. Skip the
+  // brand link — its pathname is "/", which prefixes everything.
+  function markIfCurrentSurface(a) {
+    if (a.classList.contains('navbar-brand')) return;
+    var sizes = window.__bucketSizes || {};
+    var here = location.pathname;
+    var linkPath;
+    try {
+      linkPath = new URL(a.href, location.href).pathname;
+    } catch (_) { return; }
+    linkPath = linkPath.replace(/index\.html$/, '');
+    for (var key in sizes) {
+      if (!sizes[key] || !sizes[key].tag || !sizes[key].base) continue;
+      if (linkPath === sizes[key].base && here.indexOf(sizes[key].base) === 0) {
+        a.classList.add('nav-current');
+        return;
+      }
+    }
+  }
+
+  // --- Rebuild navbar into a single flex row ---
   // Nuclear option after multiple cascade fights with Bootstrap/Quarto
   // navbar CSS: we construct a fresh wrapper inside .navbar-container,
-  // move the brand link + the two nav links (Archive, About) into it,
-  // and drop everything else. Layout lives on the .navbar-3row class.
+  // move the brand link + every nav link into it, and drop everything
+  // else. Layout lives on the .navbar-row class. (The class name
+  // predates the topic surfaces — the row holds the brand plus six nav
+  // items now, not three.)
   function flattenNav() {
     var navbar = document.querySelector('.navbar');
     var container = navbar && navbar.querySelector('.navbar-container');
     if (!container) return;
 
     // Idempotent: if we've already rebuilt, skip.
-    if (container.querySelector(':scope > .navbar-3row')) return;
+    if (container.querySelector(':scope > .navbar-row')) return;
 
     var brandA = navbar.querySelector('.navbar-brand');
     var navLinks = navbar.querySelectorAll('.navbar-nav .nav-link');
     if (!brandA || navLinks.length === 0) return;
 
-    // Fresh wrapper — layout lives on the .navbar-3row class in
+    // Fresh wrapper — layout lives on the .navbar-row class in
     // styles.css (left-aligned flex row, horizontal scroll on overflow,
     // scrollbar hidden).
     var row = document.createElement('div');
-    row.className = 'navbar-3row';
+    row.className = 'navbar-row';
 
     [brandA].concat(Array.prototype.slice.call(navLinks)).forEach(function (a) {
       row.appendChild(a);
       attachPrefetch(a);
+      markIfCurrentSurface(a);
     });
 
     // Clear out every existing child of .navbar-container except the
@@ -6238,6 +6431,13 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
   }
 
   function hideDelay() {
+    // Test seam: tests/ui/test_navbar_reveal.py sets this to a few
+    // milliseconds so the inactivity behavior can be asserted without a
+    // multi-second sleep. Fixed sleeps in that file are what flaked the
+    // tier under `-n auto` (see the file's docstring), so the override
+    // exists to keep them out. Same posture as `__askAICacheState` in
+    // ask-ai-button.html — a diagnostic the site itself never sets.
+    if (typeof window.__navHideDelayMs === 'number') return window.__navHideDelayMs;
     // Touch has no hover/focus to pause on and slower reach-time, so give
     // fingers a longer window before the revealed bar auto-hides.
     return (window.matchMedia && window.matchMedia('(hover: none)').matches) ? 5000 : 3000;
@@ -6248,7 +6448,20 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
     // focus inside it — re-armed on mouseleave / focusout (listeners below).
     if (navbarEl && (navbarEl.matches(':hover') ||
                      navbarEl.contains(document.activeElement))) return;
+    // Never auto-hide inside the top band either. `mouseleave` and
+    // `focusout` call this unconditionally, so without the guard a reader
+    // sitting at the top of the page who moused over the bar and then away
+    // would watch it vanish 3s later, with nothing to bring it back until
+    // the next scroll event. The "near the top → always show" rule in
+    // syncReveal has to hold for time-driven hides too, not just
+    // direction-driven ones.
+    if (window.scrollY <= topThreshold) return;
     hideTimer = setTimeout(function () {
+      // Re-check on fire: the 3-5s window is long enough for the page to
+      // have reached the top by a route that armed the timer earlier —
+      // an anchor jump, scrollIntoView from the #post-<slug> deep link,
+      // or any programmatic scrollTo.
+      if (window.scrollY <= topThreshold) return;
       document.body.classList.add('navbar-hidden');
     }, hideDelay());
   }

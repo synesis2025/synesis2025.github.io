@@ -273,7 +273,7 @@ window.__tagCountsReady = fetch('/tag-counts.json?v=96048798b7')
      Two <script> blocks: synchronous bootstrap globals, then async
      fetch of /post-index.json. See the generator's docstring for
      the byte-stability rationale and the consumer contract. -->
-<script>window.__copyrightRange="2017–2026";window.__bucketSizes={"home": {"size": 25, "overflow": 12}, "archive": {"size": 50, "overflow": 25}};</script>
+<script>window.__copyrightRange="2017–2026";window.__bucketSizes={"home": {"size": 25, "overflow": 12, "base": "/"}, "archive": {"size": 50, "overflow": 25, "base": "/archive/"}, "papers": {"size": 25, "overflow": 12, "base": "/papers/", "tag": "paper"}, "primers": {"size": 25, "overflow": 12, "base": "/primers/", "tag": "primer"}, "transcripts": {"size": 25, "overflow": 12, "base": "/transcripts/", "tag": "transcript"}, "running": {"size": 25, "overflow": 12, "base": "/running/", "tag": "running"}};window.__navShortcuts=[{"key": "s", "label": "Home", "href": "/"}, {"key": "p", "label": "Papers", "href": "/papers/"}, {"key": "m", "label": "Primers", "href": "/primers/"}, {"key": "c", "label": "Transcripts", "href": "/transcripts/"}, {"key": "r", "label": "Running", "href": "/running/"}, {"key": "a", "label": "Archive", "href": "/archive/"}, {"key": "b", "label": "About", "href": "/about.html"}];</script>
 <script>
 window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
   .then(function (r) { return r.json(); })
@@ -293,11 +293,11 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
 </script>
 <script>
 // Tag <html> with `page-home` / `page-archive` / `page-about` / `page-post`
-// based on the current URL path. Runs synchronously in <head> so the class
-// is present before the body parses, letting styles.css hide the page-title
-// block on these landing pages without any visible flash. Also used to
-// underline the current item in the navbar and to scope mobile-aside
-// behavior per surface.
+// / `page-topic` + `page-<surface>` based on the current URL path. Runs
+// synchronously in <head> so the class is present before the body parses,
+// letting styles.css hide the page-title block on these landing pages
+// without any visible flash. Also used to underline the current item in
+// the navbar and to scope mobile-aside behavior per surface.
 //
 // Also adds `html.js-navbar` so the CSS visibility gate on #quarto-header
 // (see `body:not(.navbar-ready)` rule in styles.css) only applies when
@@ -336,7 +336,40 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
   // Individual post pages. /posts/<slug>/ or /drafts/<slug>/. Used by
   // mobile-aside.html to surface the TOC disclosure and label it "Contents".
   else if (/^\/(posts|drafts)\/[^/]+$/.test(path)) cls = 'page-post';
-  if (cls) document.documentElement.classList.add(cls);
+
+  // Topic surfaces (Papers, Primers, Transcripts, Running). Their dirs
+  // are read from window.__bucketSizes — inlined synchronously by the
+  // post-index.html shim, which precedes this partial in
+  // _quarto.yml's include-in-header — so this stays in lockstep with
+  // site_config.TOPIC_SURFACES instead of hand-copying a dir list.
+  // A surface entry is identifiable by carrying a `tag` (home and
+  // archive don't). Each match adds two classes: a generic `page-topic`
+  // / `page-topic-bucket` for rules that apply to all four, plus a
+  // per-surface one. See docs/plans/plan-topic-surfaces.md.
+  if (!cls) {
+    var sizes = window.__bucketSizes || {};
+    for (var key in sizes) {
+      if (!sizes[key] || !sizes[key].tag || !sizes[key].base) continue;
+      var dir = sizes[key].base.replace(/^\/+|\/+$/g, '');
+      if (!dir) continue;
+      if (path === '/' + dir) {
+        cls = 'page-topic page-' + key;
+        break;
+      }
+      if (new RegExp('^/' + dir + '/page/\\d+$').test(path)) {
+        cls = 'page-topic-bucket page-' + key + '-bucket';
+        break;
+      }
+    }
+  }
+
+  // classList.add() rejects a string containing a space, so split — the
+  // topic branches above assign two classes at once.
+  if (cls) {
+    cls.split(' ').forEach(function (c) {
+      if (c) document.documentElement.classList.add(c);
+    });
+  }
 
   var slugMatch = window.location.pathname.match(/\/(?:posts|drafts)\/([^/]+)\//);
   window.__currentSlug = slugMatch ? slugMatch[1] : null;
@@ -425,34 +458,44 @@ window.__postIndexReady = fetch('/post-index.json?v=6c1b8547f0')
 
   /**
    * Parse the current bucket number out of `location.pathname`.
-   * Matches `/page/<K>/` (home) and `/archive/page/<K>/` (archive).
+   * Matches one optional leading directory segment before `page/<K>/`,
+   * which covers all three surface shapes: `/page/<K>/` (home),
+   * `/archive/page/<K>/` (archive), and `/<topic>/page/<K>/` (Papers,
+   * Primers, Transcripts, Running — see docs/plans/plan-topic-surfaces.md).
+   * The surface itself is read from the nav placeholder's `data-surface`,
+   * so this only has to yield the number.
    * Returns `null` for landing pages or any non-bucket URL — callers
    * typically interpret null as "= highest K" (landing resolves to the
-   * newest bucket via paginate-home.py's max-items sync).
+   * newest bucket via the paginators' max-items sync).
    * @returns {number | null}
    */
   window.currentBucketFromPath = function () {
-    var m = location.pathname.match(/^\/(?:archive\/)?page\/(\d+)\/?$/);
+    var m = location.pathname.match(/^\/(?:[\w-]+\/)?page\/(\d+)\/?$/);
     return m ? parseInt(m[1], 10) : null;
   };
 
   /**
    * Build the URL for bucket K on the given surface. The highest K
    * (== totalBuckets) lives at the surface's landing page, not at
-   * /page/K/ — paginate-home.py syncs index.qmd's max-items to the
+   * /page/K/ — the paginators sync each landing's max-items to the
    * newest bucket's fill so landing renders the same posts as the
    * highest-numbered bucket. Linking K to /page/K/ would create a
    * duplicate URL for the same content.
-   * @param {"home" | "archive"} surface
+   *
+   * The surface's landing path comes from `__bucketSizes[surface].base`
+   * (baked by post-index.py from site_config.py), so adding a surface
+   * needs no change here. The literals are a last-resort fallback for a
+   * stale cached page whose shim predates the `base` field.
+   * @param {string} surface  "home" | "archive" | a topic-surface key
    * @param {number} k
    * @param {number} totalBuckets
    * @returns {string}
    */
   window.surfaceBucketUrl = function (surface, k, totalBuckets) {
-    if (k === totalBuckets) {
-      return surface === 'archive' ? '/archive/' : '/';
-    }
-    return surface === 'archive' ? '/archive/page/' + k + '/' : '/page/' + k + '/';
+    var cfg = (window.__bucketSizes || {})[surface] || {};
+    var base = cfg.base || (surface === 'archive' ? '/archive/' : '/');
+    if (k === totalBuckets) return base;
+    return base + 'page/' + k + '/';
   };
 
   /**
@@ -648,7 +691,7 @@ window.Quarto = {
 };
 </script>
 
-<link rel="stylesheet" href="../../../styles.f8164a55bf.css">
+<link rel="stylesheet" href="../../../styles.e6eab26cee.css">
 <meta property="og:title" content="archive — page 4 · Mar 2023 to Oct 2023 – synesis">
 <meta property="og:image" content="https://benjaminhan.net/archive/page/4/og-default.png">
 <meta property="og:site_name" content="synesis">
@@ -837,6 +880,22 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
+    <a class="nav-link" href="../../../papers/index.html"> 
+<span class="menu-text">Papers</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../primers/index.html"> 
+<span class="menu-text">Primers</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../transcripts/index.html"> 
+<span class="menu-text">Transcripts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../../running/index.html"> 
+<span class="menu-text">Running</span></a>
+  </li>  
+  <li class="nav-item">
     <a class="nav-link" href="../../../archive/index.html"> 
 <span class="menu-text">Archive</span></a>
   </li>  
@@ -909,7 +968,7 @@ Tags
 </thead>
 <tbody class="list">
 
-<tr data-index="0" data-listing-date-sort="1696748400000" data-listing-file-modified-sort="1787106958158" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="730" data-listing-title-sort="Catching a Lying LLM" data-listing-filename-sort="index.qmd">
+<tr data-index="0" data-listing-date-sort="1696748400000" data-listing-file-modified-sort="1787331539063" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="730" data-listing-title-sort="Catching a Lying LLM" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-10-08</span>
 </td>
@@ -922,7 +981,7 @@ Tags
 
 </tr>
 
-<tr data-index="1" data-listing-date-sort="1696230000000" data-listing-file-modified-sort="1787106958149" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="635" data-listing-title-sort="From 'Reversal Curse' to Teaching Large Language Models New Facts" data-listing-filename-sort="index.qmd">
+<tr data-index="1" data-listing-date-sort="1696230000000" data-listing-file-modified-sort="1787331539053" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="4" data-listing-word-count-sort="635" data-listing-title-sort="From 'Reversal Curse' to Teaching Large Language Models New Facts" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-10-02</span>
 </td>
@@ -935,7 +994,7 @@ Tags
 
 </tr>
 
-<tr data-index="2" data-listing-date-sort="1696230000000" data-listing-file-modified-sort="1787106958148" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="83" data-listing-title-sort="Nobel Prize Awarded to Covid Vaccine Pioneers" data-listing-filename-sort="index.qmd">
+<tr data-index="2" data-listing-date-sort="1696230000000" data-listing-file-modified-sort="1787331539052" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="83" data-listing-title-sort="Nobel Prize Awarded to Covid Vaccine Pioneers" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-10-02</span>
 </td>
@@ -948,7 +1007,7 @@ Tags
 
 </tr>
 
-<tr data-index="3" data-listing-date-sort="1695625200000" data-listing-file-modified-sort="1787106958146" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="221" data-listing-title-sort="LAGRANGE: Cyclic Evaluation for KG-Text Datasets" data-listing-filename-sort="index.qmd">
+<tr data-index="3" data-listing-date-sort="1695625200000" data-listing-file-modified-sort="1787331539050" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="221" data-listing-title-sort="LAGRANGE: Cyclic Evaluation for KG-Text Datasets" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-09-25</span>
 </td>
@@ -961,7 +1020,7 @@ Tags
 
 </tr>
 
-<tr data-index="4" data-listing-date-sort="1695538800000" data-listing-file-modified-sort="1787106958146" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="87" data-listing-title-sort="NASA OSIRIS-REx Returns Bennu Asteroid Sample" data-listing-filename-sort="index.qmd">
+<tr data-index="4" data-listing-date-sort="1695538800000" data-listing-file-modified-sort="1787331539050" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="87" data-listing-title-sort="NASA OSIRIS-REx Returns Bennu Asteroid Sample" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-09-24</span>
 </td>
@@ -974,7 +1033,7 @@ Tags
 
 </tr>
 
-<tr data-index="5" data-listing-date-sort="1695020400000" data-listing-file-modified-sort="1787106958146" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="103" data-listing-title-sort="Thinking in a Foreign Language Improves Decision-Making" data-listing-filename-sort="index.qmd">
+<tr data-index="5" data-listing-date-sort="1695020400000" data-listing-file-modified-sort="1787331539049" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="103" data-listing-title-sort="Thinking in a Foreign Language Improves Decision-Making" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-09-18</span>
 </td>
@@ -987,7 +1046,7 @@ Tags
 
 </tr>
 
-<tr data-index="6" data-listing-date-sort="1694242800000" data-listing-file-modified-sort="1787106958145" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="210" data-listing-title-sort="ICL Still Loses to Fine-Tuning at Named Entity Recognition" data-listing-filename-sort="index.qmd">
+<tr data-index="6" data-listing-date-sort="1694242800000" data-listing-file-modified-sort="1787331539048" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="210" data-listing-title-sort="ICL Still Loses to Fine-Tuning at Named Entity Recognition" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-09-09</span>
 </td>
@@ -1000,7 +1059,7 @@ Tags
 
 </tr>
 
-<tr data-index="7" data-listing-date-sort="1693810800000" data-listing-file-modified-sort="1787106958145" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="68" data-listing-title-sort="Douglas Lenat, Who Tried to Make Computers More Human, Dies at 72" data-listing-filename-sort="index.qmd">
+<tr data-index="7" data-listing-date-sort="1693810800000" data-listing-file-modified-sort="1787331539048" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="68" data-listing-title-sort="Douglas Lenat, Who Tried to Make Computers More Human, Dies at 72" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-09-04</span>
 </td>
@@ -1013,7 +1072,7 @@ Tags
 
 </tr>
 
-<tr data-index="8" data-listing-date-sort="1693638000000" data-listing-file-modified-sort="1787106958142" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="468" data-listing-title-sort="Give Us the Facts: Large Language Models vs. Knowledge Graphs" data-listing-filename-sort="index.qmd">
+<tr data-index="8" data-listing-date-sort="1693638000000" data-listing-file-modified-sort="1787331539045" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="468" data-listing-title-sort="Give Us the Facts: Large Language Models vs. Knowledge Graphs" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-09-02</span>
 </td>
@@ -1026,7 +1085,7 @@ Tags
 
 </tr>
 
-<tr data-index="9" data-listing-date-sort="1693638000000" data-listing-file-modified-sort="1787106958141" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="56" data-listing-title-sort="When Computers Write Proofs, What's the Point of Mathematicians?" data-listing-filename-sort="index.qmd">
+<tr data-index="9" data-listing-date-sort="1693638000000" data-listing-file-modified-sort="1787331539044" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="56" data-listing-title-sort="When Computers Write Proofs, What's the Point of Mathematicians?" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-09-02</span>
 </td>
@@ -1039,7 +1098,7 @@ Tags
 
 </tr>
 
-<tr data-index="10" data-listing-date-sort="1693378800000" data-listing-file-modified-sort="1787106958141" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="98" data-listing-title-sort="Copyright Office Seeks Public Input on AI Protections and Liability" data-listing-filename-sort="index.qmd">
+<tr data-index="10" data-listing-date-sort="1693378800000" data-listing-file-modified-sort="1787331539044" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="98" data-listing-title-sort="Copyright Office Seeks Public Input on AI Protections and Liability" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-30</span>
 </td>
@@ -1052,7 +1111,7 @@ Tags
 
 </tr>
 
-<tr data-index="11" data-listing-date-sort="1693206000000" data-listing-file-modified-sort="1787106958137" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="434" data-listing-title-sort="Model Editing: Performing Digital Brain Surgery" data-listing-filename-sort="index.qmd">
+<tr data-index="11" data-listing-date-sort="1693206000000" data-listing-file-modified-sort="1787331539039" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="434" data-listing-title-sort="Model Editing: Performing Digital Brain Surgery" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-28</span>
 </td>
@@ -1065,7 +1124,7 @@ Tags
 
 </tr>
 
-<tr data-index="12" data-listing-date-sort="1693206000000" data-listing-file-modified-sort="1787106958135" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="171" data-listing-title-sort="LLM-Generated Code Has a Serious API Misuse Problem" data-listing-filename-sort="index.qmd">
+<tr data-index="12" data-listing-date-sort="1693206000000" data-listing-file-modified-sort="1787331539037" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="171" data-listing-title-sort="LLM-Generated Code Has a Serious API Misuse Problem" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-28</span>
 </td>
@@ -1078,7 +1137,7 @@ Tags
 
 </tr>
 
-<tr data-index="13" data-listing-date-sort="1692428400000" data-listing-file-modified-sort="1787106958133" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="209" data-listing-title-sort="LLMs Stumble Hard on Counterfactual Reasoning" data-listing-filename-sort="index.qmd">
+<tr data-index="13" data-listing-date-sort="1692428400000" data-listing-file-modified-sort="1787331539035" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="209" data-listing-title-sort="LLMs Stumble Hard on Counterfactual Reasoning" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-19</span>
 </td>
@@ -1091,7 +1150,7 @@ Tags
 
 </tr>
 
-<tr data-index="14" data-listing-date-sort="1692428400000" data-listing-file-modified-sort="1787106958132" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="242" data-listing-title-sort="Faithful Text Generation from Knowledge Graphs with Noisy References" data-listing-filename-sort="index.qmd">
+<tr data-index="14" data-listing-date-sort="1692428400000" data-listing-file-modified-sort="1787331539034" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="242" data-listing-title-sort="Faithful Text Generation from Knowledge Graphs with Noisy References" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-19</span>
 </td>
@@ -1104,7 +1163,7 @@ Tags
 
 </tr>
 
-<tr data-index="15" data-listing-date-sort="1692428400000" data-listing-file-modified-sort="1787106958132" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="283" data-listing-title-sort="Biomedical Knowledge Graph Embeddings with Negative Statements" data-listing-filename-sort="index.qmd">
+<tr data-index="15" data-listing-date-sort="1692428400000" data-listing-file-modified-sort="1787331539033" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="283" data-listing-title-sort="Biomedical Knowledge Graph Embeddings with Negative Statements" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-19</span>
 </td>
@@ -1117,7 +1176,7 @@ Tags
 
 </tr>
 
-<tr data-index="16" data-listing-date-sort="1692428400000" data-listing-file-modified-sort="1787106958130" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="131" data-listing-title-sort="AI-Generated Art Cannot Be Copyrighted, Rules a US Federal Judge" data-listing-filename-sort="index.qmd">
+<tr data-index="16" data-listing-date-sort="1692428400000" data-listing-file-modified-sort="1787331539032" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="131" data-listing-title-sort="AI-Generated Art Cannot Be Copyrighted, Rules a US Federal Judge" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-19</span>
 </td>
@@ -1130,7 +1189,7 @@ Tags
 
 </tr>
 
-<tr data-index="17" data-listing-date-sort="1692169200000" data-listing-file-modified-sort="1787106958129" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="54" data-listing-title-sort="Thousands of Scientists Are Leaving Twitter for Mastodon" data-listing-filename-sort="index.qmd">
+<tr data-index="17" data-listing-date-sort="1692169200000" data-listing-file-modified-sort="1787331539030" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="54" data-listing-title-sort="Thousands of Scientists Are Leaving Twitter for Mastodon" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-16</span>
 </td>
@@ -1143,7 +1202,7 @@ Tags
 
 </tr>
 
-<tr data-index="18" data-listing-date-sort="1691650800000" data-listing-file-modified-sort="1787106958128" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="59" data-listing-title-sort="Transformative AGI by 2043 Is Less Than 1% Likely" data-listing-filename-sort="index.qmd">
+<tr data-index="18" data-listing-date-sort="1691650800000" data-listing-file-modified-sort="1787331539030" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="59" data-listing-title-sort="Transformative AGI by 2043 Is Less Than 1% Likely" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-10</span>
 </td>
@@ -1156,7 +1215,7 @@ Tags
 
 </tr>
 
-<tr data-index="19" data-listing-date-sort="1691132400000" data-listing-file-modified-sort="1787106958127" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="367" data-listing-title-sort="What Learning Algorithm Is In-Context Learning?" data-listing-filename-sort="index.qmd">
+<tr data-index="19" data-listing-date-sort="1691132400000" data-listing-file-modified-sort="1787331539028" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="367" data-listing-title-sort="What Learning Algorithm Is In-Context Learning?" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-08-04</span>
 </td>
@@ -1169,7 +1228,7 @@ Tags
 
 </tr>
 
-<tr data-index="20" data-listing-date-sort="1690786800000" data-listing-file-modified-sort="1787106958127" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="117" data-listing-title-sort="The BBC Joins Mastodon as an Experiment in Decentralised Social Media" data-listing-filename-sort="index.qmd">
+<tr data-index="20" data-listing-date-sort="1690786800000" data-listing-file-modified-sort="1787331539027" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="117" data-listing-title-sort="The BBC Joins Mastodon as an Experiment in Decentralised Social Media" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-07-31</span>
 </td>
@@ -1182,7 +1241,7 @@ Tags
 
 </tr>
 
-<tr data-index="21" data-listing-date-sort="1690095600000" data-listing-file-modified-sort="1787106958126" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="263" data-listing-title-sort="How &quot;Attention Is All You Need&quot; Was Born: The Story Behind the Transformer Paper" data-listing-filename-sort="index.qmd">
+<tr data-index="21" data-listing-date-sort="1690095600000" data-listing-file-modified-sort="1787331539027" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="263" data-listing-title-sort="How &quot;Attention Is All You Need&quot; Was Born: The Story Behind the Transformer Paper" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-07-23</span>
 </td>
@@ -1195,7 +1254,7 @@ Tags
 
 </tr>
 
-<tr data-index="22" data-listing-date-sort="1689231600000" data-listing-file-modified-sort="1787106958124" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="92" data-listing-title-sort="The Dutch Government Joins Mastodon" data-listing-filename-sort="index.qmd">
+<tr data-index="22" data-listing-date-sort="1689231600000" data-listing-file-modified-sort="1787331539025" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="92" data-listing-title-sort="The Dutch Government Joins Mastodon" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-07-13</span>
 </td>
@@ -1208,7 +1267,7 @@ Tags
 
 </tr>
 
-<tr data-index="23" data-listing-date-sort="1689145200000" data-listing-file-modified-sort="1787106958124" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="153" data-listing-title-sort="Scientific Writing in the Age of Generative AI" data-listing-filename-sort="index.qmd">
+<tr data-index="23" data-listing-date-sort="1689145200000" data-listing-file-modified-sort="1787331539025" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="153" data-listing-title-sort="Scientific Writing in the Age of Generative AI" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-07-12</span>
 </td>
@@ -1221,7 +1280,7 @@ Tags
 
 </tr>
 
-<tr data-index="24" data-listing-date-sort="1688972400000" data-listing-file-modified-sort="1787106958123" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="490" data-listing-title-sort="Do LLMs Really Understand? Recent Papers Reveal" data-listing-filename-sort="index.qmd">
+<tr data-index="24" data-listing-date-sort="1688972400000" data-listing-file-modified-sort="1787331539024" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="490" data-listing-title-sort="Do LLMs Really Understand? Recent Papers Reveal" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-07-10</span>
 </td>
@@ -1234,7 +1293,7 @@ Tags
 
 </tr>
 
-<tr data-index="25" data-listing-date-sort="1688194800000" data-listing-file-modified-sort="1787106958110" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="271" data-listing-title-sort="Does Early ArXiving Help Papers Get Accepted?" data-listing-filename-sort="index.qmd">
+<tr data-index="25" data-listing-date-sort="1688194800000" data-listing-file-modified-sort="1787331539010" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="271" data-listing-title-sort="Does Early ArXiving Help Papers Get Accepted?" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-07-01</span>
 </td>
@@ -1247,7 +1306,7 @@ Tags
 
 </tr>
 
-<tr data-index="26" data-listing-date-sort="1687071600000" data-listing-file-modified-sort="1787106958108" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="317" data-listing-title-sort="Model Collapse and LLM-Contaminated Training Data" data-listing-filename-sort="index.qmd">
+<tr data-index="26" data-listing-date-sort="1687071600000" data-listing-file-modified-sort="1787331539008" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="317" data-listing-title-sort="Model Collapse and LLM-Contaminated Training Data" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-06-18</span>
 </td>
@@ -1260,7 +1319,7 @@ Tags
 
 </tr>
 
-<tr data-index="27" data-listing-date-sort="1686898800000" data-listing-file-modified-sort="1787106958108" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="175" data-listing-title-sort="How the Brain Processes German and Arabic Differently" data-listing-filename-sort="index.qmd">
+<tr data-index="27" data-listing-date-sort="1686898800000" data-listing-file-modified-sort="1787331539007" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="175" data-listing-title-sort="How the Brain Processes German and Arabic Differently" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-06-16</span>
 </td>
@@ -1273,7 +1332,7 @@ Tags
 
 </tr>
 
-<tr data-index="28" data-listing-date-sort="1686466800000" data-listing-file-modified-sort="1787106958106" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="390" data-listing-title-sort="ICL Demonstration Selection and Disentangling Task Recognition from Task Learning" data-listing-filename-sort="index.qmd">
+<tr data-index="28" data-listing-date-sort="1686466800000" data-listing-file-modified-sort="1787331539005" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="390" data-listing-title-sort="ICL Demonstration Selection and Disentangling Task Recognition from Task Learning" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-06-11</span>
 </td>
@@ -1286,7 +1345,7 @@ Tags
 
 </tr>
 
-<tr data-index="29" data-listing-date-sort="1685516400000" data-listing-file-modified-sort="1787106958105" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="43" data-listing-title-sort="Federal Judge Requires Lawyers to Certify Their Use of Generative AI" data-listing-filename-sort="index.qmd">
+<tr data-index="29" data-listing-date-sort="1685516400000" data-listing-file-modified-sort="1787331539004" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="43" data-listing-title-sort="Federal Judge Requires Lawyers to Certify Their Use of Generative AI" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-05-31</span>
 </td>
@@ -1299,7 +1358,7 @@ Tags
 
 </tr>
 
-<tr data-index="30" data-listing-date-sort="1685170800000" data-listing-file-modified-sort="1787106958105" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="50" data-listing-title-sort="ChatGPT Cited Non-Existent Cases in a Lawyer's Brief" data-listing-filename-sort="index.qmd">
+<tr data-index="30" data-listing-date-sort="1685170800000" data-listing-file-modified-sort="1787331539003" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="50" data-listing-title-sort="ChatGPT Cited Non-Existent Cases in a Lawyer's Brief" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-05-27</span>
 </td>
@@ -1312,7 +1371,7 @@ Tags
 
 </tr>
 
-<tr data-index="31" data-listing-date-sort="1684566000000" data-listing-file-modified-sort="1787106958103" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="389" data-listing-title-sort="How LLMs Beat Catastrophic Forgetting Through Knowledge Diversity" data-listing-filename-sort="index.qmd">
+<tr data-index="31" data-listing-date-sort="1684566000000" data-listing-file-modified-sort="1787331539001" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="389" data-listing-title-sort="How LLMs Beat Catastrophic Forgetting Through Knowledge Diversity" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-05-20</span>
 </td>
@@ -1325,7 +1384,7 @@ Tags
 
 </tr>
 
-<tr data-index="32" data-listing-date-sort="1684134000000" data-listing-file-modified-sort="1787106958103" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="45" data-listing-title-sort="Asimov, the Original Prompt Engineer" data-listing-filename-sort="index.qmd">
+<tr data-index="32" data-listing-date-sort="1684134000000" data-listing-file-modified-sort="1787331539001" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="45" data-listing-title-sort="Asimov, the Original Prompt Engineer" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-05-15</span>
 </td>
@@ -1338,7 +1397,7 @@ Tags
 
 </tr>
 
-<tr data-index="33" data-listing-date-sort="1683702000000" data-listing-file-modified-sort="1787106958102" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="58" data-listing-title-sort="AI's Ostensible Emergent Abilities Are a Mirage" data-listing-filename-sort="index.qmd">
+<tr data-index="33" data-listing-date-sort="1683702000000" data-listing-file-modified-sort="1787331539000" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="58" data-listing-title-sort="AI's Ostensible Emergent Abilities Are a Mirage" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-05-10</span>
 </td>
@@ -1351,7 +1410,7 @@ Tags
 
 </tr>
 
-<tr data-index="34" data-listing-date-sort="1683356400000" data-listing-file-modified-sort="1787106958099" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="342" data-listing-title-sort="GPT's Causal Reasoning Scores May Reflect Memorization, Not Reasoning" data-listing-filename-sort="index.qmd">
+<tr data-index="34" data-listing-date-sort="1683356400000" data-listing-file-modified-sort="1787331538996" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="342" data-listing-title-sort="GPT's Causal Reasoning Scores May Reflect Memorization, Not Reasoning" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-05-06</span>
 </td>
@@ -1364,7 +1423,7 @@ Tags
 
 </tr>
 
-<tr data-index="35" data-listing-date-sort="1683270000000" data-listing-file-modified-sort="1787106958098" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="44" data-listing-title-sort="Rise of the Newsbots" data-listing-filename-sort="index.qmd">
+<tr data-index="35" data-listing-date-sort="1683270000000" data-listing-file-modified-sort="1787331538996" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="44" data-listing-title-sort="Rise of the Newsbots" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-05-05</span>
 </td>
@@ -1377,7 +1436,7 @@ Tags
 
 </tr>
 
-<tr data-index="36" data-listing-date-sort="1683183600000" data-listing-file-modified-sort="1787106958098" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="91" data-listing-title-sort="NSF Announces Seven New National Artificial Intelligence Research Institutes" data-listing-filename-sort="index.qmd">
+<tr data-index="36" data-listing-date-sort="1683183600000" data-listing-file-modified-sort="1787331538995" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="91" data-listing-title-sort="NSF Announces Seven New National Artificial Intelligence Research Institutes" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-05-04</span>
 </td>
@@ -1390,7 +1449,7 @@ Tags
 
 </tr>
 
-<tr data-index="37" data-listing-date-sort="1682233200000" data-listing-file-modified-sort="1787106958096" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="313" data-listing-title-sort="The Core Challenges Facing Agentic AI Today" data-listing-filename-sort="index.qmd">
+<tr data-index="37" data-listing-date-sort="1682233200000" data-listing-file-modified-sort="1787331538994" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="313" data-listing-title-sort="The Core Challenges Facing Agentic AI Today" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-04-23</span>
 </td>
@@ -1403,7 +1462,7 @@ Tags
 
 </tr>
 
-<tr data-index="38" data-listing-date-sort="1681628400000" data-listing-file-modified-sort="1787106958096" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="151" data-listing-title-sort="LLMs and AGI: Are We Measuring Reasoning or Memorization?" data-listing-filename-sort="index.qmd">
+<tr data-index="38" data-listing-date-sort="1681628400000" data-listing-file-modified-sort="1787331538993" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="151" data-listing-title-sort="LLMs and AGI: Are We Measuring Reasoning or Memorization?" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-04-16</span>
 </td>
@@ -1416,7 +1475,7 @@ Tags
 
 </tr>
 
-<tr data-index="39" data-listing-date-sort="1681023600000" data-listing-file-modified-sort="1787106958095" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="230" data-listing-title-sort="LLMs, Copyrighted Training Data, and Fair Use" data-listing-filename-sort="index.qmd">
+<tr data-index="39" data-listing-date-sort="1681023600000" data-listing-file-modified-sort="1787331538992" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="230" data-listing-title-sort="LLMs, Copyrighted Training Data, and Fair Use" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-04-09</span>
 </td>
@@ -1429,7 +1488,7 @@ Tags
 
 </tr>
 
-<tr data-index="40" data-listing-date-sort="1680937200000" data-listing-file-modified-sort="1787106958094" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="37" data-listing-title-sort="CMU's Iris Lunar Rover Prepares for Launch" data-listing-filename-sort="index.qmd">
+<tr data-index="40" data-listing-date-sort="1680937200000" data-listing-file-modified-sort="1787331538991" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="37" data-listing-title-sort="CMU's Iris Lunar Rover Prepares for Launch" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-04-08</span>
 </td>
@@ -1442,7 +1501,7 @@ Tags
 
 </tr>
 
-<tr data-index="41" data-listing-date-sort="1680678000000" data-listing-file-modified-sort="1787106958094" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="47" data-listing-title-sort="Generative AI Is Powerful but Not Without Many Flaws" data-listing-filename-sort="index.qmd">
+<tr data-index="41" data-listing-date-sort="1680678000000" data-listing-file-modified-sort="1787331538991" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="47" data-listing-title-sort="Generative AI Is Powerful but Not Without Many Flaws" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-04-05</span>
 </td>
@@ -1455,7 +1514,7 @@ Tags
 
 </tr>
 
-<tr data-index="42" data-listing-date-sort="1680418800000" data-listing-file-modified-sort="1787106958092" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="436" data-listing-title-sort="Do Labels in ICL Demonstrations Actually Matter?" data-listing-filename-sort="index.qmd">
+<tr data-index="42" data-listing-date-sort="1680418800000" data-listing-file-modified-sort="1787331538989" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="436" data-listing-title-sort="Do Labels in ICL Demonstrations Actually Matter?" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-04-02</span>
 </td>
@@ -1468,7 +1527,7 @@ Tags
 
 </tr>
 
-<tr data-index="43" data-listing-date-sort="1680246000000" data-listing-file-modified-sort="1787106958092" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="42" data-listing-title-sort="3 Things Everyone's Getting Wrong About AI" data-listing-filename-sort="index.qmd">
+<tr data-index="43" data-listing-date-sort="1680246000000" data-listing-file-modified-sort="1787331538989" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="42" data-listing-title-sort="3 Things Everyone's Getting Wrong About AI" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-03-31</span>
 </td>
@@ -1481,7 +1540,7 @@ Tags
 
 </tr>
 
-<tr data-index="44" data-listing-date-sort="1680159600000" data-listing-file-modified-sort="1787106958092" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="30" data-listing-title-sort="GPT-4 as a Nondeterministic Turing Machine" data-listing-filename-sort="index.qmd">
+<tr data-index="44" data-listing-date-sort="1680159600000" data-listing-file-modified-sort="1787331538988" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="30" data-listing-title-sort="GPT-4 as a Nondeterministic Turing Machine" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-03-30</span>
 </td>
@@ -1494,7 +1553,7 @@ Tags
 
 </tr>
 
-<tr data-index="45" data-listing-date-sort="1679727600000" data-listing-file-modified-sort="1787106958089" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="253" data-listing-title-sort="Why Does In-Context Learning Work? Gradient Descent and PAC Learnability" data-listing-filename-sort="index.qmd">
+<tr data-index="45" data-listing-date-sort="1679727600000" data-listing-file-modified-sort="1787331538985" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="2" data-listing-word-count-sort="253" data-listing-title-sort="Why Does In-Context Learning Work? Gradient Descent and PAC Learnability" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-03-25</span>
 </td>
@@ -1507,7 +1566,7 @@ Tags
 
 </tr>
 
-<tr data-index="46" data-listing-date-sort="1679382000000" data-listing-file-modified-sort="1787106958088" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="449" data-listing-title-sort="GPTs Are GPTs: Labor Market Impact of Large Language Models" data-listing-filename-sort="index.qmd">
+<tr data-index="46" data-listing-date-sort="1679382000000" data-listing-file-modified-sort="1787331538984" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="3" data-listing-word-count-sort="449" data-listing-title-sort="GPTs Are GPTs: Labor Market Impact of Large Language Models" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-03-21</span>
 </td>
@@ -1520,7 +1579,7 @@ Tags
 
 </tr>
 
-<tr data-index="47" data-listing-date-sort="1679122800000" data-listing-file-modified-sort="1787106958087" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="92" data-listing-title-sort="Indirect Prompt Injection Threats" data-listing-filename-sort="index.qmd">
+<tr data-index="47" data-listing-date-sort="1679122800000" data-listing-file-modified-sort="1787331538982" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="92" data-listing-title-sort="Indirect Prompt Injection Threats" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-03-18</span>
 </td>
@@ -1533,7 +1592,7 @@ Tags
 
 </tr>
 
-<tr data-index="48" data-listing-date-sort="1679122800000" data-listing-file-modified-sort="1787106958086" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="97" data-listing-title-sort="The Stupidity of AI (The Guardian)" data-listing-filename-sort="index.qmd">
+<tr data-index="48" data-listing-date-sort="1679122800000" data-listing-file-modified-sort="1787331538981" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="97" data-listing-title-sort="The Stupidity of AI (The Guardian)" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-03-18</span>
 </td>
@@ -1546,7 +1605,7 @@ Tags
 
 </tr>
 
-<tr data-index="49" data-listing-date-sort="1678950000000" data-listing-file-modified-sort="1787106958084" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="124" data-listing-title-sort="US Copyright Office Guidance on Generative AI" data-listing-filename-sort="index.qmd">
+<tr data-index="49" data-listing-date-sort="1678950000000" data-listing-file-modified-sort="1787331538980" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="124" data-listing-title-sort="US Copyright Office Guidance on Generative AI" data-listing-filename-sort="index.qmd">
 <td>
 <span class="listing-date">2023-03-16</span>
 </td>
@@ -1941,6 +2000,21 @@ Tags
   var filterCategory = null;   // string when filter mode active, else null
   var fullPostIndex = null;    // cached after __postIndexReady resolves
 
+  // Items this surface paginates. Topic surfaces (Papers, Primers, …)
+  // carry a `tag` in __bucketSizes and paginate only the posts holding
+  // it; home and archive have no `tag` and paginate the whole corpus.
+  // Branching on the field's presence rather than on a surface-name list
+  // keeps this generic as surfaces are added — see
+  // docs/plans/plan-topic-surfaces.md. Mirror of the same helper in
+  // keyboard-shortcuts.html, which needs the count for j/k paging.
+  function surfaceItemCount(surfaceCfg) {
+    if (!fullPostIndex) return 0;
+    if (!surfaceCfg || !surfaceCfg.tag) return fullPostIndex.length;
+    return fullPostIndex.filter(function (p) {
+      return p.categories && p.categories.indexOf(surfaceCfg.tag) !== -1;
+    }).length;
+  }
+
   function bucketUrl(k) {
     if (filterCategory !== null) {
       var enc = encodeURIComponent(filterCategory);
@@ -2123,8 +2197,10 @@ Tags
     }
     // Unfiltered (or non-archive surface). Overflow-aware total count:
     // totalBuckets = closed + 1 (the open bucket) whenever there's ≥1 post.
+    // The count is surface-scoped: tag-filtered on a topic surface, the
+    // full index on home/archive.
     filterCategory = null;
-    var t = window.tile(fullPostIndex.length, bucketSize, overflow);
+    var t = window.tile(surfaceItemCount(surfaceCfg), bucketSize, overflow);
     totalBuckets = t.newestFill > 0 ? t.closed + 1 : 0;
     currentBucket = window.currentBucketFromPath();
     centerBucket = null;
@@ -5343,16 +5419,63 @@ Tags
 //   ?         → toggle help overlay listing all shortcuts
 //   s         → home page (/) — `s` for "synesis"
 //   a         → archive page (/archive/)
-//   A         → about page (/about.html)
+//   b         → about page (/about.html) — `b` as in a-b-out
+//   p i c r   → topic surfaces: Papers, Primers, Transcripts, Running
 //   d         → toggle light / dark theme
 //   t         → cycle Bootswatch theme (within current light/dark mode)
 //   j  or ←  → newer post (post pages) · newer bucket (listing pages)
 //   k  or →  → older post · older bucket
 //   ↑ or ↓   → focus previous / next post in the listing (home/archive)
 //   Enter    → open the focused post
+//
+// Every binding is unshifted — no shortcut on this site depends on the
+// Shift state. The nav keys (s a b p i c r) are NOT hardcoded here: they
+// come from `window.__navShortcuts`, generated by _scripts/post-index.py
+// from site_config.TOPIC_SURFACES, and the same array renders the help
+// overlay's single nav row. See docs/plans/plan-topic-surfaces.md.
+//
 // All shortcuts are no-ops while typing in inputs/textareas/contenteditable.
 (function () {
   function go(href) { location.href = href; }
+
+  // -- Navbar shortcuts ----------------------------------------------
+  // `window.__navShortcuts` is `[{key, label, href}, …]`, generated by
+  // _scripts/post-index.py from site_config.TOPIC_SURFACES and inlined
+  // synchronously by the post-index.html shim, so it's available before
+  // any keystroke can arrive. Two consumers: the keydown handler below
+  // and navHelpRows() — keeping them on one array is what stops the help
+  // overlay from drifting out of sync with the bindings.
+  //
+  // Returns the href for `key`, or null if it isn't a nav shortcut.
+  // Exact (case-sensitive) match on purpose even though every configured
+  // key is lowercase: that way a Shift+P never silently triggers `p`.
+  function navShortcutFor(key) {
+    var list = window.__navShortcuts;
+    if (!Array.isArray(list)) return null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].key === key) return list[i].href;
+    }
+    return null;
+  }
+
+  // -- Surface item totals -------------------------------------------
+  // A topic surface paginates only the posts carrying its tag, so its
+  // bucket total comes from a filtered count rather than the whole post
+  // index. `__bucketSizes[surface].tag` is present only on topic
+  // surfaces; home and archive count the full corpus. Mirror of the
+  // same helper in pagination.html — both read the shim, so they can't
+  // disagree about which surfaces are tag-scoped.
+  function surfaceItemCount(surfaceCfg) {
+    if (!Array.isArray(window.__postIndex)) return 0;
+    if (!surfaceCfg || !surfaceCfg.tag) return window.__postIndex.length;
+    var tag = surfaceCfg.tag;
+    var n = 0;
+    for (var i = 0; i < window.__postIndex.length; i++) {
+      var cats = window.__postIndex[i].categories;
+      if (cats && cats.indexOf(tag) !== -1) n++;
+    }
+    return n;
+  }
 
   // Returns true if the active listing category filter was cleared, so
   // the caller (Esc handler) knows to consume the keypress.
@@ -5594,7 +5717,9 @@ Tags
       }
 
       // Unfiltered: overflow-aware total. totalBuckets = closed + 1.
-      var t = window.tile(window.__postIndex.length, bucketSize, overflow);
+      // On a topic surface the count is the tag-filtered subset, not the
+      // whole index — see surfaceItemCount().
+      var t = window.tile(surfaceItemCount(surfaceCfg), bucketSize, overflow);
       var totalBuckets = t.newestFill > 0 ? t.closed + 1 : 0;
       if (totalBuckets <= 1) return false;
       // Landing resolves to the highest K (paginate-*.py max-items sync).
@@ -5623,6 +5748,33 @@ Tags
   // Help overlay: built once on first open, then toggled.
   var helpEl = null;
   var helpTrap = null;
+
+  // Navbar destinations, built from __navShortcuts so the panel can't
+  // drift from the live bindings. Emitted as TWO <dt>/<dd> pairs rather
+  // than one: seven keys in a single <dt> would widen the <dl>'s
+  // `max-content` key column and squeeze every other row's description.
+  //
+  // The split point is the same on both sides, so keys stay aligned with
+  // their labels line-for-line — the whole reason not to just let one long
+  // row wrap, which would break the positional pairing the other rows use.
+  // Order is the navbar's own left-to-right order (post-index.py emits it
+  // that way), so the two lines read straight off the bar.
+  function navHelpRows() {
+    var list = window.__navShortcuts;
+    if (!Array.isArray(list) || !list.length) return '';
+    var half = Math.ceil(list.length / 2);
+    var chunks = [list.slice(0, half), list.slice(half)];
+    return chunks.filter(function (c) { return c.length; }).map(function (chunk) {
+      var keys = chunk.map(function (n) {
+        return '<kbd>' + escapeHtml(n.key) + '</kbd>';
+      }).join(' | ');
+      var labels = chunk.map(function (n) {
+        return escapeHtml(n.label);
+      }).join(' | ');
+      return '<dt>' + keys + '</dt><dd>' + labels + '</dd>';
+    }).join('');
+  }
+
   function buildHelp() {
     var el = document.createElement('div');
     el.className = 'kbd-help';
@@ -5637,7 +5789,7 @@ Tags
           '<dt><kbd>?</kbd></dt><dd>Show | hide this help</dd>' +
           '<dt><kbd>/</kbd> | <kbd>q</kbd></dt><dd>Search | Ask AI about this page <span class="kbd-help-scope">(deep-links to AI providers)</span></dd>' +
           '<dt><kbd>#</kbd></dt><dd>Jump to tag</dd>' +
-          '<dt><kbd>s</kbd> | <kbd>a</kbd> | <kbd>A</kbd></dt><dd>Home | Archive | About</dd>' +
+          navHelpRows() +
           '<dt><kbd>d</kbd> | <kbd>t</kbd> | <kbd>f</kbd> | <kbd>l</kbd></dt><dd>Toggle light/dark mode | cycle theme | font | line spacing</dd>' +
           '<dt><kbd>\u2193</kbd> or <kbd>\u2191</kbd></dt><dd>Move highlight through items</dd>' +
           '<dt><kbd>j</kbd> or <kbd>\u2190</kbd></dt><dd>Newer post | page</dd>' +
@@ -5752,9 +5904,18 @@ Tags
     }
 
     if (k === '?') { toggleHelp(); e.preventDefault(); e.stopImmediatePropagation(); return; }
-    if (k === 's') { e.preventDefault(); e.stopImmediatePropagation(); go('/'); return; }
-    if (k === 'a') { e.preventDefault(); e.stopImmediatePropagation(); go('/archive/'); return; }
-    if (k === 'A') { e.preventDefault(); e.stopImmediatePropagation(); go('/about.html'); return; }
+
+    // Navbar destinations, table-driven from the generated shim (see the
+    // header comment). stopImmediatePropagation keeps Quarto's search
+    // autocomplete from also seeing the keystroke — it used to intercept
+    // `s` before we dropped that trigger in _quarto.yml.
+    var navTarget = navShortcutFor(k);
+    if (navTarget) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      go(navTarget);
+      return;
+    }
 
     if (k === 'd') {
       var toggle = document.querySelector('.quarto-color-scheme-toggle');
@@ -6776,7 +6937,7 @@ Tags
   // anything on a Save-Data connection is skipped entirely.
   //
   // Attached inside flattenNav via attachPrefetch(a) as each link is
-  // moved into the final .navbar-3row — scoping is exactly the three
+  // moved into the final .navbar-row — scoping is exactly the three
   // navbar links, so we don't need event delegation or selector tests
   // on every document-wide pointer event.
   var prefetched = Object.create(null);
@@ -6810,32 +6971,64 @@ Tags
                        { passive: true });
   }
 
-  // --- Rebuild navbar into a single 3-item flex row ---
+  // --- Mark the active topic-surface nav item ---
+  // Home / Archive / About get their underline from `html.page-*` CSS
+  // selectors that match on href suffix (see styles.css). That pattern
+  // doesn't extend cleanly to four more surfaces — each would need two
+  // selectors × two page classes — so topic links are marked here
+  // instead, with one CSS rule for `.nav-current`.
+  //
+  // Prefix match, not equality: /papers/page/3/ must underline Papers
+  // too. Dirs come from `__bucketSizes` (a `tag` field marks a topic
+  // surface), so this needs no edit when a surface is added. Skip the
+  // brand link — its pathname is "/", which prefixes everything.
+  function markIfCurrentSurface(a) {
+    if (a.classList.contains('navbar-brand')) return;
+    var sizes = window.__bucketSizes || {};
+    var here = location.pathname;
+    var linkPath;
+    try {
+      linkPath = new URL(a.href, location.href).pathname;
+    } catch (_) { return; }
+    linkPath = linkPath.replace(/index\.html$/, '');
+    for (var key in sizes) {
+      if (!sizes[key] || !sizes[key].tag || !sizes[key].base) continue;
+      if (linkPath === sizes[key].base && here.indexOf(sizes[key].base) === 0) {
+        a.classList.add('nav-current');
+        return;
+      }
+    }
+  }
+
+  // --- Rebuild navbar into a single flex row ---
   // Nuclear option after multiple cascade fights with Bootstrap/Quarto
   // navbar CSS: we construct a fresh wrapper inside .navbar-container,
-  // move the brand link + the two nav links (Archive, About) into it,
-  // and drop everything else. Layout lives on the .navbar-3row class.
+  // move the brand link + every nav link into it, and drop everything
+  // else. Layout lives on the .navbar-row class. (The class name
+  // predates the topic surfaces — the row holds the brand plus six nav
+  // items now, not three.)
   function flattenNav() {
     var navbar = document.querySelector('.navbar');
     var container = navbar && navbar.querySelector('.navbar-container');
     if (!container) return;
 
     // Idempotent: if we've already rebuilt, skip.
-    if (container.querySelector(':scope > .navbar-3row')) return;
+    if (container.querySelector(':scope > .navbar-row')) return;
 
     var brandA = navbar.querySelector('.navbar-brand');
     var navLinks = navbar.querySelectorAll('.navbar-nav .nav-link');
     if (!brandA || navLinks.length === 0) return;
 
-    // Fresh wrapper — layout lives on the .navbar-3row class in
+    // Fresh wrapper — layout lives on the .navbar-row class in
     // styles.css (left-aligned flex row, horizontal scroll on overflow,
     // scrollbar hidden).
     var row = document.createElement('div');
-    row.className = 'navbar-3row';
+    row.className = 'navbar-row';
 
     [brandA].concat(Array.prototype.slice.call(navLinks)).forEach(function (a) {
       row.appendChild(a);
       attachPrefetch(a);
+      markIfCurrentSurface(a);
     });
 
     // Clear out every existing child of .navbar-container except the
@@ -6934,6 +7127,13 @@ Tags
   }
 
   function hideDelay() {
+    // Test seam: tests/ui/test_navbar_reveal.py sets this to a few
+    // milliseconds so the inactivity behavior can be asserted without a
+    // multi-second sleep. Fixed sleeps in that file are what flaked the
+    // tier under `-n auto` (see the file's docstring), so the override
+    // exists to keep them out. Same posture as `__askAICacheState` in
+    // ask-ai-button.html — a diagnostic the site itself never sets.
+    if (typeof window.__navHideDelayMs === 'number') return window.__navHideDelayMs;
     // Touch has no hover/focus to pause on and slower reach-time, so give
     // fingers a longer window before the revealed bar auto-hides.
     return (window.matchMedia && window.matchMedia('(hover: none)').matches) ? 5000 : 3000;
@@ -6944,7 +7144,20 @@ Tags
     // focus inside it — re-armed on mouseleave / focusout (listeners below).
     if (navbarEl && (navbarEl.matches(':hover') ||
                      navbarEl.contains(document.activeElement))) return;
+    // Never auto-hide inside the top band either. `mouseleave` and
+    // `focusout` call this unconditionally, so without the guard a reader
+    // sitting at the top of the page who moused over the bar and then away
+    // would watch it vanish 3s later, with nothing to bring it back until
+    // the next scroll event. The "near the top → always show" rule in
+    // syncReveal has to hold for time-driven hides too, not just
+    // direction-driven ones.
+    if (window.scrollY <= topThreshold) return;
     hideTimer = setTimeout(function () {
+      // Re-check on fire: the 3-5s window is long enough for the page to
+      // have reached the top by a route that armed the timer earlier —
+      // an anchor jump, scrollIntoView from the #post-<slug> deep link,
+      // or any programmatic scrollTo.
+      if (window.scrollY <= topThreshold) return;
       document.body.classList.add('navbar-hidden');
     }, hideDelay());
   }
