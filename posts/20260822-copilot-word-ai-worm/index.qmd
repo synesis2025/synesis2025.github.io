@@ -1,0 +1,32 @@
+---
+title: "A Document-Borne AI Worm in Copilot for Word"
+description: "Hidden instructions in one Word document make Copilot alter a quarterly report's figures and copy the instructions into the result, so each new document becomes a carrier for the next drafting session."
+author: synesis
+date: "2026-08-22"
+image: cover.jpg
+---
+
+![The attacker's document: an ordinary-looking market analysis with the payload appended in white text at the end. The two unblurred fragments are the instruction to halve the source figures and the instruction to set the text in white. Image from [En Klype Salt](https://enklypesalt.com/posts/context-collapse-part3-ai-worming-through-word/).](cover.jpg){fig-align="center"}
+
+[Håkon Måløy](https://github.com/haakom), writing on [En Klype Salt](https://enklypesalt.com/), reports that hidden instructions inside a [Word](https://www.microsoft.com/en-us/microsoft-365/word) document can survive a [Copilot](https://www.microsoft.com/en-us/microsoft-365/copilot) drafting session and end up inside the document it produces. That document then contains the same instructions, so the next person who uses it as source material gets the same treatment. This is the third part of a series on Copilot and untrusted input, after [Poisoning Copilot Memory](https://enklypesalt.com/posts/context-collapse-part1-poisoning-copilot-memory/) and [When Emails Instruct](https://enklypesalt.com/posts/context-collapse-part2-when-emails-instruct/). Both of those were fixed. The vulnerability here was not: coordination with [Microsoft's Security Response Center](https://www.microsoft.com/en-us/msrc) ran 144 days, Microsoft closed each specific payload reported, and the class was still reproducible at publication.
+
+The write-up walks through each stage with screenshots. The outline:
+
+- **The payload.** The attack starts as a prompt in JSON format appended to an otherwise ordinary document, set in white text at a small size. Copilot for Word strips color and font size before the text reaches the model, so the model reads what the person cannot see. The post calls this a cross-domain prompt injection attack (XPIA), a variant of [prompt injection](https://genai.owasp.org/llmrisk2023-24/llm01-24-prompt-injection/) where the instructions arrive with content pulled in from outside the current task.
+- **Stage one, the first document.** With the malicious file among the attachments, Copilot follows the embedded instructions while drafting. In the proof of concept it halves the financial figures in a quarterly report and mentions none of it. Copilot also reaches the file without being pointed at it, by searching the victim's [OneDrive](https://www.microsoft.com/en-us/microsoft-365/onedrive/online-cloud-storage) for relevant source material.
+- **Stage two, propagation.** The instructions also tell Copilot to copy them into the document it writes, again in white text. That document is now an internal file, and it is trusted as one, so attaching it in a later drafting session triggers the attack again, with the attacker's original document no longer among the attachments.
+- **Why it is still open.** Rewording a closed payload reproduced the whole chain, because the class is the mechanism rather than any particular prompt. The post's argument is that a model has to read untrusted text in order to judge whether it is an attack, and by then that text is already part of the computation that produces the judgment. The one control it asks for is provenance metadata recording source material and model edits, which would make the spread traceable without preventing it. The post also flags Copilot's integration with [Microsoft Cowork](https://www.microsoft.com/en-us/microsoft-365/cowork) and Microsoft Scout, which create and edit documents automatically, as a path for the same mechanism to spread at machine speed.
+
+## My Notes
+
+- **Someone has to reuse the document**: a person attaches the affected file, or asks for a report that sends Copilot looking for source material. [Morris II](https://arxiv.org/abs/2403.02817), the email-assistant worm the post cites as precedent, did not need that. It poisoned the databases those assistants search, and they read mail without being asked. So this spreads at whatever rate people reuse each other's documents. That is slower than a worm that moves on its own. It is also harder to spot, since every step is a person doing ordinary work.
+- **Copilot is not the attacker here**: [Tracebit](https://tracebit.com/)'s [context bombs](/posts/20260730-context-bombs/) cut attack success by roughly 90% by planting text that an attacking model refuses to work alongside. That defense assumes the model is doing something its safety training objects to. This attack instead has Copilot edit numbers in a report it was already asked to draft, which is not the kind of instruction a model refuses.
+
+---
+
+## Related Posts
+
+- [Context Bombs: Stopping AI Attackers in Their Tracks](/posts/20260730-context-bombs/): prompt injection planted by the defender to stop an attacking model, a defense that does not reach an attack whose payload is ordinary business editing.
+- [Prompt Injections in the Wild: What Google Found in Common Crawl](/posts/20260428-prompt-injections-public-web/): Google's census of injections on the public web found mostly low-effort experiments, a different population from a coordinated disclosure against a shipped product.
+- [Snowflake Cortex AI Escapes Sandbox and Executes Malware](/posts/20260319-snowflake-cortex-sandbox-escape/): the same untrusted-content-as-instruction failure aimed at code execution rather than at the contents of a document.
+- [Indirect Prompt Injection Threats](/posts/20230318-indirect-prompt-injection/): the 2023 demonstration that planted text can redirect an assistant, three years before the same mechanism reached a mainstream productivity suite.
