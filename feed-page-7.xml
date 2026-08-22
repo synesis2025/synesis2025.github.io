@@ -21,7 +21,108 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Wed, 19 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Thu, 20 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Transduction with Confidence and Credibility</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260603-transduction-confidence-credibility/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260603-transduction-confidence-credibility/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260603-transduction-confidence-credibility/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Three test digits both a standard SVM and the transductive algorithm misclassified, all true class ‘8’. The predicted label carries 95-99% confidence, but credibility never clears 5%. The second label is firmly rejected, yet even the chosen label is a strange point against the training set. Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>Transduction with Confidence and Credibility</em> [1] (IJCAI 1999), <a href="https://dblp.org/pid/66/4053">Craig Saunders</a>, <a href="https://scholar.google.com/citations?user=uoWoR4gAAAAJ">Alex Gammerman</a>, and <a href="http://www.vovk.net/">Vladimir Vovk</a> at Royal Holloway, University of London build a transductive classifier on top of a Support Vector Machine (SVM) that, for each new example, returns not just a label but two numbers describing how much to trust it. The numbers come from p-values, and the construction is the direct ancestor of <a href="../../posts/20260505-conformal-prediction-primer/">conformal prediction</a>.</p>
+<p>The paper rests on two quantities, and the rest of it is about how to compute them. Each candidate label <img src="https://benjaminhan.net/feed-assets/b5e6b67e7c18a0a7.svg" alt="Y" class="feed-math-inline"/> gets a <em>p-value</em> <img src="https://benjaminhan.net/feed-assets/39d776497ff7f5df.svg" alt="p(Y) \in [0, 1]" class="feed-math-inline"/> measuring how strange the test point looks against the training set under the hypothesis that its label is <img src="https://benjaminhan.net/feed-assets/b5e6b67e7c18a0a7.svg" alt="Y" class="feed-math-inline"/>. The prediction is the label with the largest p-value, <img src="https://benjaminhan.net/feed-assets/c4fbacc6c1f465ce.svg" alt="\hat{y} = \arg\max_Y p(Y)" class="feed-math-inline"/>:</p>
+<ul>
+<li><strong>Confidence</strong> <img src="https://benjaminhan.net/feed-assets/6d67451f66a4cbcb.svg" alt="= 1 - p_{(2)}" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/2edb3ae4063668d3.svg" alt="p_{(2)}" class="feed-math-inline"/> is the second-largest p-value across the candidate labels. High confidence means the runner-up label is firmly rejected, so the prediction is unlikely to be wrong at the corresponding error level.</li>
+<li><strong>Credibility</strong> <img src="https://benjaminhan.net/feed-assets/ced3e22827d101d8.svg" alt="= \max_Y p(Y) = p(\hat{y})" class="feed-math-inline"/>, how well the <em>best</em> available label fits the training set at all. Low credibility flags an input unlike anything in the training set: the test point is strange under every hypothesis, regardless of how confident the prediction looks.</li>
+</ul>
+<p>The split matters because the two can disagree. A prediction can be 99% confident and 1% credible: every alternative label is rejected, yet the winning label is also a poor fit. The paper’s Table 1 shows three such cases: handwritten digits with high-confidence wrong answers that credibility correctly flags as untrustworthy.</p>
+<section id="the-abstract" class="level2">
+<h2 class="anchored" data-anchor-id="the-abstract">The abstract</h2>
+<blockquote class="blockquote">
+<p>In this paper we follow the same general ideology as in [Gammerman et al., 1998], and describe <em>a new transductive learning algorithm using Support Vector Machines</em>. The algorithm presented provides <em>confidence values for its predicted classifications of new examples</em>. We also obtain <em>a measure of “credibility” which serves as an indicator of the reliability of the data</em> upon which we make our prediction. Experiments compare the new algorithm to a standard Support Vector Machine and other transductive methods which use Support Vector Machines, such as Vapnik’s margin transduction. Empirical results show that the new algorithm not only produces confidence and credibility measures, but is <em>comparable to, and sometimes exceeds the performance of the other algorithms</em>.</p>
+</blockquote>
+</section>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>Induction learns a general rule from the training set and then applies it to any future point. Transduction skips the general rule and reasons straight from the training examples to the specific test point in front of it. The paper’s recipe is to fold the test point into the training set under a tentative label, fit an SVM to the combined data, and ask how unusual the test point looks once it is in there.</p>
+<p>The measure of “unusual” is the <strong>strangeness</strong> of an example, and it reuses a quantity the SVM already produces. After fitting, every example <img src="https://benjaminhan.net/feed-assets/fe3599bc03ddee62.svg" alt="i" class="feed-math-inline"/> in the training set (now including the test point) carries a Lagrange multiplier <img src="https://benjaminhan.net/feed-assets/672bb5b7603b366d.svg" alt="\alpha_i \ge 0" class="feed-math-inline"/>. An <img src="https://benjaminhan.net/feed-assets/6589a38e504cfe5c.svg" alt="\alpha_i" class="feed-math-inline"/> near zero means the example is on the correct side of the margin and contributes nothing to the boundary. A large <img src="https://benjaminhan.net/feed-assets/6589a38e504cfe5c.svg" alt="\alpha_i" class="feed-math-inline"/> means the example is hard to fit: it lands on or inside the margin and influences the boundary. So a large <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/> marks a strange, poorly supported point, and a small <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/> marks an ordinary one.</p>
+<p>Strangeness on its own is just a number on an arbitrary scale. To turn it into something comparable across examples, the paper ranks the test point’s multiplier against all the others and reads off a p-value. If the training set has <img src="https://benjaminhan.net/feed-assets/ffad2d911a7861b6.svg" alt="\ell" class="feed-math-inline"/> examples and the test point’s multiplier <img src="https://benjaminhan.net/feed-assets/769cf8151a59e706.svg" alt="\alpha_{\text{new}}" class="feed-math-inline"/> comes out as the <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/>-th largest, the p-value is</p>
+<p><img src="https://benjaminhan.net/feed-assets/3d12a3eadb738770.svg" alt="p = \frac{\#\{i : \alpha_i \ge \alpha_{\text{new}}\}}{\ell + 1}." class="feed-math-inline"/></p>
+<p>The justification is <strong><a href="https://en.wikipedia.org/wiki/Exchangeable_random_variables">exchangeability</a></strong>: if the test point really were drawn from the same distribution as the training data, then all <img src="https://benjaminhan.net/feed-assets/a317ca7e0b854cbf.svg" alt="\ell + 1" class="feed-math-inline"/> multipliers are exchangeable, every ordering is equally likely, and the chance that the test point’s multiplier is the single largest is at most <img src="https://benjaminhan.net/feed-assets/26750dbdf9ffdd1b.svg" alt="1/(\ell+1)" class="feed-math-inline"/>. A small p-value therefore means the tentative label makes the test point look like an outlier, which is strong evidence the label is wrong. The guarantee rests on exchangeability, a weaker assumption than the independent-and-identically-distributed condition usually invoked.</p>
+<p>For a binary problem the SVM is fit twice, once per candidate label, giving two p-values. The algorithm predicts the label with the higher p-value (the one under which the test point looks least strange), and then reports confidence and credibility exactly as defined above. For <img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> test points at once the same idea applies, but every joint labeling has to be tried, so the SVM is refit <img src="https://benjaminhan.net/feed-assets/966fd15c7f3e4c91.svg" alt="2^k" class="feed-math-inline"/> times, the cost the paper itself calls impractical past <img src="https://benjaminhan.net/feed-assets/9cd92b6c58c8b22b.svg" alt="k \approx 7" class="feed-math-inline"/>.</p>
+<p>Credibility is what does the work as a reject mechanism. If a prediction’s credibility is low, every label left the test point looking strange, so the safe move is to abstain. The paper notes that the more costly a wrong answer is, the higher the credibility threshold should be set.</p>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The experiments use the US Postal Service database of handwritten digits with a degree-3 polynomial kernel, comparing the new p-value transduction against Vapnik’s margin transduction and a plain SVM. The findings:</p>
+<ul>
+<li><p><strong>Credibility flags the errors it should</strong> (Table 1). On a task separating ‘8’ from the other digits, the transductive algorithm and a standard SVM misclassified the same three test examples. For all three, credibility came in at 5% or below (4.6%, 4.5%, 0.8%), even though confidence was 95-99%. The low credibility correctly says the data did not support those predictions, while confidence alone would have looked reassuring.</p></li>
+<li><p><strong>Adding the two measures costs nothing in accuracy</strong> (Table 2). On a 2-versus-7 task over 20,000 runs at training sizes <img src="https://benjaminhan.net/feed-assets/49b509672441757a.svg" alt="n = 20, 40, 100, 200" class="feed-math-inline"/>, the p-value transduction’s error counts track the margin transduction and the standard SVM closely (for example, 262 errors at <img src="https://benjaminhan.net/feed-assets/20aabe3b1754f2c2.svg" alt="n=100" class="feed-math-inline"/> versus 272 for the SVM, and 186 at <img src="https://benjaminhan.net/feed-assets/745e929cd64b026c.svg" alt="n=200" class="feed-math-inline"/> versus 191). At the smallest training size it is somewhat worse (640 versus ~522), but the gap closes as <img src="https://benjaminhan.net/feed-assets/0096a7a39b4983b5.svg" alt="n" class="feed-math-inline"/> grows.</p></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260603-transduction-confidence-credibility/table2.png" class="img-fluid figure-img"></p>
+<figcaption>Incorrect classifications over 20,000 runs on a 2-versus-7 digit task, for four training-set sizes. The p-value transduction (top row) stays close to Vapnik’s margin transduction and a standard SVM despite also returning confidence and credibility. Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="what-came-after" class="level2">
+<h2 class="anchored" data-anchor-id="what-came-after">What came after</h2>
+<p>The scheme is transductive: to score one test point it refits the SVM under every candidate label, and <img src="https://benjaminhan.net/feed-assets/966fd15c7f3e4c91.svg" alt="2^k" class="feed-math-inline"/> times for <img src="https://benjaminhan.net/feed-assets/4f6659aea02f90b6.svg" alt="k" class="feed-math-inline"/> joint test points. The strangeness signal is tied to the SVM as well. The work that followed loosened both.</p>
+<ul>
+<li><strong>The general form.</strong> Vovk, Gammerman, and Shafer’s <em>Algorithmic Learning in a Random World</em> [2] consolidated the theory so that any nonconformity score, not just an SVM multiplier, drives the calibration.</li>
+<li><strong><a href="../../posts/20260505-conformal-prediction-primer/">Split conformal prediction</a>.</strong> Papadopoulos et al.&nbsp;[3] replaced the per-label retraining with a single held-out calibration set, cheap enough to wrap around any pre-trained model. This is the form most practitioners use today.</li>
+<li><strong>The deep-learning revival.</strong> Angelopoulos and Bates’ tutorial [4] repackaged conformal prediction for modern neural networks and drove the recent wave of distribution-free uncertainty work, including the <a href="../../posts/20260505-conformal-factuality/">conformal factuality</a> and <a href="../../posts/20260505-conformal-language-modeling/">conformal language modeling</a> methods built for language models.</li>
+</ul>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>The ICML paper embeds this construction in theory.</strong> This paper presents the SVM-rank-of-multipliers method as a standalone practical scheme: take the ranks of SVM Lagrange multipliers, read p-values off them, report confidence and credibility. The companion ICML 1999 paper [5] by the same three authors keeps the construction unchanged but adds a broader theoretical layer: it casts the multipliers as a computable approximation to non-computable measures of algorithmic randomness, and adds a set of impossibility results that bound what conformal-style validity can deliver under iid alone.</li>
+<li><strong>Modern conformal prediction dropped the abstention signal.</strong> Today’s work reports a prediction set at a fixed coverage level, not the per-prediction credibility number that flagged strange inputs. Selective-prediction research keeps rediscovering it as a test on conformal p-values.</li>
+<li><strong>The reject rule lacks a threshold procedure.</strong> Credibility gives a clean basis for abstention, refusing to predict when no label fits, but the paper sets the cutoff only by appeal to how costly a wrong answer would be, with no procedure for choosing it. Split conformal later inverted the problem: fix the error level <img src="https://benjaminhan.net/feed-assets/00fa5d84b90398dd.svg" alt="\alpha" class="feed-math-inline"/> first and let the calibration set determine the prediction, rather than fixing a strangeness threshold and seeing what error rate follows.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Saunders, C., Gammerman, A., and Vovk, V. “Transduction with Confidence and Credibility.” <em>Proceedings of the Sixteenth International Joint Conference on Artificial Intelligence</em> (IJCAI 1999), pp.&nbsp;722–726. <a href="https://www.ijcai.org/Proceedings/99-2/Papers/010.pdf" class="uri">https://www.ijcai.org/Proceedings/99-2/Papers/010.pdf</a></li>
+<li><a id="ref-2"></a>Vovk, V., Gammerman, A., and Shafer, G. <em>Algorithmic Learning in a Random World.</em> New York: Springer, 2005.</li>
+<li><a id="ref-3"></a>Papadopoulos, H., Proedrou, K., Vovk, V., and Gammerman, A. “Inductive Confidence Machines for Regression.” <em>European Conference on Machine Learning</em> (ECML 2002), pp.&nbsp;345–356.</li>
+<li><a id="ref-4"></a>Angelopoulos, A. N. and Bates, S. “A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification.” arXiv:2107.07511, 2021. <a href="https://arxiv.org/abs/2107.07511" class="uri">https://arxiv.org/abs/2107.07511</a></li>
+<li><a id="ref-5"></a>Vovk, V., Gammerman, A., and Saunders, C. “Machine-Learning Applications of Algorithmic Randomness.” <em>Proceedings of the Sixteenth International Conference on Machine Learning</em> (ICML 1999), pp.&nbsp;444–453.</li>
+<li><a id="ref-6"></a>Gammerman, A., Vapnik, V., and Vovk, V. “Learning by Transduction.” <em>Proceedings of the Fourteenth Conference on Uncertainty in Artificial Intelligence</em> (UAI 1998), pp.&nbsp;148–156.</li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260603-algorithmic-randomness/">Machine-Learning Applications of Algorithmic Randomness</a>: the ICML companion paper by the same trio, which keeps this construction unchanged but casts it as a computable approximation to algorithmic randomness and adds impossibility results.</li>
+<li><a href="../../posts/20260607-inductive-confidence-machines-regression/">Inductive Confidence Machines for Regression</a>: the follow-up that replaced this paper’s <img src="https://benjaminhan.net/feed-assets/966fd15c7f3e4c91.svg" alt="2^k" class="feed-math-inline"/> refitting with one training run plus a calibration set, the split-conformal form in use today.</li>
+<li><a href="../../posts/20260505-conformal-prediction-primer/">A Primer on Conformal Prediction</a>: the modern framing of the p-value-and-strangeness scheme introduced here, with the same exchangeability justification.</li>
+<li><a href="../../posts/20260505-conformal-language-modeling/">Conformal Language Modeling</a>: a language-model method built on the distribution-free guarantee this paper’s lineage seeded.</li>
+<li><a href="../../posts/20260505-conformal-factuality/">Language Models with Conformal Factuality Guarantees</a>: another LLM application of the conformal machinery descended from this work.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260603-transduction-confidence-credibility/</guid>
+  <pubDate>Wed, 03 Jun 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260603-transduction-confidence-credibility/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Wigmore Hall + Apple Music Classical</title>
   <dc:creator>Ben </dc:creator>
@@ -1708,34 +1809,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/</guid>
   <pubDate>Thu, 28 May 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260528-ai-assistance-reduces-persistence/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Lunch Run on a Gorgeous Day at Elliott Bay Trail</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<p>A gorgeous day in Seattle and I had a wonderful 7.2mi lunch run on <a href="../../posts/20260424-elliott-bay-trail-run/">Elliott Bay Trail</a>!</p>
-<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-4.jpeg" class="img-fluid" data-lightbox-src="image-4-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/cover.jpeg" class="img-fluid" data-lightbox-src="cover-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-6.jpeg" class="img-fluid" data-lightbox-src="image-6-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-7.jpeg" class="img-fluid" data-lightbox-src="image-7-full.jpeg"></p>
-<p><img src="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/image-8.jpeg" class="img-fluid" data-lightbox-src="image-8-full.jpeg"></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/</guid>
-  <pubDate>Wed, 27 May 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260527-lunch-run-elliott-bay-trail/cover.jpeg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
