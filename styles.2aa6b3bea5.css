@@ -38,6 +38,37 @@
      default cross-fade). Bi-directional ease-in-out keeps the calm
      feel without doubling the perceived click-to-settle time. */
   --navbar-dur: 0.18s;
+  /* Keep-out strip at the bar's right end, reserved for the fixed
+     top-right search button (a 2.25rem circle pinned at
+     `right: max(1rem, env(safe-area-inset-right))` — see "Floating
+     utility buttons"), plus a 0.5rem breathing gap. Consumed as a floor
+     on .navbar-container's right padding, which is what ends the
+     horizontally scrolling row: without it the last nav items scroll
+     under the magnifying glass on narrow viewports, where the measured
+     --content-right is only ~1em. */
+  --navbar-tool-reserve: calc(2.25rem + 0.5rem +
+                              max(1rem, env(safe-area-inset-right, 1rem)));
+  /* The bar's two gutters, as tokens rather than inline expressions,
+     because three rules need the same numbers: .navbar-container's
+     padding (which is what positions the row and ends its scroll) and
+     the two scroll-hint chevrons, which pin to the row's edges. The
+     fallbacks approximate Quarto's article grid (5fr each side, ~118px
+     chrome, ~800px body-content) so the first paint lands close to where
+     the JS measurement will; navbar-content-align.html then publishes
+     --content-left / --content-right as px on :root and these resolve
+     against those. */
+  --navbar-pad-left: var(--content-left,
+                         max(1em, calc((100vw - 1180px) / 2 + 118px)));
+  --navbar-pad-right: max(var(--content-right,
+                              max(1em, calc((100vw - 1180px) / 2 + 118px))),
+                          var(--navbar-tool-reserve));
+  /* How far the navbar row's content dissolves at a scrollable edge (see
+     "Scroll hints"). A touch wider than the 1.9rem chevron strip so a nav
+     label has faded out before it reaches the glyph. ensureCurrentVisible()
+     in navbar-content-align.html keeps the current item clear of this band
+     by 2.9rem — if you re-tune this, re-tune that with it, or the
+     underlined item can land inside the fade. */
+  --navbar-edge-fade: 2.6rem;
   /* Accent: --hl-yellow is the soft warm highlight used everywhere
      (link/category hover, focus tints, dot ring). --hl-amber is a
      deeper sibling reserved for the kbd-focus inset border, where
@@ -108,11 +139,17 @@
   margin-right: 0 !important;
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
-  /* Fallback approximates Quarto's article grid (5fr on each side,
-     ~118px chrome, ~800px body-content) so the first paint is close
-     to where the JS measurement lands. JS overrides via inline style. */
-  padding-left: var(--content-left, max(1em, calc((100vw - 1180px) / 2 + 118px))) !important;
-  padding-right: var(--content-right, max(1em, calc((100vw - 1180px) / 2 + 118px))) !important;
+  /* Both gutters come from the shared tokens on :root. The right one is
+     floored at --navbar-tool-reserve so the scrolling row always ends
+     left of the fixed search button; on wide viewports the measured
+     --content-right is the larger of the two and wins, so the
+     brand/links stay aligned with the content column exactly as before.
+     Only narrow viewports (where content-right collapses to ~1em) get
+     the extra keep-out strip. */
+  padding-left: var(--navbar-pad-left) !important;
+  padding-right: var(--navbar-pad-right) !important;
+  /* Containing block for the two scroll-hint chevrons below. */
+  position: relative;
 }
 
 /* Pre-paint gate: hide the entire header until flattenNav() has rebuilt
@@ -260,7 +297,13 @@ html.js-navbar body:not(.navbar-ready) #quarto-header {
    wrapper inside .navbar-container holding the brand link + every nav
    link, side-by-side left-to-right. Horizontal scroll on overflow,
    scrollbar hidden — the bar stays clean when the items
-   overflow on narrow widths. */
+   overflow on narrow widths. The row is `width: 100%` of the container's
+   content box, so the container's right padding (floored at
+   --navbar-tool-reserve) is what ends the scroll: the last item can be
+   scrolled up to that edge and no further, which keeps every item clear
+   of the fixed search button instead of disappearing under it. The
+   offset itself persists across navigations — see the scroll-restore
+   block in navbar-content-align.html. */
 .navbar-row {
   display: flex;
   flex-direction: row;
@@ -282,6 +325,121 @@ html.js-navbar body:not(.navbar-ready) #quarto-header {
   margin: 0;
   padding: 0;
   flex: 0 0 auto;
+}
+
+/* Scroll hints. A scrolling row with a hidden scrollbar gives the reader
+   no sign that there is more bar in either direction, so each end that
+   has off-screen content gets a chevron pointing at it: left chevron at
+   the start when the row is scrolled away from the start, right chevron
+   at the end when there is more to come. Both disappear at the
+   corresponding extreme, and neither appears at all when the row fits.
+   The `can-scroll-*` classes are toggled on .navbar-container by
+   updateScrollHints() in navbar-content-align.html.
+
+   Two layers make this read:
+
+     1. The row's own content fades out at any edge with more bar beyond
+        it (the mask below), so whichever nav label sits under a chevron
+        dissolves instead of colliding with it.
+     2. The chevron itself is painted at full strength on top.
+
+   The chevrons are two spans built by the same include rather than
+   ::before/::after on the row: a pseudo-element of the row would be a
+   flex item among the nav links AND would scroll away with them, while
+   these sit in the container's padding box, pinned to the row's edges via
+   the same --navbar-pad-* tokens the padding uses. Being siblings of the
+   row rather than children also means the row's mask doesn't touch them —
+   which is the whole point: the labels fade, the chevrons don't.
+
+   `pointer-events: none` keeps a purely informational overlay from
+   stealing taps from the item under it, which on a 390px bar is a real
+   hazard. */
+/* Layer 1 — the edge fade on the row's content. One declaration drives
+   both edges: the two --nav-fade-* lengths default to 0, which collapses
+   that side's gradient into a hard stop (no visible fade), and each
+   `can-scroll-*` class opens up its own side. The alternative — a separate
+   mask per state — needs three rules with :not() chains to cover
+   left-only, right-only, and both, and they overwrite rather than compose.
+
+   Declared only under the two classes, so a row that fits (every desktop
+   width) carries no mask at all and pays nothing for the feature. A mask
+   creates a stacking context but NOT a containing block for fixed
+   descendants, so it can't recreate the iPadOS fixed-header gap the
+   `header.headroom { transform: none }` fix above exists to prevent; the
+   mask is also on the row, not on the fixed <header>. The fade width is
+   --navbar-edge-fade (see :root, where the coupling to
+   ensureCurrentVisible's gap is noted). Mask geometry is relative to the
+   row's border box, not its scrolled content, so the fade stays pinned at
+   the visible edges while items scroll under it. */
+.navbar-container:is(.can-scroll-left, .can-scroll-right) .navbar-row {
+  -webkit-mask-image: linear-gradient(to right,
+      rgba(0, 0, 0, 0) 0,
+      #000 var(--nav-fade-left, 0px),
+      #000 calc(100% - var(--nav-fade-right, 0px)),
+      rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(to right,
+      rgba(0, 0, 0, 0) 0,
+      #000 var(--nav-fade-left, 0px),
+      #000 calc(100% - var(--nav-fade-right, 0px)),
+      rgba(0, 0, 0, 0) 100%);
+}
+.navbar-container.can-scroll-left .navbar-row {
+  --nav-fade-left: var(--navbar-edge-fade);
+}
+.navbar-container.can-scroll-right .navbar-row {
+  --nav-fade-right: var(--navbar-edge-fade);
+}
+
+/* Layer 2 — the chevron itself. */
+.navbar-scroll-hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.9rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  /* No opacity transition, deliberately. The paired edge fade above is a
+     mask keyed off the same class, and neither `mask-image` nor the
+     unregistered custom property driving it can be transitioned — so a
+     fading chevron would lag a snapping fade, and for those ~180ms at each
+     extreme the glyph would sit over a fully opaque label, which is the one
+     thing the fade exists to prevent. Both layers flip in the same frame
+     instead. */
+  opacity: 0;
+}
+.navbar-scroll-hint-left {
+  left: var(--navbar-pad-left);
+  justify-content: flex-start;
+}
+.navbar-scroll-hint-right {
+  right: var(--navbar-pad-right);
+  justify-content: flex-end;
+}
+.navbar-container.can-scroll-left .navbar-scroll-hint-left,
+.navbar-container.can-scroll-right .navbar-scroll-hint-right {
+  opacity: 1;
+}
+/* Glyph, painted the same way as the search button's magnifying glass: a
+   mask over a solid fill, so one asset tracks all 22 themes. Full opacity
+   and a hair larger than the nav text's cap height — with the label behind
+   it faded out, the chevron is the only thing left to look at, and a timid
+   one reads as a rendering artifact. */
+.navbar-scroll-hint::before {
+  content: '';
+  display: block;
+  width: 0.95rem;
+  height: 0.95rem;
+  background-color: var(--bs-emphasis-color);
+}
+.navbar-scroll-hint-left::before {
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M10.5 2.5 L5 8 L10.5 13.5' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M10.5 2.5 L5 8 L10.5 13.5' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
+}
+.navbar-scroll-hint-right::before {
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M5.5 2.5 L11 8 L5.5 13.5' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M5.5 2.5 L11 8 L5.5 13.5' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
 }
 
 /* After promoteFloatingTools() moves the color-scheme toggle out of
@@ -379,7 +537,9 @@ header.headroom {
   }
 }
 
-/* Reduced motion: hide/reveal cuts instantly instead of sliding. */
+/* Reduced motion: hide/reveal cuts instantly instead of sliding. (The
+   scroll-hint chevrons need no entry here — they carry no transition in the
+   first place; see the note in their block above.) */
 @media (prefers-reduced-motion: reduce) {
   body.navbar-ready #quarto-header {
     transition: none;
@@ -449,11 +609,16 @@ html.page-archive .navbar .nav-link[href$="/archive/"],
 html.page-archive-bucket .navbar .nav-link[href$="archive/index.html"],
 html.page-archive-bucket .navbar .nav-link[href$="/archive/"],
 html.page-about .navbar .nav-link[href$="about.html"],
-/* Topic surfaces (Papers, Primers, Transcripts, Running) mark their own
-   link with .nav-current in _includes/navbar-content-align.html rather
-   than adding two href-suffix selectors per surface here. The JS prefix-
-   matches the path, so a bucket page (/papers/page/3/) underlines its
-   surface too. See docs/plans/plan-topic-surfaces.md. */
+/* Topic surfaces (Papers, Primers, Transcripts, Running) never had
+   selectors here — four surfaces would need two selectors × two page
+   classes each — so the current link is marked with .nav-current in
+   _includes/navbar-content-align.html instead, and one rule covers all
+   of them. The JS prefix-matches the path, so a bucket page
+   (/papers/page/3/) underlines its surface too. It marks Archive and
+   About as well: the underline there is already handled by the
+   selectors above, but the class doubles as the DOM hook the include's
+   scroll-restore uses to find the current item. See
+   docs/plans/plan-topic-surfaces.md. */
 .navbar .nav-link.nav-current {
   text-decoration: underline;
   text-decoration-thickness: 2px;
@@ -2360,10 +2525,12 @@ html.tag-picker-locked body {
 /* ============================================================
    Search-tools pill (top-right): wraps #quarto-search + Ask-AI
    button. Mirrors bottom-right .theme-tools's slide-to-expand
-   pattern — collapsed = search-only circle; expanded = 4.75rem
-   pill with Ask-AI on the LEFT and search on the RIGHT. Only
-   visible on post pages (wrap is gated by the JS in
-   _includes/ask-ai-button.html).
+   pattern — collapsed = search-only circle; expanded = 7.25rem
+   pill with the tag-picker and Ask-AI buttons to the LEFT of
+   search. Built on every surface (ask-ai-button.html wraps
+   #quarto-search unconditionally once navbar-content-align.html
+   has promoted it to a body child); it is the Ask-AI *scope*
+   that varies per page, not the pill's presence.
    ============================================================ */
 .search-tools {
   position: fixed;

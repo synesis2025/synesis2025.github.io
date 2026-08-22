@@ -636,7 +636,7 @@ window.__postIndexReady = fetch('/post-index.json?v=cda4f3b1bd')
 <link rel="https://llmstxt.org/" type="text/plain" href="../../llms.txt">
 
 
-<link rel="stylesheet" href="../../styles.e6eab26cee.css">
+<link rel="stylesheet" href="../../styles.2aa6b3bea5.css">
 <meta property="og:title" content="How Artificial Analysis Builds Its Intelligence Index – synesis">
 <meta property="og:description" content="Artificial Analysis’s published methodology for its Intelligence Index, the single score it uses to rank language models across nine evaluations.">
 <meta property="og:image" content="https://benjaminhan.net/posts/20260620-intelligence-benchmarking/cover.jpg">
@@ -6295,6 +6295,13 @@ window.__postIndexReady = fetch('/post-index.json?v=cda4f3b1bd')
 //      window it auto-hides again. Independent of Headroom's class flips
 //      so transients (iPad address-bar settle, iOS rubber-band, theme-
 //      cycle layout shift) stay quiet.
+//   5. Persist the row's horizontal scroll offset per tab (sessionStorage)
+//      and keep the current item inside the visible window, so a narrow
+//      bar that has been scrolled to reach e.g. Running doesn't snap back
+//      to the brand on the next page load and lose the underline that says
+//      which surface the reader is on. Also flag which ends of the row
+//      have off-screen content (`can-scroll-left` / `can-scroll-right` on
+//      .navbar-container) so CSS can show a chevron pointing at each.
 //
 // Page tagging (html.page-home / page-archive / page-about) lives in
 // _includes/page-class.html instead — it has to run in <head> to beat
@@ -6345,32 +6352,41 @@ window.__postIndexReady = fetch('/post-index.json?v=cda4f3b1bd')
                        { passive: true });
   }
 
-  // --- Mark the active topic-surface nav item ---
-  // Home / Archive / About get their underline from `html.page-*` CSS
-  // selectors that match on href suffix (see styles.css). That pattern
-  // doesn't extend cleanly to four more surfaces — each would need two
-  // selectors × two page classes — so topic links are marked here
-  // instead, with one CSS rule for `.nav-current`.
+  // --- Mark the active nav item ---
+  // Home / Archive / About also get their underline from `html.page-*` CSS
+  // selectors that match on href suffix (see styles.css); topic surfaces
+  // never did, because that pattern doesn't extend cleanly to four more
+  // surfaces — each would need two selectors × two page classes. So the
+  // marking happens here for every item, with one CSS rule for
+  // `.nav-current`. The CSS selectors stay as they are (About's
+  // interaction with Quarto's own `.active` class is load-bearing); for
+  // Archive and About this class is a second, identical underline, and
+  // what it really buys is a single DOM hook the scroll-restore below can
+  // ask for: "which item is the current page?".
   //
-  // Prefix match, not equality: /papers/page/3/ must underline Papers
-  // too. Dirs come from `__bucketSizes` (a `tag` field marks a topic
-  // surface), so this needs no edit when a surface is added. Skip the
-  // brand link — its pathname is "/", which prefixes everything.
-  function markIfCurrentSurface(a) {
-    if (a.classList.contains('navbar-brand')) return;
-    var sizes = window.__bucketSizes || {};
-    var here = location.pathname;
+  // Prefix match, not equality: /papers/page/3/ must underline Papers, and
+  // /archive/page/2/ must underline Archive. The brand can't be
+  // path-matched at all — its pathname is "/", which prefixes everything —
+  // so it keys off the page class that page-class.html published in
+  // <head>, the same signal the CSS rule uses. (Nothing underlines the
+  // brand via `.nav-current`: the CSS rule is scoped to `.nav-link`, and
+  // the brand isn't one. Home's underline stays a pure CSS concern; the
+  // class is here for the scroll-restore hook.)
+  function markIfCurrent(a) {
+    var cls = document.documentElement.classList;
+    if (a.classList.contains('navbar-brand')) {
+      if (cls.contains('page-home') || cls.contains('page-home-bucket')) {
+        a.classList.add('nav-current');
+      }
+      return;
+    }
+    var here = location.pathname.replace(/index\.html$/, '');
     var linkPath;
     try {
-      linkPath = new URL(a.href, location.href).pathname;
+      linkPath = new URL(a.href, location.href).pathname.replace(/index\.html$/, '');
     } catch (_) { return; }
-    linkPath = linkPath.replace(/index\.html$/, '');
-    for (var key in sizes) {
-      if (!sizes[key] || !sizes[key].tag || !sizes[key].base) continue;
-      if (linkPath === sizes[key].base && here.indexOf(sizes[key].base) === 0) {
-        a.classList.add('nav-current');
-        return;
-      }
+    if (linkPath !== '/' && here.indexOf(linkPath) === 0) {
+      a.classList.add('nav-current');
     }
   }
 
@@ -6402,7 +6418,7 @@ window.__postIndexReady = fetch('/post-index.json?v=cda4f3b1bd')
     [brandA].concat(Array.prototype.slice.call(navLinks)).forEach(function (a) {
       row.appendChild(a);
       attachPrefetch(a);
-      markIfCurrentSurface(a);
+      markIfCurrent(a);
     });
 
     // Clear out every existing child of .navbar-container except the
@@ -6444,6 +6460,148 @@ window.__postIndexReady = fetch('/post-index.json?v=cda4f3b1bd')
     }
   }
   promoteFloatingTools();
+
+  // --- Carry the row's horizontal scroll across navigations ---
+  // The bar scrolls horizontally when its seven items outrun the viewport
+  // (phones, big accessibility zoom). Two rules, both in service of
+  // keeping "where am I" on screen:
+  //   1. The offset persists per-tab in sessionStorage, so tapping Running
+  //      from a scrolled bar lands on /running/ with the bar still in that
+  //      position — underlined item in view — instead of snapped back to
+  //      the brand, which is where a fresh document always starts and
+  //      which throws away the one signal that names the current surface.
+  //   2. Whatever offset gets restored, the current item is then brought
+  //      inside the visible window. That covers the cases where the stored
+  //      offset is absent or wrong for this page: a new tab, an external
+  //      deep link, a rotation or resize between the two pages, or a font/
+  //      theme swap that re-flowed the row.
+  // Once the reader scrolls the bar themselves we stop re-applying, so a
+  // late layout settle (webfont swap, resize) can't yank the bar out from
+  // under them.
+  var SCROLL_KEY = 'navbar-scroll-left';
+  var rowEl = document.querySelector('.navbar-row');
+  var rowUserScrolled = false;
+  var rowWritten = null;        // last offset we wrote — used to ignore our own scroll echo
+  var rowSaveTimer = null;
+
+  function rowMaxScroll() {
+    return rowEl ? rowEl.scrollWidth - rowEl.clientWidth : 0;
+  }
+  function setRowScroll(x) {
+    if (!rowEl) return;
+    x = Math.max(0, Math.min(Math.round(x), rowMaxScroll()));
+    rowWritten = x;
+    if (Math.round(rowEl.scrollLeft) !== x) rowEl.scrollLeft = x;
+  }
+  function flushRowScroll() {
+    if (!rowEl) return;
+    clearTimeout(rowSaveTimer);
+    rowSaveTimer = null;
+    // Reads the live offset rather than a remembered one, so this is also
+    // the write that corrects a stale store after a programmatic placement.
+    try {
+      sessionStorage.setItem(SCROLL_KEY, String(Math.round(rowEl.scrollLeft)));
+    } catch (_) {}                                   // private mode / quota
+  }
+  function saveRowScrollSoon() {
+    clearTimeout(rowSaveTimer);
+    rowSaveTimer = setTimeout(flushRowScroll, 150);  // a swipe fires ~60 scroll events/s
+  }
+
+  // Nudge the current item fully inside the row's visible window, by the
+  // smallest offset that does it. Rect math rather than offsetLeft: the
+  // row is a static flex container inside a fixed header, so offsetParent
+  // is the header, not the row — client rects already account for both
+  // the layout offset and the current scroll.
+  //
+  // "Inside the window" has to mean inside the *unfaded* part of it. The
+  // edge fade (styles.css, --navbar-edge-fade) dissolves the row's content
+  // over the last 2.6rem of whichever end can still scroll, so landing the
+  // underlined item 12px from the edge — comfortably visible before the
+  // fade existed — now leaves it half-transparent under a chevron, which
+  // defeats the point of keeping it on screen. Hence a gap of the fade
+  // width plus a little, expressed in rem so it tracks the reader's font
+  // size, and capped at a quarter of the row so a narrow row can still
+  // place a wide item. Where the cap or the clamp in setRowScroll stops
+  // us short — the item is the first or last one, at the corresponding
+  // extreme of the scroll — the fade on that side is off anyway, because
+  // there is nothing beyond it to scroll to.
+  function edgeGap() {
+    var rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return Math.min(2.9 * rem, rowEl.clientWidth / 4);
+  }
+  function ensureCurrentVisible() {
+    var cur = rowEl && rowEl.querySelector('.nav-current');
+    if (!cur || rowMaxScroll() <= 0) return;
+    var GAP = edgeGap();
+    var er = cur.getBoundingClientRect();
+    var rr = rowEl.getBoundingClientRect();
+    if (er.left < rr.left + GAP) {
+      setRowScroll(rowEl.scrollLeft + (er.left - rr.left - GAP));
+    } else if (er.right > rr.right - GAP) {
+      setRowScroll(rowEl.scrollLeft + (er.right - rr.right + GAP));
+    }
+  }
+
+  function syncRowScroll() {
+    if (!rowEl || rowUserScrolled) return;
+    if (rowMaxScroll() <= 0) return;                 // fits → nothing to place
+    var saved = null;
+    try { saved = sessionStorage.getItem(SCROLL_KEY); } catch (_) {}
+    var x = saved === null ? NaN : parseInt(saved, 10);
+    if (!isNaN(x)) setRowScroll(x);
+    ensureCurrentVisible();
+  }
+
+  // --- Scroll hints (chevrons at whichever end has more bar) ---
+  // The row hides its scrollbar, so nothing tells the reader that there
+  // are items off-screen. Each end that has content beyond it gets a
+  // chevron pointing that way: left one once the row is scrolled away
+  // from the start, right one while there is still more to come, neither
+  // when the row fits. Styling + placement live in styles.css under
+  // "Scroll hints"; this side owns the two spans and the class flags.
+  function buildScrollHints() {
+    var container = rowEl && rowEl.parentElement;
+    if (!container) return;
+    if (container.querySelector(':scope > .navbar-scroll-hint')) return;  // idempotent
+    ['left', 'right'].forEach(function (side) {
+      var el = document.createElement('span');
+      el.className = 'navbar-scroll-hint navbar-scroll-hint-' + side;
+      el.setAttribute('aria-hidden', 'true');   // decorative; the links are the content
+      container.appendChild(el);
+    });
+  }
+
+  function updateScrollHints() {
+    var container = rowEl && rowEl.parentElement;
+    if (!container) return;
+    var max = rowMaxScroll();
+    var x = rowEl.scrollLeft;
+    // 1px of slack: fractional scrollLeft is normal under browser zoom and
+    // on non-integer device pixel ratios, so an exact === 0 / === max test
+    // would leave a chevron pointing at nothing at either extreme.
+    container.classList.toggle('can-scroll-left', max > 1 && x > 1);
+    container.classList.toggle('can-scroll-right', max > 1 && x < max - 1);
+  }
+
+  buildScrollHints();
+
+  if (rowEl) {
+    rowEl.addEventListener('scroll', function () {
+      updateScrollHints();       // before the echo guard: our own writes move
+                                 // the row too, and the chevrons must follow
+      // Our own writes echo back as scroll events; ignore those so a
+      // programmatic placement doesn't count as reader intent.
+      if (rowWritten !== null && Math.round(rowEl.scrollLeft) === rowWritten) return;
+      rowUserScrolled = true;
+      saveRowScrollSoon();
+    }, { passive: true });
+    // A click navigates before the 150ms debounce fires, so flush on the
+    // way out; pagehide covers keyboard activation, back/forward, and
+    // tab close.
+    rowEl.addEventListener('click', flushRowScroll);
+    window.addEventListener('pagehide', flushRowScroll);
+  }
 
   // --- Navbar alignment (runs on load + resize) ---
   function update() {
@@ -6575,6 +6733,15 @@ window.__postIndexReady = fetch('/post-index.json?v=cda4f3b1bd')
     update();
     measureThreshold();
     syncPosition();
+    // Last: the row's placement depends on the container padding update()
+    // just wrote (--content-right feeds the right keep-out strip, which
+    // sets the row's client width).
+    syncRowScroll();
+    // Unconditional, unlike syncRowScroll — a resize that removes the
+    // overflow entirely (rotation to landscape, window widened) has to
+    // clear stale chevrons, and syncRowScroll returns early in exactly
+    // that case.
+    updateScrollHints();
   }
 
   settle();
