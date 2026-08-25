@@ -21,7 +21,155 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sat, 22 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 23 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260731-relevance-to-utility/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260731-relevance-to-utility/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260731-relevance-to-utility/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<p>In <em>From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification</em> [1] (Findings of EMNLP 2023), <a href="https://dblp.org/pid/339/3052.html">Hengran Zhang</a>, <a href="https://dblp.org/pid/203/8270-1.html">Ruqing Zhang</a>, <a href="https://dblp.org/pid/02/146.html">Jiafeng Guo</a>, <a href="https://dblp.org/pid/r/MdRijke.html">Maarten de Rijke</a>, <a href="https://dblp.org/pid/188/2160.html">Yixing Fan</a>, and <a href="https://dblp.org/pid/44/912-1.html">Xueqi Cheng</a> (Chinese Academy of Sciences and the University of Amsterdam) train a feedback-based evidence retriever (FER) whose training signal comes from the claim verifier that reads its output, so a sentence is scored by how much it helps predict the claim’s label rather than by how well it matches the claim.</p>
+<p>Two definitions first:</p>
+<ul>
+<li><strong>Probability ranking principle (PRP)</strong> [2]: rank documents by their estimated probability of being relevant to the query. The principle maximizes retrieval effectiveness under two assumptions: each document’s relevance is judged on its own, and the list is read from the top down. Both fail for a claim verifier, which consumes the retrieved set at once and judges one sentence against the others.</li>
+<li><strong>Utility</strong>: how much better the claim verifier predicts the label when it is given one set of sentences instead of another. Defining retrieval quality this way makes the verifier’s output distribution the training signal, so the retriever is tuned for the model that reads the evidence.</li>
+</ul>
+<blockquote class="blockquote">
+<p>Retrieval-enhanced methods have become a primary approach in fact verification (FV); it requires reasoning over multiple retrieved pieces of evidence to verify the integrity of a claim. To retrieve evidence, existing work often employs off-the-shelf retrieval models whose design is based on the probability ranking principle. We argue that, <em>rather than relevance, for FV we need to focus on the utility that a claim verifier derives from the retrieved evidence</em>. We introduce the <em>feedback-based evidence retriever (FER)</em> that optimizes the evidence retrieval process by incorporating feedback from the claim verifier. As a feedback signal we use <em>the divergence in utility between how effectively the verifier utilizes the retrieved evidence and the ground-truth evidence to produce the final claim label</em>. Empirical studies demonstrate the superiority of FER over prevailing baselines.</p>
+</blockquote>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<p>A FEVER [3] system runs three phases: retrieve documents, extract candidate evidence sentences from them, then label the claim SUPPORTS, REFUTES, or NOT ENOUGH INFO. FER replaces the middle phase, leaves the other two unchanged, and has two stages of its own:</p>
+<ul>
+<li><strong>Coarse retrieval</strong>: a BERT-base [4] ranker reads the claim and one candidate sentence together, then turns the <code>[CLS]</code> output into a relevance score through a linear layer and a tanh. Training pairs one annotated-evidence sentence against one non-evidence sentence from the same retrieved documents. At inference the top <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> sentences form a <em>candidate set</em> <img src="https://benjaminhan.net/feed-assets/89805762c7419a40.svg" alt="S" class="feed-math-inline"/>, with <img src="https://benjaminhan.net/feed-assets/f5092ad6a6f43b68.svg" alt="K = 25" class="feed-math-inline"/>.</li>
+<li><strong>Fine-grained retrieval</strong>: a second BERT-base model <img src="https://benjaminhan.net/feed-assets/543c317d51df967f.svg" alt="R_\theta" class="feed-math-inline"/> reads the claim and all of <img src="https://benjaminhan.net/feed-assets/89805762c7419a40.svg" alt="S" class="feed-math-inline"/> as a single sequence, with a <code>[CLS]</code> token in front of each candidate sentence, and emits a keep-or-drop decision per sentence. Gumbel-Softmax [5] makes those discrete decisions differentiable, so gradients reach <img src="https://benjaminhan.net/feed-assets/543c317d51df967f.svg" alt="R_\theta" class="feed-math-inline"/> through the selection step itself.</li>
+</ul>
+<p>The cover figure traces one claim through both stages. Coarse retrieval turns the retrieved Wikipedia pages into 25 numbered candidate sentences, of which sentences 1, 3, 7, and 14 are the annotated evidence (red, upper right). The fine-grained retriever then makes its own selection from those 25 candidates, here sentences 1, 4, and 10, of which only sentence 1 is annotated evidence. A claim verifier reads the retriever’s selection and the annotated evidence separately, producing two label distributions over the three verdicts (the two bar panels at the bottom). <img src="https://benjaminhan.net/feed-assets/43aec604823b2ac3.svg" alt="\mathcal{L}_{uti}" class="feed-math-inline"/> compares those two distributions and back-propagates into the retriever’s selection. <img src="https://benjaminhan.net/feed-assets/0c84134eb3d923fd.svg" alt="\mathcal{L}_{cla}" class="feed-math-inline"/> compares the same selection against the per-sentence evidence labels on the right.</p>
+<p>The training objective is <img src="https://benjaminhan.net/feed-assets/d824cc5b53742c13.svg" alt="\mathcal{L} = \alpha \mathcal{L}_{cla} + \beta \mathcal{L}_{uti}" class="feed-math-inline"/>, with both coefficients set to 1:</p>
+<ul>
+<li><strong>Evidence classification</strong> <img src="https://benjaminhan.net/feed-assets/0c84134eb3d923fd.svg" alt="\mathcal{L}_{cla}" class="feed-math-inline"/> is a binary cross-entropy over per-sentence labels <img src="https://benjaminhan.net/feed-assets/31b20c6041174b93.svg" alt="g \in \{0, 1\}" class="feed-math-inline"/>, where 1 marks a sentence as annotated evidence.</li>
+<li><strong>Utility divergence</strong> <img src="https://benjaminhan.net/feed-assets/186f190b3b64051c.svg" alt="\mathcal{L}_{uti} = y^{*} D_\phi(c, E^{*}) - y^{*} D_\phi(c, R_\theta(c, S))" class="feed-math-inline"/>, where <img src="https://benjaminhan.net/feed-assets/3522f8078c8bbb4f.svg" alt="c" class="feed-math-inline"/> is the claim, <img src="https://benjaminhan.net/feed-assets/0497f8b8a0e8d4e9.svg" alt="E^{*}" class="feed-math-inline"/> the annotated evidence, <img src="https://benjaminhan.net/feed-assets/79c1494272761a70.svg" alt="y^{*}" class="feed-math-inline"/> a one-hot vector for the true verdict, <img src="https://benjaminhan.net/feed-assets/fd6b38e5a822caaa.svg" alt="D_\phi(\cdot)" class="feed-math-inline"/> the verifier’s predicted label distribution, and <img src="https://benjaminhan.net/feed-assets/a0ba55978fd7ab64.svg" alt="R_\theta(c, S)" class="feed-math-inline"/> the sentences the retriever selected. The verifier is a third BERT-base model, trained on claim plus annotated evidence and then frozen. The term measures how far the verifier’s confidence in the true verdict drops when it reads the retriever’s selection instead of the annotated evidence.</li>
+</ul>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>The setup:</p>
+<ul>
+<li><strong>Dataset</strong>: FEVER, 185,455 human-written claims against a June 2017 Wikipedia dump of 5,416,537 documents.</li>
+<li><strong>Document retrieval</strong>: the standard entity-linking pipeline, parsing claims with AllenNLP and querying the MediaWiki API, which returns about four documents per claim.</li>
+<li><strong>Retrieval metrics</strong>: the official precision, recall, and F1 at five retrieved sentences. The online evaluation reads only the first five predicted sentences, so FER and every baseline submit five.</li>
+<li><strong>Verification metrics</strong>: label accuracy counts the verdict on its own, and the FEVER score counts it only when the retrieved evidence fully covers the annotated evidence.</li>
+<li><strong>Baselines</strong>: ten retrieval models, from TF-IDF through graph-attention retrievers such as KGAT [6] to more recent precision-oriented models such as GERE [7], all listed in Table 1.</li>
+<li><strong>Downstream verifiers</strong>: five published models re-run on FER’s evidence: the BERT Concat, BERT Pair, and GEAR models from Zhou et al.&nbsp;[8], plus GAT and KGAT.</li>
+</ul>
+<p>The findings:</p>
+<ul>
+<li><strong>The gain is in precision</strong> (Table 1, test columns). FER reaches 79.35 precision against 54.30 for GERE, the strongest prior model on that metric, and 78.84 F1 against 63.74, a 15.1-point absolute gain the paper reports as 23.7% relative.</li>
+<li><strong>Recall drops</strong>. FER’s test recall is 78.34, below KGAT’s 87.47 and UKP-Athene’s 85.19. The authors attribute this to FER returning smaller evidence sets, which matches the FEVER average of 1.86 annotated sentences per claim.</li>
+<li><strong>Both loss terms contribute</strong>. Dropping <img src="https://benjaminhan.net/feed-assets/43aec604823b2ac3.svg" alt="\mathcal{L}_{uti}" class="feed-math-inline"/> costs 7.5 points of test precision (79.35 to 71.84), and dropping <img src="https://benjaminhan.net/feed-assets/0c84134eb3d923fd.svg" alt="\mathcal{L}_{cla}" class="feed-math-inline"/> costs 2.4 points of recall (78.34 to 75.97), leaving F1 at 75.86.</li>
+<li><strong>Downstream gains are small</strong> (Table 2). Swapping in FER’s evidence lifts label accuracy by 0.5 to 2.4 points and the FEVER score by 0.2 to 2.9 points across the five verifiers. The largest gain is BERT Pair (65.18 to 68.03 FEVER), the smallest KGAT (69.40 to 69.61).</li>
+<li><strong>The feedback verifier is swappable</strong> (Table 3). Feedback from GAT or KGAT instead of the BERT verifier keeps test F1 within about a point.</li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260731-relevance-to-utility/table1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Table 1 from the paper [1].</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260731-relevance-to-utility/table2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Table 2 from the paper [1].</figcaption>
+</figure>
+</div>
+<table class="caption-top table">
+<caption>Evidence retrieval performance with feedback from different verifiers, test set. Table 3 from the paper [1].</caption>
+<thead>
+<tr class="header">
+<th>Feedback verifier</th>
+<th>P</th>
+<th>R</th>
+<th>F1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>GAT</td>
+<td>77.93</td>
+<td>79.48</td>
+<td>78.70</td>
+</tr>
+<tr class="even">
+<td>KGAT</td>
+<td><strong>84.38</strong></td>
+<td>75.95</td>
+<td><strong>79.94</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Feedback from KGAT trades 3.5 points of recall for 6.5 points of precision compared with feedback from GAT, and both come out near the 78.84 F1 that the frozen BERT verifier produces.</p>
+<p>The candidate-set size <img src="https://benjaminhan.net/feed-assets/1a2b54d31a69df6a.svg" alt="K" class="feed-math-inline"/> is the one hyper-parameter the paper sweeps. Precision climbs from roughly 67 at <img src="https://benjaminhan.net/feed-assets/60ff0960da2a930a.svg" alt="K = 5" class="feed-math-inline"/> to roughly 78 at <img src="https://benjaminhan.net/feed-assets/f7b2a3ca48b4faaa.svg" alt="K = 15" class="feed-math-inline"/> and then flattens, F1 follows precision, and recall stays between about 78 and 81 across the whole range. Small candidate sets leave the fine-grained retriever too few sentences to choose between, which costs precision.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260731-relevance-to-utility/figure2.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure 2 from the paper [1].</figcaption>
+</figure>
+</div>
+</section>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li><strong>Only the second term has a gradient</strong>: the verifier is frozen and <img src="https://benjaminhan.net/feed-assets/0497f8b8a0e8d4e9.svg" alt="E^{*}" class="feed-math-inline"/> is fixed, so <img src="https://benjaminhan.net/feed-assets/a03fd9497ee17de2.svg" alt="y^{*} D_\phi(c, E^{*})" class="feed-math-inline"/> is a constant. Training maximizes the frozen verifier’s probability on the true verdict given the selected sentences, and the appendix’s gradient path runs solely through the Gumbel-Softmax selection. Calling the term a utility divergence suggests both branches shape the update, but only the retrieved-evidence branch does.</li>
+<li><strong>Why the downstream gain is small</strong>: the FEVER score credits a verdict only when the retrieved set covers all the annotated evidence, so trimming the set to raise precision risks dropping a sentence the score requires. That is the likeliest reason the 15-point retrieval F1 gain produces only 0.2 to 2.9 FEVER points. The appendix case study shows it happening: fine-grained retrieval recovers evidence ranked 14th in one example and loses evidence ranked 8th in another.</li>
+<li><strong>Evidence for the premise came later</strong>: FER’s argument rests on retrieval-enhanced machine learning [9], which proposed that a model consuming retrieved text should train its own retriever but never measured how far relevance and downstream usefulness diverge. Two years later eRAG [10], from Hamed Zamani’s group, scored each retrieved document by running it through the downstream model, and found that query-document relevance labels correlate weakly with end-to-end performance.</li>
+<li><strong>The method needs annotated evidence</strong>: both loss terms require per-sentence evidence labels, and <img src="https://benjaminhan.net/feed-assets/43aec604823b2ac3.svg" alt="\mathcal{L}_{uti}" class="feed-math-inline"/> also needs the full annotated set <img src="https://benjaminhan.net/feed-assets/0497f8b8a0e8d4e9.svg" alt="E^{*}" class="feed-math-inline"/> for every claim. FEVER supplies both, and real-world fact-checking data mostly does not. <a href="../../posts/20260507-averitec/">AVeriTeC</a> annotates web evidence as question-answer pairs, with no exhaustive sentence-level gold set. REPLUG [11] trains a retriever from downstream feedback without either, matching a retriever’s document distribution to a frozen language model’s likelihood on the continuation.</li>
+</ul>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><p><a id="ref-1"></a>Zhang, Hengran, Zhang, Ruqing, Guo, Jiafeng, de Rijke, Maarten, Fan, Yixing, and Cheng, Xueqi. “From Relevance to Utility: Evidence Retrieval with Feedback for Fact Verification.” <em>Findings of the Association for Computational Linguistics: EMNLP 2023</em>, pages 6373–6384 (arXiv:2310.11675), October 2023. <a href="https://aclanthology.org/2023.findings-emnlp.422/" class="uri">https://aclanthology.org/2023.findings-emnlp.422/</a></p></li>
+<li><p><a id="ref-2"></a>Robertson, Stephen E. “The Probability Ranking Principle in IR.” <em>Journal of Documentation</em> 33(4), pages 294–304, 1977. <a href="https://doi.org/10.1108/eb026647" class="uri">https://doi.org/10.1108/eb026647</a></p></li>
+<li><p><a id="ref-3"></a>Thorne, James, Vlachos, Andreas, Christodoulopoulos, Christos, and Mittal, Arpit. “FEVER: a Large-scale Dataset for Fact Extraction and VERification.” <em>NAACL-HLT 2018</em>, pages 809–819 (arXiv:1803.05355), March 2018. <a href="https://arxiv.org/abs/1803.05355" class="uri">https://arxiv.org/abs/1803.05355</a></p></li>
+<li><p><a id="ref-4"></a>Devlin, Jacob, Chang, Ming-Wei, Lee, Kenton, and Toutanova, Kristina. “BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.” <em>NAACL-HLT 2019</em>, pages 4171–4186 (arXiv:1810.04805), October 2018. <a href="https://arxiv.org/abs/1810.04805" class="uri">https://arxiv.org/abs/1810.04805</a></p></li>
+<li><p><a id="ref-5"></a>Jang, Eric, Gu, Shixiang, and Poole, Ben. “Categorical Reparameterization with Gumbel-Softmax.” <em>ICLR 2017</em> (arXiv:1611.01144), November 2016. <a href="https://arxiv.org/abs/1611.01144" class="uri">https://arxiv.org/abs/1611.01144</a></p></li>
+<li><p><a id="ref-6"></a>Liu, Zhenghao, Xiong, Chenyan, Sun, Maosong, and Liu, Zhiyuan. “Fine-grained Fact Verification with Kernel Graph Attention Network.” <em>ACL 2020</em>, pages 7342–7351 (arXiv:1910.09796), October 2019. <a href="https://arxiv.org/abs/1910.09796" class="uri">https://arxiv.org/abs/1910.09796</a></p></li>
+<li><p><a id="ref-7"></a>Chen, Jiangui, Zhang, Ruqing, Guo, Jiafeng, Fan, Yixing, and Cheng, Xueqi. “GERE: Generative Evidence Retrieval for Fact Verification.” <em>SIGIR 2022</em>, pages 2184–2189 (arXiv:2204.05511), April 2022. <a href="https://arxiv.org/abs/2204.05511" class="uri">https://arxiv.org/abs/2204.05511</a></p></li>
+<li><p><a id="ref-8"></a>Zhou, Jie, Han, Xu, Yang, Cheng, Liu, Zhiyuan, Wang, Lifeng, Li, Changcheng, and Sun, Maosong. “GEAR: Graph-based Evidence Aggregating and Reasoning for Fact Verification.” <em>ACL 2019</em>, pages 892–901 (arXiv:1908.01843), August 2019. <a href="https://arxiv.org/abs/1908.01843" class="uri">https://arxiv.org/abs/1908.01843</a></p></li>
+<li><p><a id="ref-9"></a>Zamani, Hamed, Diaz, Fernando, Dehghani, Mostafa, Metzler, Donald, and Bendersky, Michael. “Retrieval-Enhanced Machine Learning.” <em>SIGIR 2022</em>, pages 2875–2886 (arXiv:2205.01230), May 2022. <a href="https://arxiv.org/abs/2205.01230" class="uri">https://arxiv.org/abs/2205.01230</a></p></li>
+<li><p><a id="ref-10"></a>Salemi, Alireza, and Zamani, Hamed. “Evaluating Retrieval Quality in Retrieval-Augmented Generation.” <em>SIGIR 2024</em>, pages 2395–2400 (arXiv:2404.13781), April 2024. <a href="https://arxiv.org/abs/2404.13781" class="uri">https://arxiv.org/abs/2404.13781</a></p></li>
+<li><p><a id="ref-11"></a>Shi, Weijia, Min, Sewon, Yasunaga, Michihiro, Seo, Minjoon, James, Rich, Lewis, Mike, Zettlemoyer, Luke, and Yih, Wen-tau. “REPLUG: Retrieval-Augmented Black-Box Language Models.” <em>NAACL 2024</em>, pages 8371–8384 (arXiv:2301.12652), January 2023. <a href="https://arxiv.org/abs/2301.12652" class="uri">https://arxiv.org/abs/2301.12652</a></p></li>
+</ol>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260507-averitec/">AVeriTeC: A Dataset for Real-world Claim Verification with Evidence from the Web</a>: the real-world counterpart to FEVER, annotating evidence as question-answer pairs that FER’s feedback term cannot use.</li>
+<li><a href="../../posts/20231102-fleek-fact-verification/">FLEEK: Fact Verification with LLMs and Knowledge Graphs</a>: a fact-verification pipeline from the same conference that gathers evidence from knowledge graphs and the web, with no feedback from the verifier back into retrieval.</li>
+<li><a href="../../posts/20260720-llm-disagreement/">Frontier LLMs Disagree on 67% of Real-World Fact-Checks</a>: five frontier models disagree on two-thirds of real claims, which bears on FER’s assumption that one verifier’s utility is the right retrieval target.</li>
+<li><a href="../../posts/20250115-icr2-preprint-announcement/">Eliciting In-context Retrieval and Reasoning for Long-context LLMs</a>: collapses retrieval and use into one long-context model, an alternative to training the retriever against its consumer.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260731-relevance-to-utility/</guid>
+  <pubDate>Fri, 31 Jul 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260731-relevance-to-utility/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Sam Altman on Compute, AGI, and Human Agency</title>
   <dc:creator>synesis </dc:creator>
@@ -1873,68 +2021,6 @@ Each wrapper is published in both Chinese and English, and the raw strings are i
   <guid>https://benjaminhan.net/posts/20260713-elite-runner-mechanics/</guid>
   <pubDate>Mon, 13 Jul 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260713-elite-runner-mechanics/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>The Future Worth Building Is Human</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260713-the-future-worth-building-is-human/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260713-the-future-worth-building-is-human/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260713-the-future-worth-building-is-human/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Image from <a href="https://thinkingmachines.ai/blog/the-future-worth-building-is-human/">Thinking Machines Lab</a>.</figcaption>
-</figure>
-</div>
-<p><a href="https://thinkingmachines.ai">Thinking Machines Lab</a> published <a href="https://thinkingmachines.ai/blog/the-future-worth-building-is-human/">its manifesto</a>: a case that AI should extend human will and judgment rather than race ahead on its own. The route it lays out is customizable models people can train on their own knowledge, live multimodal interaction, and alignment distributed across many owners instead of decided in a few labs.</p>
-<p>The essay builds its case in four moves:</p>
-<ul>
-<li><p><strong>The mission and the four bets.</strong> The lab frames its purpose as building AI that “extends human will and judgment,” against a default where models are “trained in a handful of places and then frozen,” unshaped by the people they serve. It names four technical directions:</p>
-<ul>
-<li>Train frontier models that advance multimodal interaction and customizability.</li>
-<li>Build tools that let people make models their own, including “the ability to train model weights.”</li>
-<li>Develop interfaces that widen the human–machine communication channel.</li>
-<li>Publish research so the power to shape AI is broadly understood.</li>
-</ul></li>
-<li><p><strong>Bringing intelligence to knowledge.</strong> Productive know-how is tacit, local, and continuously updated (a chef refining a recipe, a shopkeeper rearranging a display), so it cannot be written into a database or captured by a model trained once and frozen, citing <a href="https://press.uchicago.edu/ucp/books/book/chicago/T/bo6035368.html">Michael Polanyi’s <em>The Tacit Dimension</em></a> and <a href="https://www.econlib.org/library/Essays/hykKnw.html">Friedrich Hayek’s <em>The Use of Knowledge in Society</em></a> on why central planning fails. Autonomous AI suffices only where the goal is static and expressible and no hidden knowledge exists, as in chess and math. Elsewhere AI must itself be distributed. The essay invokes Toyota’s 2014 decision to <a href="https://www.bloomberg.com/news/articles/2014-04-06/humans-replacing-robots-herald-toyota-s-vision-of-future">bring master craftsmen back onto the line</a> (Mitsuru Kawai: <em>“to be the master of the machine, you have to have the knowledge and the skills to teach the machine”</em>) to argue intelligence and knowledge lift each other rather than substitute.</p></li>
-<li><p><strong>Human participation as a technical challenge.</strong> Today’s human–AI channel, “a small text box and a long wait,” is too narrow and slow for live collaboration, motivating a long-term bet on <em>interaction models</em> that handle live, multimodal interaction natively “in the model itself rather than in scaffolding bolted around it.” The essay critiques the dominant metric, <a href="https://metr.org/time-horizons/">METR’s time horizon</a> of software tasks models execute autonomously, as measuring only what AI does alone rather than what people and machines accomplish together. It argues its incentives align: a lab selling one model to every customer benefits by absorbing what makes each user distinct, while the lab benefits when customers own and adapt models to their advantages.</p></li>
-<li><p><strong>Decentralized alignment.</strong> Values, like knowledge, resist consolidation, yet AI’s values are decided in a handful of places, and “a single locus of value alignment … becomes a locus of power to be captured.” It ties this to the concentration danger in <a href="https://intelligence-curse.ai/"><em>The Intelligence Curse</em></a> and cites Leo XIV’s <a href="https://www.vatican.va/content/leo-xiv/en/encyclicals/documents/20260515-magnifica-humanitas.html"><em>Magnifica Humanitas</em></a> (“a more moral AI is not enough if that morality is determined by a few”), noting each lab now trains its next flagship on the previous one’s outputs, so everyone inherits one character. Its fix is to encode values in user-owned weights rather than prompts: a prompt-only change leaves deeper habits intact, and a prompt-malleable central model is attack-vulnerable (<a href="https://gwern.net/guardian-angel">Gwern’s <em>Guardian Angels</em></a>). It concedes, via <a href="https://sseh.uchicago.edu/doc/von_Neumann_1955.pdf">von Neumann</a>, that the power to shape a model for good is also the power to shape it for ill, and envisions alignment as an ecosystem of diverse AIs “raised in different places, disagreeing, competing, and learning from each other.”</p></li>
-<li><p><strong>The future worth building.</strong> Closing on <a href="https://press.uchicago.edu/ucp/books/book/chicago/H/bo29137972.html">Hannah Arendt’s <em>The Human Condition</em></a>, the essay rejects framing human involvement as a trade-off against capability or safety, casting participation, ownership, and diverse alignment as technical problems to solve rather than costs to pay: “the future is not a choice between human dominance and rapid obsolescence.”</p></li>
-</ul>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The whole case is a bet on tacit knowledge.</strong> Recast as model architecture, Hayek’s argument says knowledge is too tacit and local to freeze into one model. The essay’s own carve-out marks where that stops: autonomous AI is enough wherever a goal is static, expressible, and hides no knowledge, as in chess and math. The bet is that most valuable work stays outside that zone. As models improve and more goals turn out to be expressible, the zone may keep growing, and where the line settles decides how much of the case survives.</p></li>
-<li><p><strong>Distributing alignment also distributes the risk.</strong> The essay’s fix for a single locus of power, encoding values in user-owned weights rather than prompts, spreads the risk of misuse as widely as the power itself. It concedes a prompt-malleable central model is attack-vulnerable, but never resolves why widely distributed weights are safer rather than just differently exposed.</p></li>
-<li><p><strong>What keeps the lab competitive if customers own the weights?</strong> The essay argues its incentives are aligned: it benefits when customers own and adapt their own models rather than renting one. That is a candid business case, but it leaves a question unanswered: where the durable advantage comes from once the customer holds the weights.</p>
-<ul>
-<li><strong>The moat.</strong> Selling a model and handing over the weights gives away the asset other labs rent out. The four technical directions imply an answer (stay on the frontier, own the tooling and the interaction layer), but the essay does not spell out how those sustain a business when each customer’s real value lives in weights the lab no longer controls.</li>
-<li><strong>Portability.</strong> Weights are tied to an architecture. When the base model is replaced, especially if the architecture changes, a customer’s fine-tuned weights do not obviously transfer, and they may have to retrain each generation. Their data and training recipes survive the switch and can be reapplied to whatever model comes next.</li>
-</ul></li>
-</ul>
-<hr>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260512-interaction-models/">Interaction Models: Training Real-Time Collaboration into the Model</a>: the lab’s earlier technical piece on the live-interaction bet this essay builds on.</li>
-<li><a href="../../posts/20260530-magnifica-humanitas/">Magnifica Humanitas: Pope Leo XIV’s Encyclical on AI</a>: a source the essay cites, sharing its concern about morality decided by a few.</li>
-<li><a href="../../posts/20260502-2028-intelligence-crisis/">The 2028 Global Intelligence Crisis: Scenario and Rebuttal</a>: the power-concentration danger the essay’s locus-of-power argument echoes.</li>
-<li><a href="../../posts/20260524-acemoglu-great-displacement/">Daron Acemoglu on AI, Jobs, and Liberal Democracy</a>: a parallel case for distributing AI’s benefits rather than concentrating them.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260713-the-future-worth-building-is-human/</guid>
-  <pubDate>Mon, 13 Jul 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260713-the-future-worth-building-is-human/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
