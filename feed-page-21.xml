@@ -21,7 +21,48 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Sun, 23 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Thu, 27 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>Does Early ArXiving Help Papers Get Accepted?</title>
+  <dc:creator>Ben </dc:creator>
+  <link>https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/screenshot1.jpg" class="img-fluid figure-img"></p>
+<figcaption>Figure from <a href="http://arxiv.org/abs/2306.13891">the paper</a>.</figcaption>
+</figure>
+</div>
+<p>ArXiv.org has been a wonderful place for researchers to submit findings and catch up with the latest, but does submitting papers there (“early ArXiving”) increase the odds for them to be accepted later in a peer-reviewed venue?</p>
+<p>(Drumroll please)</p>
+<p>The authors answer this question in [1] by first laying out the causal graph where early ArXiving is the treatment (variable A) and paper acceptance in a conference is the effect (variable Y; screenshot 1). Two confounders exist — one unobserved that is the creativity and originality of a paper (intrinsic), while the other is observed that is the topic/authors/institute of a paper (extrinsic).</p>
+<p>To cope with the unobserved confounder, they deploy a popular causalInference framework known as negative outcome control [2], where a variable called Negative Control Outcome (NCO) is added to correct the bias. NCO must share the same observed and unobserved confounders as the outcome variable while being not causally affected by the treatment. They use “citation counts after certain years of publishing” as the NCO.</p>
+<p>Numerically the effect of early ArXiving is defined by the causal estimand ATET (screenshot 2). The paper reports ATET is high (9.76%) <em>before</em> accounting for NOC. BUT after considering NCO, the effect is almost non-existent for authors with different citation counts or institution ranks (screenshot 3).</p>
+<p>Conclusion: enjoy your guilt-free early ArXiving!</p>
+<p>—</p>
+<hr>
+<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_causalinference-research-paper-activity-7080935063630082048-BHIO">LinkedIn</a>.</em></p>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<ol type="1">
+<li><a id="ref-1"></a>Yanai Elazar, Jiayao Zhang, David Wadden, Bo Zhang, and Noah Smith. 2023. “Estimating the Causal Effect of Early ArXiving on Paper Acceptance.” <a href="http://arxiv.org/abs/2306.13891" class="uri">http://arxiv.org/abs/2306.13891</a></li>
+<li><a id="ref-2"></a>David Card and Alan B. Krueger. 1993. “Minimum Wages and Employment: A Case Study of the Fast Food Industry in New Jersey and Pennsylvania.” <a href="http://dx.doi.org/10.3386/w4509" class="uri">http://dx.doi.org/10.3386/w4509</a></li>
+</ol>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/</guid>
+  <pubDate>Sat, 01 Jul 2023 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20230701-early-arxiving-causal-effect/screenshot1.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Model Collapse and LLM-Contaminated Training Data</title>
   <dc:creator>Ben </dc:creator>
@@ -785,47 +826,6 @@ Tip
   <guid>https://benjaminhan.net/posts/20230330-gpt4-nondeterministic-turing-machine/</guid>
   <pubDate>Thu, 30 Mar 2023 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20230330-gpt4-nondeterministic-turing-machine/gpt4-unicorn-drawing.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Why Does In-Context Learning Work? Gradient Descent and PAC Learnability</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20230325-icl-gradient-descent-pac-learning/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20230325-icl-gradient-descent-pac-learning/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20230325-icl-gradient-descent-pac-learning/screenshot1.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure from <a href="http://arxiv.org/abs/2212.10559">the paper</a>.</figcaption>
-</figure>
-</div>
-<p>In the age of GenerativeAI and GPT4, two recent papers investigate a fundamental question: why does In-Context Learning (ICL) work? Why can a frozen LLM learn a new task by just receiving a list of demonstrations even when the task has not been explicitly pretrained?</p>
-<p>Paper 1 shows ICL works because the attention mechanism is secretly performing gradient descent (screenshot 1 and 2)! Although the LM is frozen, including the W_Q, W_K and W_V projection matrices, attention on the demonstration tokens are not (screenshot 3).</p>
-<p>Paper 2 shows ICL is PAC (Probably Approximately Correct) learnable (see screenshot 4 &amp; 5 for definition and the final theorem). The intuition is that LLM undergoing pretraining already learned a mixture of latent tasks, and prompts (demonstrations) serve to identify the task at hand rather than “learning” it. The proof requires 4 assumptions, with the most important one being that pretraining distributions are efficiently learnable (screenshot 6).</p>
-<hr>
-<p>Paper 1: Damai Dai, Yutao Sun, Li Dong, Yaru Hao, Zhifang Sui, and Furu Wei. 2022. Why Can GPT Learn In-Context? Language Models Secretly Perform Gradient Descent as Meta-Optimizers. https://arxiv.org/abs/2212.10559</p>
-<p>Paper 2: Noam Wies, Yoav Levine, and Amnon Shashua. 2023. The Learnability of In-Context Learning. https://arxiv.org/abs/2303.07895</p>
-<p>DeepLearning MachineLearning Paper NLP NLProc NLG | 31 comments on LinkedIn</p>
-<hr>
-<p><em>Originally posted on <a href="https://www.linkedin.com/posts/benjaminhan_generativeai-gpt4-llm-activity-7045542002947457024-bGPt">LinkedIn</a>.</em></p>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Damai Dai, Yutao Sun, Li Dong, Yaru Hao, Zhifang Sui, and Furu Wei. 2022. “Why Can GPT Learn In-Context? Language Models Secretly Perform Gradient Descent as Meta-Optimizers.” <a href="http://arxiv.org/abs/2212.10559" class="uri">http://arxiv.org/abs/2212.10559</a></li>
-<li><a id="ref-2"></a>Noam Wies, Yoav Levine, and Amnon Shashua. 2023. “The Learnability of In-Context Learning.” <a href="http://arxiv.org/abs/2303.07895" class="uri">http://arxiv.org/abs/2303.07895</a></li>
-</ol>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20230325-icl-gradient-descent-pac-learning/</guid>
-  <pubDate>Sat, 25 Mar 2023 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20230325-icl-gradient-descent-pac-learning/screenshot1.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
