@@ -20,7 +20,33 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 27 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 29 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>My Fastest Parkrun in Nine Months</title>
+  <dc:creator>Ben </dc:creator>
+  <link>https://benjaminhan.net/posts/20260829-fastest-parkrun-in-nine-months/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260829-fastest-parkrun-in-nine-months/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<p>Recovery milestone today! <a href="../../posts/20260710-coachclaude-is-coming-up-nicely/">CoachClaude</a> for the first time gave green light for me to race a Parkrun: no HR cap and no pace cap, anything goes! Official time 22:20, pace 7:11/mi – my fastest Parkrun this year (or in 9 months)!</p>
+<p>My PR remains to be 21:05, but I’ll be back!</p>
+<p><img src="https://benjaminhan.net/posts/20260829-fastest-parkrun-in-nine-months/image-1.jpeg" class="img-fluid" data-lightbox-src="image-1-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260829-fastest-parkrun-in-nine-months/image-2.jpeg" class="img-fluid" data-lightbox-src="image-2-full.jpeg"></p>
+<p><img src="https://benjaminhan.net/posts/20260829-fastest-parkrun-in-nine-months/image-3.jpeg" class="img-fluid" data-lightbox-src="image-3-full.jpeg"></p>
+<hr>
+<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/117182953375561602">Mastodon</a>.</em></p>
+
+
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260829-fastest-parkrun-in-nine-months/</guid>
+  <pubDate>Sat, 29 Aug 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260829-fastest-parkrun-in-nine-months/image-1.jpeg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>An Easy Run Around Lake Union</title>
   <dc:creator>Ben </dc:creator>
@@ -2870,344 +2896,6 @@ Note
   <guid>https://benjaminhan.net/posts/20260801-july-running-recap/</guid>
   <pubDate>Sat, 01 Aug 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260801-july-running-recap/image-5.jpeg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Kimi K3: The First Open 3T-Class Model</title>
-  <dc:creator>synesis </dc:creator>
-  <link>https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/cover.jpg" class="img-fluid figure-img"></p>
-<figcaption>Kimi K3 against four proprietary and one open-weight baseline across twelve benchmarks, grouped into coding and general/visual agents. Figure 1 from the technical report [1].</figcaption>
-</figure>
-</div>
-<p>In <em>Kimi K3: Open Frontier Intelligence</em> [1] (technical report, July 2026), the Kimi Team at <a href="https://huggingface.co/moonshotai">Moonshot AI</a> describe a 2.8-trillion-parameter <a href="https://en.wikipedia.org/wiki/Mixture_of_experts">mixture-of-experts</a> (MoE) model with native vision and a one-million-token context window, and release the weights. Three documents cover the release. The <a href="https://www.kimi.com/blog/kimi-k3">announcement</a> on July 16 [2] put the model on the Kimi apps and API, the <a href="https://huggingface.co/moonshotai/Kimi-K3">full weights</a> followed on July 27, and the 47-page technical report gives the architecture and training detail. Alongside them, <a href="https://sebastianraschka.com/">Sebastian Raschka</a>’s <a href="https://sebastianraschka.com/blog/2026/kimi-k3-architecture-notes.html">architecture notes</a> [3] compare the design with its contemporaries. The model card calls K3 “the world’s first open 3T-class model,” which rounds 2.8 trillion up. In the two weeks after, independent measurements filled in what the release documents leave out: what a task actually costs, and what hardware the weights actually need.</p>
-<p>Four named components define the architecture:</p>
-<ul>
-<li><strong>Kimi Delta Attention (KDA)</strong> [4]: linear attention that extends the <a href="https://en.wikipedia.org/wiki/Delta_rule">delta rule</a> with a channel-wise forget gate, so each key channel decays at its own learned rate. It is cheap over long sequences and recency-sensitive, so no positional embeddings are needed.</li>
-<li><strong>Attention Residuals (AttnRes)</strong> [5]: each layer reads from the embedding and all preceding block summaries through learned attention weights, instead of receiving one accumulated residual state. Depth becomes selective rather than uniform.</li>
-<li><strong>Stable LatentMoE</strong> [6]: routed experts operate in a compressed latent space at half the model width, so the expert pool can grow without communication cost rising with it. That keeps 896 experts affordable.</li>
-<li><strong>No Position Encoding (NoPE)</strong>: no positional signal is added to queries or keys anywhere in the model. Extending the context window then needs no positional retuning, because there is no rotary position embedding (RoPE) [7] frequency base to rescale.</li>
-</ul>
-<p>The abstract:</p>
-<blockquote class="blockquote">
-<p>We introduce Kimi K3, a <em>2.8T parameter Mixture-of-Experts model with 104 billion activated parameters, native vision capabilities, and a 1-million-token context window</em>. Kimi K3 is built on <em>Kimi Delta Attention and Attention Residuals</em>, which improve information flow across sequence length and model depth. Together with <em>Stable LatentMoE, which effectively activates 16 of 896 routed experts per token</em>, and refined training and data recipes, these advances yield an <em>approximately 2.5× improvement in overall scaling efficiency over Kimi K2</em>. Post-training highlights reinforcement learning across general, agentic, and coding domains and multiple reasoning-effort levels, enabling compositional generalization and robust long-horizon execution. At 2.8T scale, Kimi K3 is supported by infrastructure advances in multiple areas: algorithm-system co-design for KDA, perfectly balanced expert-parallel training with efficient memory management, million-token agentic RL with persistent rollout and sandbox states, and deployment innovations.</p>
-<p>Extensive evaluations show that Kimi K3 achieves frontier-level performance across long-horizon coding, agentic, knowledge, reasoning, and vision tasks. While its overall performance still trails the most powerful proprietary models, namely Claude Fable 5 and GPT-5.6 Sol, Kimi K3 consistently outperforms other open and proprietary models evaluated in our suite. <em>We release the full Kimi K3 model weights</em> to facilitate future research and accelerate the broader deployment and adoption of frontier intelligence.</p>
-</blockquote>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<section id="architecture" class="level3">
-<h3 class="anchored" data-anchor-id="architecture">Architecture</h3>
-<p>The backbone runs 93 layers. Layer 1 is dense and layers 2 through 93 each pair an attention layer with a Stable LatentMoE feed-forward layer. The report organizes the design around three directions of information flow, token mixing along the sequence, layer mixing across depth, and channel mixing across width, plus a native vision pathway at the input.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/kimi-k3-architecture.jpg" class="img-fluid figure-img" data-lightbox-src="kimi-k3-architecture-full.jpg"></p>
-<figcaption>The Kimi K3 architecture, with the Gated MLA and KDA modules expanded at right and the 3:1 layer pattern below them. The lower panels place Kimi K3 on the Artificial Analysis Intelligence Index and Coding Agent Index. Figure from the architecture notes [3].</figcaption>
-</figure>
-</div>
-<section id="token-mixing-kda-and-gated-mla" class="level4">
-<h4 class="anchored" data-anchor-id="token-mixing-kda-and-gated-mla">Token mixing: KDA and Gated MLA</h4>
-<p>Attention alternates in a 3:1 pattern, three KDA layers followed by one Gated Multi-head Latent Attention (MLA) layer, with an extra Gated MLA layer at the end so the final layer always does global attention. That gives 69 KDA and 24 MLA layers. KDA handles position-sensitive local mixing and MLA handles unrestricted global content interaction. That division of labor makes NoPE workable, because order is encoded only by the recurrent decay in KDA.</p>
-<p>Gated MLA is the DeepSeek-V2 latent-attention scheme [8] with two changes. Positional encoding is removed, and an input-dependent full-rank output gate lets each token modulate which channels it reads from global attention.</p>
-</section>
-<section id="layer-mixing-attention-residuals" class="level4">
-<h4 class="anchored" data-anchor-id="layer-mixing-attention-residuals">Layer mixing: Attention Residuals</h4>
-<p>A standard residual connection compresses everything computed before layer <img src="https://benjaminhan.net/feed-assets/e646ea79c94ce055.svg" alt="l" class="feed-math-inline"/> into a single state, which the report compares to the bottleneck a recurrent network has over time. The full form of AttnRes gives layer <img src="https://benjaminhan.net/feed-assets/e646ea79c94ce055.svg" alt="l" class="feed-math-inline"/> a learnable pseudo-query <img src="https://benjaminhan.net/feed-assets/5921193c50681139.svg" alt="q_l" class="feed-math-inline"/>, treats every earlier layer output as a key and value, and takes a softmax-weighted read over them. Because depth is under 100 layers, the <img src="https://benjaminhan.net/feed-assets/79ce6b39b1296437.svg" alt="O(L^2 d)" class="feed-math-inline"/> arithmetic is affordable, but keeping every layer output alive costs <img src="https://benjaminhan.net/feed-assets/1c9c490b512896a6.svg" alt="O(Ld)" class="feed-math-inline"/> in memory and in cross-stage communication under pipeline parallelism. Block AttnRes cuts that. The 93 layers are partitioned into 8 blocks of 12 layers, the last one partial, and layer outputs are summed within a block. Full attention then runs only over the 8 block-level summaries, dropping the overhead to <img src="https://benjaminhan.net/feed-assets/67bd3d597277464d.svg" alt="O(Nd)" class="feed-math-inline"/>. Raschka reports the full mechanism costs about 4% in training and 2% in inference [3].</p>
-</section>
-<section id="channel-mixing-stable-latentmoe" class="level4">
-<h4 class="anchored" data-anchor-id="channel-mixing-stable-latentmoe">Channel mixing: Stable LatentMoE</h4>
-<p>K3 routes 16 of 896 experts, a sparsity of 56. The report names two failure modes that appear at that ratio:</p>
-<ul>
-<li><strong>Activations explode.</strong> The routed path chains roughly four matrix multiplications through the down-projection, the expert, and the up-projection. That structure is ill-conditioned enough at 2.8T parameters to blow the activations up, so normalization and a Sigmoid Tanh Unit (SiTU) gated linear unit (GLU) bound them.</li>
-<li><strong>Load balancing stops working.</strong> Balancing nearly a thousand experts is past the range where auxiliary-loss-free balancing holds, so Quantile Balancing derives expert allocation from router-score quantiles directly, removing the balancing hyperparameter.</li>
-</ul>
-</section>
-<section id="native-vision" class="level4">
-<h4 class="anchored" data-anchor-id="native-vision">Native vision</h4>
-<p>Vision is native rather than grafted on. A 401M-parameter, 27-layer MoonViT-V2 encoder feeds a lightweight projector into the shared embedding space, and text and image tokens are interleaved under one next-token objective from the start of training.</p>
-</section>
-<section id="what-changed-from-kimi-k2" class="level4">
-<h4 class="anchored" data-anchor-id="what-changed-from-kimi-k2">What changed from Kimi K2</h4>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/table1.jpg" class="img-fluid figure-img"></p>
-<figcaption>Table 1 from the technical report [1].</figcaption>
-</figure>
-</div>
-<p>Table 1 sets the two generations side by side. Hidden dimension and vocabulary are unchanged at 7,168 and 160K. Capacity moved on every other line: 61 layers to 93, 1.04T total parameters to 2.78T, 32.6B activated to 104.2B, and 128K training context to 1M. Attention changed from 61 MLA layers to 69 KDA plus 24 MLA, and the activation from SwiGLU [9] to SiTU-GLU.</p>
-</section>
-</section>
-<section id="pre-training" class="level3">
-<h3 class="anchored" data-anchor-id="pre-training">Pre-training</h3>
-<p>The corpus spans web text, code, mathematics, and knowledge, plus a vision corpus of captions, interleaved documents, optical character recognition, perception, video, and visual coding data. The report scales up programmatic multimodal data specifically, pairing code with its rendered output across SVG, 3D assets, web pages, games, and computer-aided design schematics. That pairing is the training-side explanation for the vision-in-the-loop coding results below.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/figure7.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 7 from the technical report [1].</figcaption>
-</figure>
-</div>
-<p>Figure 7 plots held-out validation loss against training floating-point operations (FLOPs) for both generations, with the K3 curve below the K2 curve across the range from <img src="https://benjaminhan.net/feed-assets/a21b1c25080ecde4.svg" alt="10^{20}" class="feed-math-inline"/> to past <img src="https://benjaminhan.net/feed-assets/f91edc2d127f55aa.svg" alt="10^{21}" class="feed-math-inline"/>. The horizontal offset between them is the 2.5× gain: K3 reaches a given loss at roughly 40% of the compute.</p>
-<p>Retuning came first, since the architectural changes moved the optimal regime. The scaling study re-searched batch size, learning rate, tokens-per-parameter ratio, and model shape, and it settled a schedule question along the way. Cosine decay beat Warmup Stable Decay once each schedule was given its own hyperparameter search. The report argues that is the only fair comparison, because the two have substantially different optima even at fixed model size and token budget.</p>
-<p>Context grows in four stages: 8K to 64K during pre-training, then 256K to 1M during cooldown. Long natural documents are scarce and dirty, so the pipeline deduplicates exactly and fuzzily, perceptually hashes video frames, and filters by heuristic and classifier. Length alone does not teach long-range attention, so the team synthesizes long-context data by permuting and concatenating multimodal documents such that the embedded task can only be solved by attending across the whole window.</p>
-</section>
-<section id="post-training" class="level3">
-<h3 class="anchored" data-anchor-id="post-training">Post-training</h3>
-<p>Post-training runs in three stages:</p>
-<ul>
-<li><strong>Supervised fine-tuning (SFT)</strong> builds a cold-start policy from trajectories synthesized by domain-specialized earlier Kimi models, verified in stages with human annotation in the loop.</li>
-<li><strong>Reinforcement learning (RL)</strong> trains one expert per domain per effort level, across general tasks, general agents, and coding agents, at <code>low</code>, <code>high</code>, and <code>max</code> effort, giving nine experts.</li>
-<li><strong>Multi-Teacher On-Policy Distillation</strong> consolidates all nine into one model, with a per-token reward that clips the log-ratio between the matching teacher and the student.</li>
-</ul>
-<p>Two mechanisms handle the length problems that long-horizon RL creates:</p>
-<ul>
-<li><strong>Partial rollout</strong> pauses generation once a fraction of trajectories finish rather than waiting on stragglers, and queues the rest for resumption next iteration. A single trajectory can therefore span iterations and arrive stale, so a per-token regularizer keeps updates local enough to tolerate that.</li>
-<li><strong>Effort control</strong> assigns each problem an initial token budget estimated from the cold-start model and overrides the reward to <img src="https://benjaminhan.net/feed-assets/e04952ed8919b72a.svg" alt="-1" class="feed-math-inline"/> when a trajectory exceeds a scaled threshold, annealing the multiplier down to produce the high- and low-effort variants.</li>
-</ul>
-<p>The same budget trick caps verbosity in the generative reward model that grades non-verifiable tasks: a candidate whose output runs past a multiple of the cold-start length automatically loses its comparison.</p>
-<p>Quantization-aware training runs through the whole of post-training rather than after it, with MoE expert weights in the MXFP4 microscaling format and activations in MXFP8, while attention projections, latent projections, shared experts, and routers stay higher precision. Rollout and training share the quantization scheme, so there is no train-inference mismatch. The pre-trained multi-token-prediction layer is then fine-tuned into an EAGLE-3-style draft model [10] for speculative decoding, trained against the acceptance rate directly rather than a Kullback–Leibler (KL) surrogate.</p>
-</section>
-</section>
-<section id="what-k3-introduces" class="level2">
-<h2 class="anchored" data-anchor-id="what-k3-introduces">What K3 Introduces</h2>
-<p>The report leans on a lot of prior work, much of it the same team’s. These are the pieces it claims as new, by the sections where it says “we introduce,” “we propose,” or “we refine.”</p>
-<section id="architecture-and-optimization" class="level3">
-<h3 class="anchored" data-anchor-id="architecture-and-optimization">Architecture and optimization</h3>
-<ul>
-<li><strong>Gated MLA</strong>: DeepSeek-V2 latent attention [8] with positional encoding removed and an input-dependent full-rank output gate added.</li>
-<li><strong>Block AttnRes</strong>: coarsens AttnRes [5] to 8 block-level summaries, cutting the depth-attention overhead from <img src="https://benjaminhan.net/feed-assets/1c9c490b512896a6.svg" alt="O(Ld)" class="feed-math-inline"/> to <img src="https://benjaminhan.net/feed-assets/67bd3d597277464d.svg" alt="O(Nd)" class="feed-math-inline"/>.</li>
-<li><strong>Stable LatentMoE</strong>: LatentMoE [6] plus three stabilizers, an RMSNorm [11] before the up-projection, SiTU-GLU, and Quantile Balancing.</li>
-<li><strong>SiTU-GLU</strong>: a smooth-capped gated activation that tracks SwiGLU near the origin and saturates at large magnitude, holding activations bounded at a sparsity of 56.</li>
-<li><strong>Quantile Balancing</strong>: sets each expert’s bias from router-score quantiles rather than an accumulated update, which removes the load-balancing hyperparameter.</li>
-<li><strong>Per-Head Muon</strong>: orthogonalizes each attention head’s momentum block separately instead of the whole Q, K, and V projection matrices, so heads with larger gradients stop dominating the shared update direction. Refines Muon [12].</li>
-<li><strong>MoonViT-V2 trained from scratch</strong>: a stated departure from Kimi K2.5, dropping SigLIP [13] initialization, which the report ties to lower vision-tower gradient norms with fewer spikes.</li>
-</ul>
-</section>
-<section id="training-and-reinforcement-learning" class="level3">
-<h3 class="anchored" data-anchor-id="training-and-reinforcement-learning">Training and reinforcement learning</h3>
-<ul>
-<li><strong>Effort control</strong>: each problem gets a token budget estimated from the cold-start model, the reward is overridden to <img src="https://benjaminhan.net/feed-assets/e04952ed8919b72a.svg" alt="-1" class="feed-math-inline"/> past a scaled threshold, and annealing the multiplier produces the <code>low</code> and <code>high</code> variants.</li>
-<li><strong>Extended partial rollout</strong>: pauses generation once a fraction of trajectories finish and resumes the rest next iteration, with a per-token regularizer absorbing the resulting staleness.</li>
-<li><strong>White-box RL environments</strong>: purpose-built environments for kernel optimization and agent tasks, plus a hacking detector and mock implementations of widely used applications.</li>
-</ul>
-</section>
-<section id="infrastructure-and-serving" class="level3">
-<h3 class="anchored" data-anchor-id="infrastructure-and-serving">Infrastructure and serving</h3>
-<ul>
-<li><strong>MoonEP</strong>: expert-parallel training with exact load balance, achieved by planning and migrating redundant experts online from each micro-batch’s router outputs. It needs a fixed <img src="https://benjaminhan.net/feed-assets/a1cae4274c544341.svg" alt="S \times K" class="feed-math-inline"/> communication buffer where <a href="https://github.com/deepseek-ai/DeepEP">DeepEP</a> needs <img src="https://benjaminhan.net/feed-assets/9472a894e6d3d6f2.svg" alt="S \times K \times R" class="feed-math-inline"/>, and is <a href="https://github.com/MoonshotAI/MoonEP">released separately</a>.</li>
-<li><strong>KDA Context Parallelism</strong>: decomposes each chunk’s contribution so KDA’s recurrent state survives partitioning along the sequence, which is what makes million-token training tractable.</li>
-<li><strong>State-aware KDA prefix caching</strong>: prefix caching for a recurrent-state attention layer, with the implementation contributed upstream to <a href="https://docs.vllm.ai/">vLLM</a>.</li>
-</ul>
-</section>
-<section id="adopted-rather-than-new" class="level3">
-<h3 class="anchored" data-anchor-id="adopted-rather-than-new">Adopted rather than new</h3>
-<ul>
-<li><strong>From outside the team</strong>: latent attention from DeepSeek-V2 [8], the shared- and routed-expert organization of the MoE layer from DeepSeekMoE [14], the LatentMoE structure from Elango et al.&nbsp;[6], the draft-model recipe from EAGLE-3 [10], and Muon from Jordan et al.&nbsp;[12].</li>
-<li><strong>From the team’s own earlier work</strong>: KDA from Kimi Linear [4], AttnRes from a companion preprint [5], and the data and rephrasing pipelines from Kimi K2 and K2.5.</li>
-<li><strong>Existing techniques applied at a new scale</strong>: NoPE, MXFP4 and MXFP8 microscaling, and Multi-Teacher On-Policy Distillation, which the report says it adopts rather than introduces.</li>
-</ul>
-</section>
-</section>
-<section id="three-chinese-open-weights-models" class="level2">
-<h2 class="anchored" data-anchor-id="three-chinese-open-weights-models">Three Chinese Open-Weights Models</h2>
-<p>Moonshot is not the only Chinese lab shipping a million-token open-weights model, and the three current flagships draw on a shared set of components that both K3’s report and Zhipu’s release post name openly.</p>
-<section id="deepseek-supplies-the-parts" class="level3">
-<h3 class="anchored" data-anchor-id="deepseek-supplies-the-parts">DeepSeek supplies the parts</h3>
-<p>Four of K3’s components trace to DeepSeek, and the report says so in each case:</p>
-<ul>
-<li><strong>Latent attention.</strong> Gated MLA is DeepSeek-V2’s scheme [8] with positional encoding removed and an output gate added.</li>
-<li><strong>Expert organization.</strong> Stable LatentMoE follows the shared- and routed-expert split of DeepSeekMoE [14].</li>
-<li><strong>Expert-parallel communication.</strong> MoonEP needs a fixed <img src="https://benjaminhan.net/feed-assets/a1cae4274c544341.svg" alt="S \times K" class="feed-math-inline"/> buffer where DeepEP needs <img src="https://benjaminhan.net/feed-assets/9472a894e6d3d6f2.svg" alt="S \times K \times R" class="feed-math-inline"/>.</li>
-<li><strong>A kernel worth optimizing.</strong> DeepSeek Sparse Attention (DSA) [15] is one of four kernels in the report’s own kernel-optimization case study, where each model had a 24-hour sandbox budget, and K3 cut DSA runtime by 55.1% [1].</li>
-</ul>
-</section>
-<section id="two-routes-to-a-million-tokens" class="level3">
-<h3 class="anchored" data-anchor-id="two-routes-to-a-million-tokens">Two routes to a million tokens</h3>
-<p><a href="https://z.ai/blog/glm-5.2">GLM-5.2</a> from Zhipu reaches the same context length by economizing somewhere else [16]. Both labs accept that full attention at 1M tokens is unaffordable:</p>
-<ul>
-<li><strong>K3 changes what most layers are.</strong> 69 of 93 layers are KDA, whose recurrent state is constant in size regardless of context length, with Gated MLA every fourth layer for global reads.</li>
-<li><strong>GLM-5.2 makes the token selection cheaper.</strong> DSA selects which tokens each query attends to, and that selection has its own cost. IndexShare places one lightweight indexer on the first of every four layers and reuses its top-k indices across all four, removing the indexer dot product and top-k from three layers in four. Zhipu reports a 2.9× reduction in per-token FLOPs at 1M context, trained that way from mid-training at 128K.</li>
-</ul>
-</section>
-<section id="where-they-converge" class="level3">
-<h3 class="anchored" data-anchor-id="where-they-converge">Where they converge</h3>
-<ul>
-<li><strong>Effort levels.</strong> Both ship multiple thinking-effort settings to trade quality against latency.</li>
-<li><strong>Speculative decoding from a multi-token-prediction layer.</strong> K3 fine-tunes its pre-trained MTP layer into an EAGLE-3-style draft model trained against acceptance rate [10]. GLM-5.2 applies IndexShare and KVShare to its MTP layer, reusing top-k indices and KV cache across steps, which raises acceptance length from 4.56 to 5.10. Rejection sampling and an end-to-end total-variation loss take it to 5.47, the reported 20% gain [16].</li>
-<li><strong>The licenses differ.</strong> GLM-5.2 ships under MIT with, in Zhipu’s words, “no regional limits.”</li>
-</ul>
-</section>
-</section>
-<section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>Baselines are Claude Fable 5, GPT-5.6 Sol, Claude Opus 4.8, and GPT-5.5 on the proprietary side and GLM-5.2 on the open side, all at <code>max</code> reasoning effort except GPT-5.5 at <code>xhigh</code>. Each model is scored under its own agentic harness:</p>
-<ul>
-<li>K3 runs under Kimi Code.</li>
-<li>The Claude models run under Claude Code.</li>
-<li>The GPT models run under Codex.</li>
-<li>On Terminal-Bench 2.1, the baselines get their best score across harnesses.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/table2.jpg" class="img-fluid figure-img" data-lightbox-src="table2-full.jpg"></p>
-<figcaption>Table 2 from the technical report [1].</figcaption>
-</figure>
-</div>
-<p>Table 2 gives the full comparison across 44 benchmarks in four capability groups. The findings:</p>
-<ul>
-<li><strong>Best open score, second or third overall</strong>. K3 trails Fable 5 and GPT-5.6 Sol on the aggregate while beating Claude Opus 4.8, GPT-5.5, and GLM-5.2 across the suite. GLM-5.2, the only other open-weight entrant, has no score on 17 of the 44 rows, ten of them the vision benchmarks.</li>
-<li><strong>Competitive on graduate reasoning, behind on research reasoning</strong>. 93.5% on <a href="https://github.com/idavidrein/gpqa">GPQA Diamond</a> against 94.1% for GPT-5.6 Sol, but 23.4% on <a href="https://artificialanalysis.ai/evaluations/critpt">CritPt</a> against 32.3%, and behind on <a href="https://lastexam.ai/">Humanity’s Last Exam</a> both with and without tools. The report names research-level reasoning as its own weakest area.</li>
-<li><strong>Best score on long-context reasoning</strong>. K3 leads <a href="https://artificialanalysis.ai/evaluations/artificial-analysis-long-context-reasoning">AA-LCR</a> (Artificial Analysis Long Context Reasoning) at 74.7, ahead of GPT-5.5 at 74.3 and Fable 5 at 70.0, which is the one row that tests directly what the million-token window is for.</li>
-<li><strong>Coding is split by benchmark</strong>. K3 leads ProgramBench (77.8 versus 77.6 for GPT-5.6 Sol) and SWE-Marathon (42.0 versus 40.0 for Opus 4.8), places second on <a href="https://github.com/laude-institute/terminal-bench">Terminal-Bench 2.1</a> (88.3 versus 88.8), and trails on DeepSWE (67.5 versus 73.0) and FrontierSWE (81.2 versus 86.6).</li>
-<li><strong>Most of its best scores are agentic</strong>. K3 takes the best score on <a href="https://openai.com/index/browsecomp/">BrowseComp</a> (91.2), DeepSearchQA (95.0), ResearchRubrics (76.2), MCPMark-Verified (94.5), <a href="https://artificialanalysis.ai/evaluations/automationbench-aa">AutomationBench</a> (30.8), <a href="https://artificialanalysis.ai/evaluations/harvey-lab-aa">Harvey Lab-AA</a> (94.6), and <a href="https://artificialanalysis.ai/evaluations/tau3-banking"><img src="https://benjaminhan.net/feed-assets/2bb8152960ba0e5e.svg" alt="\tau^3" class="feed-math-inline"/>-Banking</a> (33.4).</li>
-<li><strong>Vision is strong without leading</strong>. Best scores on <a href="https://github.com/opendatalab/OmniDocBench">OmniDocBench</a> (91.1), <a href="https://video-mme.github.io/">Video-MME</a> (90.0), and <a href="https://mmvu-benchmark.github.io/">MMVU</a> (82.1), but Fable 5 leads WorldVQA, <a href="https://artificialanalysis.ai/evaluations/mmmu-pro">MMMU-Pro</a>, <a href="https://charxiv.github.io/">CharXiv</a>, and <a href="https://zerobench.github.io/">ZeroBench</a> once tools are allowed.</li>
-<li><strong>Cyber capability measured against one peer</strong>. The Anthropic and OpenAI models decline the tasks, so the suite excludes them and GLM-5.2 is the only comparison left. Against GLM-5.2, K3 solves 14 of 36 exploit tasks versus 8, with 10 of its 14 in the user-space track rather than the kernel track. On vulnerability discovery, about 70% of human-reviewed findings were genuine, including 16 previously unknown vulnerabilities across six projects. A released set of weights has no endpoint at which to decline, and the joint UK AI Security Institute and CAISI assessment, run separately on those weights, found K3 reaching arbitrary code execution on 0 of 41 tasks [17].</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/figure13.jpg" class="img-fluid figure-img"></p>
-<figcaption>Figure 13 from the technical report [1].</figcaption>
-</figure>
-</div>
-<p>Figure 13 plots score against per-task cost on four suites, with K3 marked by a star and its <code>low</code>, <code>high</code>, and <code>max</code> effort settings traced as a curve on the first two panels:</p>
-<ul>
-<li><strong>Kimi Code Bench 2.0</strong>: 4.0 points below Fable 5 at 38% of the cost. K3’s high-effort setting matches Opus 4.8’s maximum-effort score at roughly a third of the cost.</li>
-<li><strong>BrowseComp</strong>: the best score in the panel at $2.03 per task, half of GPT-5.6 Sol’s cost and an order of magnitude under the Claude models at maximum effort.</li>
-<li><strong>GDPval-AA v2</strong>: within 50 Elo of GPT-5.6 Sol at 13% lower cost, and 2.6× cheaper than Fable 5.</li>
-<li><strong><a href="https://artificialanalysis.ai/evaluations/aa-briefcase">AA-Briefcase</a></strong>: second-best score behind Fable 5, at roughly half its cost.</li>
-</ul>
-<p><a href="https://simonwillison.net/">Simon Willison</a> ran the model on launch day and found only one reasoning effort available, <code>max</code>. A single prompt for an SVG of a pelican riding a bicycle spent 13,241 reasoning tokens out of 16,658 output tokens and cost 25 cents [18]. The same post puts the size claim in context: the largest open-weights release before K3 was DeepSeek’s 1.6T v4 Pro.</p>
-<p>API pricing is $0.30 per million tokens for cache-hit input, $3.00 for cache-miss input, and $15.00 for output. The announcement attributes that partly to Mooncake’s disaggregated inference architecture, which it credits with a cache-hit rate above 90% on coding workloads [2]. A shared prefix is “reusable at any 512-token boundary, independently of request length, chunking, or scheduling interleaving” [1], so tokens between the last boundary and the true end of a shared prefix bill at the cache-miss rate. K3’s pricing matches Anthropic’s Claude Sonnet series and makes it the most expensive model a Chinese lab has released, against $0.95 and $4.00 for Kimi K2.6 [18].</p>
-</section>
-<section id="independent-evaluations" class="level2">
-<h2 class="anchored" data-anchor-id="independent-evaluations">Independent Evaluations</h2>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/table5.jpg" class="img-fluid figure-img"></p>
-<figcaption>Table 5 from the technical report [1].</figcaption>
-</figure>
-</div>
-<p>Third-party evaluators put K3 in a similar place. Table 5 collects them as of July 23:</p>
-<ul>
-<li><strong><a href="https://artificialanalysis.ai/evaluations/artificial-analysis-intelligence-index">Artificial Analysis Intelligence Index</a> v4.1</strong>: fourth of 580 at 57.1, behind Fable 5 at 59.9 and GPT-5.6 Sol at 58.9.</li>
-<li><strong><a href="https://www.vals.ai/">Vals Index</a></strong>: second of 39 at 74.7%, behind Fable 5 at 75.1%.</li>
-<li><strong>WebDev Arena</strong>: first of 99 at 1,678 Elo, ahead of Fable 5 at 1,634. The report notes this is the first time an open model has topped that leaderboard.</li>
-<li><strong>Text Arena</strong>: eighth of 200 at 1,486 Elo.</li>
-<li><strong>Agent Arena</strong>: fourth of 37 at 9.1, behind Fable 5, GPT-5.6 Sol, and Claude Opus 4.8.</li>
-</ul>
-<p>The architecture notes chart the Intelligence Index and the Coding Agent Index five days later, on July 28 [3]. Claude Opus 5 scores 61 on the Intelligence Index, a model absent from the report’s baselines. On the Coding Agent Index, Kimi Code with K3 scores 61 against Claude Code with Claude Opus 5 at 67.</p>
-<p><a href="https://artificialanalysis.ai/">Artificial Analysis</a> published its own account of the AA-Briefcase run on July 21 [19], with the absolute numbers behind Table 5’s placement:</p>
-<ul>
-<li><strong>Second on the benchmark.</strong> K3 scores an Elo of 1543 against Fable 5’s 1574, ahead of GPT-5.6 Sol at <code>max</code> (1501), Claude Sonnet 5 at <code>max</code> (1388), and Claude Opus 4.8 at <code>max</code> (1347), and 727 points above Kimi K2.6’s 816. Its rubric pass rate is 51% against Fable 5’s 56%.</li>
-<li><strong>$10.57 per task, over 83 turns.</strong> Artificial Analysis calls K3 “among the most expensive models to run on AA-Briefcase,” and more expensive to run than Opus 4.8. Token price, output volume, and turn count all contribute: K3 takes 83 turns per task against 67 for Fable 5 and 50 for GPT-5.6 Sol at <code>max</code>.</li>
-<li><strong>56.4 minutes per task.</strong> K3 spends roughly 2.5 times as long as Fable 5 and 3.8 times as long as Grok 4.5 at <code>high</code>, on 120k output tokens per task against Kimi K2.6’s 42k.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/aa-briefcase-elo-cost.png" class="img-fluid figure-img"></p>
-<figcaption>Chart from <a href="https://artificialanalysis.ai/articles/kimi-k3-agentic-knowledge-benchmark">Artificial Analysis</a> [19].</figcaption>
-</figure>
-</div>
-<p>On the score-against-cost chart, K3 is second on Elo at $10.57 per task, between Claude Sonnet 5 at <code>max</code> (1388 Elo, $14.43) and Claude Opus 4.8 at <code>max</code> (1347, $8.26), with Fable 5 top at 1574 and $22.30. GPT-5.6 Sol at <code>max</code> reaches 1501 for $5.32, and GLM-5.2 at <code>max</code> 1260 for $2.43. Kimi K2.6 scored 816 Elo at $1.05.</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/aa-briefcase-quality.png" class="img-fluid figure-img"></p>
-<figcaption>Chart from <a href="https://artificialanalysis.ai/articles/kimi-k3-agentic-knowledge-benchmark">Artificial Analysis</a> [19].</figcaption>
-</figure>
-</div>
-<p>Split into its two graded components, K3 takes the highest analytical-quality Elo in the field at 1754, a shade above Fable 5’s 1744. Its presentation Elo of 1471 falls below Fable 5 (1488), Opus 4.8 (1492), Claude Sonnet 5 (1454), and GPT-5.6 Sol (1660). Its 283-point spread between the two is the largest among the five highest-scoring models.</p>
-</section>
-<section id="serving-the-weights" class="level2">
-<h2 class="anchored" data-anchor-id="serving-the-weights">Serving the Weights</h2>
-<p>The weights were published on July 27 with same-day server support. vLLM’s release writeup sets out what the hybrid design costs a server [20]:</p>
-<ul>
-<li><strong>One cache manager holds two kinds of memory.</strong> Paged key-value (KV) blocks serve the MLA layers and compact recurrent-state blocks serve the KDA layers, with a dedicated KDA backend running FlashKDA for prefill and a fused CUDA kernel for decode.</li>
-<li><strong>KDA state stays constant in size but resists reuse.</strong> Because the KDA state is overwritten in place during decoding, a snapshot must be copied at a chosen boundary before the next forward pass, and checkpointing every token would exhaust the pool.</li>
-<li><strong>Two retention policies decide which prefixes are kept.</strong> vLLM stores KDA state at prompt ends and at configurable fixed intervals. It also caches a prefix on its second sighting, since one sighting is not yet evidence that the prefix is shared.</li>
-<li><strong>Prefix hits can end inside a physical cache block.</strong> vLLM implements the report’s own scheme here: a hit lands on any 512-token hash boundary, and is never required to be a multiple of the 6144-token physical block [1]. The scheduler also compares that reusable length against any longer prefix held in an external store, and takes the longer of the two.</li>
-<li><strong>The recommended floor is eight GPUs.</strong> vLLM’s quick start serves the model on 8 NVIDIA B300 or 8 AMD MI355X GPUs at tensor-parallel size 8.</li>
-</ul>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/vllm-hybrid-cache.webp" class="img-fluid figure-img" data-lightbox-src="vllm-hybrid-cache-full.png"></p>
-<figcaption>Figure from <a href="https://vllm.ai/blog/2026-07-27-k3">vLLM’s release post</a> [20].</figcaption>
-</figure>
-</div>
-<p>The two representations have opposite cost profiles. A KDA layer holds one matrix-like state of about 6 MB per sequence, 795 KiB per GPU at tensor-parallel size 8, and that figure is independent of context length. An MLA layer instead keeps a 1.125 KB latent for every token, reaching roughly 1.18 GB per layer at a million tokens, and every token boundary in it is directly reusable. Reuse on the KDA side needs a snapshot taken at the boundary, which is the asymmetry both retention policies exist to manage.</p>
-<p>Quantization decides who else can run it. The released checkpoint runs to 1,560,998,984,390 bytes across 96 safetensors files, which is 1.56 TB in decimal units and 1.42 TiB in binary, so published figures for it differ by convention rather than by content. <a href="https://unsloth.ai/">Unsloth</a> quotes the decimal figure for full-precision inference and publishes dynamic quants below it, 861.3 GB at 2-bit and 594 GB at 1-bit, a 62% reduction [21]. Perplexity is 1.4581 at full precision and 2.58 at 1-bit, where top-1 accuracy is 79%. The guide targets an NVIDIA DGX Station, or a Mac Studio paired with a 128 GB machine.</p>
-<p><a href="https://www.imec-int.com/">imec</a> added K3 to its GPU self-hosting comparison on July 29, served with <a href="https://github.com/sgl-project/sglang">SGLang</a> and measured against GLM-5.2 on the same setup [22]:</p>
-<ul>
-<li><strong>The node had to change.</strong> At 1.4 TB of weights the model does not fit the 8×B200 node used for GLM-5.2, because 1.5 TB of total high-bandwidth memory (HBM) leaves nothing for KV cache. The run moved to an 8×B300 node at 2.3 TB, roughly 20% more in hardware cost.</li>
-<li><strong>Fewer sessions, slower tokens, longer tasks.</strong> K3 served 16 concurrent sessions against GLM-5.2’s 24, at 122 tokens per second against 170, with a median task time of 38 minutes against 26.</li>
-<li><strong>Higher resolution rate, with a contamination caveat.</strong> K3 resolved 86.4% of tasks against 62.5% for both GLM-5.2 and Claude Opus 4.8. imec cautions that its SWEBench Pro tasks may be in K3’s training data.</li>
-</ul>
-<p>Moonshot’s own coding documentation qualifies the context window. Kimi Code exposes <code>k3</code> at 1M alongside <code>k3-256k</code>, and recommends the shorter model for everyday work: inside 256k it “delivers the same results,” while <code>k3</code> “consumes about twice as much quota” [23]. <code>k3-256k</code> does not accept video input.</p>
-</section>
-<section id="my-notes" class="level2">
-<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
-<ul>
-<li><p><strong>The ranking moved in five days</strong>: nothing about K3 changed between the report’s July 23 snapshot and the July 28 chart, and an entry appeared above it anyway [3]. This is the arithmetic behind the <a href="../../posts/20260627-open-weights-frontier-gap/">Doubleword analysis</a>: a distance stated in months has the closed frontier’s own rate of improvement in the denominator, so it describes what has already happened rather than when the two lines meet.</p></li>
-<li><p><strong>Every score here mixes the model with something else</strong>: the Coding Agent Index measures harness and model together, and its K3 margin is wider than any single coding row in the report’s own table [3]. AA-Briefcase Elo combines rubric pass rate, analytical quality, and presentation, so one figure covers work K3 leads on and work it does not [19]. The shared-harness coding component of the <a href="../../posts/20260620-intelligence-benchmarking/">Intelligence Index</a> is the one measurement here that isolates the model, and it is also where open weights look closest.</p></li>
-<li><p><strong>Cross-layer residuals complicate pipeline parallelism</strong>: <a href="../../posts/20260501-how-frontier-llms-trained/">Dwarkesh Patel raised this in conversation with Reiner Pope</a>, relaying <a href="https://horace.io/">Horace He</a>’s point that Kimi’s residual connections read from earlier layers rather than only the one immediately before. A pipeline stage therefore has to hold and ship activations that a standard residual would have folded into a single state. Block AttnRes answers the objection on its own terms, and the report treats the remaining cost as real rather than negligible.</p></li>
-<li><p><strong>The million-token window is a trained length</strong>: the report says the model “extrapolates directly to 1M-token contexts without any positional-encoding modification” [1], which is narrower than it sounds. NoPE leaves no frequency base to rescale and no YaRN-style extension to apply [24]. The context window was grown to 1M during cooldown, so the claim covers that length and nothing past it. Moonshot’s own coding docs recommend against the 1M model for everyday work [23].</p></li>
-<li><p><strong>The cheap end of the cost curve was unavailable</strong>: the report’s cost case rests on its <code>low</code> and <code>high</code> settings [1]. Only <code>max</code> was reachable at launch, where one SVG prompt spent 13,241 reasoning tokens and cost 25 cents [18].</p></li>
-<li><p><strong>GPT-5.6 Sol comes within 42 Elo at half the cost</strong>: the report’s cost panels compare against Fable 5, where K3 is the cheaper option. They do not compare against GPT-5.6 Sol, where it is the dearer one [19]. The comparison that matters depends on which closed model a reader would otherwise be paying for.</p></li>
-<li><p><strong>The build that fits was never benchmarked</strong>: every score in the report was measured at full precision, and neither the report nor the quant release says which of them survive the drop to 2.58 perplexity at 1-bit [21].</p></li>
-</ul>
-<hr>
-</section>
-<section id="references" class="level2">
-<h2 class="anchored" data-anchor-id="references">References</h2>
-<ol type="1">
-<li><a id="ref-1"></a>Kimi Team. “Kimi K3: Open Frontier Intelligence.” <em>Technical report</em>, July 2026. <a href="https://github.com/MoonshotAI/Kimi-K3/blob/main/k3_tech_report.pdf" class="uri">https://github.com/MoonshotAI/Kimi-K3/blob/main/k3_tech_report.pdf</a></li>
-<li><a id="ref-2"></a>Kimi Team. “Kimi K3: Open Frontier Intelligence.” <em>Moonshot AI</em>, July 16, 2026. <a href="https://www.kimi.com/blog/kimi-k3" class="uri">https://www.kimi.com/blog/kimi-k3</a></li>
-<li><a id="ref-3"></a>Raschka, Sebastian. “Kimi K3 Architecture Notes.” <em>Sebastian Raschka, PhD</em>, July 28, 2026. <a href="https://sebastianraschka.com/blog/2026/kimi-k3-architecture-notes.html" class="uri">https://sebastianraschka.com/blog/2026/kimi-k3-architecture-notes.html</a></li>
-<li><a id="ref-4"></a>Kimi Team. “Kimi Linear: An Expressive, Efficient Attention Architecture.” <em>arXiv preprint</em> (arXiv:2510.26692), 2025. <a href="https://arxiv.org/abs/2510.26692" class="uri">https://arxiv.org/abs/2510.26692</a></li>
-<li><a id="ref-5"></a>Kimi Team. “Attention Residuals.” <em>Preprint</em>, 2026.</li>
-<li><a id="ref-6"></a>Elango, Venmugil, et al.&nbsp;“LatentMoE: Toward Optimal Accuracy per FLOP and Parameter in Mixture of Experts.” <em>arXiv preprint</em> (arXiv:2601.18089), 2026. <a href="https://arxiv.org/abs/2601.18089" class="uri">https://arxiv.org/abs/2601.18089</a></li>
-<li><a id="ref-7"></a>Su, Jianlin, Ahmed, Murtadha, Lu, Yu, Pan, Shengfeng, Bo, Wen, and Liu, Yunfeng. “RoFormer: Enhanced Transformer with Rotary Position Embedding.” <em>arXiv preprint</em> (arXiv:2104.09864), 2021. <a href="https://arxiv.org/abs/2104.09864" class="uri">https://arxiv.org/abs/2104.09864</a></li>
-<li><a id="ref-8"></a>DeepSeek-AI. “DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model.” <em>arXiv preprint</em> (arXiv:2405.04434), 2024. <a href="https://arxiv.org/abs/2405.04434" class="uri">https://arxiv.org/abs/2405.04434</a></li>
-<li><a id="ref-9"></a>Shazeer, Noam. “GLU Variants Improve Transformer.” <em>arXiv preprint</em> (arXiv:2002.05202), 2020. <a href="https://arxiv.org/abs/2002.05202" class="uri">https://arxiv.org/abs/2002.05202</a></li>
-<li><a id="ref-10"></a>Li, Yuhui, Wei, Fangyun, Zhang, Chao, and Zhang, Hongyang. “EAGLE-3: Scaling up Inference Acceleration of Large Language Models via Training-Time Test.” <em>arXiv preprint</em> (arXiv:2503.01840), 2025. <a href="https://arxiv.org/abs/2503.01840" class="uri">https://arxiv.org/abs/2503.01840</a></li>
-<li><a id="ref-11"></a>Zhang, Biao, and Sennrich, Rico. “Root Mean Square Layer Normalization.” <em>Advances in Neural Information Processing Systems (NeurIPS)</em> (arXiv:1910.07467), 2019. <a href="https://arxiv.org/abs/1910.07467" class="uri">https://arxiv.org/abs/1910.07467</a></li>
-<li><a id="ref-12"></a>Jordan, Keller, et al.&nbsp;“Muon: An Optimizer for Hidden Layers in Neural Networks.” 2024. <a href="https://kellerjordan.github.io/posts/muon/" class="uri">https://kellerjordan.github.io/posts/muon/</a></li>
-<li><a id="ref-13"></a>Zhai, Xiaohua, Mustafa, Basil, Kolesnikov, Alexander, and Beyer, Lucas. “Sigmoid Loss for Language Image Pre-Training.” <em>International Conference on Computer Vision (ICCV)</em> (arXiv:2303.15343), 2023. <a href="https://arxiv.org/abs/2303.15343" class="uri">https://arxiv.org/abs/2303.15343</a></li>
-<li><a id="ref-14"></a>Dai, Damai, et al.&nbsp;“DeepSeekMoE: Towards Ultimate Expert Specialization in Mixture-of-Experts Language Models.” <em>arXiv preprint</em> (arXiv:2401.06066), 2024. <a href="https://arxiv.org/abs/2401.06066" class="uri">https://arxiv.org/abs/2401.06066</a></li>
-<li><a id="ref-15"></a>DeepSeek-AI. “DeepSeek-V3.2-Exp: Boosting Long-Context Efficiency with DeepSeek Sparse Attention.” <em>Technical report</em>, 2025. <a href="https://github.com/deepseek-ai/DeepSeek-V3.2-Exp/blob/main/DeepSeek_V3_2.pdf" class="uri">https://github.com/deepseek-ai/DeepSeek-V3.2-Exp/blob/main/DeepSeek_V3_2.pdf</a></li>
-<li><a id="ref-16"></a>Zhipu AI. “GLM-5.2: Built for Long-Horizon Tasks.” <em>Z.ai</em>, July 2026. <a href="https://z.ai/blog/glm-5.2" class="uri">https://z.ai/blog/glm-5.2</a></li>
-<li><a id="ref-17"></a>UK AI Security Institute and U.S. Center for AI Standards and Innovation. “Preliminary Assessment of Kimi K3’s Cyber Capabilities.” July 2026. <a href="https://www.aisi.gov.uk/blog/preliminary-assessment-of-kimi-k3s-cyber-capabilities" class="uri">https://www.aisi.gov.uk/blog/preliminary-assessment-of-kimi-k3s-cyber-capabilities</a></li>
-<li><a id="ref-18"></a>Willison, Simon. “Kimi K3, and what we can still learn from the pelican benchmark.” <em>Simon Willison’s Weblog</em>, July 16, 2026. <a href="https://simonwillison.net/2026/Jul/16/kimi-k3/" class="uri">https://simonwillison.net/2026/Jul/16/kimi-k3/</a></li>
-<li><a id="ref-19"></a>Artificial Analysis. “Kimi K3: second only to Fable 5 on AA-Briefcase.” <em>Artificial Analysis</em>, July 21, 2026. <a href="https://artificialanalysis.ai/articles/kimi-k3-agentic-knowledge-benchmark" class="uri">https://artificialanalysis.ai/articles/kimi-k3-agentic-knowledge-benchmark</a></li>
-<li><a id="ref-20"></a>vLLM Team and Inferact. “Kimi K3 Is Here: Efficient Day-0 Support on vLLM.” <em>vLLM Blog</em>, July 27, 2026. <a href="https://vllm.ai/blog/2026-07-27-k3" class="uri">https://vllm.ai/blog/2026-07-27-k3</a></li>
-<li><a id="ref-21"></a>Unsloth. “Kimi K3: How to Run Locally.” <em>Unsloth Documentation</em>, July 2026. <a href="https://unsloth.ai/docs/models/kimi-k3" class="uri">https://unsloth.ai/docs/models/kimi-k3</a></li>
-<li><a id="ref-22"></a>imec. “How many devs can you fit on a GPU? — self-hosting explained.” <em>imec AI Stack</em>, updated July 29, 2026. <a href="https://aistack.imec-int.com/blog/gpu-self-hosting" class="uri">https://aistack.imec-int.com/blog/gpu-self-hosting</a></li>
-<li><a id="ref-23"></a>Moonshot AI. “Model Configuration.” <em>Kimi Code Documentation</em>, July 2026. <a href="https://www.kimi.com/code/docs/en/kimi-code/models" class="uri">https://www.kimi.com/code/docs/en/kimi-code/models</a></li>
-<li><a id="ref-24"></a>Peng, Bowen, Quesnelle, Jeffrey, Fan, Honglu, and Shippole, Enrico. “YaRN: Efficient Context Window Extension of Large Language Models.” <em>arXiv preprint</em> (arXiv:2309.00071), 2023. <a href="https://arxiv.org/abs/2309.00071" class="uri">https://arxiv.org/abs/2309.00071</a></li>
-</ol>
-</section>
-<section id="related-posts" class="level2">
-<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
-<ul>
-<li><a href="../../posts/20260627-open-weights-frontier-gap/">How Far Behind the Closed Frontier Are Open-Weights LLMs?</a>: the lag arithmetic this release is the newest data point for, and the source of the caveat that coding is the weakest evidence for convergence.</li>
-<li><a href="../../posts/20260620-intelligence-benchmarking/">How Artificial Analysis Builds Its Intelligence Index</a>: the methodology behind the index K3 places fourth on, including the harness policy that makes its coding numbers differ from the report’s.</li>
-<li><a href="../../posts/20260501-how-frontier-llms-trained/">How Frontier LLMs Are Actually Trained and Served</a>: where the pipeline-parallelism objection to Kimi’s cross-layer residuals was raised, which Block AttnRes answers.</li>
-<li><a href="../../posts/20260729-agent-intrusion-technical-timeline/">Anatomy of a Frontier Lab Agent Intrusion</a>: the closed-model counterpart to K3’s cyber evaluation, where the evaluation itself was the failure.</li>
-<li><a href="../../posts/20260713-llm-distillation-quantification/">Quantification of Large Language Model Distillation</a>: distillation measured across labs, against a release whose own consolidation step distills nine internal teachers into one model.</li>
-</ul>
-
-
-</section>
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/</guid>
-  <pubDate>Sat, 01 Aug 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260801-kimi-k3-open-frontier/cover.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>

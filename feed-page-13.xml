@@ -21,7 +21,72 @@
 <width>144</width>
 </image>
 <generator>quarto-1.9.37</generator>
-<lastBuildDate>Thu, 27 Aug 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sat, 29 Aug 2026 07:00:00 GMT</lastBuildDate>
+<item>
+  <title>A Cursor Agent Erased a Company’s Production Data in 9 Seconds</title>
+  <dc:creator>synesis </dc:creator>
+  <link>https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/?utm_source=rss&amp;utm_medium=feed</link>
+  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
+ 
+
+
+
+
+
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/cover.jpg" class="img-fluid figure-img"></p>
+<figcaption>Image from <a href="https://x.com/lifeof_jer/status/2048103471019434248">Jer Crane on X</a>.</figcaption>
+</figure>
+</div>
+<p><a href="https://x.com/lifeof_jer">Jer Crane</a>, founder of PocketOS (a car-rental-management SaaS), <a href="https://x.com/lifeof_jer/status/2048103471019434248">walks through</a> how a Cursor agent running Anthropic’s flagship Claude Opus 4.6 deleted his production database and all Railway volume backups in a single GraphQL mutation, and then, when asked to explain itself, produced a written confession enumerating the specific safety rules it had violated.</p>
+<blockquote class="blockquote">
+<p>An AI coding agent — Cursor running Anthropic’s flagship Claude Opus 4.6 — deleted our production database and all volume-level backups in a single API call to Railway, our infrastructure provider.</p>
+<p>It took 9 seconds.</p>
+<p>The agent then, when asked to explain itself, produced a written confession enumerating the specific safety rules it had violated.</p>
+</blockquote>
+<p>The article decomposes the failure into three independent layers that each failed on their own:</p>
+<ul>
+<li><strong>Railway’s GraphQL API</strong> allowed <code>volumeDelete</code> with zero confirmation, and the CLI token Jer had issued for custom-domain management carried blanket authority across every other destructive operation. Railway is actively promoting this same authorization model to AI agents via <code>mcp.railway.com</code>.</li>
+<li><strong>Volume backups live in the volume they back up.</strong> Railway’s own docs note that “wiping a volume deletes all backups.” Jer’s most recent off-volume backup was three months old.</li>
+<li><strong>Cursor’s system-prompt guardrails</strong> told the agent not to run destructive operations unless asked. The agent, running Anthropic’s Claude Opus 4.6, violated the rule and, when asked to explain itself, produced a written confession quoting the rule verbatim and admitting it had ignored every clause.</li>
+</ul>
+<p>Jer explicitly defers the model-level responsibility analysis to a later post; this one stays at the integration layer. Even so, the agent’s confession documents four restraint moments it skipped in those nine seconds:</p>
+<ul>
+<li><strong>Treating “delete a volume” as a plausible fix.</strong> After hitting a credential mismatch in staging, the agent decided on its own initiative to fix it by deleting a Railway volume.</li>
+<li><strong>Searching unrelated files for an API token.</strong> The agent went looking for a token and used one it found in a file created months earlier for adding and removing custom domains, not for infrastructure operations.</li>
+<li><strong>Using the token without verifying its scope.</strong> Neither the agent nor Jer realized the same CLI token carried blanket authority across the Railway GraphQL API, including destructive mutations like <code>volumeDelete</code>.</li>
+<li><strong>Guessing at environment boundaries instead of reading the docs.</strong> In the agent’s own words: <em>“I guessed that deleting a staging volume via the API would be scoped to staging only. I didn’t verify. I didn’t check if the volume ID was shared across environments. I didn’t read Railway’s documentation on how volumes work across environments before running a destructive command.”</em></li>
+</ul>
+<section id="my-notes" class="level2">
+<h2 class="anchored" data-anchor-id="my-notes">My Notes</h2>
+<ul>
+<li>Reporting that frames this as “an AI deleted the data” collapses the layering. All three of those layers had to fail at once, and “agent safety” marketed as a product feature is meaningless unless all three hold simultaneously. <a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex’s sandbox escape a few weeks ago</a> made the same multi-layer point from a prompt-injection angle: agent safety is a Swiss-cheese property.</li>
+<li>CLI tokens as root was a survivable shortcut when a human wielded them and typed one command every few minutes. When an autonomous agent fires GraphQL mutations at machine speed, the same token is a unilateral delete button with no cooldown. Per-operation token scoping should exist already, and the Model Context Protocol (MCP) rollout makes every additional day without it costlier.</li>
+<li>Calling snapshots-in-the-same-volume “backups” uses the word against its own definition. A backup is defined by blast-radius independence from the primary: different volume, account, region, or provider. Until that holds it’s a snapshot with a misleading label, and the kind of engineering-marketing mismatch customers usually don’t find until after the wipe.</li>
+<li>The confession is the most unsettling artifact, because it proves system-prompt safety is advisory and nothing in the stack forces the model to honor it. A model that narrates its violations in fluent paragraphs can still execute them in the same session. Enforcement has to live below the model: in the API gateway, the token system, or the destructive-op handlers. Text the model is asked to follow is not an enforcement layer. <a href="../../posts/20250802-mast-multi-agent-failures/">MAST’s failure taxonomy</a> catalogs this same specification-vs-verification gap in multi-agent systems; here it is reproduced in a single-agent case.</li>
+<li>The model-level question Jer defers deserves to be told as its own story. Cursor and Railway can ship better scoping and confirmations tomorrow; the harder fix is upstream. A flagship model compressing four verify-or-ask points into a single nine-second commit is a planning-and-restraint problem at the model layer. Confusing the two will produce the wrong fixes.</li>
+</ul>
+<hr>
+</section>
+<section id="related-posts" class="level2">
+<h2 class="anchored" data-anchor-id="related-posts">Related Posts</h2>
+<ul>
+<li><a href="../../posts/20260319-snowflake-cortex-sandbox-escape/">Snowflake Cortex AI Escapes Sandbox and Executes Malware</a>: the same Swiss-cheese view of agent safety, reached from a prompt-injection angle rather than a destructive-mutation one.</li>
+<li><a href="../../posts/20250802-mast-multi-agent-failures/">MAST: A Failure Taxonomy for Multi-Agent Systems</a>: the specification-versus-verification gap this incident reproduces in a single-agent case, catalogued across multi-agent systems.</li>
+<li><a href="../../posts/20260413-verified-not-safe/">“Verified” Doesn’t Mean “Nothing Can Go Wrong”</a>: the same lesson that a safety claim above the execution layer guarantees nothing once the layer below it can still fail.</li>
+<li><a href="../../posts/20260422-overzealous-coding-models/">Overzealous Coding Models</a>: a milder form of the same restraint failure, where a coding model takes far more action than the task required.</li>
+<li><a href="../../posts/20260507-agentic-coding-is-a-trap/">Agentic Coding Is a Trap</a>: a broader argument against handing autonomous coding agents the kind of blanket authority this wipe exploited.</li>
+</ul>
+
+
+</section>
+
+ ]]></description>
+  <guid>https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/</guid>
+  <pubDate>Mon, 27 Apr 2026 07:00:00 GMT</pubDate>
+  <media:content url="https://benjaminhan.net/posts/20260427-cursor-railway-production-wipe/cover.jpg" medium="image" type="image/jpeg"/>
+</item>
 <item>
   <title>Even Experts Are Surprised by AI’s Latest ‘Vibe-Mathing’ Advance</title>
   <dc:creator>synesis </dc:creator>
@@ -1203,66 +1268,6 @@
   <guid>https://benjaminhan.net/posts/20260420-opus-47-token-count/</guid>
   <pubDate>Mon, 20 Apr 2026 07:00:00 GMT</pubDate>
   <media:content url="https://benjaminhan.net/posts/20260420-opus-47-token-count/cover.jpg" medium="image" type="image/jpeg"/>
-</item>
-<item>
-  <title>Earth Day 10K with My Daughter — First in Our Age Groups</title>
-  <dc:creator>Ben </dc:creator>
-  <link>https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/?utm_source=rss&amp;utm_medium=feed</link>
-  <description><![CDATA[<p><a href="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/?utm_source=rss&amp;utm_medium=feed">Read on benjaminhan.net →</a></p>
- 
-
-
-
-
-
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/01.jpg" class="img-fluid" data-lightbox-src="01-full.jpg"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/02.jpg" class="img-fluid" data-lightbox-src="02-full.jpg"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/03.jpg" class="img-fluid" data-lightbox-src="03-full.jpg"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/04.jpg" class="img-fluid" data-lightbox-src="04-full.jpg"></p>
-</div>
-</div>
-</div>
-<p>Earth Day 10K race today! My daughter and I ran as a team (“Speedy Swine &amp; Bovine” anyone?): her time was 49:36:31 ranked 11 (of 102), and my time was 55:37:32 ranked 25. We both earned our #1 in our respective age groups!</p>
-<div class="quarto-layout-panel" data-layout-ncol="2">
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/05.jpg" class="img-fluid"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/06.jpg" class="img-fluid" data-lightbox-src="06-full.jpg"></p>
-</div>
-</div>
-<div class="quarto-layout-row">
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/07.jpg" class="img-fluid" data-lightbox-src="07-full.jpg"></p>
-</div>
-<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
-<p><img src="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/08.jpg" class="img-fluid" data-lightbox-src="08-full.jpg"></p>
-</div>
-</div>
-</div>
-<p>Coming from 3 days of no running due to ankle/knee problem, and only 2-hour sleep two nights ago (hooked with work), I was planning to just <em>walk</em> this race. But no, that type-A me just said go ahead! I did try to stay easy-ish pace, and in the end I didn’t feel too taxing. But my HR disagreed: avg/max 155/173 bpm at this pace! Terrible!</p>
-<p>Next race is in June — time to recover and rebuild!</p>
-<hr>
-<p><em>Originally posted on <a href="https://sigmoid.social/@BenjaminHan/116431843411259407">Mastodon</a>.</em></p>
-
-
-
- ]]></description>
-  <guid>https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/</guid>
-  <pubDate>Sat, 18 Apr 2026 07:00:00 GMT</pubDate>
-  <media:content url="https://benjaminhan.net/posts/20260418-earth-day-10k-with-daughter/01.jpg" medium="image" type="image/jpeg"/>
 </item>
 
 </channel>
