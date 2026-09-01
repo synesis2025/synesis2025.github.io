@@ -1,0 +1,96 @@
+# Cloudflare Pages response headers — the cache contract, in the repo.
+#
+# Ports the nine Cache Rules + one Transform Rule documented in
+# docs/architecture/architecture-deploy.md §"Cache strategy" out of dashboard UI
+# state that no test covers, no diff shows, and no clone reproduces. §Phase 4 of
+# docs/plans/20260830-plan-cloudflare-pages-deploy.md.
+#
+# HOW PAGES READS THIS FILE, measured rather than assumed: every matching rule
+# applies and their headers are COMBINED, not overridden. A catch-all plus a
+# specific rule therefore yields
+#     cache-control: public, max-age=0, s-maxage=300, public, max-age=31536000
+# and a browser takes the FIRST max-age — so the specific rule loses, silently and
+# backwards. The documented way to override a more pervasive rule is to detach the
+# header first with `! Header-Name`, which every block below does. Verified on
+# bh-blog.pages.dev; the first version of this file shipped the doubled header.
+#
+# THIS FILE IS NOT YET AUTHORITATIVE ON THE LIVE SITE. The zone's Cache Rules are
+# configured as "Ignore cache-control header and use this TTL", which overrides
+# whatever the origin sends — including this. Until those rules are removed in the
+# dashboard, `_headers` governs only the `.pages.dev` origin, where no Cache Rules
+# apply. That ordering is deliberate: headers in, rules out, then drop the purge
+# step, verifying at each stage.
+
+# ── Class B: stable URL, changes every deploy ────────────────────────────────
+# HTML, feeds, the JSON indexes, the agent-readable `.qmd` sources. Bookmarkable
+# and SEO-indexed, so they cannot be fingerprinted. `max-age=0` makes browsers
+# revalidate — this is what the pending `class-b-html-browser-revalidate`
+# Transform Rule was for, and it stops being a pending dashboard action here.
+# `s-maxage=300` bounds edge staleness at five minutes.
+#
+# The catch-all is Class B on purpose: a new file type nobody thought about lands
+# on the conservative setting rather than being cached for a year.
+/*
+  Cache-Control: public, max-age=0, s-maxage=300
+
+# ── Class C: stable URL, rarely changes ──────────────────────────────────────
+# Post images are immutable in practice once published, but their URLs are not
+# fingerprinted, so a day is the compromise the cache strategy already chose.
+/posts/*.jpg
+  ! Cache-Control
+  Cache-Control: public, max-age=86400
+/posts/*.jpeg
+  ! Cache-Control
+  Cache-Control: public, max-age=86400
+/posts/*.png
+  ! Cache-Control
+  Cache-Control: public, max-age=86400
+/posts/*.webp
+  ! Cache-Control
+  Cache-Control: public, max-age=86400
+/posts/*.svg
+  ! Cache-Control
+  Cache-Control: public, max-age=86400
+
+/favicon.svg
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+/favicon-16x16.png
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+/favicon-32x32.png
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+/apple-touch-icon.png
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+/og-default.png
+  ! Cache-Control
+  Cache-Control: public, max-age=604800
+
+/robots.txt
+  ! Cache-Control
+  Cache-Control: public, max-age=3600
+/.well-known/*
+  ! Cache-Control
+  Cache-Control: public, max-age=3600
+
+# ── Class A: fingerprinted, safe to cache for a year ─────────────────────────
+# The URL encodes a content hash, so changed content always gets a new URL.
+# `cache-bust-css.py` produces `styles.<10-char-sha256>.css`.
+/styles.*.css
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+# DELIBERATE DEVIATION from the dashboard rules, which give all of `site_libs/**`
+# a one-year immutable TTL. Only *some* of that tree is fingerprinted: Quarto
+# hashes `bootstrap-<hash>.min.css` and `quarto-syntax-highlighting-<hash>.css`,
+# but ships `quarto-nav.js`, `quarto-html/*.js` and the MathJax font files under
+# stable names. A year of `immutable` on a stable-named file means a Quarto
+# upgrade cannot reach browsers that already cached it — the existing rule is
+# riskier than it looks, and `_headers` has no way to say "only the hashed ones".
+# One day keeps the hit rate high and bounds the exposure; revisit if the asset
+# volume ever justifies splitting the tree at build time.
+/site_libs/*
+  ! Cache-Control
+  Cache-Control: public, max-age=86400
